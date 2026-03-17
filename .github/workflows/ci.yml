@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    name: Frontend (Vitest + TypeScript + ESLint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: auditworkshop/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: auditworkshop/frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: TypeScript Check
+        run: npx tsc -b
+
+      - name: ESLint
+        run: npm run lint -- --max-warnings 10
+
+      - name: Vitest (24 Tests)
+        run: npm test
+
+      - name: Production Build
+        run: npm run build
+
+  backend-lint:
+    name: Backend (Ruff Lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: auditworkshop/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Ruff Check
+        run: ruff check . --select E,W,F --ignore E501
+
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Backend Image
+        run: docker build -t flowworkshop-backend auditworkshop/backend/
+
+      - name: Build Frontend Image
+        run: docker build -t flowworkshop-frontend auditworkshop/frontend/
