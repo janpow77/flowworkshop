@@ -1,0 +1,32 @@
+{
+  "template_id": "vko_esf_2021_2027",
+  "name": "VKO-Checkliste ESF+ 2021-2027",
+  "description": "Verwaltungskontroll-Checkliste für ESF+-Vorhabenprüfungen gemäß Art. 74 VO (EU) 2021/1060 und VO (EU) 2021/1057",
+  "questions": [
+    {"question_key": "1.1", "question_text": "Liegt der Zuwendungsbescheid vor und ist er bestandskräftig?", "answer_type": "boolean", "category": "Bescheid", "sort_order": 1},
+    {"question_key": "1.2", "question_text": "Stimmen die Förderbedingungen mit dem ESF+-Programm überein?", "answer_type": "boolean", "category": "Bescheid", "sort_order": 2},
+    {"question_key": "1.3", "question_text": "Ist die Förderfähigkeit des Vorhabens gemäß Art. 14 VO (EU) 2021/1057 gegeben?", "answer_type": "boolean", "category": "Bescheid", "sort_order": 3},
+    {"question_key": "2.1", "question_text": "Sind die Teilnehmerdaten bei Eintritt vollständig erfasst (Anhang I VO 2021/1057)?", "answer_type": "boolean", "category": "Teilnehmerdaten", "sort_order": 4},
+    {"question_key": "2.2", "question_text": "Liegen datenschutzrechtliche Einwilligungen aller Teilnehmer vor (Art. 6 DSGVO)?", "answer_type": "boolean", "category": "Teilnehmerdaten", "sort_order": 5},
+    {"question_key": "2.3", "question_text": "Sind Erwerbsstatus, Alter, Geschlecht und Bildungsstand korrekt klassifiziert?", "answer_type": "boolean", "category": "Teilnehmerdaten", "sort_order": 6},
+    {"question_key": "2.4", "question_text": "Wurden Ergebnisindikatoren bei Austritt erhoben (auch bei vorzeitigem Abbruch)?", "answer_type": "boolean", "category": "Teilnehmerdaten", "sort_order": 7},
+    {"question_key": "2.5", "question_text": "Stimmt die Teilnehmerzahl mit den Zielwerten des Bewilligungsbescheids überein?", "answer_type": "boolean", "category": "Teilnehmerdaten", "sort_order": 8},
+    {"question_key": "3.1", "question_text": "Sind direkte Personalkosten durch Stundennachweise je Dozent belegt?", "answer_type": "boolean", "category": "Ausgaben und SCO", "sort_order": 9},
+    {"question_key": "3.2", "question_text": "Wurde der Einheitskostensatz gemäß Leitfaden korrekt angewandt?", "answer_type": "boolean", "category": "Ausgaben und SCO", "sort_order": 10},
+    {"question_key": "3.3", "question_text": "Wurde die Restkostenpauschale (Art. 56 VO 2021/1060) korrekt berechnet?", "answer_type": "boolean", "category": "Ausgaben und SCO", "sort_order": 11},
+    {"question_key": "3.4", "question_text": "Ist die Wahl der vereinfachten Kostenoption (SCO) im Bescheid festgelegt?", "answer_type": "boolean", "category": "Ausgaben und SCO", "sort_order": 12},
+    {"question_key": "3.5", "question_text": "Sind nur tatsächlich durchgeführte und dokumentierte Maßnahmeneinheiten abgerechnet?", "answer_type": "boolean", "category": "Ausgaben und SCO", "sort_order": 13},
+    {"question_key": "3.6", "question_text": "Ist eine Doppelförderung ausgeschlossen?", "answer_type": "boolean", "category": "Ausgaben und SCO", "sort_order": 14},
+    {"question_key": "3.7", "question_text": "Wurde der Eigenanteil (Kofinanzierung) nachgewiesen?", "answer_type": "boolean", "category": "Ausgaben und SCO", "sort_order": 15},
+    {"question_key": "4.1", "question_text": "Wurden die Publizitätspflichten gemäß Art. 50 VO (EU) 2021/1060 eingehalten?", "answer_type": "boolean", "category": "Publizität", "sort_order": 16},
+    {"question_key": "4.2", "question_text": "Ist das ESF+-Logo auf Schulungsunterlagen und am Schulungsort angebracht?", "answer_type": "boolean", "category": "Publizität", "sort_order": 17},
+    {"question_key": "5.1", "question_text": "Wurde die Gleichstellung der Geschlechter als Querschnittsziel aktiv berücksichtigt?", "answer_type": "boolean", "category": "Querschnittsziele", "sort_order": 18},
+    {"question_key": "5.2", "question_text": "Sind Maßnahmen zur Nichtdiskriminierung und Barrierefreiheit dokumentiert?", "answer_type": "boolean", "category": "Querschnittsziele", "sort_order": 19},
+    {"question_key": "5.3", "question_text": "Wurde das DNSH-Prinzip (Do No Significant Harm) beachtet?", "answer_type": "boolean", "category": "Querschnittsziele", "sort_order": 20},
+    {"question_key": "6.1", "question_text": "Ist der Verwendungsnachweis vollständig (zahlenmäßig + Sachbericht + Teilnehmerstatistik)?", "answer_type": "boolean", "category": "Verwendungsnachweis", "sort_order": 21},
+    {"question_key": "6.2", "question_text": "Stimmt der Sachbericht mit den Maßnahmenzielen überein?", "answer_type": "boolean", "category": "Verwendungsnachweis", "sort_order": 22},
+    {"question_key": "6.3", "question_text": "Wurden die Output- und Ergebnisindikatoren des ESF+-Programms erreicht?", "answer_type": "boolean", "category": "Verwendungsnachweis", "sort_order": 23},
+    {"question_key": "7.1", "question_text": "Sind beihilferechtliche Voraussetzungen erfüllt (soweit anwendbar)?", "answer_type": "boolean", "category": "Beihilferecht", "sort_order": 24},
+    {"question_key": "8.1", "question_text": "Gesamtbewertung: Sind alle Förderbedingungen eingehalten?", "answer_type": "text", "category": "Gesamtbewertung", "sort_order": 25}
+  ]
+}

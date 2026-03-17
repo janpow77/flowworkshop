@@ -1,0 +1,384 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --app-bg:
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.22), transparent 22%),
+    radial-gradient(circle at top right, rgba(253, 224, 71, 0.2), transparent 18%),
+    linear-gradient(180deg, #f5f7f2 0%, #eef3f6 52%, #f6f3eb 100%);
+}
+
+.dark:root,
+.dark {
+  color-scheme: dark;
+  --app-bg:
+    radial-gradient(circle at top left, rgba(8, 145, 178, 0.16), transparent 22%),
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.1), transparent 18%),
+    linear-gradient(180deg, #020617 0%, #0b1120 52%, #111827 100%);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+  background: var(--app-bg);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+}
+
+::selection {
+  background: rgba(6, 182, 212, 0.25);
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, 18px, 0); }
+}
+
+@keyframes float-slower {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-10px, 22px, 0); }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 12s ease-in-out infinite;
+}
+
+.animate-float-slower {
+  animation: float-slower 16s ease-in-out infinite;
+}
+
+.animate-enter {
+  animation: enter 0.45s ease-out;
+}
+
+.beneficiary-map-shell .leaflet-container {
+  background:
+    radial-gradient(circle at top, rgba(255,255,255,0.22), rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, rgba(226,232,240,0.85), rgba(241,245,249,0.9));
+}
+
+.dark .beneficiary-map-shell .leaflet-container {
+  background:
+    radial-gradient(circle at top, rgba(34,211,238,0.08), rgba(0,0,0,0) 35%),
+    linear-gradient(180deg, rgba(15,23,42,0.98), rgba(2,6,23,1));
+}
+
+.privacy-map {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(34,197,94,0.12), rgba(34,197,94,0) 24%),
+    linear-gradient(180deg, rgba(248,250,252,0.98), rgba(241,245,249,1));
+}
+
+.dark .privacy-map {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(34,197,94,0.08), rgba(34,197,94,0) 22%),
+    linear-gradient(180deg, rgba(15,23,42,1), rgba(2,6,23,1));
+}
+
+/* Staggered entry animation for lists */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out both;
+}
+
+/* Typing cursor */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-cursor {
+  animation: cursor-blink 0.8s ease-in-out infinite;
+}
+
+/* Smooth page transitions */
+.page-enter {
+  animation: enter 0.35s ease-out;
+}
+
+/* Glow effect for active elements */
+.glow-cyan {
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.4), 0 0 4px rgba(6, 182, 212, 0.2);
+}
+
+.glow-gold {
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4), 0 0 4px rgba(255, 215, 0, 0.2);
+}
+
+/* ── Fish Login Animation (aus audit_designer) ──────────────────────────── */
+
+@keyframes fishJump {
+  0% {
+    transform: translateY(150px) translateX(-80px) rotate(-15deg) scaleX(-1);
+    opacity: 0;
+  }
+  15% { opacity: 1; }
+  50% {
+    transform: translateY(-200px) translateX(0px) rotate(5deg) scaleX(-1);
+  }
+  85% { opacity: 1; }
+  100% {
+    transform: translateY(150px) translateX(80px) rotate(25deg) scaleX(-1);
+    opacity: 0;
+  }
+}
+
+.animate-fish-jump {
+  animation: fishJump 7s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  filter: drop-shadow(0 0 25px rgba(96, 165, 250, 0.7));
+}
+
+/* Wave Movement */
+@keyframes waveMove {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(-25px); }
+  100% { transform: translateX(0); }
+}
+
+.wave-animation {
+  animation: waveMove 6s ease-in-out infinite;
+}
+
+.wave-animation-reverse {
+  animation: waveMove 8s ease-in-out infinite reverse;
+}
+
+/* Binary Data Flow */
+@keyframes dataFlow {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.data-flow {
+  animation: dataFlow 20s linear infinite;
+}
+
+.data-flow-fast {
+  animation: dataFlow 15s linear infinite;
+}
+
+.data-flow-slow {
+  animation: dataFlow 25s linear infinite reverse;
+}
+
+@keyframes binaryPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+.binary-pulse {
+  animation: binaryPulse 3s ease-in-out infinite;
+}
+
+/* ── Agenda Animations ────────────────────────────────────────────── */
+
+@keyframes agenda-activate {
+  0% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+  30% {
+    transform: scale(1.03);
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25), 0 8px 32px -8px rgba(34, 197, 94, 0.3);
+  }
+  100% {
+    transform: scale(1.01);
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15), 0 4px 16px -4px rgba(34, 197, 94, 0.2);
+  }
+}
+
+@keyframes agenda-complete {
+  0% {
+    transform: scale(1.01);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(0.98);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+}
+
+@keyframes agenda-skip {
+  0% { transform: translateX(0); opacity: 1; }
+  30% { transform: translateX(8px); opacity: 0.6; }
+  100% { transform: translateX(0); opacity: 0.4; }
+}
+
+@keyframes checkmark-draw {
+  0% { stroke-dashoffset: 24; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.3), 0 0 20px rgba(34, 197, 94, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(34, 197, 94, 0.5), 0 0 40px rgba(34, 197, 94, 0.2);
+  }
+}
+
+@keyframes countdown-tick {
+  0% { transform: scaleX(1); }
+  100% { transform: scaleX(0); }
+}
+
+@keyframes live-banner-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  60% {
+    transform: translateY(3px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes status-badge-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% { transform: scale(1.15); }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes progress-fill {
+  from { transform: scaleX(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-agenda-activate {
+  animation: agenda-activate 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-agenda-complete {
+  animation: agenda-complete 0.6s ease-out forwards;
+}
+
+.animate-agenda-skip {
+  animation: agenda-skip 0.4s ease-out forwards;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.animate-live-banner-in {
+  animation: live-banner-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-status-badge-in {
+  animation: status-badge-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-progress-fill {
+  animation: progress-fill 0.8s ease-out forwards;
+  transform-origin: left;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.15) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.countdown-bar {
+  transform-origin: left;
+}
+
+/* Smooth scroll behavior for agenda container */
+.agenda-scroll-container {
+  scroll-behavior: smooth;
+}
+
+/* Glassmorphism Card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Login Input */
+.login-input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.login-input::placeholder {
+  color: rgba(191, 219, 254, 0.6);
+}
+
+.login-input:focus {
+  border-color: rgba(147, 197, 253, 1);
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.3);
+  outline: none;
+}
+
+/* Login Button */
+.login-button {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.5);
+  transition: all 0.2s ease;
+}
+
+.login-button:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 15px 30px -5px rgba(37, 99, 235, 0.6);
+  transform: translateY(-1px);
+}
+
+.login-button:active {
+  transform: translateY(0);
+}

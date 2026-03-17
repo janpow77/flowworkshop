@@ -1,0 +1,62 @@
+services:
+
+  # ── PostgreSQL + pgvector ──────────────────────────────────
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: auditworkshop-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: workshop
+      POSTGRES_PASSWORD: workshop
+      POSTGRES_DB: workshop
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"   # 5434 extern → kein Konflikt mit audit_designer (5433)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workshop"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── FastAPI Backend ────────────────────────────────────────
+  backend:
+    build: ./backend
+    container_name: auditworkshop-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    environment:
+      DATABASE_URL: postgresql://workshop:workshop@db:5432/workshop
+      OLLAMA_URL: http://host.docker.internal:11434
+      MODEL_NAME: qwen3:14b
+      WORKSHOP_ADMIN: "true"   # Ingest-Endpunkt freischalten
+      ALLOW_REMOTE_GEOCODING: "false"
+      ALLOW_REMOTE_TILES: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8006:8000"
+    volumes:
+      - ./backend/data:/app/data   # Demo-Dokumente + Geocache
+
+  # ── React Frontend ─────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: auditworkshop-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3004:80"
+
+volumes:
+  db_data:

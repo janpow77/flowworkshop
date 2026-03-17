@@ -1,0 +1,2907 @@
+{
+  "63477 maintal / am kreuzstein 85": {
+    "lat": 50.1549692,
+    "lon": 8.8291468,
+    "display_name": "63477, Hochstadt, Maintal, Main-Kinzig-Kreis, Hessen, Deutschland"
+  },
+  "35282 rauschenberg / waldstrasse 13a": {
+    "lat": 50.9114286,
+    "lon": 8.8934597,
+    "display_name": "35282, Albshausen, Rauschenberg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "35232 dautphetal - holzhausen / talstraße 4": null,
+  "60388 frankfurt am main / gwinnerstraße 5-9": {
+    "lat": 50.1560725,
+    "lon": 8.7610472,
+    "display_name": "60388, Bergen-Enkheim, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "65428 rüsselsheim / bahnhofsplatz 1": {
+    "lat": 49.9819502,
+    "lon": 8.446357,
+    "display_name": "65428, Haßloch, Rüsselsheim am Main, Kreis Groß-Gerau, Hessen, Deutschland"
+  },
+  "64404 bickenbach / darmstädter straße 9-11": {
+    "lat": 49.7595277,
+    "lon": 8.6045058,
+    "display_name": "64404, Bickenbach, Landkreis Darmstadt-Dieburg, Hessen, Deutschland"
+  },
+  "35066 frankenberg / goldbachstr. 10": {
+    "lat": 51.0729903,
+    "lon": 8.7847467,
+    "display_name": "35066, Frankenberg, Frankenberg (Eder), Landkreis Waldeck-Frankenberg, Hessen, Deutschland"
+  },
+  "36341 lauterbach / umgehungsstraße 39": {
+    "lat": 50.6404605,
+    "lon": 9.3551725,
+    "display_name": "36341, Sickendorf, Lauterbach (Hessen), Vogelsbergkreis, Hessen, Deutschland"
+  },
+  "35440 linden / nikolaus-otto-straße 5": {
+    "lat": 50.5340707,
+    "lon": 8.6612338,
+    "display_name": "35440, Großen-Linden, Linden, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "36041 fulda / kruppstraße 4": {
+    "lat": 50.5655641,
+    "lon": 9.6239207,
+    "display_name": "36041, Maberzell, Fulda, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "60433 frankfurt am main / walnußweg 1": {
+    "lat": 50.162253,
+    "lon": 8.6720038,
+    "display_name": "60433, Frankfurter Berg, Nord-Ost, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "64686 lautertal-reichenbach / brandauer klinger 32": {
+    "lat": 49.7151317,
+    "lon": 8.6923262,
+    "display_name": "Beedenkircher Straße/Seifenwiesenweg 2, 64686 Lautertal (Odenwald), Seifenwiesenweg, Reichenbach, Lautertal (Odenwald), Kreis Bergstraße, Hessen, 64686, Deutschland"
+  },
+  "64686 lautertal / am pflasterweg 22": {
+    "lat": 49.7164,
+    "lon": 8.7093703,
+    "display_name": "64686, Lautertal (Odenwald), Kreis Bergstraße, Hessen, Deutschland"
+  },
+  "60386 frankfurt / hugo-junkers straße 5-7": {
+    "lat": 50.1262996,
+    "lon": 8.7327441,
+    "display_name": "60386, Riederwald, Ost, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "35457 lollar / auweg 10 b": {
+    "lat": 50.6679885,
+    "lon": 8.6890749,
+    "display_name": "35457, Odenhausen, Lollar, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "35236 breidenbach / schreinerstraße 5": {
+    "lat": 50.8749037,
+    "lon": 8.4404877,
+    "display_name": "35236, Niederdieten, Breidenbach, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "65759 hattersheim / schulstr. 37": {
+    "lat": 50.0723339,
+    "lon": 8.4858331,
+    "display_name": "Hattersheim, Hattersheim am Main, Main-Taunus-Kreis, Hessen, Deutschland"
+  },
+  "35708 haiger / kalteiche-ring 85-87": {
+    "lat": 50.7720485,
+    "lon": 8.1891469,
+    "display_name": "35708, Steinbach, Haiger, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "35708 haiger / kalteiche-ring 67": {
+    "lat": 50.7720485,
+    "lon": 8.1891469,
+    "display_name": "35708, Steinbach, Haiger, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "35649 bischoffen / offenbacher straße 9": {
+    "lat": 50.7161033,
+    "lon": 8.4922452,
+    "display_name": "35649, Niederweidbach, Bischoffen, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "34295 edermünde / tiefenbachweg 13": {
+    "lat": 51.2227983,
+    "lon": 9.3795247,
+    "display_name": "34295, Besse, Edermünde, Schwalm-Eder-Kreis, Hessen, Deutschland"
+  },
+  "35781 weilburg / friedenbachstraße 19": {
+    "lat": 50.483378,
+    "lon": 8.2763163,
+    "display_name": "35781, Weilburg, Landkreis Limburg-Weilburg, Hessen, Deutschland"
+  },
+  "35239 steffenberg / brückenstraße 19": {
+    "lat": 50.8344338,
+    "lon": 8.4218816,
+    "display_name": "35239, Oberhörlen, Steffenberg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "61203 reichelsheim / frankfurter straße 4": {
+    "lat": 50.3532931,
+    "lon": 8.8537536,
+    "display_name": "61203, Reichelsheim, Reichelsheim (Wetterau), Wetteraukreis, Hessen, Deutschland"
+  },
+  "36041 rodges / böcklerstraße 12": {
+    "lat": 50.5538428,
+    "lon": 9.6068955,
+    "display_name": "Rodges, Fulda, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "34117 kassel / friedrich-ebert-straße 16": {
+    "lat": 51.3157257,
+    "lon": 9.4926363,
+    "display_name": "34117, Mitte, Kassel, Hessen, Deutschland"
+  },
+  "34134 kassel / hamburger straße 27": {
+    "lat": 51.281887,
+    "lon": 9.4734412,
+    "display_name": "34134, Niederzwehren, Kassel, Hessen, Deutschland"
+  },
+  "36251 bad hersfeld / leinenweberstraße 12": {
+    "lat": 50.8681341,
+    "lon": 9.7068481,
+    "display_name": "Bad Hersfeld, Landkreis Hersfeld-Rotenburg, Hessen, 36251, Deutschland"
+  },
+  "35753 greifenstein-allendorf / lenzwies 6": null,
+  "60594 frankfurt am main / walther-von-cronberg-platz 2": {
+    "lat": 50.1028505,
+    "lon": 8.6881252,
+    "display_name": "60594, Sachsenhausen Nord, Süd, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "36088 hünfeld / industriestraße 15": {
+    "lat": 50.6695613,
+    "lon": 9.7753788,
+    "display_name": "36088, Hünfeld, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "36119 neuhof / schaffeld 1": {
+    "lat": 50.4728682,
+    "lon": 9.5574633,
+    "display_name": "36119, Neuhof, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "64319 pfungstadt / ostendstraße 17": {
+    "lat": 49.8026107,
+    "lon": 8.5920263,
+    "display_name": "64319, Pfungstadt, Landkreis Darmstadt-Dieburg, Hessen, Deutschland"
+  },
+  "64732 bad könig / jakob-maul-straße 17": {
+    "lat": 49.7418482,
+    "lon": 9.0263772,
+    "display_name": "64732, Bad König, Odenwaldkreis, Hessen, Deutschland"
+  },
+  "37213 witzenhausen / steinstraße 19": {
+    "lat": 51.3413483,
+    "lon": 9.852074,
+    "display_name": "37213, Witzenhausen, Werra-Meißner-Kreis, Hessen, Deutschland"
+  },
+  "36041 fulda / paul-klee-straße 70": {
+    "lat": 50.5655641,
+    "lon": 9.6239207,
+    "display_name": "36041, Maberzell, Fulda, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "63225 langen / robert-bosch-straße 13": {
+    "lat": 49.9922345,
+    "lon": 8.6617301,
+    "display_name": "63225, Nordend, Langen, Landkreis Offenbach, Hessen, Deutschland"
+  },
+  "60596 frankfurt am main / theodor-stern-kai 7": {
+    "lat": 50.0973745,
+    "lon": 8.6710837,
+    "display_name": "60596, Sachsenhausen Nord, Süd, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "63457 hanau-großauheim / spitzenweg 12": {
+    "lat": 50.1020533,
+    "lon": 8.9603617,
+    "display_name": "In den Heimerswiesen 10, 63457 Hanau, In den Heimerswiesen, Großauheim, Hanau, Hessen, 63457, Deutschland"
+  },
+  "35043 marburg / hans-meerweinstraße 4": {
+    "lat": 50.7979432,
+    "lon": 8.8227218,
+    "display_name": "35043, Schröck, Marburg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "36132 eiterfeld / im leibolzgraben 9-11": {
+    "lat": 50.7637998,
+    "lon": 9.8179121,
+    "display_name": "36132, Eiterfeld, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "35684 dillenburg-frohnhausen / industriestraße 29": {
+    "lat": 50.784226,
+    "lon": 8.2941795,
+    "display_name": "35684, Frohnhausen, Dillenburg, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "65614 beselich / niedertiefenbacher straße 2": {
+    "lat": 50.4633914,
+    "lon": 8.1456918,
+    "display_name": "65614, Obertiefenbach, Beselich, Landkreis Limburg-Weilburg, Hessen, Deutschland"
+  },
+  "60325   / bockenheimer landstraße 21": null,
+  "34117 kassel / scheidemannplatz 2": {
+    "lat": 51.3157257,
+    "lon": 9.4926363,
+    "display_name": "34117, Mitte, Kassel, Hessen, Deutschland"
+  },
+  "65189 wiesbaden / bierstadter straße 45": {
+    "lat": 50.0729625,
+    "lon": 8.261265,
+    "display_name": "65189, Südost, Wiesbaden, Hessen, Deutschland"
+  },
+  "64646 heppenheim / wilhelmstraße 51": {
+    "lat": 49.6436753,
+    "lon": 8.66254,
+    "display_name": "64646, Heppenheim, Kreis Bergstraße, Hessen, Deutschland"
+  },
+  "35394 gießen / winchesterstr. 2": {
+    "lat": 50.5775634,
+    "lon": 8.712824,
+    "display_name": "35394, Gießen, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "64711 erbach / helmholtzstraße 1a": {
+    "lat": 49.6366301,
+    "lon": 9.0095027,
+    "display_name": "64711, Schönnen, Erlenbach, Erbach, Odenwaldkreis, Hessen, Deutschland"
+  },
+  "60486 frankfurt am main / hambuerger allee 96": {
+    "lat": 50.1142807,
+    "lon": 8.6258876,
+    "display_name": "60486, Bockenheim, Innenstadt 2, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "69483 wald-michelbach / in der gass 14b": {
+    "lat": 49.5525996,
+    "lon": 8.8430996,
+    "display_name": "69483, Straßburg, Wald-Michelbach, Kreis Bergstraße, Hessen, Deutschland"
+  },
+  "34117 kassel / ständeplatz 17": {
+    "lat": 51.3157257,
+    "lon": 9.4926363,
+    "display_name": "34117, Mitte, Kassel, Hessen, Deutschland"
+  },
+  "63065 offenbach / hermann-steinhäuser-str. 43-47": {
+    "lat": 50.1057262,
+    "lon": 8.7678104,
+    "display_name": "63065, Mathildenviertel, Offenbach am Main, Hessen, Deutschland"
+  },
+  "35713 eschenburg / dietzhölzstraße 21-24": {
+    "lat": 50.8148047,
+    "lon": 8.3515145,
+    "display_name": "35713, Eibelshausen, Eschenburg, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "64521 groß-gerau / hans-böckler-straße 2": {
+    "lat": 49.9110319,
+    "lon": 8.4772702,
+    "display_name": "64521, Groß-Gerau, Kreis Groß-Gerau, Hessen, Deutschland"
+  },
+  "36341 lauterbach / schlitzer straße 11": {
+    "lat": 50.6404605,
+    "lon": 9.3551725,
+    "display_name": "36341, Sickendorf, Lauterbach (Hessen), Vogelsbergkreis, Hessen, Deutschland"
+  },
+  "63628 bad soden-salmünster / hans-streif straße 2-6": {
+    "lat": 50.2687582,
+    "lon": 9.3593106,
+    "display_name": "Kläranlage Bad Soden-Salmünster, Salmünster, Bad Soden-Salmünster, Main-Kinzig-Kreis, Hessen, 63628, Deutschland"
+  },
+  "64807 dieburg / dieselstraße 14": {
+    "lat": 49.9054256,
+    "lon": 8.8163987,
+    "display_name": "64807, Dieburg, Landkreis Darmstadt-Dieburg, Hessen, Deutschland"
+  },
+  "34123 kassel / heinrich-hertz-str. 7": {
+    "lat": 51.2911553,
+    "lon": 9.5255761,
+    "display_name": "34123, Waldau, Kassel, Hessen, Deutschland"
+  },
+  "36323 grebenau / auf der höhe 5": {
+    "lat": 50.7304048,
+    "lon": 9.4302891,
+    "display_name": "36323, Eulersdorf, Grebenau, Vogelsbergkreis, Hessen, Deutschland"
+  },
+  "35649 bischoffen / am wehr 9": {
+    "lat": 50.7161033,
+    "lon": 8.4922452,
+    "display_name": "35649, Niederweidbach, Bischoffen, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "65604 elz / vor den eichen 7-13": {
+    "lat": 50.4228671,
+    "lon": 8.0178981,
+    "display_name": "65604, Elz, Landkreis Limburg-Weilburg, Hessen, Deutschland"
+  },
+  "35037 marburg / biegenstraße 10": {
+    "lat": 50.8030295,
+    "lon": 8.7516968,
+    "display_name": "35037, Ockershausen, Marburg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "35390 gießen / georg-schlosser-strasse 1": {
+    "lat": 50.5879221,
+    "lon": 8.6766586,
+    "display_name": "35390, Gießen, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "35394 gießen / heinrich-buff-ring 16": {
+    "lat": 50.5775634,
+    "lon": 8.712824,
+    "display_name": "35394, Gießen, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "64293 darmstadt / im tiefen see 45": {
+    "lat": 49.8830325,
+    "lon": 8.6282758,
+    "display_name": "64293, Darmstadt-Nord, Darmstadt, Hessen, Deutschland"
+  },
+  "34613 schwalmstadt / ditfurthstraße 10": {
+    "lat": 50.9183666,
+    "lon": 9.2003016,
+    "display_name": "34613, Treysa, Schwalmstadt, Schwalm-Eder-Kreis, Hessen, Deutschland"
+  },
+  "35576 wetzlar / willy-bechstein-straße 4": {
+    "lat": 50.5703013,
+    "lon": 8.4832496,
+    "display_name": "35576, Dillfeld, Hermannstein, Wetzlar, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "35037 marburg / renthof 7": {
+    "lat": 50.8030295,
+    "lon": 8.7516968,
+    "display_name": "35037, Ockershausen, Marburg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "35043 marburg / baldingerstraße": {
+    "lat": 50.7979432,
+    "lon": 8.8227218,
+    "display_name": "35043, Schröck, Marburg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "35043 marburg / karl-von-frisch-straße 14": {
+    "lat": 50.7979432,
+    "lon": 8.8227218,
+    "display_name": "35043, Schröck, Marburg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "34109 kassel / mönchenergstraße 19": {
+    "lat": 51.3157833,
+    "lon": 9.4978479,
+    "display_name": "Kassel, Hessen, Deutschland"
+  },
+  "60326 frankfurt am main / meta-gadesmann-straße 2": {
+    "lat": 50.1006282,
+    "lon": 8.627826,
+    "display_name": "60326, Gallus, Innenstadt 1, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "64560 riedstadt / rathausstraße 1": {
+    "lat": 49.8336371,
+    "lon": 8.5035127,
+    "display_name": "64560, Goddelau, Riedstadt, Kreis Groß-Gerau, Hessen, Deutschland"
+  },
+  "61118 bad vilbel / am massenheimer weg": {
+    "lat": 50.1923211,
+    "lon": 8.7495681,
+    "display_name": "61118, Gronau, Bad Vilbel, Wetteraukreis, Hessen, Deutschland"
+  },
+  "35080 bad endbach / schlierbacher straße 40": {
+    "lat": 50.7689326,
+    "lon": 8.47644,
+    "display_name": "35080, Schlierbach, Bad Endbach, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "64283 darmstadt / rundeturmstraße 10": {
+    "lat": 49.870494,
+    "lon": 8.6523756,
+    "display_name": "64283, Darmstadt-Mitte, Darmstadt, Hessen, Deutschland"
+  },
+  "35260 stadtallendorf / weserstraße 2": {
+    "lat": 50.8308236,
+    "lon": 9.0383785,
+    "display_name": "35260, Stadtallendorf, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "35041 marburg / emil-von-behring-straße 76": {
+    "lat": 50.8200306,
+    "lon": 8.7040713,
+    "display_name": "35041, Elnhausen, Dagobertshausen, Marburg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "63699 kefenrod / forstraße 1": {
+    "lat": 50.349856,
+    "lon": 9.2038393,
+    "display_name": "63699, Kefenrod, Wetteraukreis, Hessen, Deutschland"
+  },
+  "68623 lampertheim / chemiestraße 8a": {
+    "lat": 49.6257607,
+    "lon": 8.4103822,
+    "display_name": "68623, Lampertheim, Kreis Bergstraße, Hessen, Deutschland"
+  },
+  "64293 darmstadt / zweifalltorwerg 12": {
+    "lat": 49.8830325,
+    "lon": 8.6282758,
+    "display_name": "64293, Darmstadt-Nord, Darmstadt, Hessen, Deutschland"
+  },
+  "35789 weilmünster / iserbachstraße 11 a": {
+    "lat": 50.4235635,
+    "lon": 8.3936366,
+    "display_name": "35789, Dianenstein, Weilmünster, Landkreis Limburg-Weilburg, Hessen, Deutschland"
+  },
+  "34123 kassel / sandershäuser straße 17": {
+    "lat": 51.2911553,
+    "lon": 9.5255761,
+    "display_name": "34123, Waldau, Kassel, Hessen, Deutschland"
+  },
+  "64291 darmstadt / planckstraße 1": {
+    "lat": 49.9274921,
+    "lon": 8.6737771,
+    "display_name": "64291, Wixhausen, Darmstadt, Hessen, Deutschland"
+  },
+  "60489 frankfurt am main / seegewann 13": {
+    "lat": 50.1266297,
+    "lon": 8.606437,
+    "display_name": "60489, Rödelheim, Mitte-West, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "36275 kirchheim / willingshainer straße 45": {
+    "lat": 50.8489097,
+    "lon": 9.5628975,
+    "display_name": "36275, Kirchheim, Landkreis Hersfeld-Rotenburg, Hessen, Deutschland"
+  },
+  "34127 kassel / universitätsplatz 12": {
+    "lat": 51.3389794,
+    "lon": 9.4884025,
+    "display_name": "34127, Nord (Holland), Kassel, Hessen, Deutschland"
+  },
+  "35394 gießen / licher straße 64": {
+    "lat": 50.5775634,
+    "lon": 8.712824,
+    "display_name": "35394, Gießen, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "64283 darmstadt / residenzschloss 1": {
+    "lat": 49.870494,
+    "lon": 8.6523756,
+    "display_name": "64283, Darmstadt-Mitte, Darmstadt, Hessen, Deutschland"
+  },
+  "64287 darmstadt / ottilie-bock-straße 1": {
+    "lat": 49.8856241,
+    "lon": 8.6996925,
+    "display_name": "64287, Darmstadt-Ost, Darmstadt, Hessen, Deutschland"
+  },
+  "35708 haiger / auf der stücke 27": {
+    "lat": 50.7720485,
+    "lon": 8.1891469,
+    "display_name": "35708, Steinbach, Haiger, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "63067 offenbach am main / hafenallee 43": {
+    "lat": 50.1070092,
+    "lon": 8.742284,
+    "display_name": "63067, Kaiserlei, Offenbach am Main, Hessen, Deutschland"
+  },
+  "61169 friedberg / karlsbader straße 20": {
+    "lat": 50.3272122,
+    "lon": 8.7502924,
+    "display_name": "61169, Ockstadt, Friedberg, Friedberg (Hessen), Wetteraukreis, Hessen, Deutschland"
+  },
+  "36148 kalbach / büchenberger straße 30": {
+    "lat": 50.4127926,
+    "lon": 9.6834217,
+    "display_name": "36148, Oberkalbach, Kalbach, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "36100 petersberg / gerhardsweg 5": {
+    "lat": 50.5891049,
+    "lon": 9.7395944,
+    "display_name": "36100, Steinhaus, Petersberg, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "34253 lohfelden / otto-hahn-straße 25": {
+    "lat": 51.2675214,
+    "lon": 9.5555645,
+    "display_name": "34253, Vollmarshausen, Lohfelden, Landkreis Kassel, Hessen, Deutschland"
+  },
+  "61169 friedberg / grüner weg 4a": {
+    "lat": 50.3272122,
+    "lon": 8.7502924,
+    "display_name": "61169, Ockstadt, Friedberg, Friedberg (Hessen), Wetteraukreis, Hessen, Deutschland"
+  },
+  "34117 kassel / joseph-beuys-straße 8": {
+    "lat": 51.3157257,
+    "lon": 9.4926363,
+    "display_name": "34117, Mitte, Kassel, Hessen, Deutschland"
+  },
+  "63322 rödermark / carl-benz-straße 13": {
+    "lat": 49.9778903,
+    "lon": 8.8030176,
+    "display_name": "63322, Urberach, Bulau, Rödermark, Landkreis Offenbach, Hessen, Deutschland"
+  },
+  "60486 frankfurt / hamburger allee 96": {
+    "lat": 50.1142807,
+    "lon": 8.6258876,
+    "display_name": "60486, Bockenheim, Innenstadt 2, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "35037 marburg / renthof 7a": {
+    "lat": 50.8030295,
+    "lon": 8.7516968,
+    "display_name": "35037, Ockershausen, Marburg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "35745 herborn / littau 3-5": {
+    "lat": 50.6759557,
+    "lon": 8.2671357,
+    "display_name": "35745, Hörbach, Herborn, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "36157 ebersburg-weyhers / feuersteinsmühle 5": {
+    "lat": 50.4872399,
+    "lon": 9.8001855,
+    "display_name": "Fuldaer Straße 1, 36157 Ebersberg, Fuldaer Straße, Weyhers, Ebersburg, Landkreis Fulda, Hessen, 36157, Deutschland"
+  },
+  "64295 darmstadt / schöfferstraße 3": {
+    "lat": 49.8510865,
+    "lon": 8.6077045,
+    "display_name": "64295, Darmstadt-West, Darmstadt, Hessen, Deutschland"
+  },
+  "35325 mücke / gottesrain": {
+    "lat": 50.6086947,
+    "lon": 9.0289372,
+    "display_name": "In der Au;35325 Mücke, In der Au, Flensungen, Mücke, Vogelsbergkreis, Hessen, 35325, Deutschland"
+  },
+  "60314 frankfurt am main / hanauer landstraße 298": {
+    "lat": 50.1166698,
+    "lon": 8.7334387,
+    "display_name": "60314, Ostend, Bornheim/Ostend, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "65366 geisenheim / von-lade-straße 1": {
+    "lat": 50.0362329,
+    "lon": 7.9406475,
+    "display_name": "65366, Stephanshausen, Geisenheim, Rheingau-Taunus-Kreis, Hessen, Deutschland"
+  },
+  "35392 gießen / heinrich-buff-ring 16": {
+    "lat": 50.5618328,
+    "lon": 8.6843256,
+    "display_name": "35392, Gießen, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "64686 lautertal / am lösch 7": {
+    "lat": 49.7164,
+    "lon": 8.7093703,
+    "display_name": "64686, Lautertal (Odenwald), Kreis Bergstraße, Hessen, Deutschland"
+  },
+  "35232 dautphetal / talstraße 4": {
+    "lat": 50.8491101,
+    "lon": 8.5487199,
+    "display_name": "35232, Dautphe, Dautphetal, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "34123 kassel / lise-meitner-straße 5": {
+    "lat": 51.2911553,
+    "lon": 9.5255761,
+    "display_name": "34123, Waldau, Kassel, Hessen, Deutschland"
+  },
+  "36142 tann in der rhön / am weinberg 3b": null,
+  "35745 herborn / stockweg 2": {
+    "lat": 50.6759557,
+    "lon": 8.2671357,
+    "display_name": "35745, Hörbach, Herborn, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "35043 marburg / baldingerstraße 1": {
+    "lat": 50.7979432,
+    "lon": 8.8227218,
+    "display_name": "35043, Schröck, Marburg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "64283 darmstadt / alexanderstraße 8": {
+    "lat": 49.870494,
+    "lon": 8.6523756,
+    "display_name": "64283, Darmstadt-Mitte, Darmstadt, Hessen, Deutschland"
+  },
+  "36124 eichenzell / bürgermeister-schlag-straße 7": {
+    "lat": 50.4622291,
+    "lon": 9.7239468,
+    "display_name": "36124, Rothemann, Eichenzell, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "36119 neuhof / gewerbestraße 5": {
+    "lat": 50.4728682,
+    "lon": 9.5574633,
+    "display_name": "36119, Neuhof, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "35075 gladenbach / bahnhofstraße 47": {
+    "lat": 50.7787074,
+    "lon": 8.5791746,
+    "display_name": "35075, Gladenbach, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "63303 dreieich / dreieich plaza 1 b": {
+    "lat": 50.010273,
+    "lon": 8.7163809,
+    "display_name": "63303, Dreieichenhain, Dreieich, Landkreis Offenbach, Hessen, Deutschland"
+  },
+  "34019 kassel / mönchebergstraße 19": {
+    "lat": 51.3157833,
+    "lon": 9.4978479,
+    "display_name": "Kassel, Hessen, Deutschland"
+  },
+  "34317 habichtswald / wolfhager straße 50": {
+    "lat": 51.3286352,
+    "lon": 9.3375255,
+    "display_name": "34317, Dörnberg, Habichtswald, Landkreis Kassel, Hessen, Deutschland"
+  },
+  "35287 amöneburg / an der hauptstr. 46": {
+    "lat": 50.773035,
+    "lon": 8.9090411,
+    "display_name": "35287, Roßdorf, Amöneburg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "65183 wiesbaden / wilhelmstraße 60": {
+    "lat": 50.0847474,
+    "lon": 8.2400757,
+    "display_name": "65183, Mitte, Wiesbaden, Hessen, Deutschland"
+  },
+  "68519 viernheim / industriestraße 26": {
+    "lat": 49.5567319,
+    "lon": 8.5657165,
+    "display_name": "68519, Viernheim, Kreis Bergstraße, Hessen, Deutschland"
+  },
+  "35216 biedenkopf-wallau 4 / theodor-meissner-straße 4": null,
+  "63067 offenbach / andréstr. 71": {
+    "lat": 50.1070092,
+    "lon": 8.742284,
+    "display_name": "63067, Kaiserlei, Offenbach am Main, Hessen, Deutschland"
+  },
+  "35099 burgwald / frankenberger straße 25": {
+    "lat": 51.0114762,
+    "lon": 8.7750093,
+    "display_name": "35099, Wiesenfeld, Burgwald, Landkreis Waldeck-Frankenberg, Hessen, Deutschland"
+  },
+  "35075 gladenbach / weidenhäuser straße 1-7": {
+    "lat": 50.7787074,
+    "lon": 8.5791746,
+    "display_name": "35075, Gladenbach, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "34277 fuldabrück / lärchenweg 9": {
+    "lat": 51.2480855,
+    "lon": 9.4892716,
+    "display_name": "34277, Dennhausen, Fuldabrück, Landkreis Kassel, Hessen, Deutschland"
+  },
+  "60323 frankfurt am main / theodor-w. -adorno platz 3": {
+    "lat": 50.1238046,
+    "lon": 8.6617905,
+    "display_name": "60323, Westend Nord, Innenstadt 2, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "65606 villmar / obere neustraße 19": {
+    "lat": 50.3990896,
+    "lon": 8.232451,
+    "display_name": "65606, Villmar, Landkreis Limburg-Weilburg, Hessen, Deutschland"
+  },
+  "61231 bad nauheim / hohe straße 14-18": {
+    "lat": 50.375505,
+    "lon": 8.7489647,
+    "display_name": "61231, Bad Nauheim, Wetteraukreis, Hessen, Deutschland"
+  },
+  "60590 frankfurt am main / theodor-stern-kai 7": {
+    "lat": 50.1106444,
+    "lon": 8.6820917,
+    "display_name": "Frankfurt am Main, Hessen, Deutschland"
+  },
+  "35684 dillenburg frohnhausen / auf der langaar 9": {
+    "lat": 50.784226,
+    "lon": 8.2941795,
+    "display_name": "35684, Frohnhausen, Dillenburg, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "60438 frankfurt am main / max-von-laue-straße 15": {
+    "lat": 50.1786706,
+    "lon": 8.6271811,
+    "display_name": "60438, Riedberg, Kalbach-Riedberg, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "36100 petersberg / steinbachsfeld 3": {
+    "lat": 50.5891049,
+    "lon": 9.7395944,
+    "display_name": "36100, Steinhaus, Petersberg, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "65830 kriftel / robert-schuman-ring 104": {
+    "lat": 50.0785254,
+    "lon": 8.4665207,
+    "display_name": "65830, Kriftel, Main-Taunus-Kreis, Hessen, Deutschland"
+  },
+  "35394 gießen / otto-behaghel-straße 12": {
+    "lat": 50.5775634,
+    "lon": 8.712824,
+    "display_name": "35394, Gießen, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "63225 langen / paul-ehrlich-straße 1b": {
+    "lat": 49.9922345,
+    "lon": 8.6617301,
+    "display_name": "63225, Nordend, Langen, Landkreis Offenbach, Hessen, Deutschland"
+  },
+  "36179 bebra / kerschensteiner straße 2": {
+    "lat": 50.9797912,
+    "lon": 9.835015,
+    "display_name": "36179, Gilfershausen, Bebra, Landkreis Hersfeld-Rotenburg, Hessen, Deutschland"
+  },
+  "34125 kassel / mönchebergstr. 7": {
+    "lat": 51.3319478,
+    "lon": 9.5354403,
+    "display_name": "34125, Wolfsanger-Hasenhecke, Kassel, Hessen, Deutschland"
+  },
+  "35390 gießen / ostanlage 39": {
+    "lat": 50.5879221,
+    "lon": 8.6766586,
+    "display_name": "35390, Gießen, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "36124 eichenzell / am langen acker 1": {
+    "lat": 50.4622291,
+    "lon": 9.7239468,
+    "display_name": "36124, Rothemann, Eichenzell, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "64289 darmstadt / karolinenplatz 5": {
+    "lat": 49.8976614,
+    "lon": 8.6790008,
+    "display_name": "64289, Kranichstein, Darmstadt, Hessen, Deutschland"
+  },
+  "34125 kassel / kurt-wolters-straße 3": {
+    "lat": 51.3319478,
+    "lon": 9.5354403,
+    "display_name": "34125, Wolfsanger-Hasenhecke, Kassel, Hessen, Deutschland"
+  },
+  "60486 frankfurt am main / hamburger allee 96": {
+    "lat": 50.1142807,
+    "lon": 8.6258876,
+    "display_name": "60486, Bockenheim, Innenstadt 2, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "35037 marburg / universitätsstraße 6": {
+    "lat": 50.8030295,
+    "lon": 8.7516968,
+    "display_name": "35037, Ockershausen, Marburg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "64646 heppenheim / zeppelinstraße 5": {
+    "lat": 49.6436753,
+    "lon": 8.66254,
+    "display_name": "64646, Heppenheim, Kreis Bergstraße, Hessen, Deutschland"
+  },
+  "35444 biebertal / am ziegenköppel 7": {
+    "lat": 50.6459121,
+    "lon": 8.5758181,
+    "display_name": "35444, Königsberg, Biebertal, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "64711 erbach / werner von siemensstraße 90": {
+    "lat": 49.6366301,
+    "lon": 9.0095027,
+    "display_name": "64711, Schönnen, Erlenbach, Erbach, Odenwaldkreis, Hessen, Deutschland"
+  },
+  "35606 solms / altenbergerstraße 5": {
+    "lat": 50.5451034,
+    "lon": 8.412356,
+    "display_name": "35606, Burgsolms, Solms, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "64289 darmstadt / schlossgartenstrasse 9": {
+    "lat": 49.8976614,
+    "lon": 8.6790008,
+    "display_name": "64289, Kranichstein, Darmstadt, Hessen, Deutschland"
+  },
+  "36124 eichenzell-welkers / am langen acker 17": null,
+  "36124 eichenzell / bürgermeister-ebert-straße 5": {
+    "lat": 50.4622291,
+    "lon": 9.7239468,
+    "display_name": "36124, Rothemann, Eichenzell, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "64646 heppenheim / benzstraße 4": {
+    "lat": 49.6436753,
+    "lon": 8.66254,
+    "display_name": "64646, Heppenheim, Kreis Bergstraße, Hessen, Deutschland"
+  },
+  "36151 burghaun-rothenkirchen / in der breit 9": {
+    "lat": 50.7097222,
+    "lon": 9.6828344,
+    "display_name": "36151, Rothenkirchen, Burghaun, Landkreis Fulda, Hessen, Deutschland"
+  },
+  "35390 gießen / nordanlage 19": {
+    "lat": 50.5879221,
+    "lon": 8.6766586,
+    "display_name": "35390, Gießen, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "35392 gießen / rudolf-buchheim-straße 6": {
+    "lat": 50.5618328,
+    "lon": 8.6843256,
+    "display_name": "35392, Gießen, Landkreis Gießen, Hessen, Deutschland"
+  },
+  "61476 kronberg / niederhöchstädter straße 62": {
+    "lat": 50.1907415,
+    "lon": 8.5182779,
+    "display_name": "61476, Schönberg, Kronberg im Taunus, Hochtaunuskreis, Hessen, Deutschland"
+  },
+  "60486 frankfurt / solmsstraßße 71": {
+    "lat": 50.1142807,
+    "lon": 8.6258876,
+    "display_name": "60486, Bockenheim, Innenstadt 2, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "36166 haunetal / an den lipperswiesen 4": {
+    "lat": 50.7646492,
+    "lon": 9.6631471,
+    "display_name": "36166, Rhina, Haunetal, Landkreis Hersfeld-Rotenburg, Hessen, Deutschland"
+  },
+  "64295 darmstadt / hilpertstrasse 31": {
+    "lat": 49.8510865,
+    "lon": 8.6077045,
+    "display_name": "64295, Darmstadt-West, Darmstadt, Hessen, Deutschland"
+  },
+  "63452 hanau / martin-luther-king-straße 1": {
+    "lat": 50.145223,
+    "lon": 8.9251233,
+    "display_name": "63452, Lamboy, Hanau, Hessen, Deutschland"
+  },
+  "35745 herborn / herborner straße 47": {
+    "lat": 50.6759557,
+    "lon": 8.2671357,
+    "display_name": "35745, Hörbach, Herborn, Lahn-Dill-Kreis, Hessen, Deutschland"
+  },
+  "35039 marburg / am krekel 55": {
+    "lat": 50.812505,
+    "lon": 8.7857668,
+    "display_name": "35039, Ortenberg, Marburg, Landkreis Marburg-Biedenkopf, Hessen, Deutschland"
+  },
+  "65189 wiesbaden / konradinerallee 25": {
+    "lat": 50.0729625,
+    "lon": 8.261265,
+    "display_name": "65189, Südost, Wiesbaden, Hessen, Deutschland"
+  },
+  "60323 frankfurt am main / theodor-w. adorno-platz 1": {
+    "lat": 50.1238046,
+    "lon": 8.6617905,
+    "display_name": "60323, Westend Nord, Innenstadt 2, Frankfurt am Main, Hessen, Deutschland"
+  },
+  "65195 wiesabden / unter den eichen 5": null,
+  "34117 kassel / kurfürstenstr. 9": {
+    "lat": 51.3157257,
+    "lon": 9.4926363,
+    "display_name": "34117, Mitte, Kassel, Hessen, Deutschland"
+  },
+  "34537 bad wildungen / auf der roten erde 9": {
+    "lat": 51.0865817,
+    "lon": 9.0761353,
+    "display_name": "34537, Bad Wildungen, Landkreis Waldeck-Frankenberg, Hessen, Deutschland"
+  },
+  "01069 dresden / helmholtzstraße 10": {
+    "lat": 51.0397362,
+    "lon": 13.7367646,
+    "display_name": "01069, Südvorstadt, Plauen, Altstadt, Dresden, Sachsen, Deutschland"
+  },
+  "01069 dresden / winterbergstraße 28": {
+    "lat": 51.0397362,
+    "lon": 13.7367646,
+    "display_name": "01069, Südvorstadt, Plauen, Altstadt, Dresden, Sachsen, Deutschland"
+  },
+  "04109 leipzig / martin-luther-ring 4": {
+    "lat": 51.3385462,
+    "lon": 12.3642803,
+    "display_name": "04109, Zentrum-West, Mitte, Leipzig, Sachsen, Deutschland"
+  },
+  "04349 leipzig / bmw allee 1": {
+    "lat": 51.3884829,
+    "lon": 12.445484,
+    "display_name": "04349, Portitzmühle, Nordost, Leipzig, Sachsen, Deutschland"
+  },
+  "01328 dresden / bautzner landstraße 400": {
+    "lat": 51.042171,
+    "lon": 13.9076776,
+    "display_name": "01328, Schönfeld, Schönfeld-Weißig, Dresden, Sachsen, Deutschland"
+  },
+  "location indicator location indicator": null,
+  "01705 freital, stadt": {
+    "lat": 51.0296005,
+    "lon": 13.6494205,
+    "display_name": "Graines Voltz Deutschland, 2, Erich-Hanisch-Straße, Pesterwitz, Freital, Sächsische Schweiz-Osterzgebirge, Sachsen, 01705, Deutschland"
+  },
+  "09117 chemnitz, stadt": {
+    "lat": 50.8211227,
+    "lon": 12.8340329,
+    "display_name": "09117, Reichenbrand, Chemnitz, Sachsen, Deutschland"
+  },
+  "09456 mildenau": {
+    "lat": 50.5772779,
+    "lon": 13.0548502,
+    "display_name": "09456, Mildenau, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01237 dresden, stadt": {
+    "lat": 51.0182471,
+    "lon": 13.8020866,
+    "display_name": "01237, Seidnitz, Blasewitz, Dresden, Sachsen, Deutschland"
+  },
+  "09116 chemnitz, stadt": {
+    "lat": 50.8205765,
+    "lon": 12.8734753,
+    "display_name": "09116, Schönau, Chemnitz, Lichtenau, Sachsen, Deutschland"
+  },
+  "09126 chemnitz, stadt": {
+    "lat": 50.8178681,
+    "lon": 12.9358879,
+    "display_name": "09126, Bernsdorf, Chemnitz, Lichtenau, Sachsen, Deutschland"
+  },
+  "09669 frankenberg/sa., stadt, garnisonsstadt": {
+    "lat": 50.9187702,
+    "lon": 13.0846822,
+    "display_name": "09669, Dittersbach, Frankenberg/Sachsen, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "02736 oppach": {
+    "lat": 51.063103,
+    "lon": 14.5127364,
+    "display_name": "02736, Oppach, Oppach-Beiersdorf, Görlitz, Sachsen, Deutschland"
+  },
+  "01723 wilsdruff, stadt": null,
+  "01187 dresden, stadt": {
+    "lat": 51.0275223,
+    "lon": 13.7017131,
+    "display_name": "01187, Plauen, Dresden, Sachsen, Deutschland"
+  },
+  "08393 meerane, stadt": {
+    "lat": 50.8425012,
+    "lon": 12.4690173,
+    "display_name": "08393, Meerane, Meerane-Schönberg, Zwickau, Sachsen, Deutschland"
+  },
+  "09125 chemnitz, stadt": {
+    "lat": 50.787209,
+    "lon": 12.9429497,
+    "display_name": "09125, Erfenschlag, Chemnitz, Sachsen, Deutschland"
+  },
+  "09599 freiberg, stadt, universitätsstadt": null,
+  "01069 dresden, stadt": {
+    "lat": 51.0397362,
+    "lon": 13.7367646,
+    "display_name": "01069, Südvorstadt, Plauen, Altstadt, Dresden, Sachsen, Deutschland"
+  },
+  "01307 dresden, stadt": {
+    "lat": 51.0526661,
+    "lon": 13.7693591,
+    "display_name": "01307, Johannstadt, Altstadt, Dresden, Sachsen, Deutschland"
+  },
+  "08056 zwickau, stadt": {
+    "lat": 50.8264317,
+    "lon": 12.4601571,
+    "display_name": "SMP Deutschland GmbH, 36, Seiferitzer Allee, Gewerbegebiet Süd-West, Seiferitz, Meerane, Meerane-Schönberg, Zwickau, Sachsen, 08393, Deutschland"
+  },
+  "08468 reichenbach im vogtland, stadt": {
+    "lat": 50.6275901,
+    "lon": 12.2930449,
+    "display_name": "Bahnhof, 08468 Reichenbach im Vogtland, Bahnhofstraße, Cunsdorf, Reichenbach, Reichenbach im Vogtland, Vogtlandkreis, Sachsen, 08468, Deutschland"
+  },
+  "01109 dresden, stadt": {
+    "lat": 51.1223249,
+    "lon": 13.7562109,
+    "display_name": "01109, Hellerau, Klotzsche, Dresden, Sachsen, Deutschland"
+  },
+  "08523 plauen, stadt, hochschulstadt": null,
+  "09648 mittweida, stadt, hochschulstadt": null,
+  "01189 dresden, stadt": {
+    "lat": 51.013581,
+    "lon": 13.7026839,
+    "display_name": "01189, Coschütz, Plauen, Dresden, Sachsen, Deutschland"
+  },
+  "01623 lommatzsch, stadt": {
+    "lat": 51.2060908,
+    "lon": 13.3070038,
+    "display_name": "01623, Altlommatzsch, Lommatzsch, Meißen, Sachsen, Deutschland"
+  },
+  "04746 hartha, stadt": {
+    "lat": 51.1137301,
+    "lon": 12.9550903,
+    "display_name": "04746, Wallbach, Hartha, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "01796 pirna, stadt": {
+    "lat": 50.8820689,
+    "lon": 13.97428,
+    "display_name": "ehem. Bahnstrecke Pirna - Gottleuba, Dohma, Pirna, Sächsische Schweiz-Osterzgebirge, Sachsen, 01796, Deutschland"
+  },
+  "01099 dresden, stadt": {
+    "lat": 51.0914296,
+    "lon": 13.8272693,
+    "display_name": "01099, Loschwitz, Dresden, Sachsen, Deutschland"
+  },
+  "01326 dresden, stadt": {
+    "lat": 51.0263168,
+    "lon": 13.8486037,
+    "display_name": "01326, Niederpoyritz, Loschwitz, Dresden, Sachsen, Deutschland"
+  },
+  "01067 dresden, stadt": {
+    "lat": 51.0601936,
+    "lon": 13.7111692,
+    "display_name": "01067, Friedrichstadt, Altstadt, Dresden, Sachsen, Deutschland"
+  },
+  "01819 bahretal": {
+    "lat": 50.8809928,
+    "lon": 13.9044785,
+    "display_name": "01819, Bahretal, Bad Gottleuba-Berggießhübel, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "08340 schwarzenberg/erzgeb., stadt": {
+    "lat": 50.5181383,
+    "lon": 12.7835819,
+    "display_name": "08340, Schwarzenberg/Erzgebirge, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01277 dresden, stadt": {
+    "lat": 51.0374515,
+    "lon": 13.7998441,
+    "display_name": "01277, Seidnitz, Blasewitz, Dresden, Sachsen, Deutschland"
+  },
+  "09600 weißenborn/erzgeb.": {
+    "lat": 50.8705494,
+    "lon": 13.3832592,
+    "display_name": "09600, Weißenborn/Erzgebirge, Lichtenberg-Weißenborn, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "02943 weißwasser/o.l., stadt": {
+    "lat": 51.5028807,
+    "lon": 14.6373221,
+    "display_name": "Weißwasser/Oberlausitz - Běła Woda, Weißwasser/Oberlausitz, Görlitz, Sachsen, Deutschland"
+  },
+  "01324 dresden, stadt": {
+    "lat": 51.0577894,
+    "lon": 13.8526602,
+    "display_name": "01324, Bühlau, Loschwitz, Dresden, Sachsen, Deutschland"
+  },
+  "01445 radebeul, stadt": null,
+  "01156 dresden, stadt": {
+    "lat": 51.065902,
+    "lon": 13.6181536,
+    "display_name": "01156, Brabschütz, Mobschatz, Dresden, Sachsen, Deutschland"
+  },
+  "09496 marienberg, stadt": {
+    "lat": 50.6205233,
+    "lon": 13.2068012,
+    "display_name": "09496, Marienberg, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "08485 lengenfeld, stadt": {
+    "lat": 50.583681,
+    "lon": 12.3774264,
+    "display_name": "08485, Waldkirchen, Lengenfeld, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "09356 st. egidien": {
+    "lat": 50.7950392,
+    "lon": 12.6176613,
+    "display_name": "09356, St. Egidien, Rund um den Auersberg, Zwickau, Sachsen, Deutschland"
+  },
+  "02894 vierkirchen": {
+    "lat": 51.1910612,
+    "lon": 14.7527552,
+    "display_name": "Vierkirchen, Reichenbach/O.L., Görlitz, Sachsen, Deutschland"
+  },
+  "08064 zwickau, stadt": {
+    "lat": 50.8264317,
+    "lon": 12.4601571,
+    "display_name": "SMP Deutschland GmbH, 36, Seiferitzer Allee, Gewerbegebiet Süd-West, Seiferitz, Meerane, Meerane-Schönberg, Zwickau, Sachsen, 08393, Deutschland"
+  },
+  "01768 glashütte, stadt": {
+    "lat": 50.8626777,
+    "lon": 13.7578541,
+    "display_name": "01768, Luchau, Glashütte, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "09119 chemnitz, stadt": {
+    "lat": 50.815462,
+    "lon": 12.892843,
+    "display_name": "09119, Kappel, Chemnitz, Lichtenau, Sachsen, Deutschland"
+  },
+  "02627 weißenberg, stadt": null,
+  "01809 dohna, stadt": {
+    "lat": 50.9462786,
+    "lon": 13.8471309,
+    "display_name": "01809, Ploschwitzer Höhe, Sürßen, Dohna, Dohna-Müglitztal, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "09111 chemnitz, stadt": {
+    "lat": 50.8346655,
+    "lon": 12.921897,
+    "display_name": "09111, Zentrum, Chemnitz, Lichtenau, Sachsen, Deutschland"
+  },
+  "08223 falkenstein/vogtl., stadt": {
+    "lat": 50.4414687,
+    "lon": 12.3295275,
+    "display_name": "08223, Neustadt/Vogtland, Falkenstein, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "08428 langenbernsdorf": {
+    "lat": 50.758747,
+    "lon": 12.2911333,
+    "display_name": "08428, Oberalbertsdorf, Niederalbertsdorf, Langenbernsdorf, Zwickau, Sachsen, Deutschland"
+  },
+  "08294 lößnitz, stadt": {
+    "lat": 50.6252702,
+    "lon": 12.7484457,
+    "display_name": "08294, Lößnitz, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01159 dresden, stadt": {
+    "lat": 51.0441212,
+    "lon": 13.6982254,
+    "display_name": "01159, Löbtau, Cotta, Dresden, Sachsen, Deutschland"
+  },
+  "01309 dresden, stadt": {
+    "lat": 51.0493044,
+    "lon": 13.7904758,
+    "display_name": "01309, Striesen, Blasewitz, Dresden, Sachsen, Deutschland"
+  },
+  "01219 dresden, stadt": {
+    "lat": 51.0219368,
+    "lon": 13.774611,
+    "display_name": "01219, Strehlen, Prohlis, Dresden, Sachsen, Deutschland"
+  },
+  "07952 pausa-mühltroff, stadt": {
+    "lat": 50.5891899,
+    "lon": 11.9858593,
+    "display_name": "07952, Unterreichenau, Pausa-Mühltroff, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "09661 rossau": {
+    "lat": 51.0093667,
+    "lon": 13.0826897,
+    "display_name": "Am Nonnenwald 1, 09661 Moosheim, Am Nonnenwald, Moosheim, Rossau, Mittelsachsen, Sachsen, 09661, Deutschland"
+  },
+  "02727 ebersbach-neugersdorf, stadt": {
+    "lat": 50.9736172,
+    "lon": 14.609193,
+    "display_name": "02727, Neugersdorf, Ebersbach-Neugersdorf, Görlitz, Sachsen, Deutschland"
+  },
+  "09439 amtsberg": {
+    "lat": 50.7481296,
+    "lon": 13.0012896,
+    "display_name": "09439, Dittersdorf, Amtsberg, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "02625 bautzen, stadt, hochschulstadt": null,
+  "01239 dresden, stadt": {
+    "lat": 50.999302,
+    "lon": 13.7828231,
+    "display_name": "01239, Nickern, Prohlis, Dresden, Sachsen, Deutschland"
+  },
+  "01909 großharthau": {
+    "lat": 51.1105534,
+    "lon": 14.0711352,
+    "display_name": "01909, Großharthau, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "01728 bannewitz": {
+    "lat": 50.9806962,
+    "lon": 13.7367401,
+    "display_name": "01728, Rippien, Golberode, Bannewitz, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "09627 bobritzsch-hilbersdorf": {
+    "lat": 50.8909565,
+    "lon": 13.4461253,
+    "display_name": "09627, Bobritzsch-Hilbersdorf, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "02633 doberschau-gaußig": {
+    "lat": 51.1548134,
+    "lon": 14.3893339,
+    "display_name": "Boryszew Formenbau Deutschland, 16, Fabrikstraße, Doberschau - Dobruša, Doberschau-Gaußig - Dobruša-Huska, Bautzen - Budyšin, Sachsen, 02692, Deutschland"
+  },
+  "01458 ottendorf-okrilla": {
+    "lat": 51.1744296,
+    "lon": 13.8152643,
+    "display_name": "01458, Cunnersdorf, Hermsdorf, Ottendorf-Okrilla, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "08060 zwickau, stadt": {
+    "lat": 50.8264317,
+    "lon": 12.4601571,
+    "display_name": "SMP Deutschland GmbH, 36, Seiferitzer Allee, Gewerbegebiet Süd-West, Seiferitz, Meerane, Meerane-Schönberg, Zwickau, Sachsen, 08393, Deutschland"
+  },
+  "02791 oderwitz": {
+    "lat": 50.9620932,
+    "lon": 14.7211689,
+    "display_name": "02791, Niederoderwitz, Oderwitz, Bertsdorf-Hörnitz, Görlitz, Sachsen, Deutschland"
+  },
+  "01877 bischofswerda, stadt": null,
+  "02708 löbau, stadt": null,
+  "01139 dresden, stadt": {
+    "lat": 51.0800178,
+    "lon": 13.6916936,
+    "display_name": "01139, Übigau, Pieschen, Dresden, Sachsen, Deutschland"
+  },
+  "01640 coswig, stadt": {
+    "lat": 51.1331059,
+    "lon": 13.5656911,
+    "display_name": "01640, Brockwitz, Coswig, Meißen, Sachsen, Deutschland"
+  },
+  "08258 markneukirchen, stadt": {
+    "lat": 50.3036632,
+    "lon": 12.3435251,
+    "display_name": "08258, Markneukirchen, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "08468 heinsdorfergrund": {
+    "lat": 50.6211571,
+    "lon": 12.332566,
+    "display_name": "08468, Unterheinsdorf, Heinsdorfergrund, Reichenbach im Vogtland, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "01259 dresden, stadt": {
+    "lat": 50.9982584,
+    "lon": 13.8502017,
+    "display_name": "01259, Sporbitz, Leuben, Dresden, Sachsen, Deutschland"
+  },
+  "01558 großenhain, stadt": {
+    "lat": 51.2900838,
+    "lon": 13.5250568,
+    "display_name": "01558, Zschieschen, Großraschütz, Großenhain, Meißen, Sachsen, Deutschland"
+  },
+  "01917 kamenz, stadt": null,
+  "01847 lohmen": {
+    "lat": 50.9833048,
+    "lon": 14.0043192,
+    "display_name": "01847, Lohmen, Lohmen/Stadt Wehlen, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "08606 oelsnitz/vogtl., stadt": {
+    "lat": 50.4151517,
+    "lon": 12.172318,
+    "display_name": "Markt 1; 08606 Oelsnitz, Markt, Voigtsberg, Oelsnitz, Oelsnitz/Vogtland, Verwaltungsgemeinschaft Oelsnitz/Vogtl., Vogtlandkreis, Sachsen, 08606, Deutschland"
+  },
+  "08132 mülsen": {
+    "lat": 50.7376007,
+    "lon": 12.5870002,
+    "display_name": "08132, Mülsen St. Jacob, Mülsen, Zwickau, Sachsen, Deutschland"
+  },
+  "09224 chemnitz, stadt": {
+    "lat": 50.8169723,
+    "lon": 12.7827284,
+    "display_name": "09224, Grüna, Chemnitz, Sachsen, Deutschland"
+  },
+  "01587 riesa, stadt": {
+    "lat": 51.3011994,
+    "lon": 13.2685221,
+    "display_name": "01587, Riesa, Meißen, Sachsen, Deutschland"
+  },
+  "01471 radeburg, stadt": {
+    "lat": 51.1850691,
+    "lon": 13.7302256,
+    "display_name": "01471, Berbisdorf, Radeburg, Meißen, Sachsen, Deutschland"
+  },
+  "08228 rodewisch, stadt": {
+    "lat": 50.5402273,
+    "lon": 12.4116673,
+    "display_name": "08228, Rodewisch, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "01844 neustadt in sachsen, stadt": null,
+  "08491 netzschkau, stadt": {
+    "lat": 50.5969027,
+    "lon": 12.2439787,
+    "display_name": "08491, Netzschkau, Netzschkau-Limbach, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "08209 auerbach/vogtl., stadt": {
+    "lat": 50.4925016,
+    "lon": 12.4267897,
+    "display_name": "08209, Hohengrün, Auerbach/Vogtland, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "01665 klipphausen": {
+    "lat": 51.0688347,
+    "lon": 13.5129674,
+    "display_name": "Nestle Unternehmungen Deutschland GmbH, 13, Schwabacher Straße, Gewerbegebiet Klipphausen, Sora, Klipphausen, Meißen, Sachsen, 01665, Deutschland"
+  },
+  "08315 lauter-bernsbach, stadt": {
+    "lat": 50.5614644,
+    "lon": 12.728134,
+    "display_name": "08315, Lauter, Lauter-Bernsbach, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01097 dresden, stadt": {
+    "lat": 51.0694225,
+    "lon": 13.7378484,
+    "display_name": "01097, Leipziger Vorstadt, Neustadt, Dresden, Sachsen, Deutschland"
+  },
+  "01814 bad schandau, stadt": null,
+  "09661 hainichen, stadt": null,
+  "02994 bernsdorf, stadt": {
+    "lat": 51.377287,
+    "lon": 14.0521721,
+    "display_name": "02994, Bernsdorf, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "08393 dennheritz": {
+    "lat": 50.8225803,
+    "lon": 12.4071519,
+    "display_name": "Nievelt Labor Deutschland GmbH, 75a, Breitscheidstraße, Crimmitschau, Crimmitschau-Dennheritz, Zwickau, Sachsen, 08451, Deutschland"
+  },
+  "09603 großschirma, stadt": {
+    "lat": 50.9897942,
+    "lon": 13.2769153,
+    "display_name": "09603, Großschirma, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "01257 dresden, stadt": {
+    "lat": 50.9983029,
+    "lon": 13.8123958,
+    "display_name": "01257, Niedersedlitz, Prohlis, Dresden, Sachsen, Deutschland"
+  },
+  "09456 annaberg-buchholz, stadt": {
+    "lat": 50.593588,
+    "lon": 13.0075893,
+    "display_name": "Barbara-Uthmann-Ring 1, 09456 Annaberg-Buchholz, Barbara-Uthmann-Ring, Annaberg, Annaberg-Buchholz, Erzgebirgskreis, Sachsen, 09456, Deutschland"
+  },
+  "08451 crimmitschau, stadt": {
+    "lat": 50.8190657,
+    "lon": 12.3796393,
+    "display_name": "08451, Crimmitschau, Crimmitschau-Dennheritz, Zwickau, Sachsen, Deutschland"
+  },
+  "01328 dresden, stadt": {
+    "lat": 51.042171,
+    "lon": 13.9076776,
+    "display_name": "01328, Schönfeld, Schönfeld-Weißig, Dresden, Sachsen, Deutschland"
+  },
+  "09114 chemnitz, stadt": {
+    "lat": 50.8695589,
+    "lon": 12.9008067,
+    "display_name": "09114, Borna-Heinersdorf, Chemnitz, Lichtenau, Sachsen, Deutschland"
+  },
+  "08062 zwickau, stadt": {
+    "lat": 50.8264317,
+    "lon": 12.4601571,
+    "display_name": "SMP Deutschland GmbH, 36, Seiferitzer Allee, Gewerbegebiet Süd-West, Seiferitz, Meerane, Meerane-Schönberg, Zwickau, Sachsen, 08393, Deutschland"
+  },
+  "09232 hartmannsdorf": {
+    "lat": 50.8833675,
+    "lon": 12.7940463,
+    "display_name": "09232, Hartmannsdorf, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "02694 malschwitz": {
+    "lat": 51.2379209,
+    "lon": 14.5197535,
+    "display_name": "Malschwitz - Malešecy, Bautzen - Budyšin, Sachsen, 02694, Deutschland"
+  },
+  "09474 crottendorf": {
+    "lat": 50.5038487,
+    "lon": 12.9289415,
+    "display_name": "09474, Crottendorf, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "09619 dorfchemnitz": {
+    "lat": 50.7579901,
+    "lon": 13.4140989,
+    "display_name": "09619, Voigtsdorf, Dorfchemnitz, Sayda/Dorfchemnitz, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "09212 limbach-oberfrohna, stadt": {
+    "lat": 50.8700477,
+    "lon": 12.7215443,
+    "display_name": "09212, Bräunsdorf, Limbach-Oberfrohna, Zwickau, Sachsen, Deutschland"
+  },
+  "09618 brand-erbisdorf, stadt": {
+    "lat": 49.9612088,
+    "lon": 11.9080517,
+    "display_name": "Brand, Neusorg (VGem), Landkreis Tirschenreuth, Bayern, 95682, Deutschland"
+  },
+  "01129 dresden, stadt": {
+    "lat": 51.0977701,
+    "lon": 13.7311437,
+    "display_name": "01129, Trachenberge, Pieschen, Dresden, Sachsen, Deutschland"
+  },
+  "09306 königshain-wiederau": null,
+  "09579 grünhainichen": {
+    "lat": 50.7684845,
+    "lon": 13.1624218,
+    "display_name": "09579, Grünhainichen, Wildenstein, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "08529 plauen, stadt, hochschulstadt": null,
+  "01683 nossen, stadt": {
+    "lat": 51.0993198,
+    "lon": 13.304421,
+    "display_name": "01683, Nossen, Meißen, Sachsen, Deutschland"
+  },
+  "09306 seelitz": {
+    "lat": 51.0256411,
+    "lon": 12.8315496,
+    "display_name": "09306, Pürsten, Städten, Seelitz, Verwaltungsgemeinschaft Rochlitz, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "02733 cunewalde": {
+    "lat": 51.0987535,
+    "lon": 14.5211725,
+    "display_name": "02733, Cunewalde, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "01477 arnsdorf": {
+    "lat": 51.092055,
+    "lon": 13.9836219,
+    "display_name": "01477, Arnsdorf, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "08115 lichtentanne": {
+    "lat": 50.6722817,
+    "lon": 12.4074189,
+    "display_name": "08115, Neuschönfels, Schönfels, Lichtentanne, Zwickau, Sachsen, Deutschland"
+  },
+  "07985 elsterberg, stadt": {
+    "lat": 50.6057158,
+    "lon": 12.1723716,
+    "display_name": "07985, Elsterberg, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "09243 niederfrohna": {
+    "lat": 50.8882225,
+    "lon": 12.7325647,
+    "display_name": "09243, Niederfrohna, Limbach-Oberfrohna, Zwickau, Sachsen, Deutschland"
+  },
+  "02788 zittau, stadt": null,
+  "09130 chemnitz, stadt": {
+    "lat": 50.8387343,
+    "lon": 12.9506701,
+    "display_name": "09130, Sonnenberg, Chemnitz, Lichtenau, Sachsen, Deutschland"
+  },
+  "02827 görlitz, stadt": null,
+  "01561 ebersbach": {
+    "lat": 47.9554246,
+    "lon": 9.5791447,
+    "display_name": "Ebersbach, Ebersbach-Musbach, GVV Altshausen, Landkreis Ravensburg, Baden-Württemberg, 88371, Deutschland"
+  },
+  "01816 bad gottleuba-berggießhübel, stadt": {
+    "lat": 50.8469368,
+    "lon": 13.9647478,
+    "display_name": "01816, Augustusberg, Bad Gottleuba-Berggießhübel, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "08344 grünhain-beierfeld, stadt": {
+    "lat": 50.5790499,
+    "lon": 12.8096898,
+    "display_name": "08344, Grünhain-Beierfeld, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01454 radeberg, stadt": {
+    "lat": 51.0734456,
+    "lon": 13.8849036,
+    "display_name": "Ullersdorfer Mühle 4, 01454 Radeberg, Ullersdorfer Mühle, Dresdner Heide, Ullersdorf, Radeberg, Bautzen - Budyšin, Sachsen, 01454, Deutschland"
+  },
+  "01731 kreischa": {
+    "lat": 50.9517523,
+    "lon": 13.7458063,
+    "display_name": "01731, Kreischa, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "02708 dürrhennersdorf": {
+    "lat": 51.0507878,
+    "lon": 14.6083875,
+    "display_name": "Dürrhennersdorf, Neusalza-Spremberg, Görlitz, Sachsen, Deutschland"
+  },
+  "09306 wechselburg": {
+    "lat": 50.9960879,
+    "lon": 12.8222688,
+    "display_name": "Deutsche Post, Wiederauer Straße, Göppersdorf, Seitenhain, Wechselburg, Mittelsachsen, Sachsen, 09306, Deutschland"
+  },
+  "01920 räckelwitz": {
+    "lat": 51.2563036,
+    "lon": 14.2234761,
+    "display_name": "Räckelwitz - Worklecy, Am Klosterwasser, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09337 hohenstein-ernstthal, stadt": {
+    "lat": 50.8161298,
+    "lon": 12.6924548,
+    "display_name": "09337, Hohenstein-Ernstthal, Zwickau, Sachsen, Deutschland"
+  },
+  "01833 stolpen, stadt": null,
+  "09544 neuhausen/erzgeb.": {
+    "lat": 50.6695741,
+    "lon": 13.4514756,
+    "display_name": "Olbernhauer Straße 40; 09544 Neuhausen, Olbernhauer Straße, Dittersbach, Neuhausen/Erzgebirge, Mittelsachsen, Sachsen, 09544, Deutschland"
+  },
+  "01855 sebnitz, stadt": null,
+  "01619 zeithain": {
+    "lat": 51.3726176,
+    "lon": 13.3059502,
+    "display_name": "01619, Zeithain, Meißen, Sachsen, Deutschland"
+  },
+  "01217 dresden, stadt": {
+    "lat": 51.0162712,
+    "lon": 13.7431716,
+    "display_name": "01217, Mockritz, Plauen, Dresden, Sachsen, Deutschland"
+  },
+  "01662 meißen, stadt": {
+    "lat": 51.1615404,
+    "lon": 13.4838596,
+    "display_name": "01662, Cölln, Meißen, Sachsen, Deutschland"
+  },
+  "01744 dippoldiswalde, stadt": null,
+  "08371 glauchau, stadt, hochschulstadt": null,
+  "02692 doberschau-gaußig": {
+    "lat": 51.1548134,
+    "lon": 14.3893339,
+    "display_name": "Boryszew Formenbau Deutschland, 16, Fabrikstraße, Doberschau - Dobruša, Doberschau-Gaußig - Dobruša-Huska, Bautzen - Budyšin, Sachsen, 02692, Deutschland"
+  },
+  "08112 wilkau-haßlau, stadt": {
+    "lat": 50.6642139,
+    "lon": 12.5216356,
+    "display_name": "08112, Wilkau-Haßlau, Langenweißbach, Zwickau, Sachsen, Deutschland"
+  },
+  "09120 chemnitz, stadt": {
+    "lat": 50.8116112,
+    "lon": 12.9088134,
+    "display_name": "09120, Altchemnitz, Chemnitz, Sachsen, Deutschland"
+  },
+  "09509 pockau-lengefeld, stadt": {
+    "lat": 50.7028119,
+    "lon": 13.2471933,
+    "display_name": "09509, Pockau, Pockau-Lengefeld, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "08289 schneeberg, stadt": {
+    "lat": 50.5921394,
+    "lon": 12.6202361,
+    "display_name": "08289, Griesbach, Schneeberg, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "09557 flöha, stadt": {
+    "lat": 50.8547021,
+    "lon": 13.0892353,
+    "display_name": "09557, Flöha, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "01774 klingenberg": {
+    "lat": 50.8948838,
+    "lon": 13.5482039,
+    "display_name": "01774, Pretzschendorf, Höckendorf, Klingenberg, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "09235 burkhardtsdorf": {
+    "lat": 50.7319966,
+    "lon": 12.9019137,
+    "display_name": "09235, Burkhardtsdorf, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "02763 mittelherwigsdorf": {
+    "lat": 50.9171395,
+    "lon": 14.763181,
+    "display_name": "Mittelherwigsdorf, Bertsdorf-Hörnitz, Görlitz, Sachsen, Deutschland"
+  },
+  "01127 dresden, stadt": {
+    "lat": 51.0789725,
+    "lon": 13.7263779,
+    "display_name": "01127, Pieschen, Dresden, Sachsen, Deutschland"
+  },
+  "01809 heidenau, stadt": {
+    "lat": 50.968007,
+    "lon": 13.881664,
+    "display_name": "Christliches Jugenddorfwerk Deutschland e.V., 74, Pirnaer Straße, Kleinsedlitz, Großsedlitz, Heidenau, Sächsische Schweiz-Osterzgebirge, Sachsen, 01809, Deutschland"
+  },
+  "08144 hirschfeld": {
+    "lat": 50.6293048,
+    "lon": 12.4628554,
+    "display_name": "08144, Hirschfeld, Kirchberg, Zwickau, Sachsen, Deutschland"
+  },
+  "09548 seiffen/erzgeb., kurort": {
+    "lat": 50.6331105,
+    "lon": 13.471468,
+    "display_name": "09548, Seiffen/Erzgebirge, Seiffen/Erzgeb., Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "08606 tirpersdorf": null,
+  "08280 zwönitz, stadt": null,
+  "02708 kottmar": {
+    "lat": 51.0190989,
+    "lon": 14.6616893,
+    "display_name": "Kottmar, Görlitz, Sachsen, 02739, Deutschland"
+  },
+  "02899 schönau-berzdorf a. d. eigen": {
+    "lat": 51.0292585,
+    "lon": 14.9083569,
+    "display_name": "02899, Schönau-Berzdorf auf dem Eigen, Bernstadt / Schönau-Berzdorf, Görlitz, Sachsen, Deutschland"
+  },
+  "01169 dresden, stadt": {
+    "lat": 51.0385293,
+    "lon": 13.6617394,
+    "display_name": "01169, Gorbitz, Cotta, Dresden, Sachsen, Deutschland"
+  },
+  "09526 olbernhau, stadt": {
+    "lat": 50.6682746,
+    "lon": 13.3402547,
+    "display_name": "09526, Pfaffroda, Olbernhau, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "09385 lugau/erzgeb., stadt": {
+    "lat": 50.7586391,
+    "lon": 12.749601,
+    "display_name": "09385, Erlbach-Kirchberg, Lugau, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01920 crostwitz": {
+    "lat": 51.2382996,
+    "lon": 14.2452872,
+    "display_name": "Crostwitz - Chrósćicy, Am Klosterwasser, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09337 callenberg": null,
+  "08412 werdau, stadt": {
+    "lat": 50.7297033,
+    "lon": 12.3493227,
+    "display_name": "08412, Leubnitz, Werdau, Zwickau, Sachsen, Deutschland"
+  },
+  "09514 pockau-lengefeld, stadt": {
+    "lat": 50.7243956,
+    "lon": 13.1917113,
+    "display_name": "09514, Lengefeld, Pockau-Lengefeld, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "02991 lauta, stadt": {
+    "lat": 51.4418979,
+    "lon": 14.0807572,
+    "display_name": "02991, Torno, Lauta, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "08349 johanngeorgenstadt, stadt": {
+    "lat": 50.4344022,
+    "lon": 12.6947381,
+    "display_name": "08349, Mittelstadt, Johanngeorgenstadt, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "09569 oederan, stadt": {
+    "lat": 50.8713405,
+    "lon": 13.1890732,
+    "display_name": "09569, Oederan, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "02763 zittau, stadt": null,
+  "08328 stützengrün": {
+    "lat": 50.5376937,
+    "lon": 12.5590871,
+    "display_name": "08328, Hundshübel, Stützengrün, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "04741 roßwein, stadt": {
+    "lat": 51.0801062,
+    "lon": 13.1868046,
+    "display_name": "04741, Seifersdorf, Roßwein, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "08066 zwickau, stadt": {
+    "lat": 50.7243956,
+    "lon": 12.5316152,
+    "display_name": "08066, Eckersbach Siedlung, Zwickau-Ost, Zwickau, Sachsen, Deutschland"
+  },
+  "08626 adorf/vogtl., stadt": {
+    "lat": 50.3428354,
+    "lon": 12.2275605,
+    "display_name": "08626, Rebersreuth, Adorf/Vogtland, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "02906 hohendubrau": {
+    "lat": 51.2443999,
+    "lon": 14.6712999,
+    "display_name": "Hohendubrau - Wysoka Dubrawa, Diehsa, Görlitz, Sachsen, 02906, Deutschland"
+  },
+  "02829 markersdorf": {
+    "lat": 51.1365455,
+    "lon": 14.8790009,
+    "display_name": "Markersdorf, Görlitz, Sachsen, Deutschland"
+  },
+  "02826 görlitz, stadt": null,
+  "08525 plauen, stadt, hochschulstadt": null,
+  "08309 eibenstock, stadt": {
+    "lat": 50.4725811,
+    "lon": 12.6117135,
+    "display_name": "08309, Eibenstock, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01833 dürrröhrsdorf-dittersbach": {
+    "lat": 51.0292019,
+    "lon": 14.0041448,
+    "display_name": "Dürrröhrsdorf, Dürrröhrsdorf-Dittersbach, Sächsische Schweiz-Osterzgebirge, Sachsen, 01847, Deutschland"
+  },
+  "08233 treuen, stadt": {
+    "lat": 50.5379655,
+    "lon": 12.3057395,
+    "display_name": "08233, Treuen, Treuen/Neuensalz, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "01796 dohma": {
+    "lat": 50.9213621,
+    "lon": 13.9287349,
+    "display_name": "Dohma, Pirna, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "01157 dresden, stadt": {
+    "lat": 51.0684686,
+    "lon": 13.6646468,
+    "display_name": "01157, Kemnitz, Cotta, Dresden, Sachsen, Deutschland"
+  },
+  "08223 werda": null,
+  "02906 waldhufen": {
+    "lat": 51.2333045,
+    "lon": 14.7916995,
+    "display_name": "Waldhufen, Diehsa, Görlitz, Sachsen, Deutschland"
+  },
+  "08058 zwickau, stadt": {
+    "lat": 50.8264317,
+    "lon": 12.4601571,
+    "display_name": "SMP Deutschland GmbH, 36, Seiferitzer Allee, Gewerbegebiet Süd-West, Seiferitz, Meerane, Meerane-Schönberg, Zwickau, Sachsen, 08393, Deutschland"
+  },
+  "02957 krauschwitz i.d. o.l.": null,
+  "09366 niederdorf": null,
+  "09221 neukirchen/erzgeb.": {
+    "lat": 50.7687475,
+    "lon": 12.8639996,
+    "display_name": "09221, Neukirchen, Neukirchen/Erzgebirge, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01848 hohnstein, stadt": null,
+  "02689 sohland a. d. spree": {
+    "lat": 51.0455144,
+    "lon": 14.4264212,
+    "display_name": "02689, Sohland an der Spree, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09247 chemnitz, stadt": {
+    "lat": 50.8628861,
+    "lon": 12.8372967,
+    "display_name": "09247, Röhrsdorf, Chemnitz, Sachsen, Deutschland"
+  },
+  "09427 ehrenfriedersdorf, stadt": {
+    "lat": 50.6454387,
+    "lon": 12.9600582,
+    "display_name": "09427, Ehrenfriedersdorf, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "04736 waldheim, stadt": {
+    "lat": 51.0770005,
+    "lon": 13.0432804,
+    "display_name": "04736, Knobelsdorf, Waldheim, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "02692 großpostwitz/o.l.": {
+    "lat": 51.137147,
+    "lon": 14.4173579,
+    "display_name": "02692, Großdöbschütz - Debsecy, Obergurig - Hornja Hórka, Großpostwitz/Oberlausitz, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "02923 hähnichen": null,
+  "01454 wachau": {
+    "lat": 51.1400683,
+    "lon": 13.9134663,
+    "display_name": "01454, Wachau, Lotzdorf, Radeberg, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "01936 schwepnitz": {
+    "lat": 51.3296398,
+    "lon": 13.9580134,
+    "display_name": "Schwepnitz, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "02953 groß düben": null,
+  "09380 thalheim/erzgeb., stadt": {
+    "lat": 50.6990124,
+    "lon": 12.8452409,
+    "display_name": "09380, Thalheim/Erzgebirge, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "02829 schöpstal": {
+    "lat": 51.173498,
+    "lon": 14.9354458,
+    "display_name": "Schöpstal, Weißer Schöps/Neiße, Görlitz, Sachsen, 02829, Deutschland"
+  },
+  "08280 aue-bad schlema, stadt": {
+    "lat": 50.6012173,
+    "lon": 12.6860297,
+    "display_name": "08280, Bad Schlema, Aue-Bad Schlema, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01612 meißen, stadt": {
+    "lat": 51.162602,
+    "lon": 13.4705907,
+    "display_name": "Kondanani Deutschland e.V., 1, Fleischergasse, Altstadt, Meißen, Sachsen, 01662, Deutschland"
+  },
+  "09131 chemnitz, stadt": {
+    "lat": 50.8635329,
+    "lon": 12.9633352,
+    "display_name": "09131, Ebersdorf, Chemnitz, Lichtenau, Sachsen, Deutschland"
+  },
+  "01689 weinböhla": {
+    "lat": 51.1618943,
+    "lon": 13.5643531,
+    "display_name": "Weinböhla, Meißen, Sachsen, 01689, Deutschland"
+  },
+  "09113 chemnitz, stadt": {
+    "lat": 50.8475043,
+    "lon": 12.9108062,
+    "display_name": "09113, Schloßchemnitz, Chemnitz, Lichtenau, Sachsen, Deutschland"
+  },
+  "08396 waldenburg, stadt": {
+    "lat": 50.8732988,
+    "lon": 12.6117592,
+    "display_name": "08396, Eichlaide, Waldenburg, Zwickau, Sachsen, Deutschland"
+  },
+  "09577 niederwiesa": {
+    "lat": 50.8690692,
+    "lon": 13.0207793,
+    "display_name": "09577, Niederwiesa, Lichtenau, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "02828 görlitz, stadt": null,
+  "08262 muldenhammer": {
+    "lat": 50.4337218,
+    "lon": 12.4779091,
+    "display_name": "08262, Tannenbergsthal, Muldenhammer, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "01824 königstein/sächs. schw., stadt": {
+    "lat": 50.8879898,
+    "lon": 14.0976502,
+    "display_name": "01824, Cunnersdorf, Gohrisch, Königstein/Sächs. Schw., Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "09468 geyer, stadt": {
+    "lat": 50.6226315,
+    "lon": 12.9094487,
+    "display_name": "09468, Geyer, Verwaltungsgemeinschaft Geyer, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "02894 reichenbach/o.l., stadt": {
+    "lat": 51.1580361,
+    "lon": 14.7799145,
+    "display_name": "02894, Borda, Biesig, Reichenbach/Oberlausitz, Reichenbach/O.L., Görlitz, Sachsen, Deutschland"
+  },
+  "02785 olbersdorf": {
+    "lat": 50.8730281,
+    "lon": 14.7667633,
+    "display_name": "02785, Olbersdorf, Görlitz, Sachsen, Deutschland"
+  },
+  "04720 döbeln, stadt": {
+    "lat": 51.1436418,
+    "lon": 13.1043378,
+    "display_name": "04720, Gärtitz, Döbeln, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "09217 burgstädt, stadt": {
+    "lat": 50.9159244,
+    "lon": 12.803176,
+    "display_name": "09217, Burkersdorf, Burgstädt, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "02742 neusalza-spremberg, stadt": {
+    "lat": 51.0308826,
+    "lon": 14.5478123,
+    "display_name": "02742, Friedersdorf, Neusalza-Spremberg, Görlitz, Sachsen, Deutschland"
+  },
+  "01737 tharandt, stadt": null,
+  "09244 lichtenau": {
+    "lat": 50.9185322,
+    "lon": 12.9583912,
+    "display_name": "09244, Lichtenau, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "01561 thiendorf": {
+    "lat": 51.2932144,
+    "lon": 13.7419701,
+    "display_name": "Thiendorf, Meißen, Sachsen, Deutschland"
+  },
+  "01877 demitz-thumitz": {
+    "lat": 51.1382744,
+    "lon": 14.2429125,
+    "display_name": "Demitz, Demitz-Thumitz, Bautzen - Budyšin, Sachsen, 01877, Deutschland"
+  },
+  "02681 wilthen, stadt": {
+    "lat": 51.0923314,
+    "lon": 14.4096265,
+    "display_name": "02681, Wilthen, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09112 chemnitz, stadt": {
+    "lat": 50.830933,
+    "lon": 12.9053458,
+    "display_name": "09112, Kaßberg, Chemnitz, Lichtenau, Sachsen, Deutschland"
+  },
+  "02633 göda": {
+    "lat": 51.1677344,
+    "lon": 14.3191688,
+    "display_name": "02633, Seitschen - Žičeń, Göda - Hodźij, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "08297 zwönitz, stadt": {
+    "lat": 50.651371,
+    "lon": 12.8311374,
+    "display_name": "08297, Niederzwönitz, Zwönitz, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "09241 mühlau": {
+    "lat": 50.9010431,
+    "lon": 12.7639292,
+    "display_name": "09241, Mühlau, Burgstädt, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "09573 leubsdorf": {
+    "lat": 50.804721,
+    "lon": 13.1179025,
+    "display_name": "09573, Schellenberg, Leubsdorf, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "02627 radibor": {
+    "lat": 51.2433034,
+    "lon": 14.3981247,
+    "display_name": "Radibor - Radwor, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "02979 elsterheide": {
+    "lat": 51.4775046,
+    "lon": 14.3281153,
+    "display_name": "02979, Elsterheide - Halštrowska Hola, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "01468 moritzburg": {
+    "lat": 51.1588313,
+    "lon": 13.6748835,
+    "display_name": "01468, Moritzburg, Meißen, Sachsen, Deutschland"
+  },
+  "01279 dresden, stadt": {
+    "lat": 51.0279271,
+    "lon": 13.8224355,
+    "display_name": "01279, Blasewitz, Dresden, Sachsen, Deutschland"
+  },
+  "09465 sehmatal": {
+    "lat": 50.4953505,
+    "lon": 12.97999,
+    "display_name": "09465, Sehmatal, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "04720 großweitzschen": null,
+  "09366 stollberg/erzgeb., stadt": {
+    "lat": 50.6965838,
+    "lon": 12.7770072,
+    "display_name": "09366, Stollberg/Erzgebirge, Stollberg/Niederdorf, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01665 käbschütztal": {
+    "lat": 51.1401207,
+    "lon": 13.3792164,
+    "display_name": "01665, Löbschütz, Käbschütztal, Meißen, Sachsen, Deutschland"
+  },
+  "09477 jöhstadt, stadt": {
+    "lat": 50.537095,
+    "lon": 13.1357507,
+    "display_name": "09477, Schmalzgrube, Jöhstadt, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01108 dresden, stadt": {
+    "lat": 51.1518025,
+    "lon": 13.7922723,
+    "display_name": "01108, Weixdorf, Dresden, Sachsen, Deutschland"
+  },
+  "02730 ebersbach-neugersdorf, stadt": {
+    "lat": 51.0081291,
+    "lon": 14.5975988,
+    "display_name": "02730, Ebersbach, Ebersbach-Neugersdorf, Görlitz, Sachsen, Deutschland"
+  },
+  "02748 bernstadt a. d. eigen, stadt": null,
+  "01689 niederau": {
+    "lat": 51.184164,
+    "lon": 13.5571936,
+    "display_name": "01689, Oberau, Niederau, Meißen, Sachsen, Deutschland"
+  },
+  "01591 riesa, stadt": {
+    "lat": 51.3172315,
+    "lon": 13.248385,
+    "display_name": "01591, Riesa, Meißen, Sachsen, Deutschland"
+  },
+  "08527 plauen, stadt, hochschulstadt": null,
+  "02694 großdubrau": {
+    "lat": 51.2772393,
+    "lon": 14.5348378,
+    "display_name": "02694, Spreewiese - Lichań, Großdubrau - Wulka Dubrawa, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09376 oelsnitz/erzgeb., stadt": {
+    "lat": 50.7140116,
+    "lon": 12.6982741,
+    "display_name": "09376, Oberoelsnitz, Oelsnitz, Oelsnitz/Erzgeb., Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "08541 theuma": null,
+  "01796 struppen": {
+    "lat": 50.9355625,
+    "lon": 14.0104997,
+    "display_name": "Struppen, Königstein/Sächs. Schw., Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "01906 burkau": {
+    "lat": 51.1883359,
+    "lon": 14.2210948,
+    "display_name": "01906, Uhyst am Taucher, Burkau - Porchow, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09437 gornau/erzgeb.": null,
+  "02977 hoyerswerda, stadt": null,
+  "08548 rosenbach/vogtl.": {
+    "lat": 50.5537433,
+    "lon": 12.0878855,
+    "display_name": "08548, Syrau, Rosenbach/Vogtland, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "09629 reinsberg": {
+    "lat": 51.012238,
+    "lon": 13.3848369,
+    "display_name": "09629, Neukirchen, Reinsberg, Neukirchen, Reinsberg, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "08237 steinberg": {
+    "lat": 50.5430035,
+    "lon": 12.4835029,
+    "display_name": "08237, Wernesgrün, Steinberg, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "02906 niesky, stadt": null,
+  "09123 chemnitz, stadt": {
+    "lat": 50.7693371,
+    "lon": 12.9643044,
+    "display_name": "09123, Einsiedel, Chemnitz, Sachsen, Deutschland"
+  },
+  "02923 kodersdorf": null,
+  "07919 pausa-mühltroff, stadt": {
+    "lat": 50.5416316,
+    "lon": 11.9196495,
+    "display_name": "07919, Mühltroff, Pausa-Mühltroff, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "02747 herrnhut, stadt": null,
+  "09353 oberlungwitz, stadt": {
+    "lat": 50.7865864,
+    "lon": 12.7281904,
+    "display_name": "09353, Oberlungwitz, Zwickau, Sachsen, Deutschland"
+  },
+  "02779 großschönau": {
+    "lat": 50.9023367,
+    "lon": 14.6823985,
+    "display_name": "02779, Hainewalde, Großschönau-Hainewalde, Görlitz, Sachsen, Deutschland"
+  },
+  "09306 rochlitz, stadt": {
+    "lat": 51.0284566,
+    "lon": 12.732697,
+    "display_name": "Deutsche Post, Breitenborner Straße, Breitenborn, Rochlitz, Verwaltungsgemeinschaft Rochlitz, Mittelsachsen, Sachsen, 09306, Deutschland"
+  },
+  "01900 großröhrsdorf, stadt": {
+    "lat": 50.898923,
+    "lon": 13.8376712,
+    "display_name": "Großröhrsdorf, Liebstadt, Bad Gottleuba-Berggießhübel, Sächsische Schweiz-Osterzgebirge, Sachsen, 01825, Deutschland"
+  },
+  "02763 chemnitz, stadt": {
+    "lat": 50.8559915,
+    "lon": 12.9216868,
+    "display_name": "Heizkraftwerk Chemnitz-Nord, Furth, Chemnitz, Lichtenau, Sachsen, 09114, Deutschland"
+  },
+  "02692 obergurig": {
+    "lat": 51.137147,
+    "lon": 14.4173579,
+    "display_name": "02692, Großdöbschütz - Debsecy, Obergurig - Hornja Hórka, Großpostwitz/Oberlausitz, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09488 thermalbad wiesenbad": {
+    "lat": 50.6188088,
+    "lon": 13.0102196,
+    "display_name": "09488, Wiesa, Thermalbad Wiesenbad, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "08352 raschau-markersbach": {
+    "lat": 50.5154603,
+    "lon": 12.862638,
+    "display_name": "08352, Markersbach, Raschau-Markersbach, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01561 schönfeld": {
+    "lat": 51.2962306,
+    "lon": 13.6338603,
+    "display_name": "01561, Schönfeld, Lampertswalde, Schönfeld, Meißen, Sachsen, Deutschland"
+  },
+  "02699 königswartha": {
+    "lat": 51.3113263,
+    "lon": 14.3277611,
+    "display_name": "Königswartha - Rakecy, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09430 drebach": {
+    "lat": 50.6874159,
+    "lon": 13.020741,
+    "display_name": "09430, Drebach, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "09432 großolbersdorf": {
+    "lat": 50.6943319,
+    "lon": 13.0817077,
+    "display_name": "09432, Großolbersdorf, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "09484 oberwiesenthal, kurort, stadt": null,
+  "09487 schlettau, stadt": {
+    "lat": 50.5664047,
+    "lon": 12.9492682,
+    "display_name": "09487, Schlettau, Scheibenberg-Schlettau, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01896 pulsnitz, stadt": {
+    "lat": 51.1978308,
+    "lon": 14.0105253,
+    "display_name": "01896, Friedersdorf, Pulsnitz, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09471 königswalde": {
+    "lat": 50.5280893,
+    "lon": 13.0459689,
+    "display_name": "09471, Königswalde, Bärenstein, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "08541 neuensalz": {
+    "lat": 50.50001,
+    "lon": 12.2401393,
+    "display_name": "08541, Zobes, Neuensalz, Treuen/Neuensalz, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "08645 bad elster, stadt": {
+    "lat": 50.2828899,
+    "lon": 12.2400551,
+    "display_name": "08645, Heißenstein, Bad Elster, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "09633 halsbrücke": {
+    "lat": 50.9631074,
+    "lon": 13.3895671,
+    "display_name": "09633, Falkenberg, Halsbrücke, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "02956 rietschen": {
+    "lat": 51.4072619,
+    "lon": 14.8050832,
+    "display_name": "02956, Rietschen - Rěčicy, Rietschen, Görlitz, Sachsen, Deutschland"
+  },
+  "08359 breitenbrunn/erzgeb., hochschulort": {
+    "lat": 50.4713881,
+    "lon": 12.7760158,
+    "display_name": "08359, Breitenbrunn/Erzgebirge, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "02999 lohsa": {
+    "lat": 51.3781501,
+    "lon": 14.3832978,
+    "display_name": "02999, Mortka - Mortkow, Lohsa - Łaz, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "08547 plauen, stadt, hochschulstadt": null,
+  "09419 thum, stadt": {
+    "lat": 50.6762861,
+    "lon": 12.9583971,
+    "display_name": "09419, Thum, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "09437 börnichen/erzgeb.": null,
+  "08107 kirchberg, stadt": {
+    "lat": 50.5983015,
+    "lon": 12.5250959,
+    "display_name": "08107, Leutersbach, Kirchberg, Zwickau, Sachsen, Deutschland"
+  },
+  "09128 chemnitz, stadt": {
+    "lat": 50.8107893,
+    "lon": 13.0304865,
+    "display_name": "09128, Kleinolbersdorf-Altenhain, Chemnitz, Sachsen, Deutschland"
+  },
+  "09387 jahnsdorf/erzgeb.": {
+    "lat": 50.7507195,
+    "lon": 12.8322938,
+    "display_name": "09387, Jahnsdorf/Erzgebirge, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "09405 gornau/erzgeb.": {
+    "lat": 50.7603479,
+    "lon": 13.028694,
+    "display_name": "Deutsche Post, Dittersdorfer Straße, Gornau, Zschopau, Erzgebirgskreis, Sachsen, 09405, Deutschland"
+  },
+  "09322 penig, stadt": {
+    "lat": 50.947703,
+    "lon": 12.6911644,
+    "display_name": "09322, Wernsdorf, Penig, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "01589 riesa, stadt": {
+    "lat": 51.289721,
+    "lon": 13.3167812,
+    "display_name": "01589, Riesa, Meißen, Sachsen, Deutschland"
+  },
+  "08248 klingenthal, stadt": {
+    "lat": 50.3836387,
+    "lon": 12.4638922,
+    "display_name": "08248, Brunndöbra, Klingenthal, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "08267 klingenthal, stadt": {
+    "lat": 50.3600538,
+    "lon": 12.4135106,
+    "display_name": "08267, Zwota, Klingenthal, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "02627 kubschütz": {
+    "lat": 51.1696316,
+    "lon": 14.5061006,
+    "display_name": "Kubschütz - Kubšicy, Bautzen - Budyšin, Sachsen, 02627, Deutschland"
+  },
+  "02681 schirgiswalde-kirschau, stadt": {
+    "lat": 51.0779314,
+    "lon": 14.4282798,
+    "display_name": "Schirgiswalde, Schirgiswalde-Kirschau, Bautzen - Budyšin, Sachsen, 02681, Deutschland"
+  },
+  "09518 großrückerswalde": {
+    "lat": 50.6202043,
+    "lon": 13.1116039,
+    "display_name": "09518, Großrückerswalde, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01561 priestewitz": {
+    "lat": 51.2535414,
+    "lon": 13.509385,
+    "display_name": "Priestewitz, Meißen, Sachsen, Deutschland"
+  },
+  "08539 rosenbach/vogtl.": {
+    "lat": 50.5311385,
+    "lon": 11.9981761,
+    "display_name": "08539, Mehltheuer, Drochaus, Rosenbach/Vogtland, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "08141 reinsdorf": {
+    "lat": 50.6928517,
+    "lon": 12.5581809,
+    "display_name": "08141, Reinsdorf, Zwickau, Sachsen, Deutschland"
+  },
+  "09526 heidersdorf": null,
+  "02708 schönbach": {
+    "lat": 50.2150185,
+    "lon": 6.9484147,
+    "display_name": "Schönbach, Daun, Landkreis Vulkaneifel, Rheinland-Pfalz, Deutschland"
+  },
+  "09429 wolkenstein, stadt": {
+    "lat": 50.656641,
+    "lon": 13.0752637,
+    "display_name": "09429, Warmbad, Wolkenstein, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "08496 neumark": {
+    "lat": 50.6552965,
+    "lon": 12.3537183,
+    "display_name": "08496, Schönbach, Neumark, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "09392 auerbach": {
+    "lat": 50.6878856,
+    "lon": 12.9105731,
+    "display_name": "09392, Auerbach, Burkhardtsdorf, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01561 großenhain, stadt": {
+    "lat": 53.5664401,
+    "lon": 8.9626017,
+    "display_name": "Großenhain, Altenkamp, Lintig, Geestland, Landkreis Cuxhaven, Niedersachsen, Deutschland"
+  },
+  "01773 altenberg, stadt": {
+    "lat": 50.7750566,
+    "lon": 13.7289595,
+    "display_name": "01773, Altenberg, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "08344 lauter-bernsbach, stadt": {
+    "lat": 50.6379077,
+    "lon": 9.3974789,
+    "display_name": "Chubb Deutschland GmbH, 10, Bahnhofstraße, Lauterbach, Lauterbach (Hessen), Vogelsbergkreis, Hessen, 36341, Deutschland"
+  },
+  "02739 kottmar": {
+    "lat": 50.9917879,
+    "lon": 14.6519442,
+    "display_name": "02739, Eibau, Kottmar, Görlitz, Sachsen, Deutschland"
+  },
+  "01920 haselbachtal": {
+    "lat": 51.2316843,
+    "lon": 14.0495405,
+    "display_name": "Haselbachtal, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09326 geringswalde, stadt": {
+    "lat": 51.0743441,
+    "lon": 12.9190079,
+    "display_name": "09326, Geringswalde, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "04703 leisnig, stadt": {
+    "lat": 51.1762336,
+    "lon": 12.936335,
+    "display_name": "04703, Bockelwitz, Leisnig, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "09127 chemnitz, stadt": {
+    "lat": 50.8117135,
+    "lon": 12.9887107,
+    "display_name": "09127, Adelsberg, Kleinolbersdorf, Chemnitz, Lichtenau, Sachsen, Deutschland"
+  },
+  "01609 gröditz, stadt": {
+    "lat": 51.4028184,
+    "lon": 13.4440779,
+    "display_name": "Schmiedewerke Gröditz, Gröditz, Meißen, Sachsen, 01609, Deutschland"
+  },
+  "09337 bernsdorf": null,
+  "09405 zschopau, stadt, motorradstadt": null,
+  "02979 spreetal": {
+    "lat": 51.4777987,
+    "lon": 14.4117296,
+    "display_name": "Spreetal - Sprjewiny Doł, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "02627 hochkirch": {
+    "lat": 51.1724452,
+    "lon": 14.5871412,
+    "display_name": "02627, Rodewitz - Rodecy, Hochkirch, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "01778 altenberg, stadt": {
+    "lat": 50.7650063,
+    "lon": 13.8395824,
+    "display_name": "01778, Geising, Altenberg, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "04749 jahnatal": {
+    "lat": 51.1880014,
+    "lon": 13.1315783,
+    "display_name": "04749, Noschkowitz, Jahnatal, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "08118 hartenstein, stadt": {
+    "lat": 50.6690847,
+    "lon": 12.6698321,
+    "display_name": "08118, Zschocken, Hartenstein, Langenweißbach, Zwickau, Sachsen, Deutschland"
+  },
+  "02929 rothenburg/o.l., stadt, hochschulstadt": {
+    "lat": 51.3557714,
+    "lon": 14.9402016,
+    "display_name": "02929, Bremenhain, Rothenburg/Oberlausitz, Görlitz, Sachsen, Deutschland"
+  },
+  "01920 elstra, stadt": null,
+  "09390 gornsdorf": {
+    "lat": 50.7085981,
+    "lon": 12.8846941,
+    "display_name": "09390, Gornsdorf, Burkhardtsdorf, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "08324 bockau": {
+    "lat": 50.5345706,
+    "lon": 12.6793912,
+    "display_name": "08324, Bockau, Zschorlau, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01612 nünchritz": {
+    "lat": 51.2860754,
+    "lon": 13.4247055,
+    "display_name": "01612, Naundörfchen, Nünchritz, Meißen, Sachsen, Deutschland"
+  },
+  "01829 stadt wehlen, stadt": {
+    "lat": 50.9605216,
+    "lon": 14.0052253,
+    "display_name": "01829, Dorf Wehlen, Wehlen, Lohmen/Stadt Wehlen, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "08301 aue-bad schlema, stadt": {
+    "lat": 49.3340054,
+    "lon": 8.4468126,
+    "display_name": "ACS Deutschland GmbH, 7, An der Hofweide, Gewerbegebiet Auestraße, Nord-Ost, Speyer, Rheinland-Pfalz, 67346, Deutschland"
+  },
+  "09573 augustusburg, stadt": {
+    "lat": 50.8204505,
+    "lon": 13.0815576,
+    "display_name": "Chemnitzer Straße 53, 09573 Augustusburg, Chemnitzer Straße, Erdmannsdorf, Augustusburg, Mittelsachsen, Sachsen, 09573, Deutschland"
+  },
+  "02796 jonsdorf, kurort": {
+    "lat": 50.8533736,
+    "lon": 14.685093,
+    "display_name": "02796, Jonsdorf, Olbersdorf, Görlitz, Sachsen, Deutschland"
+  },
+  "08236 ellefeld": {
+    "lat": 50.4814916,
+    "lon": 12.3920511,
+    "display_name": "08236, Ellefeld, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "08396 oberwiera": {
+    "lat": 50.8908527,
+    "lon": 12.5361765,
+    "display_name": "Oberwiera, Waldenburg, Zwickau, Sachsen, Deutschland"
+  },
+  "01904 neukirch/lausitz": {
+    "lat": 51.0804686,
+    "lon": 14.3244556,
+    "display_name": "01904, Ringenhain, Steinigtwolmsdorf, Neukirch/Lausitz, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09350 lichtenstein/sa., stadt": {
+    "lat": 50.7505994,
+    "lon": 12.6283241,
+    "display_name": "09350, Lichtenstein/Sachsen, Rund um den Auersberg, Zwickau, Sachsen, Deutschland"
+  },
+  "09423 gelenau/erzgeb.": {
+    "lat": 50.7102304,
+    "lon": 12.9520859,
+    "display_name": "09423, Gelenau/Erzgebirge, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "08427 fraureuth": {
+    "lat": 50.69036,
+    "lon": 12.354509,
+    "display_name": "08427, Beiersdorf, Fraureuth, Zwickau, Sachsen, Deutschland"
+  },
+  "09619 sayda, stadt": {
+    "lat": 50.7060188,
+    "lon": 13.3994635,
+    "display_name": "Olbernhauer Straße 14, 09619 Sayda, Olbernhauer Straße, Ullersdorf, Sayda, Sayda/Dorfchemnitz, Mittelsachsen, Sachsen, 09619, Deutschland"
+  },
+  "09228 chemnitz, stadt": {
+    "lat": 50.88666,
+    "lon": 12.8657285,
+    "display_name": "09228, Wittgensdorf, Chemnitz, Lichtenau, Sachsen, Deutschland"
+  },
+  "09481 scheibenberg, stadt": null,
+  "09575 eppendorf": {
+    "lat": 50.799729,
+    "lon": 13.2438982,
+    "display_name": "09575, Eppendorf, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "08304 schönheide": {
+    "lat": 50.4960679,
+    "lon": 12.5056682,
+    "display_name": "08304, Schönheide, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "01877 schmölln-putzkau": {
+    "lat": 50.8971549,
+    "lon": 12.3520022,
+    "display_name": "Schmölln, Altenburger Land, Thüringen, 04626, Deutschland"
+  },
+  "01896 lichtenberg": {
+    "lat": 52.5321606,
+    "lon": 13.5118927,
+    "display_name": "Lichtenberg, Berlin, Deutschland"
+  },
+  "01738 dorfhain": {
+    "lat": 50.9342077,
+    "lon": 13.5514898,
+    "display_name": "01738, Dorfhain, Tharandt, Sächsische Schweiz-Osterzgebirge, Sachsen, Deutschland"
+  },
+  "08499 reichenbach im vogtland, stadt": {
+    "lat": 50.618397,
+    "lon": 12.2705939,
+    "display_name": "08499, Mylau, Reichenbach, Reichenbach im Vogtland, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "09481 elterlein, stadt": {
+    "lat": 50.5789553,
+    "lon": 12.8862588,
+    "display_name": "09481, Schwarzbach, Elterlein, Zwönitz, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "09399 niederwürschnitz": {
+    "lat": 50.7270549,
+    "lon": 12.7573781,
+    "display_name": "09399, Niederwürschnitz, Lugau, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "02943 boxberg/o.l.": {
+    "lat": 51.4185753,
+    "lon": 14.6247999,
+    "display_name": "02943, Boxberg/O.L. - Hamor, Görlitz, Sachsen, Deutschland"
+  },
+  "09600 oberschöna": {
+    "lat": 50.9060177,
+    "lon": 13.2963116,
+    "display_name": "Freiberger Str. 40, 09600 Kleinschirma, Freiberger Straße, Kleinschirma, Oberschöna, Mittelsachsen, Sachsen, 09600, Deutschland"
+  },
+  "01471 dresden, stadt": {
+    "lat": 51.1268902,
+    "lon": 13.7112428,
+    "display_name": "ZF Services Deutschland GmbH Niederlassung Dresden, 6, Ringstraße, Gewerbegebiet Boxdorf, Hellerau/Wilschdorf, Boxdorf, Moritzburg, Meißen, Sachsen, 01468, Deutschland"
+  },
+  "09236 claußnitz": {
+    "lat": 50.9372154,
+    "lon": 12.8920821,
+    "display_name": "09236, Claußnitz, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "08261 schöneck/vogtl., stadt": {
+    "lat": 50.3875211,
+    "lon": 12.3413148,
+    "display_name": "08261, Schöneck/Vogtl., Schöneck/Mühlental, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "08491 limbach": {
+    "lat": 50.5969027,
+    "lon": 12.2439787,
+    "display_name": "08491, Netzschkau, Netzschkau-Limbach, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "08147 crinitzberg": {
+    "lat": 50.5719452,
+    "lon": 12.5053869,
+    "display_name": "08147, Obercrinitz, Crinitzberg, Kirchberg, Zwickau, Sachsen, Deutschland"
+  },
+  "02763 bertsdorf-hörnitz": {
+    "lat": 50.9040007,
+    "lon": 14.7761488,
+    "display_name": "02763, Zittau, Pethau, Zittau, Bertsdorf-Hörnitz, Görlitz, Sachsen, Deutschland"
+  },
+  "08538 weischlitz": {
+    "lat": 50.4397398,
+    "lon": 11.9922733,
+    "display_name": "08538, Weischlitz, Dehles, Weischlitz, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "09623 rechenberg-bienenmühle": {
+    "lat": 50.7403459,
+    "lon": 13.5308024,
+    "display_name": "Mittelstraße 2, 09623 Rechenberg-Bienenmühle, Mittelstraße, Bienenmühle, Neuclausnitz, Rechenberg-Bienenmühle, Mittelsachsen, Sachsen, 09623, Deutschland"
+  },
+  "09122 chemnitz, stadt": {
+    "lat": 50.7982322,
+    "lon": 12.8863949,
+    "display_name": "09122, Morgenleite, Chemnitz, Sachsen, Deutschland"
+  },
+  "09249 taura": {
+    "lat": 50.9142324,
+    "lon": 12.860982,
+    "display_name": "09249, Köthensdorf-Reitzenhain, Taura, Burgstädt, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "01824 rathen, kurort": {
+    "lat": 50.9564299,
+    "lon": 14.0768052,
+    "display_name": "Oberrathen, Rathen, Königstein/Sächs. Schw., Sächsische Schweiz-Osterzgebirge, Sachsen, 01824, Deutschland"
+  },
+  "01936 laußnitz": {
+    "lat": 51.2467556,
+    "lon": 13.8798395,
+    "display_name": "Laußnitz, Königsbrück, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "01936 königsbrück, stadt": {
+    "lat": 51.2572893,
+    "lon": 13.8889772,
+    "display_name": "Gewerbegebiet Königsbrück, Stenz, Königsbrück, Bautzen - Budyšin, Sachsen, 01936, Deutschland"
+  },
+  "08626 eichigt": null,
+  "01796 dresden, stadt": {
+    "lat": 50.9950095,
+    "lon": 13.8401895,
+    "display_name": "TSR Deutschland GmbH & Co. KG Niederlassung Dresden-Heidenau, Am Lugaer Graben, Großzschachwitz, Leuben, Dresden, Sachsen, 01259, Deutschland"
+  },
+  "02782 seifhennersdorf, stadt": null,
+  "04107 leipzig, stadt": {
+    "lat": 51.3300698,
+    "lon": 12.3669758,
+    "display_name": "04107, Zentrum-Süd, Mitte, Leipzig, Sachsen, Deutschland"
+  },
+  "09623 frauenstein, stadt": {
+    "lat": 50.7775681,
+    "lon": 13.5174623,
+    "display_name": "09623, Frauenstein, Mittelsachsen, Sachsen, Deutschland"
+  },
+  "04277 leipzig, stadt": {
+    "lat": 51.3018488,
+    "lon": 12.3646767,
+    "display_name": "04277, Connewitz, Süd, Leipzig, Sachsen, Deutschland"
+  },
+  "01936 neukirch": {
+    "lat": 51.2916321,
+    "lon": 13.9042897,
+    "display_name": "01936, Schmorkau, Neukirch, Königsbrück, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "08223 grünbach": null,
+  "04105 leipzig, stadt": {
+    "lat": 51.3503712,
+    "lon": 12.3608334,
+    "display_name": "04105, Zentrum-Nordwest, Mitte, Leipzig, Sachsen, Deutschland"
+  },
+  "09434 zschopau, stadt, motorradstadt": null,
+  "09328 lunzenau, stadt": {
+    "lat": 50.9696084,
+    "lon": 12.7906525,
+    "display_name": "Deutsche Post, Obere Hauptstraße, Bauernseite, Göritzhain, Lunzenau, Mittelsachsen, Sachsen, 09328, Deutschland"
+  },
+  "08321 zschorlau": {
+    "lat": 50.550165,
+    "lon": 12.6432434,
+    "display_name": "08321, Albernau, Zschorlau, Erzgebirgskreis, Sachsen, Deutschland"
+  },
+  "09648 altmittweida": {
+    "lat": 50.9678174,
+    "lon": 12.9604184,
+    "display_name": "Deutsche Post, Bahnhofstraße, Altmittweida, Mittweida, Mittelsachsen, Sachsen, 09648, Deutschland"
+  },
+  "02959 schleife": {
+    "lat": 51.5245514,
+    "lon": 14.5131198,
+    "display_name": "02959, Schleife - Slepo, Schleife, Görlitz, Sachsen, Deutschland"
+  },
+  "01594 hirschstein": {
+    "lat": 51.252978,
+    "lon": 13.3007595,
+    "display_name": "01594, Prausitz, Hirschstein, Meißen, Sachsen, Deutschland"
+  },
+  "09648 kriebstein": {
+    "lat": 51.0421453,
+    "lon": 13.0570025,
+    "display_name": "Mittlere Dorfst. 26, 09648 Kriebstein, Mittlere Dorfstraße, Grünlichtenberg mit Höckendorf, Grünlichtenberg, Kriebstein, Mittelsachsen, Sachsen, 09648, Deutschland"
+  },
+  "01920 oßling": {
+    "lat": 51.3606986,
+    "lon": 14.1653238,
+    "display_name": "Oßling - Wóslink, Bautzen - Budyšin, Sachsen, Deutschland"
+  },
+  "09355 gersdorf": {
+    "lat": 50.7609554,
+    "lon": 12.7016727,
+    "display_name": "09355, Gersdorf, Zwickau, Sachsen, Deutschland"
+  },
+  "09456 sehmatal": null,
+  "09306 erlau": {
+    "lat": 51.0065845,
+    "lon": 12.9254132,
+    "display_name": "Deutsche Post, Rochlitzer Straße, Erlau, Mittelsachsen, Sachsen, 09306, Deutschland"
+  },
+  "02794 leutersdorf": {
+    "lat": 50.9482793,
+    "lon": 14.6590542,
+    "display_name": "02794, Spitzkunnersdorf, Leutersdorf, Bertsdorf-Hörnitz, Görlitz, Sachsen, Deutschland"
+  },
+  "02997 wittichenau, stadt": null,
+  "02829 neißeaue": {
+    "lat": 51.2559849,
+    "lon": 14.9828196,
+    "display_name": "Neißeaue, Weißer Schöps/Neiße, Görlitz, Sachsen, Deutschland"
+  },
+  "04828 bennewitz": {
+    "lat": 51.3485643,
+    "lon": 12.6865509,
+    "display_name": "04828, Bennewitz, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "08134 wildenfels, stadt": null,
+  "02899 ostritz, stadt": null,
+  "04347 leipzig, stadt": {
+    "lat": 51.3626006,
+    "lon": 12.4342458,
+    "display_name": "04347, Schönefeld-Ost, Nordost, Leipzig, Sachsen, Deutschland"
+  },
+  "04808 wurzen, stadt": {
+    "lat": 51.3810961,
+    "lon": 12.737765,
+    "display_name": "Collmener Str. 12, 04808 Wurzen, Windmühlenweg, Nord e.V., Kleegasse, Altstadt, Wurzen, Landkreis Leipzig, Sachsen, 04808, Deutschland"
+  },
+  "04523 pegau, stadt": {
+    "lat": 51.1960011,
+    "lon": 12.2180728,
+    "display_name": "04523, Kitzen, Pegau, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04275 leipzig, stadt": {
+    "lat": 51.3195178,
+    "lon": 12.3711983,
+    "display_name": "04275, Südvorstadt, Süd, Leipzig, Sachsen, Deutschland"
+  },
+  "04103 leipzig, stadt": {
+    "lat": 51.3318979,
+    "lon": 12.3905139,
+    "display_name": "04103, Zentrum-Südost, Mitte, Leipzig, Sachsen, Deutschland"
+  },
+  "04109 leipzig, stadt": {
+    "lat": 51.3385462,
+    "lon": 12.3642803,
+    "display_name": "04109, Zentrum-West, Mitte, Leipzig, Sachsen, Deutschland"
+  },
+  "04179 leipzig, stadt": {
+    "lat": 51.3425226,
+    "lon": 12.308703,
+    "display_name": "04179, Leutzsch, Altwest, Leipzig, Sachsen, Deutschland"
+  },
+  "04880 elsnig": null,
+  "04451 borsdorf": {
+    "lat": 51.349478,
+    "lon": 12.53646,
+    "display_name": "04451, Borsdorf, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04758 oschatz, stadt": null,
+  "04288 leipzig, stadt": {
+    "lat": 51.2885577,
+    "lon": 12.4709423,
+    "display_name": "04288, Liebertwolkwitz, Südost, Leipzig, Sachsen, Deutschland"
+  },
+  "04416 markkleeberg, stadt": {
+    "lat": 51.2684588,
+    "lon": 12.3965452,
+    "display_name": "04416, Markkleeberg-Ost, Markkleeberg, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04317 leipzig, stadt": {
+    "lat": 51.330979,
+    "lon": 12.4065645,
+    "display_name": "04317, Reudnitz-Thonberg, Südost, Leipzig, Sachsen, Deutschland"
+  },
+  "04328 leipzig, stadt": {
+    "lat": 51.348913,
+    "lon": 12.4548816,
+    "display_name": "04328, Paunsdorf, Ost, Leipzig, Sachsen, Deutschland"
+  },
+  "04442 zwenkau, stadt": {
+    "lat": 51.2180587,
+    "lon": 12.3028481,
+    "display_name": "04442, Zwenkau, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04435 schkeuditz, stadt": {
+    "lat": 51.3971471,
+    "lon": 12.2217017,
+    "display_name": "04435, Altscherbitz, Schkeuditz, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04319 leipzig, stadt": {
+    "lat": 51.332116,
+    "lon": 12.497954,
+    "display_name": "04319, Engelsdorf, Ost, Leipzig, Sachsen, Deutschland"
+  },
+  "04229 leipzig, stadt": {
+    "lat": 51.3229111,
+    "lon": 12.3385298,
+    "display_name": "04229, Schleußig, Südwest, Leipzig, Sachsen, Deutschland"
+  },
+  "04178 leipzig, stadt": {
+    "lat": 51.3531795,
+    "lon": 12.2719054,
+    "display_name": "04178, Burghausen-Rückmarsdorf, Altwest, Leipzig, Sachsen, Deutschland"
+  },
+  "04249 leipzig, stadt": {
+    "lat": 51.2755936,
+    "lon": 12.2978861,
+    "display_name": "04249, Knautkleeberg-Knauthain, Südwest, Leipzig, Sachsen, Deutschland"
+  },
+  "04654 frohburg, stadt": {
+    "lat": 51.0611665,
+    "lon": 12.565725,
+    "display_name": "04654, Frohburg, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04571 rötha, stadt": {
+    "lat": 51.2070845,
+    "lon": 12.5049069,
+    "display_name": "04571, Espenhain, Rötha, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04279 leipzig, stadt": {
+    "lat": 51.2918314,
+    "lon": 12.3971839,
+    "display_name": "04279, Dölitz-Dösen, Süd, Leipzig, Sachsen, Deutschland"
+  },
+  "04849 bad düben, stadt": null,
+  "04425 taucha, stadt": {
+    "lat": 51.3924056,
+    "lon": 12.512871,
+    "display_name": "04425, Dewitz, Taucha, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04821 brandis, stadt": {
+    "lat": 51.3254313,
+    "lon": 12.6245017,
+    "display_name": "04821, Brandis, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04668 parthenstein": {
+    "lat": 51.2768855,
+    "lon": 12.6410578,
+    "display_name": "Deutsche Post, Dorfstraße, Klinga, Parthenstein, Verwaltungsgemeinschaft Naunhof, Landkreis Leipzig, Sachsen, 04668, Deutschland"
+  },
+  "04159 leipzig, stadt": {
+    "lat": 51.3794708,
+    "lon": 12.3004488,
+    "display_name": "04159, Nordwest, Leipzig, Sachsen, Deutschland"
+  },
+  "04205 leipzig, stadt": {
+    "lat": 51.3258679,
+    "lon": 12.2691261,
+    "display_name": "04205, Grünau-Nord, West, Leipzig, Sachsen, Deutschland"
+  },
+  "04509 delitzsch, stadt": {
+    "lat": 51.5159677,
+    "lon": 12.361533,
+    "display_name": "04509, Döbernitz, Zschepen, Delitzsch, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04838 eilenburg, stadt": {
+    "lat": 51.4808825,
+    "lon": 12.6365801,
+    "display_name": "04838, Eilenburg, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04643 geithain, stadt": {
+    "lat": 51.0377658,
+    "lon": 12.68422,
+    "display_name": "04643, Geithain, Narsdorf, Dölitzsch, Geithain, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04838 zschepplin": null,
+  "04289 leipzig, stadt": {
+    "lat": 51.2988171,
+    "lon": 12.4239119,
+    "display_name": "04289, Südost, Leipzig, Sachsen, Deutschland"
+  },
+  "04357 leipzig, stadt": {
+    "lat": 51.3765763,
+    "lon": 12.4101341,
+    "display_name": "04357, Nordost, Leipzig, Sachsen, Deutschland"
+  },
+  "04207 leipzig, stadt": {
+    "lat": 51.3099609,
+    "lon": 12.2767465,
+    "display_name": "04207, Grünau-Mitte, West, Leipzig, Sachsen, Deutschland"
+  },
+  "04209 leipzig, stadt": {
+    "lat": 51.3193592,
+    "lon": 12.2947289,
+    "display_name": "04209, Grünau-Mitte, Grünau-Ost, West, Leipzig, Sachsen, Deutschland"
+  },
+  "04651 bad lausick, stadt": {
+    "lat": 51.1415018,
+    "lon": 12.6679794,
+    "display_name": "04651, Bad Lausick, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04552 borna, stadt": {
+    "lat": 51.1206787,
+    "lon": 12.5047811,
+    "display_name": "04552, Borna, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04874 belgern-schildau, stadt": {
+    "lat": 51.4643222,
+    "lon": 13.1223612,
+    "display_name": "04874, Belgern, Belgern-Schildau, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04177 leipzig, stadt": {
+    "lat": 51.3425514,
+    "lon": 12.330756,
+    "display_name": "04177, Altlindenau, Altwest, Leipzig, Sachsen, Deutschland"
+  },
+  "04155 leipzig, stadt": {
+    "lat": 51.3611903,
+    "lon": 12.3597611,
+    "display_name": "04155, Gohlis-Süd, Nord, Leipzig, Sachsen, Deutschland"
+  },
+  "04316 leipzig, stadt": {
+    "lat": 51.3279824,
+    "lon": 12.4725173,
+    "display_name": "04316, Engelsdorf, Ost, Leipzig, Sachsen, Deutschland"
+  },
+  "04668 grimma, stadt": {
+    "lat": 51.2345773,
+    "lon": 12.744609,
+    "display_name": "04668, Döben, Grimma, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04356 leipzig, stadt": {
+    "lat": 51.4130968,
+    "lon": 12.4195271,
+    "display_name": "04356, Seehausen, Nord, Leipzig, Sachsen, Deutschland"
+  },
+  "04318 leipzig, stadt": {
+    "lat": 51.3431283,
+    "lon": 12.4282967,
+    "display_name": "04318, Sellerhausen-Stünz, Ost, Leipzig, Sachsen, Deutschland"
+  },
+  "04129 leipzig, stadt": {
+    "lat": 51.3704701,
+    "lon": 12.3902974,
+    "display_name": "04129, Eutritzsch, Nord, Leipzig, Sachsen, Deutschland"
+  },
+  "04860 torgau, stadt": {
+    "lat": 51.569371,
+    "lon": 12.9862426,
+    "display_name": "Bong Deutschland GmbH, 1, Posthornweg, Welsau, Torgau, Nordsachsen, Sachsen, 04860, Deutschland"
+  },
+  "04808 lossatal": {
+    "lat": 51.3843451,
+    "lon": 12.8065976,
+    "display_name": "04808, Hohburg, Lossatal, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04299 leipzig, stadt": {
+    "lat": 51.318209,
+    "lon": 12.4223261,
+    "display_name": "04299, Stötteritz, Südost, Leipzig, Sachsen, Deutschland"
+  },
+  "04315 leipzig, stadt": {
+    "lat": 51.3440528,
+    "lon": 12.408624,
+    "display_name": "04315, Volkmarsdorf, Ost, Leipzig, Sachsen, Deutschland"
+  },
+  "04463 großpösna": {
+    "lat": 51.2550101,
+    "lon": 12.4606707,
+    "display_name": "Dechwitzer Str. 6; 04463 Großpösna, Dechwitzer Straße, Gewerbepark Störmthal, Störmthal, Großpösna, Landkreis Leipzig, Sachsen, 04463, Deutschland"
+  },
+  "04683 belgershain": {
+    "lat": 51.2608592,
+    "lon": 12.5633692,
+    "display_name": "04683, Belgershain, Verwaltungsgemeinschaft Naunhof, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04861 torgau, stadt": {
+    "lat": 51.5071706,
+    "lon": 12.9971323,
+    "display_name": "04861, Torgau, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04329 leipzig, stadt": {
+    "lat": 51.3602412,
+    "lon": 12.4683341,
+    "display_name": "04329, Heiterblick, Ost, Leipzig, Sachsen, Deutschland"
+  },
+  "04779 wermsdorf": {
+    "lat": 51.2976999,
+    "lon": 12.9531284,
+    "display_name": "04779, Wermsdorf, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04680 colditz, stadt": {
+    "lat": 51.1365385,
+    "lon": 12.8069283,
+    "display_name": "04680, Zschadraß, Colditz, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04808 thallwitz": {
+    "lat": 51.4139434,
+    "lon": 12.6846551,
+    "display_name": "Wasewitz 42, 04808 Thallwitz, Wasewitz, Thallwitz, Landkreis Leipzig, Sachsen, 04808, Deutschland"
+  },
+  "04349 leipzig, stadt": {
+    "lat": 51.3884829,
+    "lon": 12.445484,
+    "display_name": "04349, Portitzmühle, Nordost, Leipzig, Sachsen, Deutschland"
+  },
+  "04824 brandis, stadt": {
+    "lat": 51.3220874,
+    "lon": 12.5615188,
+    "display_name": "04824, Beucha, Brandis, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04862 mockrehna": {
+    "lat": 51.5092406,
+    "lon": 12.8363288,
+    "display_name": "04862, Mockrehna, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04157 leipzig, stadt": {
+    "lat": 51.3738253,
+    "lon": 12.3678529,
+    "display_name": "04157, Gohlis-Nord, Nord, Leipzig, Sachsen, Deutschland"
+  },
+  "04519 rackwitz": {
+    "lat": 51.4543136,
+    "lon": 12.3604683,
+    "display_name": "04519, Lemsel, Rackwitz, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04687 trebsen/mulde, stadt": {
+    "lat": 51.28629,
+    "lon": 12.7324975,
+    "display_name": "04687, Trebsen/Mulde, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04886 beilrode": {
+    "lat": 51.5731806,
+    "lon": 13.0861176,
+    "display_name": "04886, Zeckritz, Beilrode, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04564 böhlen, stadt": {
+    "lat": 51.2063774,
+    "lon": 12.3734265,
+    "display_name": "04564, Böhlen, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04509 wiedemar": null,
+  "04880 trossin": {
+    "lat": 51.6251086,
+    "lon": 12.8210787,
+    "display_name": "04880, Furthmühle, Trossin, Dommitzsch, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04420 markranstädt, stadt": {
+    "lat": 51.2926415,
+    "lon": 12.215412,
+    "display_name": "04420, Quesitz, Markranstädt, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04889 belgern-schildau, stadt": {
+    "lat": 51.4537075,
+    "lon": 12.9494474,
+    "display_name": "04889, Schildau, Belgern-Schildau, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04509 schönwölkau": null,
+  "04158 leipzig, stadt": {
+    "lat": 51.4028057,
+    "lon": 12.3281569,
+    "display_name": "04158, Lindenthal, Nordwest, Leipzig, Sachsen, Deutschland"
+  },
+  "04827 machern": {
+    "lat": 51.3809076,
+    "lon": 12.6279814,
+    "display_name": "04827, Machern, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04758 liebschützberg": {
+    "lat": 51.3423957,
+    "lon": 13.1425417,
+    "display_name": "04758, Liebschütz, Liebschützberg, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04769 mügeln, stadt": {
+    "lat": 51.2397401,
+    "lon": 13.0599763,
+    "display_name": "04769, Wetitz, Mügeln, Nordsachsen, Sachsen, Deutschland"
+  },
+  "04758 cavertitz": {
+    "lat": 51.3606399,
+    "lon": 13.0609411,
+    "display_name": "Sommerseite 46, 04758 Cavertitz-Lampertswalde, Winterseite, Lampertswalde, Cavertitz, Nordsachsen, Sachsen, 04758, Deutschland"
+  },
+  "04886 arzberg": null,
+  "04683 naunhof, stadt": {
+    "lat": 51.2784762,
+    "lon": 12.5906056,
+    "display_name": "Kurze Str. 4, 04683 Naunhof, Querstraße, Erdmannshain, Naunhof, Verwaltungsgemeinschaft Naunhof, Landkreis Leipzig, Sachsen, 04683, Deutschland"
+  },
+  "04567 kitzscher, stadt": {
+    "lat": 51.1672074,
+    "lon": 12.5427155,
+    "display_name": "04567, Kitzscher, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04575 neukieritzsch": {
+    "lat": 51.1432002,
+    "lon": 12.4288391,
+    "display_name": "04575, Neukieritzsch, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04539 groitzsch, stadt": {
+    "lat": 51.136544,
+    "lon": 12.3179775,
+    "display_name": "04539, Groitzsch, Landkreis Leipzig, Sachsen, Deutschland"
+  },
+  "04838 jesewitz": {
+    "lat": 51.4343473,
+    "lon": 12.5119135,
+    "display_name": "Krostitzer Str. 15, 04838 Jesewitz, Krostitzer Straße, Liemehna, Jesewitz, Eilenburg-West, Nordsachsen, Sachsen, 04838, Deutschland"
+  },
+  "08223 neustadt/vogtl.": {
+    "lat": 50.4414687,
+    "lon": 12.3295275,
+    "display_name": "08223, Neustadt/Vogtland, Falkenstein, Vogtlandkreis, Sachsen, Deutschland"
+  },
+  "08373 remse": {
+    "lat": 50.8578217,
+    "lon": 12.5640698,
+    "display_name": "08373, Remse, Waldenburg, Zwickau, Sachsen, Deutschland"
+  },
+  "09619 mulda/sa.": null,
+  "02923 horka": {
+    "lat": 51.3033221,
+    "lon": 14.9118208,
+    "display_name": "02923, Horka, Weißer Schöps/Neiße, Görlitz, Sachsen, Deutschland"
+  },
+  "08606 triebel/vogtl.": null,
+  "04838 doberschütz": {
+    "lat": 51.4558134,
+    "lon": 12.696113,
+    "display_name": "Bergstr. 19a, 04838 Doberschütz, Bergstraße, Sprotta-Siedlung, Bunitz, Doberschütz, Nordsachsen, Sachsen, 04838, Deutschland"
+  },
+  "04509 löbnitz": null,
+  "04774 dahlen, stadt": {
+    "lat": 51.3736885,
+    "lon": 12.9750051,
+    "display_name": "04774, Dahlen, Nordsachsen, Sachsen, Deutschland"
+  },
+  "08233 falkenstein/vogtl., stadt": null,
+  "09577 flöha, stadt": null
+}

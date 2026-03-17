@@ -1,0 +1,217 @@
+{
+  "template_id": "vko_efre_2021_2027",
+  "name": "VKO-Checkliste EFRE 2021-2027",
+  "description": "Verwaltungskontroll-Checkliste für EFRE-Vorhabenprüfungen gemäß Art. 74 VO (EU) 2021/1060",
+  "questions": [
+    {
+      "question_key": "1.1",
+      "question_text": "Liegt der Zuwendungsbescheid / Bewilligungsbescheid vor?",
+      "answer_type": "boolean",
+      "category": "Bescheid",
+      "sort_order": 1
+    },
+    {
+      "question_key": "1.2",
+      "question_text": "Stimmen die im Bescheid genannten Förderbedingungen mit dem Operationellen Programm überein?",
+      "answer_type": "boolean",
+      "category": "Bescheid",
+      "sort_order": 2
+    },
+    {
+      "question_key": "1.3",
+      "question_text": "Ist die Förderfähigkeit des Vorhabens gegeben (zeitlich, sachlich, räumlich)?",
+      "answer_type": "boolean",
+      "category": "Bescheid",
+      "sort_order": 3
+    },
+    {
+      "question_key": "1.4",
+      "question_text": "Sind Auflagen und Bedingungen des Bescheids klar formuliert und nachvollziehbar?",
+      "answer_type": "boolean",
+      "category": "Bescheid",
+      "sort_order": 4
+    },
+    {
+      "question_key": "2.1",
+      "question_text": "Wurde das Vergaberecht eingehalten (VOB/A, UVgO, VgV)?",
+      "answer_type": "boolean",
+      "category": "Vergabe",
+      "sort_order": 5
+    },
+    {
+      "question_key": "2.2",
+      "question_text": "Liegt ein Vergabevermerk vor?",
+      "answer_type": "boolean",
+      "category": "Vergabe",
+      "sort_order": 6
+    },
+    {
+      "question_key": "2.3",
+      "question_text": "Sind die Vergabeunterlagen vollständig dokumentiert?",
+      "answer_type": "boolean",
+      "category": "Vergabe",
+      "sort_order": 7
+    },
+    {
+      "question_key": "2.4",
+      "question_text": "Wurde bei öffentlicher Ausschreibung die Bekanntmachung ordnungsgemäß veröffentlicht?",
+      "answer_type": "boolean",
+      "category": "Vergabe",
+      "sort_order": 8
+    },
+    {
+      "question_key": "3.1",
+      "question_text": "Sind die abgerechneten Ausgaben förderfähig gemäß Art. 63-68 VO (EU) 2021/1060?",
+      "answer_type": "boolean",
+      "category": "Ausgaben",
+      "sort_order": 9
+    },
+    {
+      "question_key": "3.2",
+      "question_text": "Liegen Originalbelege oder gleichwertige Buchführungsunterlagen vor?",
+      "answer_type": "boolean",
+      "category": "Ausgaben",
+      "sort_order": 10
+    },
+    {
+      "question_key": "3.3",
+      "question_text": "Stimmen die Rechnungsbeträge mit den geltend gemachten Ausgaben überein?",
+      "answer_type": "boolean",
+      "category": "Ausgaben",
+      "sort_order": 11
+    },
+    {
+      "question_key": "3.4",
+      "question_text": "Wurden Zahlungsnachweise (Kontoauszüge) beigebracht?",
+      "answer_type": "boolean",
+      "category": "Ausgaben",
+      "sort_order": 12
+    },
+    {
+      "question_key": "3.5",
+      "question_text": "Ist eine Doppelförderung ausgeschlossen?",
+      "answer_type": "boolean",
+      "category": "Ausgaben",
+      "sort_order": 13
+    },
+    {
+      "question_key": "3.6",
+      "question_text": "Sind die Personalkosten durch Stundennachweise, Stundensätze und Zuordnung zum Vorhaben belegt?",
+      "answer_type": "boolean",
+      "category": "Ausgaben",
+      "sort_order": 14
+    },
+    {
+      "question_key": "3.7",
+      "question_text": "Wurde der Eigenanteil (Kofinanzierung) des Begünstigten nachgewiesen?",
+      "answer_type": "boolean",
+      "category": "Ausgaben",
+      "sort_order": 15
+    },
+    {
+      "question_key": "3.8",
+      "question_text": "Wurden etwaige Nettoeinnahmen gemäß Art. 65 VO (EU) 2021/1060 berücksichtigt?",
+      "answer_type": "boolean",
+      "category": "Ausgaben",
+      "sort_order": 16
+    },
+    {
+      "question_key": "4.1",
+      "question_text": "Wurden die Publizitätspflichten gemäß Art. 50 VO (EU) 2021/1060 eingehalten?",
+      "answer_type": "boolean",
+      "category": "Publizität",
+      "sort_order": 17
+    },
+    {
+      "question_key": "4.2",
+      "question_text": "Ist das EU-Emblem mit Hinweis auf den EFRE angebracht?",
+      "answer_type": "boolean",
+      "category": "Publizität",
+      "sort_order": 18
+    },
+    {
+      "question_key": "5.1",
+      "question_text": "Wurden die Umweltvorschriften eingehalten (UVP, DNSH-Prinzip)?",
+      "answer_type": "boolean",
+      "category": "Querschnittsziele",
+      "sort_order": 19
+    },
+    {
+      "question_key": "5.2",
+      "question_text": "Wurde die Gleichstellung der Geschlechter und Nichtdiskriminierung beachtet?",
+      "answer_type": "boolean",
+      "category": "Querschnittsziele",
+      "sort_order": 20
+    },
+    {
+      "question_key": "5.3",
+      "question_text": "Wurde die Barrierefreiheit bei Bauvorhaben berücksichtigt?",
+      "answer_type": "boolean",
+      "category": "Querschnittsziele",
+      "sort_order": 21
+    },
+    {
+      "question_key": "6.1",
+      "question_text": "Ist der Verwendungsnachweis vollständig und plausibel?",
+      "answer_type": "boolean",
+      "category": "Verwendungsnachweis",
+      "sort_order": 22
+    },
+    {
+      "question_key": "6.2",
+      "question_text": "Stimmt der Sachbericht mit den Förderzielen überein?",
+      "answer_type": "boolean",
+      "category": "Verwendungsnachweis",
+      "sort_order": 23
+    },
+    {
+      "question_key": "6.3",
+      "question_text": "Wurden die Output- und Ergebnisindikatoren erreicht?",
+      "answer_type": "boolean",
+      "category": "Verwendungsnachweis",
+      "sort_order": 24
+    },
+    {
+      "question_key": "7.1",
+      "question_text": "Sind beihilferechtliche Voraussetzungen erfüllt (De-minimis, AGVO)?",
+      "answer_type": "boolean",
+      "category": "Beihilferecht",
+      "sort_order": 25
+    },
+    {
+      "question_key": "7.2",
+      "question_text": "Liegt eine De-minimis-Erklärung des Begünstigten vor?",
+      "answer_type": "boolean",
+      "category": "Beihilferecht",
+      "sort_order": 26
+    },
+    {
+      "question_key": "7.3",
+      "question_text": "Liegen Interessenkonflikte vor oder wurden Maßnahmen zur Vermeidung ergriffen?",
+      "answer_type": "boolean",
+      "category": "Beihilferecht",
+      "sort_order": 27
+    },
+    {
+      "question_key": "8.1",
+      "question_text": "Gesamtbewertung: Sind alle Förderbedingungen eingehalten?",
+      "answer_type": "text",
+      "category": "Gesamtbewertung",
+      "sort_order": 28
+    },
+    {
+      "question_key": "8.2",
+      "question_text": "Sind Rückforderungen oder Kürzungen erforderlich?",
+      "answer_type": "boolean",
+      "category": "Gesamtbewertung",
+      "sort_order": 29
+    },
+    {
+      "question_key": "8.3",
+      "question_text": "Höhe der vorgeschlagenen Finanzkorrektur (in EUR und Prozent des Auftragswertes)?",
+      "answer_type": "text",
+      "category": "Gesamtbewertung",
+      "sort_order": 30
+    }
+  ]
+}

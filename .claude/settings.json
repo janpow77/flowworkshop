@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl *localhost:8006*)",
+      "Bash(curl *localhost:3004*)",
+      "Bash(docker compose -f auditworkshop/docker-compose.yml ps)",
+      "Bash(docker compose -f auditworkshop/docker-compose.yml logs*)",
+      "Bash(cd auditworkshop/frontend && npm run *)",
+      "Bash(cd auditworkshop/frontend && npx tsc*)",
+      "Bash(bash auditworkshop/scripts/workshop_smoke.sh)",
+      "Bash(python3 -m ruff*)",
+      "Read(*)",
+      "Glob(*)",
+      "Grep(*)"
+    ],
+    "deny": [
+      "Bash(docker compose * down -v*)",
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(DROP TABLE*)",
+      "Bash(TRUNCATE*)",
+      "Bash(pip install*)",
+      "Bash(apt install*)",
+      "Bash(apt-get install*)"
+    ]
+  }
+}
