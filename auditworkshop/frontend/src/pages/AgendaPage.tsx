@@ -5,6 +5,7 @@ import {
   Wrench, Coffee, ClipboardCheck, UserPlus, ThumbsUp, Loader2,
   ChevronDown, Cpu, Play, CheckCircle2, SkipForward,
   RotateCcw, Beaker, ExternalLink, Timer, TimerReset,
+  Eye, EyeOff, ArrowUp, ArrowDown,
 } from 'lucide-react';
 
 interface Meta {
@@ -32,6 +33,7 @@ interface AgendaItem {
   started_at: string | null;
   scenario_id: number | null;
   sort_order: number;
+  visible: boolean;
 }
 
 interface DayGroup {
@@ -112,6 +114,14 @@ function countdownFraction(activeItem: AgendaItem | undefined): number {
   return Math.max(0, Math.min(1, elapsed / totalMs));
 }
 
+function modFetch(url: string, options?: RequestInit): Promise<Response> {
+  const token = localStorage.getItem('workshop_token') || '';
+  return fetch(url, {
+    ...options,
+    headers: { ...options?.headers, Authorization: `Bearer ${token}` },
+  });
+}
+
 export default function AgendaPage() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [days, setDays] = useState<DayGroup[]>([]);
@@ -121,8 +131,7 @@ export default function AgendaPage() {
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('plenary');
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3]));
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminPin, setAdminPin] = useState('');
+  const [isAdmin] = useState(() => localStorage.getItem('workshop_role') === 'moderator');
   const [prevActiveId, setPrevActiveId] = useState<string | null>(null);
   const [transitioningIds, setTransitioningIds] = useState<Record<string, string>>({});
 
@@ -135,20 +144,26 @@ export default function AgendaPage() {
   const elapsed = countdownFraction(activeItem);
 
   const loadAgenda = useCallback(() => {
+    const hiddenParam = isAdmin ? 'show_hidden=true' : '';
+    const plenaryUrl = hiddenParam ? `/api/event/agenda/days?${hiddenParam}` : '/api/event/agenda/days';
+    const ws5Url = `/api/event/agenda/days?category=workshop5${hiddenParam ? `&${hiddenParam}` : ''}`;
     Promise.all([
-      fetch('/api/event/agenda/days').then((r) => r.json()),
-      fetch('/api/event/agenda/days?category=workshop5').then((r) => r.json()),
+      fetch(plenaryUrl).then((r) => r.json()),
+      fetch(ws5Url).then((r) => r.json()),
     ]).then(([d, w]) => {
       setDays(d);
       setWs5Days(w);
     });
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
+    const hiddenParam = isAdmin ? 'show_hidden=true' : '';
+    const plenaryUrl = hiddenParam ? `/api/event/agenda/days?${hiddenParam}` : '/api/event/agenda/days';
+    const ws5Url = `/api/event/agenda/days?category=workshop5${hiddenParam ? `&${hiddenParam}` : ''}`;
     Promise.all([
       fetch('/api/event/meta').then((r) => r.json()),
-      fetch('/api/event/agenda/days').then((r) => r.json()),
-      fetch('/api/event/agenda/days?category=workshop5').then((r) => r.json()),
+      fetch(plenaryUrl).then((r) => r.json()),
+      fetch(ws5Url).then((r) => r.json()),
       fetch('/api/event/topics').then((r) => r.json()),
     ]).then(([m, d, w, t]) => {
       setMeta(m);
@@ -156,6 +171,7 @@ export default function AgendaPage() {
       setWs5Days(w);
       setTopics(t);
     }).finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-Refresh alle 15 Sekunden
@@ -212,25 +228,16 @@ export default function AgendaPage() {
     });
   };
 
-  const handleAdminLogin = async () => {
-    const res = await fetch('/api/event/admin/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: adminPin }),
-    });
-    if (res.ok) setIsAdmin(true);
-  };
-
   const setItemStatus = async (itemId: string, action: 'start' | 'done' | 'skip') => {
     // Sofortige visuelle Transition
     const anim = action === 'start' ? 'activate' : action === 'done' ? 'complete' : 'skip';
     setTransitioningIds((prev) => ({ ...prev, [itemId]: anim }));
 
     if (action === 'start') {
-      await fetch(`/api/event/admin/agenda/${itemId}/start?pin=${adminPin}`, { method: 'POST' });
+      await modFetch(`/api/event/admin/agenda/${itemId}/start`, { method: 'POST' });
     } else {
       const status = action === 'done' ? 'done' : 'skipped';
-      await fetch(`/api/event/admin/agenda/${itemId}/status?pin=${adminPin}&status=${status}`, { method: 'PUT' });
+      await modFetch(`/api/event/admin/agenda/${itemId}/status?status=${status}`, { method: 'PUT' });
     }
     // Daten nachladen und Transition entfernen
     await loadAgenda();
@@ -244,18 +251,39 @@ export default function AgendaPage() {
   };
 
   const adjustTime = async (itemId: string, minutes: number) => {
-    await fetch(`/api/event/admin/agenda/${itemId}/adjust-time?pin=${adminPin}&minutes=${minutes}`, { method: 'POST' });
+    await modFetch(`/api/event/admin/agenda/${itemId}/adjust-time?minutes=${minutes}`, { method: 'POST' });
     loadAgenda();
   };
 
   const resetTimer = async (itemId: string) => {
-    await fetch(`/api/event/admin/agenda/${itemId}/reset-timer?pin=${adminPin}`, { method: 'POST' });
+    await modFetch(`/api/event/admin/agenda/${itemId}/reset-timer`, { method: 'POST' });
     loadAgenda();
   };
 
   const resetStatus = async (category?: string) => {
-    const catParam = category ? `&category=${category}` : '';
-    await fetch(`/api/event/admin/agenda/reset-status?pin=${adminPin}${catParam}`, { method: 'POST' });
+    const catParam = category ? `?category=${category}` : '';
+    await modFetch(`/api/event/admin/agenda/reset-status${catParam}`, { method: 'POST' });
+    loadAgenda();
+  };
+
+  const toggleVisible = async (itemId: string) => {
+    await modFetch(`/api/event/admin/agenda/${itemId}/toggle-visible`, { method: 'POST' });
+    loadAgenda();
+  };
+
+  const moveItem = async (itemId: string, direction: -1 | 1) => {
+    const allItems = activeDays.flatMap((d) => d.items);
+    const idx = allItems.findIndex((i) => i.id === itemId);
+    if (idx < 0) return;
+    const swapIdx = idx + direction;
+    if (swapIdx < 0 || swapIdx >= allItems.length) return;
+    const order = allItems.map((i) => i.id);
+    [order[idx], order[swapIdx]] = [order[swapIdx], order[idx]];
+    await modFetch('/api/event/admin/agenda/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(order),
+    });
     loadAgenda();
   };
 
@@ -373,19 +401,7 @@ export default function AgendaPage() {
           <Cpu size={15} /> Workshop 5
         </button>
         <div className="flex-1" />
-        {!isAdmin ? (
-          <div className="flex items-center gap-1">
-            <input
-              type="password"
-              value={adminPin}
-              onChange={(e) => setAdminPin(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
-              placeholder="PIN"
-              className="w-16 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs text-center dark:bg-slate-800"
-            />
-            <button onClick={handleAdminLogin} className="rounded-lg bg-slate-200 dark:bg-slate-700 px-2 py-1.5 text-xs hover:bg-slate-300 transition-colors">OK</button>
-          </div>
-        ) : (
+        {isAdmin && (
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">Moderator</span>
             <button
@@ -483,6 +499,7 @@ export default function AgendaPage() {
                             ${isPause && !isActive ? 'opacity-60' : ''}
                             ${isDone && !transition ? 'opacity-40' : ''}
                             ${isSkipped && !transition ? 'opacity-30' : ''}
+                            ${item.visible === false ? 'opacity-30 border-dashed' : ''}
                             ${transition === 'activate' ? 'animate-agenda-activate' : ''}
                             ${transition === 'complete' ? 'animate-agenda-complete' : ''}
                             ${transition === 'skip' ? 'animate-agenda-skip' : ''}
@@ -580,6 +597,20 @@ export default function AgendaPage() {
                                     {statusStyle.label}
                                   </span>
                                 )}
+                                {/* Sichtbarkeits-Toggle fuer Moderatoren */}
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => toggleVisible(item.id)}
+                                    className={`p-1.5 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 ${
+                                      item.visible === false
+                                        ? 'text-slate-300 hover:bg-slate-100 dark:text-slate-600 dark:hover:bg-slate-800'
+                                        : 'text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+                                    }`}
+                                    title={item.visible === false ? 'Einblenden' : 'Ausblenden'}
+                                  >
+                                    {item.visible === false ? <EyeOff size={13} /> : <Eye size={13} />}
+                                  </button>
+                                )}
                                 {/* Moderator-Controls */}
                                 {isAdmin && !isPause && (
                                   <div className="flex gap-0.5 ml-1">
@@ -621,6 +652,13 @@ export default function AgendaPage() {
                                         <SkipForward size={13} />
                                       </button>
                                     )}
+                                  </div>
+                                )}
+                                {/* Reorder-Buttons fuer Moderatoren */}
+                                {isAdmin && !isPause && (
+                                  <div className="flex flex-col gap-0.5 ml-1">
+                                    <button onClick={() => moveItem(item.id, -1)} className="p-0.5 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Nach oben"><ArrowUp size={11} /></button>
+                                    <button onClick={() => moveItem(item.id, 1)} className="p-0.5 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Nach unten"><ArrowDown size={11} /></button>
                                   </div>
                                 )}
                               </div>

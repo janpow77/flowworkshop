@@ -61,7 +61,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3004",
+        "http://localhost:5173",
+        "https://workshop.flowaudit.de",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )

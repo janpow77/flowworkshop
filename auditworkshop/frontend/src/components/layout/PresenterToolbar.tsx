@@ -42,9 +42,9 @@ export default function PresenterToolbar() {
 
   // Auf Latenz-Events von LLM-Antworten lauschen
   useEffect(() => {
-    const handler = (e: CustomEvent) => setLastLatency(e.detail);
-    window.addEventListener('llm-latency' as any, handler);
-    return () => window.removeEventListener('llm-latency' as any, handler);
+    const handler = ((e: CustomEvent) => setLastLatency(e.detail)) as EventListener;
+    window.addEventListener('llm-latency', handler);
+    return () => window.removeEventListener('llm-latency', handler);
   }, []);
 
   if (!visible) return null;

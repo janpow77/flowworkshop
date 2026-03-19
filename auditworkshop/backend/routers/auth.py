@@ -22,6 +22,12 @@ log = logging.getLogger(__name__)
 # In-Memory Session Store (fuer Workshop ausreichend)
 _sessions: dict[str, dict] = {}
 
+# Moderatoren-E-Mails (case-insensitive geprueft)
+MODERATOR_EMAILS = {
+    "jan.riener@wirtschaft.hessen.de",
+    "alexander.lohse@wirtschaft.hessen.de",
+}
+
 
 class LoginRequest(BaseModel):
     email: str
@@ -41,22 +47,24 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     if not reg:
         raise HTTPException(401, "E-Mail nicht registriert. Bitte zuerst anmelden.")
 
+    role = "moderator" if reg.email.lower() in MODERATOR_EMAILS else "participant"
+
     token = str(uuid.uuid4())
     _sessions[token] = {
         "user_id": reg.id,
         "email": reg.email,
         "name": f"{reg.first_name} {reg.last_name}",
         "organization": reg.organization,
-        "role": "participant",
+        "role": role,
         "created_at": datetime.utcnow().isoformat(),
     }
 
-    log.info("Login: %s (%s)", reg.email, reg.organization)
+    log.info("Login: %s (%s) role=%s", reg.email, reg.organization, role)
     return LoginResponse(
         token=token,
         name=f"{reg.first_name} {reg.last_name}",
         organization=reg.organization,
-        role="participant",
+        role=role,
     )
 
 

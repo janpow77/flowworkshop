@@ -50,7 +50,7 @@ export default function TopBar({ dark, onToggleDark }: Props) {
           {ollama !== null && !ollama.ok && (
             <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs text-amber-700 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-400">
               <AlertTriangle size={14} />
-              <span>KI-Modell nicht verfuegbar</span>
+              <span>KI-Modell nicht verfuegbar — Szenarien ohne LLM-Antworten. Bitte <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] dark:bg-amber-900/40">ollama serve</code> starten.</span>
             </div>
           )}
 
@@ -68,7 +68,7 @@ export default function TopBar({ dark, onToggleDark }: Props) {
 
         <div className="flex items-center gap-3">
           <div className="hidden rounded-full border border-slate-200 bg-white/75 px-3 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400 md:block">
-            EFRE Workshop
+            Workshop 5
           </div>
           <div className="hidden rounded-full border border-slate-200 bg-white/75 px-3 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400 lg:block">
             Cmd/Ctrl + K

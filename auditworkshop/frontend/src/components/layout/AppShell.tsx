@@ -5,6 +5,7 @@ import CommandPalette from './CommandPalette';
 import MobileNav from './MobileNav';
 import PresenterToolbar from './PresenterToolbar';
 import SprechzettelPanel from './SprechzettelPanel';
+import ErrorBoundary from './ErrorBoundary';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 export default function AppShell() {
@@ -25,7 +26,9 @@ export default function AppShell() {
         <MobileNav />
         <main className="flex-1 overflow-auto px-5 pb-8 pt-6 lg:px-8">
           <div className="mx-auto w-full max-w-7xl animate-enter">
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
         <CommandPalette />

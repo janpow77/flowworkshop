@@ -29,9 +29,8 @@ export default function RegisterPage() {
   const [organization, setOrganization] = useState('');
   const [email, setEmail] = useState('');
   const [department, setDepartment] = useState('');
-  const [fund, setFund] = useState('');
 
-  // Step 2: Thema
+  // Step 2: Thema + Dateien
   const [topic, setTopic] = useState('');
   const [question, setQuestion] = useState('');
   const [notes, setNotes] = useState('');
@@ -43,21 +42,21 @@ export default function RegisterPage() {
   const [anthropicConsent, setAnthropicConsent] = useState(false);
   const [error, setError] = useState('');
 
-  // Datei-Upload
+  // Datei-Upload (in Step 2)
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadError, setUploadError] = useState('');
   const [uploadDragOver, setUploadDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const MAX_FILE_SIZE = 50 * 1024 * 1024;
-  const ALLOWED_EXTENSIONS = ['.pdf', '.xlsx', '.xls', '.xlsm', '.docx', '.docm', '.html', '.htm', '.rtf', '.txt'];
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+  const ALLOWED_EXTENSIONS = ['.pdf', '.docx'];
 
   // Einladungslink: Daten vorladen
   useEffect(() => {
     if (!inviteToken) return;
     fetch(`/api/event/invite/${inviteToken}`)
       .then((r) => {
-        if (!r.ok) throw new Error('Ungueltig');
+        if (!r.ok) throw new Error('Ung\u00fcltig');
         return r.json() as Promise<InviteData>;
       })
       .then((data) => {
@@ -65,12 +64,10 @@ export default function RegisterPage() {
         setLastName(data.last_name);
         setOrganization(data.organization);
         setEmail(data.email);
-        setDepartment(data.department || '');
-        setFund(data.fund || '');
         setIsInvite(true);
       })
       .catch(() => {
-        setError('Einladungslink ungueltig oder abgelaufen. Sie koennen sich trotzdem manuell anmelden.');
+        setError('Einladungslink ung\u00fcltig oder abgelaufen. Sie k\u00f6nnen sich trotzdem manuell anmelden.');
       })
       .finally(() => setLoadingInvite(false));
   }, [inviteToken]);
@@ -81,11 +78,11 @@ export default function RegisterPage() {
     for (const file of Array.from(files)) {
       const ext = '.' + file.name.split('.').pop()?.toLowerCase();
       if (!ALLOWED_EXTENSIONS.includes(ext)) {
-        setUploadError(`Dateityp "${ext}" nicht erlaubt. Erlaubt: PDF, XLSX, DOCX, HTML, RTF, TXT.`);
+        setUploadError(`Dateityp \u201e${ext}\u201c nicht erlaubt. Erlaubt: PDF, DOCX.`);
         continue;
       }
       if (file.size > MAX_FILE_SIZE) {
-        setUploadError(`"${file.name}" ist zu gross (max. 50 MB je Datei).`);
+        setUploadError(`\u201e${file.name}\u201c ist zu gro\u00df (max.\u00a010\u00a0MB je Datei).`);
         continue;
       }
       newFiles.push(file);
@@ -130,7 +127,7 @@ export default function RegisterPage() {
           organization,
           email,
           department: department || null,
-          fund: fund || null,
+          fund: null,
           privacy_accepted: privacyAccepted,
           anthropic_consent: anthropicConsent,
         }),
@@ -174,13 +171,13 @@ export default function RegisterPage() {
     }
   };
 
-  const STEPS = ['Persoenliche Daten', 'Themenvorschlag', 'Einreichung & Datenschutz', 'Bestaetigung'];
+  const STEPS = ['Pers\u00f6nliche Daten', 'Thema & Dokumente', 'Datenschutz', 'Best\u00e4tigung'];
 
   if (loadingInvite) {
     return (
       <div className="max-w-2xl mx-auto flex flex-col items-center gap-4 py-20">
         <Loader2 className="animate-spin text-indigo-500" size={28} />
-        <p className="text-sm text-slate-500">Einladung wird geladen...</p>
+        <p className="text-sm text-slate-500">Einladung wird geladen&hellip;</p>
       </div>
     );
   }
@@ -197,16 +194,11 @@ export default function RegisterPage() {
           <Mail size={20} className="text-indigo-500 mt-0.5 shrink-0" />
           <div>
             <p className="text-sm font-medium text-indigo-900 dark:text-indigo-200">
-              Persoenliche Einladung fuer {firstName} {lastName}
+              Pers&ouml;nliche Einladung f&uuml;r {firstName} {lastName}
             </p>
             <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">
-              Ihre Daten wurden vorausgefuellt. Bitte pruefen Sie diese und ergaenzen Sie ggf. einen Themenvorschlag.
+              Ihre Daten wurden vorausgef&uuml;llt. Bitte pr&uuml;fen Sie diese und erg&auml;nzen Sie ggf. einen Themenvorschlag.
             </p>
-            {fund && (
-              <p className="text-xs text-indigo-500 mt-1">
-                Fonds: <span className="font-semibold">{fund}</span>
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -239,67 +231,37 @@ export default function RegisterPage() {
         {step === 1 && (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <UserPlus size={20} /> Persoenliche Daten
+              <UserPlus size={20} /> Pers&ouml;nliche Daten
             </h2>
+            <p className="text-sm text-slate-500">Name, Beh&ouml;rde und dienstliche E-Mail-Adresse.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Vorname *" aria-label="Vorname" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
               <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Nachname *" aria-label="Nachname" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
             </div>
-            <input value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="Organisation / Behoerde *" aria-label="Organisation / Behoerde" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
-            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Dienstliche E-Mail *" aria-label="Dienstliche E-Mail" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Fachbereich (optional)" aria-label="Fachbereich" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800" />
-              <input value={fund} onChange={(e) => setFund(e.target.value)} placeholder="Fonds (z.B. EFRE, ESF+)" aria-label="Fonds" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
-            </div>
+            <input value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="Beh&ouml;rde / Organisation *" aria-label="Organisation" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Dienstliche E-Mail-Adresse *" aria-label="Dienstliche E-Mail" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
+            <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Fachbereich (optional)" aria-label="Fachbereich" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800" />
           </div>
         )}
 
-        {/* Step 2: Thema */}
+        {/* Step 2: Thema + Datei-Upload */}
         {step === 2 && (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Themenvorschlag</h2>
-            <p className="text-sm text-slate-500">Welches Thema soll im Workshop besprochen werden?</p>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Themenvorschlag &amp; Dokumente</h2>
+            <p className="text-sm text-slate-500">Welches Thema soll im Workshop besprochen werden? Sie k&ouml;nnen auch Dokumente beif&uuml;gen.</p>
             <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Themenvorschlag *" aria-label="Themenvorschlag" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800" />
             <textarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={3} placeholder="Konkrete Fragestellung (optional)" aria-label="Konkrete Fragestellung" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm resize-none dark:border-slate-600 dark:bg-slate-800" />
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Anmerkungen (optional)" aria-label="Anmerkungen" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm resize-none dark:border-slate-600 dark:bg-slate-800" />
-          </div>
-        )}
 
-        {/* Step 3: Optionen */}
-        {step === 3 && (
-          <div className="space-y-5">
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Einreichung & Datenschutz</h2>
-
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Sichtbarkeit der Einreichung</p>
-              <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 cursor-pointer dark:border-slate-700 dark:bg-slate-800">
-                <input type="radio" checked={visibility === 'public'} onChange={() => setVisibility('public')} className="mt-0.5" />
-                <div>
-                  <span className="text-sm font-medium text-slate-900 dark:text-white">Oeffentlich</span>
-                  <p className="text-xs text-slate-500">Thema wird im Themenboard sichtbar. Andere Teilnehmer koennen dafuer voten.</p>
-                </div>
-              </label>
-              <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 cursor-pointer dark:border-slate-700 dark:bg-slate-800">
-                <input type="radio" checked={visibility === 'moderation'} onChange={() => setVisibility('moderation')} className="mt-0.5" />
-                <div>
-                  <span className="text-sm font-medium text-slate-900 dark:text-white">Nur Moderation</span>
-                  <p className="text-xs text-slate-500">Thema ist nur fuer die Workshopmoderation sichtbar.</p>
-                </div>
-              </label>
-              {visibility === 'public' && (
-                <label className="flex items-center gap-2 px-3 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
-                  <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
-                  Behoerde im Themenboard anonymisieren
-                </label>
-              )}
-            </div>
-
-            {/* Optionaler Datei-Upload */}
+            {/* Datei-Upload */}
             <div className="space-y-3 border-t border-slate-200 dark:border-slate-700 pt-4">
               <p className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Upload size={15} className="text-indigo-500" /> Dokument beifuegen (optional)
+                <Upload size={15} className="text-indigo-500" /> Dokumente beif&uuml;gen (optional)
               </p>
-              <p className="text-xs text-slate-500">PDF, XLSX, DOCX, HTML, RTF, TXT — max. 50 MB je Datei.</p>
+              <p className="text-xs text-slate-500">
+                F&ouml;rderbescheide, Pr&uuml;fberichte oder andere Unterlagen, die im Workshop besprochen werden sollen.
+                PDF oder DOCX &mdash; max.&nbsp;10&nbsp;MB je Datei.
+              </p>
               {uploadFiles.length > 0 && (
                 <div className="space-y-2">
                   {uploadFiles.map((file, idx) => (
@@ -307,7 +269,7 @@ export default function RegisterPage() {
                       <FileText size={18} className="text-indigo-500 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{file.name}</p>
-                        <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)}&nbsp;MB</p>
                       </div>
                       <button onClick={() => removeFile(idx)} className="p-1 text-slate-400 hover:text-red-500 transition" aria-label={`${file.name} entfernen`}>
                         <X size={16} />
@@ -333,12 +295,11 @@ export default function RegisterPage() {
               >
                 <Upload size={20} className="mx-auto text-slate-400 mb-1" />
                 <p className="text-sm text-slate-500 dark:text-slate-400">Dateien hierher ziehen oder klicken</p>
-                <p className="text-xs text-slate-400 mt-0.5">PDF, XLSX, DOCX, HTML, RTF, TXT — max. 50 MB je Datei</p>
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.xlsx,.xls,.xlsm,.docx,.docm,.html,.htm,.rtf,.txt"
+                accept=".pdf,.docx"
                 multiple
                 onChange={handleFileSelect}
                 className="hidden"
@@ -348,24 +309,73 @@ export default function RegisterPage() {
                 <p className="text-xs text-red-500 flex items-center gap-1"><AlertTriangle size={12} /> {uploadError}</p>
               )}
             </div>
+          </div>
+        )}
 
-            <div className="space-y-3 border-t border-slate-200 dark:border-slate-700 pt-4">
+        {/* Step 3: Sichtbarkeit + Datenschutz */}
+        {step === 3 && (
+          <div className="space-y-5">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Sichtbarkeit &amp; Datenschutz</h2>
+
+            {topic && (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Sichtbarkeit Ihres Themenvorschlags</p>
+                <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 cursor-pointer dark:border-slate-700 dark:bg-slate-800">
+                  <input type="radio" checked={visibility === 'public'} onChange={() => setVisibility('public')} className="mt-0.5" />
+                  <div>
+                    <span className="text-sm font-medium text-slate-900 dark:text-white">&Ouml;ffentlich</span>
+                    <p className="text-xs text-slate-500">Thema wird im Themenboard sichtbar. Andere Teilnehmer k&ouml;nnen daf&uuml;r abstimmen.</p>
+                  </div>
+                </label>
+                <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 cursor-pointer dark:border-slate-700 dark:bg-slate-800">
+                  <input type="radio" checked={visibility === 'moderation'} onChange={() => setVisibility('moderation')} className="mt-0.5" />
+                  <div>
+                    <span className="text-sm font-medium text-slate-900 dark:text-white">Nur Moderation</span>
+                    <p className="text-xs text-slate-500">Thema ist nur f&uuml;r die Workshopmoderation sichtbar.</p>
+                  </div>
+                </label>
+                {visibility === 'public' && (
+                  <label className="flex items-center gap-2 px-3 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
+                    <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
+                    Beh&ouml;rde im Themenboard anonymisieren
+                  </label>
+                )}
+              </div>
+            )}
+
+            <div className={`space-y-3 ${topic ? 'border-t border-slate-200 dark:border-slate-700 pt-4' : ''}`}>
               <p className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Shield size={15} className="text-emerald-600" /> Datenschutz
               </p>
+              <div className="rounded-xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600 dark:bg-slate-800/70 dark:text-slate-400">
+                <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">Hinweis gem&auml;&szlig; Art.&nbsp;13 DS-GVO</p>
+                <p>
+                  Ihre Angaben (Name, E-Mail) werden ausschlie&szlig;lich f&uuml;r die Organisation des
+                  Pr&uuml;ferworkshops 2026 verwendet und nach Abschluss der Veranstaltung gel&ouml;scht.
+                  Die Verarbeitung erfolgt auf Grundlage Ihrer Einwilligung (Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;a DS-GVO).
+                </p>
+                <p className="mt-2 font-medium text-red-600 dark:text-red-400">
+                  Bitte laden Sie keine Dokumente mit personenbezogenen Daten hoch.
+                  Anonymisieren oder schw&auml;rzen Sie pers&ouml;nliche Angaben vor dem Upload.
+                </p>
+                <p className="mt-2">
+                  Verantwortlich: Pr&uuml;fbeh&ouml;rde EFRE Hessen. Bei Fragen wenden Sie sich an{' '}
+                  <a href="mailto:Jan.Riener@vwvg.de" className="text-indigo-600 underline dark:text-indigo-400">Jan.Riener@vwvg.de</a>.
+                </p>
+              </div>
               <label className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
                 <input type="checkbox" checked={privacyAccepted} onChange={(e) => setPrivacyAccepted(e.target.checked)} className="mt-0.5" />
-                <span>Ich habe den Datenschutzhinweis nach Art. 13 DS-GVO zur Kenntnis genommen. <strong>(Pflicht)</strong></span>
+                <span>Ich habe den Datenschutzhinweis zur Kenntnis genommen und best&auml;tige, dass meine hochgeladenen Dokumente keine personenbezogenen Daten enthalten. <strong>(Pflicht)</strong></span>
               </label>
               <label className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
                 <input type="checkbox" checked={anthropicConsent} onChange={(e) => setAnthropicConsent(e.target.checked)} className="mt-0.5" />
-                <span>Ich stimme der Uebermittlung an die Anthropic API fuer eine KI-generierte Bestaetigungsnachricht zu. <em>(freiwillig)</em></span>
+                <span>Ich stimme zu, dass nach dem Absenden eine KI-generierte Best&auml;tigungsnachricht erzeugt werden darf. <em>(Freiwillig)</em></span>
               </label>
             </div>
           </div>
         )}
 
-        {/* Step 4: Bestaetigung */}
+        {/* Step 4: Best&auml;tigung */}
         {step === 4 && (
           <div className="text-center py-6 space-y-4">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
@@ -373,12 +383,16 @@ export default function RegisterPage() {
             </div>
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Anmeldung erfolgreich!</h2>
             <p className="text-sm text-slate-500 max-w-md mx-auto">
-              Vielen Dank fuer Ihre Anmeldung{topic ? ` und Ihren Themenvorschlag "${topic}"` : ''}.
-              Sie erhalten keine Bestaetigungs-E-Mail — Ihre Anmeldung wurde direkt gespeichert.
+              Vielen Dank f&uuml;r Ihre Anmeldung{topic ? ` und Ihren Themenvorschlag \u201e${topic}\u201c` : ''}.
+              {uploadFiles.length > 0 ? ` ${uploadFiles.length} Dokument${uploadFiles.length > 1 ? 'e' : ''} hochgeladen.` : ''}
+              {' '}Sie k&ouml;nnen sich jetzt mit Ihrer E-Mail-Adresse einloggen.
             </p>
             <div className="flex justify-center gap-3 pt-2">
-              <Link to="/agenda" className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-800 dark:bg-indigo-500 dark:hover:bg-indigo-400">
-                Zur Tagesordnung
+              <Link to="/" className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-800 dark:bg-indigo-500 dark:hover:bg-indigo-400">
+                Zum Login
+              </Link>
+              <Link to="/agenda" className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                Tagesordnung
               </Link>
             </div>
           </div>
@@ -396,7 +410,7 @@ export default function RegisterPage() {
           <div className="mt-6 flex justify-between">
             {step > 1 ? (
               <button onClick={() => setStep((step - 1) as Step)} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-                <ArrowLeft size={16} /> Zurueck
+                <ArrowLeft size={16} /> Zur&uuml;ck
               </button>
             ) : <div />}
             {step < 3 ? (
@@ -405,7 +419,7 @@ export default function RegisterPage() {
               </button>
             ) : (
               <button onClick={handleSubmit} disabled={!canProceed(3) || submitting} className="flex items-center gap-1 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:bg-slate-300">
-                <Send size={16} /> {submitting ? 'Sende...' : 'Absenden'}
+                <Send size={16} /> {submitting ? 'Sende\u2026' : 'Absenden'}
               </button>
             )}
           </div>

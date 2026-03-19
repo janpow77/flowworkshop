@@ -104,13 +104,20 @@ export default function CommandPalette() {
       })
     : commands;
 
+  const close = () => { setQuery(''); setOpen(false); };
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        setOpen((current) => !current);
+        setOpen((current) => {
+          const next = !current;
+          if (!next) setQuery('');
+          return next;
+        });
       }
       if (event.key === 'Escape') {
+        setQuery('');
         setOpen(false);
       }
     };
@@ -119,24 +126,24 @@ export default function CommandPalette() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const prevOpenRef = useRef(open);
   useEffect(() => {
-    if (!open) {
-      setQuery('');
-      return;
+    if (open && !prevOpenRef.current) {
+      inputRef.current?.focus();
     }
-    inputRef.current?.focus();
+    prevOpenRef.current = open;
   }, [open]);
 
   const runCommand = async (command: Command) => {
     await command.action();
-    setOpen(false);
+    close();
   };
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/45 px-4 pt-[12vh] backdrop-blur-sm" onClick={() => setOpen(false)}>
-      <div role="dialog" aria-modal="true" aria-label="Schnellzugriff" className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/80 bg-white/92 shadow-[0_32px_120px_-56px_rgba(15,23,42,0.85)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/88" onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/45 px-4 pt-[12vh] backdrop-blur-sm" onClick={() => close()} role="presentation">
+      <div role="dialog" aria-modal="true" aria-label="Schnellzugriff" onKeyDown={(e) => { if (e.key === 'Escape') close(); }} className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/80 bg-white/92 shadow-[0_32px_120px_-56px_rgba(15,23,42,0.85)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/88" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 dark:bg-slate-900 dark:text-slate-300">
             <Search size={18} />

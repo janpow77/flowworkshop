@@ -2,7 +2,10 @@
 flowworkshop · routers/workshop.py
 Streaming-Endpunkt für alle sechs Workshop-Szenarien + PDF-Parse-Endpunkt.
 """
-from fastapi import APIRouter, UploadFile, File, HTTPException
+import time
+from collections import defaultdict
+
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -15,6 +18,26 @@ from services.file_parser import extract as file_extract, ALLOWED_EXTENSIONS
 router = APIRouter(prefix="/api/workshop", tags=["workshop"])
 
 
+# ── Rate-Limiting (In-Memory, 10 Requests/Minute pro IP) ────────────────────
+_rate_limit: dict[str, list[float]] = defaultdict(list)
+RATE_LIMIT_MAX = 10
+RATE_LIMIT_WINDOW = 60  # Sekunden
+
+
+def _check_rate_limit(client_ip: str) -> None:
+    """Prueft ob die IP das Rate-Limit ueberschritten hat."""
+    now = time.monotonic()
+    timestamps = _rate_limit[client_ip]
+    # Alte Eintraege entfernen
+    _rate_limit[client_ip] = [t for t in timestamps if now - t < RATE_LIMIT_WINDOW]
+    if len(_rate_limit[client_ip]) >= RATE_LIMIT_MAX:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Zu viele Anfragen. Maximal {RATE_LIMIT_MAX} LLM-Aufrufe pro Minute.",
+        )
+    _rate_limit[client_ip].append(now)
+
+
 class StreamRequest(BaseModel):
     scenario: int = Field(..., ge=1, le=6)
     prompt: str = Field(..., min_length=1, max_length=2000)
@@ -24,7 +47,7 @@ class StreamRequest(BaseModel):
 
 
 @router.post("/stream")
-async def workshop_stream(req: StreamRequest):
+async def workshop_stream(req: StreamRequest, request: Request):
     """
     Streamt eine LLM-Antwort als Server-Sent-Events.
 
@@ -33,6 +56,8 @@ async def workshop_stream(req: StreamRequest):
       data: {"done": true, "token_count": N, "model": "...", "tok_per_s": N}
       data: {"error": "...", "done": true}
     """
+    _check_rate_limit(request.client.host if request.client else "unknown")
+
     # System-Prompt auswählen
     if req.scenario == 3:
         key = "3_mit" if req.with_context else "3_ohne"

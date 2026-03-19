@@ -280,6 +280,4 @@ Es gibt derzeit **keine E2E-Tests und keine Unit-Tests**. Dies ist als offener P
 - **Frontend-Build wird in Docker als statische Dateien via nginx ausgeliefert** — Änderungen am Frontend erfordern Docker-Rebuild
 
 ### Offene Punkte (aus PROJEKTBESCHREIBUNG.md)
-- Projekt bearbeiten: nur API vorhanden, kein Frontend-UI
 - E2E-Tests: keine vorhanden
-- Checklisten-Export (PDF/CSV): nicht implementiert

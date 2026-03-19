@@ -1,26 +1,36 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
-import HomePage from './pages/HomePage';
-import ScenarioPage from './pages/ScenarioPage';
-import ProjectsPage from './pages/ProjectsPage';
-import ProjectDetailPage from './pages/ProjectDetailPage';
-import ChecklistPage from './pages/ChecklistPage';
-import KnowledgePage from './pages/KnowledgePage';
-import DataFramePage from './pages/DataFramePage';
-import CompanySearchPage from './pages/CompanySearchPage';
-import AiActPage from './pages/AiActPage';
+import EuLoader from './components/layout/EuLoader';
+
+// Oeffentliche Routen (sofort geladen)
 import AgendaPage from './pages/AgendaPage';
 import RegisterPage from './pages/RegisterPage';
-import AdminPage from './pages/AdminPage';
-import NotFoundPage from './pages/NotFoundPage';
 import LoginPage from './pages/LoginPage';
+
+// Geschuetzte Routen (lazy loaded)
+const HomePage = lazy(() => import('./pages/HomePage'));
+const ScenarioPage = lazy(() => import('./pages/ScenarioPage'));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
+const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
+const ChecklistPage = lazy(() => import('./pages/ChecklistPage'));
+const KnowledgePage = lazy(() => import('./pages/KnowledgePage'));
+const DataFramePage = lazy(() => import('./pages/DataFramePage'));
+const CompanySearchPage = lazy(() => import('./pages/CompanySearchPage'));
+const AiActPage = lazy(() => import('./pages/AiActPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+
+function LazyPage({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<EuLoader />}>{children}</Suspense>;
+}
 
 export default function App() {
   const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('workshop_token'));
 
-  const handleLogin = (token: string, _user: { name: string; organization: string; role: string }) => {
+  const handleLogin = (token: string, user: { name: string; organization: string; role: string }) => {
     localStorage.setItem('workshop_token', token);
+    localStorage.setItem('workshop_role', user.role);
     setAuthToken(token);
   };
 
@@ -35,17 +45,17 @@ export default function App() {
 
         {authToken ? (
           <Route element={<AppShell />}>
-            <Route index element={<HomePage />} />
-            <Route path="/scenario/:id" element={<ScenarioPage />} />
-            <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-            <Route path="/projects/:projectId/checklists/:checklistId" element={<ChecklistPage />} />
-            <Route path="/knowledge" element={<KnowledgePage />} />
-            <Route path="/dataframes" element={<DataFramePage />} />
-            <Route path="/company-search" element={<CompanySearchPage />} />
-            <Route path="/ai-act" element={<AiActPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="*" element={<NotFoundPage />} />
+            <Route index element={<LazyPage><HomePage /></LazyPage>} />
+            <Route path="/scenario/:id" element={<LazyPage><ScenarioPage /></LazyPage>} />
+            <Route path="/projects" element={<LazyPage><ProjectsPage /></LazyPage>} />
+            <Route path="/projects/:projectId" element={<LazyPage><ProjectDetailPage /></LazyPage>} />
+            <Route path="/projects/:projectId/checklists/:checklistId" element={<LazyPage><ChecklistPage /></LazyPage>} />
+            <Route path="/knowledge" element={<LazyPage><KnowledgePage /></LazyPage>} />
+            <Route path="/dataframes" element={<LazyPage><DataFramePage /></LazyPage>} />
+            <Route path="/company-search" element={<LazyPage><CompanySearchPage /></LazyPage>} />
+            <Route path="/ai-act" element={<LazyPage><AiActPage /></LazyPage>} />
+            <Route path="/admin" element={<LazyPage><AdminPage /></LazyPage>} />
+            <Route path="*" element={<LazyPage><NotFoundPage /></LazyPage>} />
           </Route>
         ) : (
           <Route path="*" element={<LoginPage onLogin={handleLogin} />} />

@@ -49,6 +49,7 @@ class WorkshopMeta(Base):
     registration_deadline = Column(String(50), default="")
     qr_url = Column(String(500), default="")
     admin_pin = Column(String(20), default="1234")
+    workshop_mode = Column(Boolean, default=False)  # False=Vorfeld, True=Workshop-Tag
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
@@ -67,6 +68,7 @@ class AgendaItem(Base):
     status = Column(Enum(AgendaItemStatus), default=AgendaItemStatus.PENDING)
     started_at = Column(DateTime, nullable=True)  # Wann der Punkt gestartet wurde
     scenario_id = Column(Integer, nullable=True)  # Szenario 1-6 (optional)
+    visible = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
     created_at = Column(DateTime, server_default=func.now())
 

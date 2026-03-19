@@ -26,7 +26,7 @@ const SCENARIO_INFO: Record<number, {
     hint: 'Laden Sie einen Förderbescheid hoch oder nutzen Sie das Demo-Dokument.',
   },
   2: {
-    title: 'Checklisten-KI',
+    title: 'Checklisten-KI (VKO)',
     description: 'Die KI bewertet VKO-Prüfpunkte auf Basis vorgelegter Unterlagen. Nutzen Sie die Projektverwaltung für das vollwertige Checklisten-System.',
     placeholder: 'z.B. "Bewerte die Vergabeprüfpunkte"',
     accent: 'from-indigo-700 via-slate-900 to-cyan-700',
@@ -34,7 +34,7 @@ const SCENARIO_INFO: Record<number, {
     hint: 'Klicken Sie "Demo-Checkliste öffnen" um mit 30 VKO-Prüfpunkten zu starten.',
   },
   3: {
-    title: 'Halluzinations-Demo',
+    title: 'Halluzinations-Demo (RAG)',
     description: 'Vergleichen Sie KI-Antworten ohne und mit RAG-Kontext. Der Umschalter zeigt den Unterschied.',
     placeholder: 'z.B. "Welche Schwellenwerte gelten für die Vergabe nach VO 2021/1060?"',
     accent: 'from-amber-600 via-orange-600 to-rose-600',

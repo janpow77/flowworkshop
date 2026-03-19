@@ -307,9 +307,12 @@ Dark Mode: System-Preference-Detection + manueller Toggle. Tailwind `dark:` Klas
 | SQL-Injection-Schutz | Blockliste + Parametrisierung | Implementiert | ✅ |
 | Keyboard-Navigation in Checkliste | ↑↓ Pfeiltasten | Funktioniert | ✅ |
 | Aria-Labels / Accessibility | Grundlegende a11y | Vorhanden | ✅ |
-| Projekt bearbeiten (Frontend) | Edit-Modal | Nur API, kein UI | ⚠️ |
+| Projekt bearbeiten (Frontend) | Edit-Modal | Edit-Modal auf ProjectDetailPage | ✅ |
+| Error Boundary (Frontend) | Absturzsichere Darstellung | ErrorBoundary in AppShell | ✅ |
+| Teilnehmer-Mitmach-Hinweis | Upload/Fragen/QR erklaert | "So koennen Sie mitmachen" auf HomePage | ✅ |
+| Checklisten-Export (PDF/CSV) | Ergebnisse exportieren | CSV + Print-PDF auf ChecklistPage | ✅ |
+| Ollama-Offline-Hinweis | Klarer Fehlertext | TopBar zeigt "ollama serve" Hinweis | ✅ |
 | E2E-Tests | Automatisierte Tests | Keine | ⚠️ |
-| Checklisten-Export (PDF/CSV) | Ergebnisse exportieren | Nicht implementiert | ⚠️ |
 
 ---
 

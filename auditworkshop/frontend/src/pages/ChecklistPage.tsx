@@ -43,6 +43,7 @@ export default function ChecklistPage() {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedId absichtlich nicht als Dep (wuerde Loop verursachen)
   }, [projectId, checklistId]);
 
   useEffect(() => { loadChecklist(); }, [loadChecklist]);

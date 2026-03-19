@@ -9,7 +9,7 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    if (!email.includes('@')) { setError('Bitte gültige E-Mail eingeben.'); return; }
+    if (!email.includes('@')) { setError('Bitte g\u00fcltige E-Mail eingeben.'); return; }
     setLoading(true);
     setError('');
     try {
@@ -97,8 +97,8 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
       {/* Login Card */}
       <div className="relative z-10 w-full max-w-sm px-4">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white tracking-tight">EFRE Workshop</h1>
-          <p className="text-sm text-blue-200/70 mt-2">KI und LLMs in der Prüfbehörde</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Pr&uuml;ferworkshop 2026</h1>
+          <p className="text-sm text-blue-200/70 mt-2">Workshop 5 &mdash; KI und Digitalisierung in der Pr&uuml;ft&auml;tigkeit</p>
         </div>
 
         <div className="glass-card rounded-2xl p-8">

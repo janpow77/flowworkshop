@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useReducer } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Trash2, FolderOpen, Loader2, Sparkles, RotateCcw } from 'lucide-react';
 import { listProjects, createProject, deleteProject, seedDemoData, resetDemoData, type Project } from '../lib/api';
@@ -9,13 +9,17 @@ export default function ProjectsPage() {
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ aktenzeichen: '', geschaeftsjahr: '', projekttitel: '', zuwendungsempfaenger: '', foerdersumme: '' });
+  const [reloadKey, triggerReload] = useReducer((x: number) => x + 1, 0);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    listProjects().then((r) => setProjects(r.projects)).finally(() => setLoading(false));
-  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    listProjects()
+      .then((r) => { if (!cancelled) setProjects(r.projects); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [reloadKey]);
 
-  useEffect(load, [load]);
+  const load = () => { setLoading(true); triggerReload(); };
 
   // ESC-Handler fuer Modal
   useEffect(() => {

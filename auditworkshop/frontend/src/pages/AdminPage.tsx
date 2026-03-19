@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Lock, Settings, ListOrdered, QrCode, Users, MessageSquare,
@@ -9,7 +9,7 @@ import {
 interface Meta {
   title: string; subtitle: string; date: string; time: string;
   location_short: string; location_full: string; organizer: string;
-  registration_deadline: string; qr_url: string;
+  registration_deadline: string; qr_url: string; workshop_mode: boolean;
 }
 
 interface AgendaItem {
@@ -74,28 +74,28 @@ export default function AdminPage() {
       });
       if (res.ok) {
         setAuthed(true);
-        loadAll();
+        loadAll(pin);
       } else {
         setAuthError('Falscher PIN.');
       }
     } catch { setAuthError('Verbindungsfehler.'); }
   };
 
-  const loadAll = useCallback(async () => {
-    if (!pin) return;
+  const loadAll = async (currentPin: string) => {
+    if (!currentPin) return;
     const [m, a, r, t] = await Promise.all([
       fetch('/api/event/meta').then((r) => r.json()),
       fetch('/api/event/agenda').then((r) => r.json()),
-      fetch(`/api/event/admin/registrations?pin=${pin}`).then((r) => r.json()),
-      fetch(`/api/event/admin/topics?pin=${pin}`).then((r) => r.json()),
+      fetch(`/api/event/admin/registrations?pin=${currentPin}`).then((r) => r.json()),
+      fetch(`/api/event/admin/topics?pin=${currentPin}`).then((r) => r.json()),
     ]);
     setMeta(m);
     setAgenda(a);
     setRegistrations(r.registrations || []);
     setTopics(t.topics || []);
-  }, [pin]);
+  };
 
-  useEffect(() => { if (authed) loadAll(); }, [authed, loadAll]);
+  useEffect(() => { if (authed) loadAll(pin); }, [authed, pin]);
 
   const saveMeta = async () => {
     if (!meta) return;
@@ -118,12 +118,12 @@ export default function AdminPage() {
     setNewTime(''); setNewTitle(''); setNewSpeaker(''); setNewDuration(30);
     setAgendaAdded(true);
     setTimeout(() => setAgendaAdded(false), 2000);
-    loadAll();
+    loadAll(pin);
   };
 
   const deleteAgendaItem = async (id: string) => {
     await fetch(`/api/event/admin/agenda/${id}?pin=${pin}`, { method: 'DELETE' });
-    loadAll();
+    loadAll(pin);
   };
 
   const moveAgendaItem = async (index: number, direction: -1 | 1) => {
@@ -135,7 +135,7 @@ export default function AdminPage() {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newOrder.map((a) => a.id)),
     });
-    loadAll();
+    loadAll(pin);
   };
 
   const startEdit = (item: AgendaItem) => {
@@ -153,7 +153,7 @@ export default function AdminPage() {
     });
     setEditId(null);
     setEditData({});
-    loadAll();
+    loadAll(pin);
   };
 
   // Login screen
@@ -274,6 +274,36 @@ export default function AdminPage() {
       {tab === 'meta' && meta && (
         <div className="rounded-[28px] border border-slate-200 bg-white/90 p-6 dark:border-slate-800 dark:bg-slate-900/80">
           <h2 className="text-lg font-semibold mb-4 text-slate-900 dark:text-white">Workshop-Daten</h2>
+
+          {/* Workshop-Modus Toggle */}
+          <div className={`mb-6 flex items-center justify-between rounded-2xl border-2 p-4 transition-colors ${
+            meta.workshop_mode
+              ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/30'
+              : 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30'
+          }`}>
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                {meta.workshop_mode ? 'Workshop-Tag aktiv' : 'Vorfeld-Modus'}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {meta.workshop_mode
+                  ? 'Alle Teilnehmer sehen die Szenarien. Zum Deaktivieren umschalten.'
+                  : 'Szenarien sind nur fuer Moderatoren sichtbar. Am Workshop-Tag hier aktivieren.'}
+              </p>
+            </div>
+            <button
+              onClick={() => { const updated = { ...meta, workshop_mode: !meta.workshop_mode }; setMeta(updated); }}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                meta.workshop_mode ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+              }`}
+              aria-label="Workshop-Modus umschalten"
+            >
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                meta.workshop_mode ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <input value={meta.title} onChange={(e) => setMeta({ ...meta, title: e.target.value })} placeholder="Titel" aria-label="Titel" className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2 dark:border-slate-600 dark:bg-slate-800" />
             <input value={meta.subtitle} onChange={(e) => setMeta({ ...meta, subtitle: e.target.value })} placeholder="Untertitel" aria-label="Untertitel" className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2 dark:border-slate-600 dark:bg-slate-800" />
