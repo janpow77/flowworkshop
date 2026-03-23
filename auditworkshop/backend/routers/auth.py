@@ -26,6 +26,7 @@ _sessions: dict[str, dict] = {}
 MODERATOR_EMAILS = {
     "jan.riener@wirtschaft.hessen.de",
     "alexander.lohse@wirtschaft.hessen.de",
+    "alexander.lohse@smf.sachsen.de",
 }
 
 
