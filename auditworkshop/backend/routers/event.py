@@ -144,26 +144,34 @@ def _seed_default_agenda(db: Session) -> None:
     if db.query(AgendaItem).count() > 0:
         return
     defaults = [
-        # Tag 1 — Plenum
-        {"day": 1, "time": "09:00", "duration_minutes": 30, "item_type": "organisation", "title": "Begruessung und Organisatorisches", "speaker": "Leitung Pruefbehoerde", "category": "plenary", "sort_order": 0},
-        {"day": 1, "time": "09:30", "duration_minutes": 45, "item_type": "vortrag", "title": "Eroeffnungsvortrag: Stand der EFRE-Pruefung 2021-2027", "speaker": "Leitung Pruefbehoerde", "category": "plenary", "sort_order": 1},
-        {"day": 1, "time": "10:15", "duration_minutes": 30, "item_type": "pause", "title": "Kaffeepause", "category": "plenary", "sort_order": 2},
-        {"day": 1, "time": "10:45", "duration_minutes": 90, "item_type": "workshop", "title": "Workshop 5: KI und Digitalisierung in der Prueftaetigkeit", "category": "plenary", "sort_order": 3},
-        {"day": 1, "time": "12:15", "duration_minutes": 60, "item_type": "pause", "title": "Mittagspause", "category": "plenary", "sort_order": 4},
-        {"day": 1, "time": "13:15", "duration_minutes": 90, "item_type": "workshop", "title": "Workshop 5: KI und Digitalisierung (Fortsetzung)", "category": "plenary", "sort_order": 5},
-        {"day": 1, "time": "14:45", "duration_minutes": 15, "item_type": "pause", "title": "Kaffeepause", "category": "plenary", "sort_order": 6},
-        {"day": 1, "time": "15:00", "duration_minutes": 45, "item_type": "diskussion", "title": "Ergebnisse der Workshops", "category": "plenary", "sort_order": 7},
-        {"day": 1, "time": "15:45", "duration_minutes": 15, "item_type": "organisation", "title": "Zusammenfassung und Ausblick", "speaker": "Leitung Pruefbehoerde", "category": "plenary", "sort_order": 8},
-        # Tag 1 — Workshop 5 Detail
-        {"day": 1, "time": "10:45", "duration_minutes": 20, "item_type": "vortrag", "title": "Einfuehrung: KI in der EFRE-Pruefbehoerde", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 100, "scenario_id": None},
-        {"day": 1, "time": "11:05", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 1: Dokumentenanalyse", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 101, "scenario_id": 1},
-        {"day": 1, "time": "11:25", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 2: Checklisten-Unterstuetzung (VKO)", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 102, "scenario_id": 2},
-        {"day": 1, "time": "11:45", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 3: Halluzinations-Demo (RAG)", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 103, "scenario_id": 3},
-        {"day": 1, "time": "12:05", "duration_minutes": 10, "item_type": "diskussion", "title": "Fragen und Diskussion Block 1", "category": "workshop5", "sort_order": 104},
-        {"day": 1, "time": "13:15", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 4: Berichtsentwurf", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 105, "scenario_id": 4},
-        {"day": 1, "time": "13:35", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 5: Vorab-Upload & RAG", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 106, "scenario_id": 5},
-        {"day": 1, "time": "13:55", "duration_minutes": 25, "item_type": "workshop", "title": "Szenario 6: Beguenstigtenverzeichnis", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 107, "scenario_id": 6},
-        {"day": 1, "time": "14:20", "duration_minutes": 25, "item_type": "diskussion", "title": "Eingereichte Themen aus dem Voting", "category": "workshop5", "sort_order": 108},
+        # ── Tag 1 (Dienstag 05.05.) — Plenum ────────────────────────────
+        {"day": 1, "time": "12:00", "duration_minutes": 60, "item_type": "organisation", "title": "Begruessung und Registrierung im Foyer des HCC", "note": "Bitte der Ausschilderung zum Future Meeting Space folgen.", "category": "plenary", "sort_order": 0},
+        {"day": 1, "time": "13:00", "duration_minutes": 20, "item_type": "organisation", "title": "Beginn der Veranstaltung", "note": "Saal Future Meeting Space", "category": "plenary", "sort_order": 1},
+        {"day": 1, "time": "13:20", "duration_minutes": 55, "item_type": "vortrag", "title": "Praesentation DAC zum Einsatz von Kuenstlicher Intelligenz im Rahmen der Prueftaetigkeit", "category": "plenary", "sort_order": 2},
+        {"day": 1, "time": "14:15", "duration_minutes": 45, "item_type": "vortrag", "title": "Einfuehrungsvortrag zur Entwicklung der Personalkostenpauschalierung in Niedersachsen inkl. Ausblick auf die FP 28-35", "speaker": "Lena Xylaender (stellv. Referatsleiterin Pruefbehoerde EFRE/ESF Niedersachsen)", "category": "plenary", "sort_order": 3},
+        {"day": 1, "time": "15:00", "duration_minutes": 30, "item_type": "pause", "title": "Kaffeepause", "category": "plenary", "sort_order": 4},
+        {"day": 1, "time": "15:30", "duration_minutes": 90, "item_type": "workshop", "title": "Beginn der Workshops", "category": "plenary", "sort_order": 5},
+        {"day": 1, "time": "17:00", "duration_minutes": 5, "item_type": "organisation", "title": "Ende der Workshops (Tag 1)", "category": "plenary", "sort_order": 6},
+        # ── Tag 2 (Mittwoch 06.05.) — Plenum ────────────────────────────
+        {"day": 2, "time": "09:00", "duration_minutes": 480, "item_type": "workshop", "title": "Beginn der Workshops", "category": "plenary", "sort_order": 10},
+        {"day": 2, "time": "17:00", "duration_minutes": 5, "item_type": "organisation", "title": "Ende der Workshops (Tag 2)", "category": "plenary", "sort_order": 11},
+        {"day": 2, "time": "19:00", "duration_minutes": 180, "item_type": "organisation", "title": "Abendveranstaltung im Gartensaal des Neuen Rathauses", "note": "Rueckseite des Gebaeudes mit Blick auf den Maschteich. Adresse: Platz d. Menschenrechte 2, 30159 Hannover", "category": "plenary", "sort_order": 12},
+        # ── Tag 3 (Donnerstag 07.05.) — Plenum ──────────────────────────
+        {"day": 3, "time": "09:00", "duration_minutes": 60, "item_type": "workshop", "title": "Beginn der Workshops", "category": "plenary", "sort_order": 20},
+        {"day": 3, "time": "10:00", "duration_minutes": 15, "item_type": "organisation", "title": "Zusammenfinden aller Teilnehmenden", "note": "Saal Future Meeting Space", "category": "plenary", "sort_order": 21},
+        {"day": 3, "time": "10:15", "duration_minutes": 165, "item_type": "diskussion", "title": "Vorstellung der Workshop-Ergebnisse", "category": "plenary", "sort_order": 22},
+        {"day": 3, "time": "13:00", "duration_minutes": 15, "item_type": "organisation", "title": "Verabschiedung und Ende der Veranstaltung", "category": "plenary", "sort_order": 23},
+        # ── Tag 1 — Workshop 5 Detail (15:30–17:00) ─────────────────────
+        {"day": 1, "time": "15:30", "duration_minutes": 20, "item_type": "vortrag", "title": "Einfuehrung: KI in der EFRE-Pruefbehoerde", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 100, "scenario_id": None},
+        {"day": 1, "time": "15:50", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 1: Dokumentenanalyse", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 101, "scenario_id": 1},
+        {"day": 1, "time": "16:10", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 2: Checklisten-Unterstuetzung (VKO)", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 102, "scenario_id": 2},
+        {"day": 1, "time": "16:30", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 3: Halluzinations-Demo (RAG)", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 103, "scenario_id": 3},
+        {"day": 1, "time": "16:50", "duration_minutes": 10, "item_type": "diskussion", "title": "Fragen und Diskussion Block 1", "category": "workshop5", "sort_order": 104},
+        # ── Tag 2 — Workshop 5 Detail (09:00–17:00) ─────────────────────
+        {"day": 2, "time": "09:00", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 4: Berichtsentwurf", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 200, "scenario_id": 4},
+        {"day": 2, "time": "09:20", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 5: Vorab-Upload & RAG", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 201, "scenario_id": 5},
+        {"day": 2, "time": "09:40", "duration_minutes": 25, "item_type": "workshop", "title": "Szenario 6: Beguenstigtenverzeichnis", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 202, "scenario_id": 6},
+        {"day": 2, "time": "10:05", "duration_minutes": 25, "item_type": "diskussion", "title": "Eingereichte Themen aus dem Voting", "category": "workshop5", "sort_order": 203},
     ]
     for item_data in defaults:
         db.add(AgendaItem(**item_data))
@@ -179,9 +187,9 @@ def _get_meta(db: Session) -> WorkshopMeta:
             title="Prueferworkshop der Pruefbehoerden 2026",
             subtitle="KI und LLMs in der EFRE-Pruefbehoerde",
             date="05.–07. Mai 2026",
-            time="09:00 – 16:00 Uhr",
+            time="Di ab 12:00, Mi/Do ab 09:00 Uhr",
             location_short="Hannover",
-            location_full="Hannover Congress Centrum, Theodor-Heuss-Platz 1-3, 30175 Hannover",
+            location_full="Hannover Congress Centrum (HCC), Future Meeting Space, Theodor-Heuss-Platz 1-3, 30175 Hannover",
             organizer="Hessische Pruefbehoerde EFRE",
             registration_deadline="25. April 2026",
         )
