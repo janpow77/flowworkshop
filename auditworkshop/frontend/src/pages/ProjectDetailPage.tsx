@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, ClipboardList, Loader2, Pencil } from 'lucide-react';
+import { Plus, Trash2, ClipboardList, Pencil } from 'lucide-react';
+import { Skeleton } from '../components/ui/Skeleton';
 import {
   getProject, listChecklists, createChecklist, deleteChecklist, updateProject,
   listDemoTemplates, type Project, type Checklist, type DemoTemplate,
@@ -131,7 +132,28 @@ export default function ProjectDetailPage() {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-indigo-500" size={24} /></div>;
+  if (loading) return (
+    <div className="max-w-4xl mx-auto">
+      <div className="mb-6"><Skeleton className="h-4 w-64" /></div>
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 mb-6">
+        <Skeleton className="h-6 w-32 mb-2" />
+        <Skeleton className="h-8 w-64 mb-4" />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+      </div>
+      <div className="flex items-center justify-between mb-4">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-10 w-40 rounded-full" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-20 w-full rounded-lg" />
+        <Skeleton className="h-20 w-full rounded-lg" />
+      </div>
+    </div>
+  );
   if (!project) return <p className="text-slate-400">Projekt nicht gefunden.</p>;
 
   return (

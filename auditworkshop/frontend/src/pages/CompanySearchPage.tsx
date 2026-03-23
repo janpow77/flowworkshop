@@ -6,6 +6,7 @@ import {
   ArrowUpRight, Building2, FileText, Filter, Globe2, Layers3, Loader2,
   MapPin, Scale, Search, ShieldCheck, Sparkles, Trash2, Upload, Wallet,
 } from 'lucide-react';
+import { Skeleton } from '../components/ui/Skeleton';
 import {
   deleteReferenceSource,
   getSystemProfile,
@@ -307,9 +308,12 @@ export default function CompanySearchPage() {
 
   if (loading) {
     return (
-      <div className="rounded-[32px] border border-slate-200/80 bg-white/85 p-10 text-center shadow-[0_24px_80px_-52px_rgba(15,23,42,0.65)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
-        <Loader2 size={24} className="mx-auto animate-spin text-cyan-600" />
-        <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Unternehmensdaten werden geladen…</p>
+      <div className="space-y-6">
+        <Skeleton className="h-48 w-full rounded-[34px]" />
+        <div className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
+          <Skeleton className="h-32 w-full rounded-[30px]" />
+          <Skeleton className="h-64 w-full rounded-[30px]" />
+        </div>
       </div>
     );
   }

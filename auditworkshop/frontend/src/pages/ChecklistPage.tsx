@@ -5,6 +5,7 @@ import StatusBadge from '../components/checklist/StatusBadge';
 import AiRemarkCard from '../components/checklist/AiRemarkCard';
 import EvidenceCard from '../components/checklist/EvidenceCard';
 import Breadcrumb from '../components/layout/Breadcrumb';
+import { Skeleton } from '../components/ui/Skeleton';
 import {
   getChecklist, getProject, getQuestionDetail, updateQuestion,
   acceptRemark, rejectRemark, editRemark, addQuestion, deleteQuestion,
@@ -259,7 +260,35 @@ export default function ChecklistPage() {
     printWindow.print();
   };
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-indigo-500" size={24} /></div>;
+  if (loading) return (
+    <div className="h-full flex flex-col -m-4 lg:-m-6">
+       <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+          <Skeleton className="h-5 w-64" />
+       </div>
+       <div className="flex-1 flex flex-col lg:flex-row min-h-0 bg-slate-50 dark:bg-slate-950">
+          <div className="w-full lg:w-2/5 p-4 space-y-3 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+             <Skeleton className="h-8 w-24 mb-4" />
+             <Skeleton className="h-10 w-full" />
+             <Skeleton className="h-10 w-full" />
+             <Skeleton className="h-10 w-full" />
+             <Skeleton className="h-10 w-full" />
+          </div>
+          <div className="w-full lg:w-3/5 p-6 space-y-6">
+             <div className="space-y-2 mb-6">
+                 <Skeleton className="h-6 w-3/4" />
+                 <Skeleton className="h-4 w-full" />
+                 <Skeleton className="h-4 w-5/6" />
+             </div>
+             <div className="space-y-2">
+                 <Skeleton className="h-4 w-24" />
+                 <Skeleton className="h-10 w-full" />
+                 <Skeleton className="h-20 w-full" />
+             </div>
+             <Skeleton className="h-48 w-full mt-6" />
+          </div>
+       </div>
+    </div>
+  );
   if (!checklist) return <p className="text-slate-400">Checkliste nicht gefunden.</p>;
 
   // Group questions by category
@@ -342,7 +371,7 @@ export default function ChecklistPage() {
                   <button
                     key={q.id}
                     onClick={() => handleSelect(q.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left border-b border-slate-100 dark:border-slate-800 transition-colors ${
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left border-b border-slate-100 dark:border-slate-800 transition-colors focus-visible:outline-none focus-visible:bg-slate-100 dark:focus-visible:bg-slate-800 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 ${
                       selectedId === q.id
                         ? 'bg-indigo-50 dark:bg-indigo-900/20 border-l-2 border-l-indigo-600'
                         : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 border-l-2 border-l-transparent'
@@ -381,7 +410,14 @@ export default function ChecklistPage() {
         {/* Right: Question detail (60%) */}
         <div className="w-full lg:w-3/5 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-6">
           {detailLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="animate-spin text-indigo-500" size={20} /></div>
+            <div className="space-y-5">
+               <Skeleton className="h-6 w-3/4 mb-2" />
+               <Skeleton className="h-4 w-full" />
+               <Skeleton className="h-4 w-5/6" />
+               <div className="mt-6"><Skeleton className="h-10 w-full" /></div>
+               <div className="mt-4"><Skeleton className="h-20 w-full" /></div>
+               <div className="mt-6"><Skeleton className="h-48 w-full" /></div>
+            </div>
           ) : detail ? (
             <div className="space-y-5">
               {/* Question header */}

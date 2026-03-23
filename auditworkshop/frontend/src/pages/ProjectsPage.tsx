@@ -1,7 +1,8 @@
 import { useState, useEffect, useReducer } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, FolderOpen, Loader2, Sparkles, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, FolderOpen, Sparkles, RotateCcw } from 'lucide-react';
 import { listProjects, createProject, deleteProject, seedDemoData, resetDemoData, type Project } from '../lib/api';
+import { Skeleton } from '../components/ui/Skeleton';
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -110,8 +111,24 @@ export default function ProjectsPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="animate-spin text-indigo-500" size={24} />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                  <Skeleton className="h-5 w-48 mb-1" />
+                  <Skeleton className="h-3 w-64" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : projects.length === 0 ? (
         <div className="text-center py-12 text-slate-400">
@@ -125,7 +142,7 @@ export default function ProjectsPage() {
             <Link
               key={p.id}
               to={`/projects/${p.id}`}
-              className="block rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors group"
+              className="block rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
               <div className="flex items-center justify-between">
                 <div>

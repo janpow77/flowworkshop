@@ -25,11 +25,11 @@ afterEach(() => {
 describe('RegisterPage', () => {
   it('rendert den Stepper mit allen Schritten', () => {
     renderRegister();
-    // "Persoenliche Daten" taucht sowohl im Stepper als auch im h2 auf
-    expect(screen.getAllByText('Persoenliche Daten').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Themenvorschlag')).toBeInTheDocument();
-    expect(screen.getByText(/Einreichung & Datenschutz/)).toBeInTheDocument();
-    expect(screen.getByText('Bestaetigung')).toBeInTheDocument();
+    // "Persönliche Daten" taucht sowohl im Stepper als auch im h2 auf
+    expect(screen.getAllByText('Persönliche Daten').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Thema & Dokumente')).toBeInTheDocument();
+    expect(screen.getByText(/Datenschutz/)).toBeInTheDocument();
+    expect(screen.getByText('Bestätigung')).toBeInTheDocument();
   });
 
   it('zeigt Step-1-Felder', () => {

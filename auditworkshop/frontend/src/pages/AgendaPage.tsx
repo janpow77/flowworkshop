@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Calendar, Clock, MapPin, Building2, Mic2, MessageSquare,
-  Wrench, Coffee, ClipboardCheck, UserPlus, ThumbsUp, Loader2,
+  Wrench, Coffee, ClipboardCheck, UserPlus, ThumbsUp,
   ChevronDown, Cpu, Play, CheckCircle2, SkipForward,
   RotateCcw, Beaker, ExternalLink, Timer, TimerReset,
   Eye, EyeOff, ArrowUp, ArrowDown,
 } from 'lucide-react';
+import { Skeleton } from '../components/ui/Skeleton';
 
 interface Meta {
   title: string;
@@ -288,7 +289,16 @@ export default function AgendaPage() {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-500" size={28} /></div>;
+    return (
+      <div className="max-w-3xl mx-auto space-y-8 py-8">
+        <Skeleton className="h-48 w-full rounded-[32px]" />
+        <div className="space-y-4 pt-4">
+          <Skeleton className="h-16 w-full rounded-2xl" />
+          <Skeleton className="h-16 w-full rounded-2xl" />
+          <Skeleton className="h-16 w-full rounded-2xl" />
+        </div>
+      </div>
+    );
   }
 
   const totalItems = activeDays.reduce((s, d) => s + d.items.length, 0);

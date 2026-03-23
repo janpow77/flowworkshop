@@ -118,7 +118,7 @@ export default function Sidebar() {
                   to={to}
                   end={to === '/'}
                   className={({ isActive }) =>
-                    `group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-all duration-200 ${
+                    `group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 ${
                       isActive
                         ? 'bg-slate-900 text-white shadow-[0_18px_36px_-24px_rgba(15,23,42,0.85)] dark:bg-cyan-400/15 dark:text-cyan-100'
                         : 'text-slate-600 hover:bg-white/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900/70 dark:hover:text-slate-100'

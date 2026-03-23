@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Database, Table, Upload, Trash2, Search, Loader2, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Skeleton } from '../components/ui/Skeleton';
 
 interface DfTable {
   table_name: string;
@@ -151,7 +152,11 @@ export default function DataFramePage() {
               </h2>
             </div>
             {loading ? (
-              <div className="p-6 text-center"><Loader2 className="animate-spin mx-auto text-indigo-500" size={20} /></div>
+              <div className="p-4 space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
             ) : tables.length === 0 ? (
               <div className="p-6 text-center text-sm text-slate-400">Keine Tabellen vorhanden.</div>
             ) : (

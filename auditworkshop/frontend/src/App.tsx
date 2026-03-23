@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
 import EuLoader from './components/layout/EuLoader';
+import ErrorBoundary from './components/layout/ErrorBoundary';
 
 // Oeffentliche Routen (sofort geladen)
 import AgendaPage from './pages/AgendaPage';
@@ -22,7 +23,11 @@ const AdminPage = lazy(() => import('./pages/AdminPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function LazyPage({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<EuLoader />}>{children}</Suspense>;
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<EuLoader />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
 }
 
 export default function App() {
