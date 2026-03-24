@@ -8,6 +8,7 @@ import ErrorBoundary from './components/layout/ErrorBoundary';
 import AgendaPage from './pages/AgendaPage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
+import VorstellungsrundePage from './pages/VorstellungsrundePage';
 
 // Geschuetzte Routen (lazy loaded)
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -46,6 +47,7 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/vorstellungsrunde" element={<VorstellungsrundePage />} />
         </Route>
 
         {authToken ? (

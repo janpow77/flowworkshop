@@ -10,6 +10,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -44,7 +45,10 @@ class LoginResponse(BaseModel):
 @router.post("/login", response_model=LoginResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
     """Login mit registrierter E-Mail-Adresse."""
-    reg = db.query(Registration).filter(Registration.email == body.email).first()
+    email_lower = body.email.strip().lower()
+    reg = db.query(Registration).filter(
+        func.lower(Registration.email) == email_lower
+    ).first()
     if not reg:
         raise HTTPException(401, "E-Mail nicht registriert. Bitte zuerst anmelden.")
 

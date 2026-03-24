@@ -30,6 +30,15 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         log.info("SQLAlchemy-Tabellen erstellt/geprueft.")
+        # Spalten-Migration: page_url fuer Agenda-Items (fuer bestehende DBs)
+        from sqlalchemy import text, inspect
+        with engine.connect() as conn:
+            inspector = inspect(engine)
+            cols = [c["name"] for c in inspector.get_columns("workshop_agenda_items")]
+            if "page_url" not in cols:
+                conn.execute(text("ALTER TABLE workshop_agenda_items ADD COLUMN page_url VARCHAR(500)"))
+                conn.commit()
+                log.info("Spalte page_url zu workshop_agenda_items hinzugefuegt.")
     except Exception as e:
         log.error("SQLAlchemy-Init fehlgeschlagen: %s", e)
 

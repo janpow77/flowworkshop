@@ -70,6 +70,7 @@ class AgendaItem(Base):
     scenario_id = Column(Integer, nullable=True)  # Szenario 1-6 (optional)
     visible = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
+    page_url = Column(String(500), nullable=True)  # Interne Seite (z.B. /vorstellungsrunde)
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -87,6 +88,19 @@ class Registration(Base):
     privacy_accepted = Column(Boolean, default=False)
     anthropic_consent = Column(Boolean, default=False)
     filename = Column(String(255), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class IcebreakerQuestion(Base):
+    """Fragen fuer die Vorstellungsrunde."""
+    __tablename__ = "workshop_icebreaker_questions"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    label = Column(String(255), nullable=False)        # z.B. "Ihr Name"
+    hint = Column(Text, nullable=True)                  # Erlaeuterung
+    icon_name = Column(String(50), default="Users")     # Lucide-Icon-Name
+    color = Column(String(50), default="blue")          # Farbschema
+    sort_order = Column(Integer, default=0)
     created_at = Column(DateTime, server_default=func.now())
 
 

@@ -6,6 +6,7 @@ import {
   ChevronDown, Cpu, Play, CheckCircle2, SkipForward,
   RotateCcw, Beaker, ExternalLink, Timer, TimerReset,
   Eye, EyeOff, ArrowUp, ArrowDown,
+  Plus, Pencil, Trash2, Save, X, Link2,
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 
@@ -33,6 +34,7 @@ interface AgendaItem {
   status: string;
   started_at: string | null;
   scenario_id: number | null;
+  page_url: string | null;
   sort_order: number;
   visible: boolean;
 }
@@ -135,6 +137,12 @@ export default function AgendaPage() {
   const [isAdmin] = useState(() => localStorage.getItem('workshop_role') === 'moderator');
   const [prevActiveId, setPrevActiveId] = useState<string | null>(null);
   const [transitioningIds, setTransitioningIds] = useState<Record<string, string>>({});
+
+  // Moderator Inline-Editing
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Partial<AgendaItem>>({});
+  const [showAddForm, setShowAddForm] = useState<number | null>(null); // day number
+  const [newItem, setNewItem] = useState({ time: '', duration_minutes: 30, item_type: 'vortrag', title: '', speaker: '', note: '', page_url: '' });
 
   const activeItemRef = useRef<HTMLDivElement>(null);
 
@@ -285,6 +293,54 @@ export default function AgendaPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(order),
     });
+    loadAgenda();
+  };
+
+  // ── Moderator CRUD ────────────────────────────────────────────────
+  const startEdit = (item: AgendaItem) => {
+    setEditId(item.id);
+    setEditData({
+      time: item.time, duration_minutes: item.duration_minutes,
+      item_type: item.item_type, title: item.title,
+      speaker: item.speaker || '', note: item.note || '',
+      page_url: item.page_url || '',
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editId) return;
+    await modFetch(`/api/event/admin/agenda/${editId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editData),
+    });
+    setEditId(null);
+    setEditData({});
+    loadAgenda();
+  };
+
+  const deleteItem = async (itemId: string) => {
+    await modFetch(`/api/event/admin/agenda/${itemId}`, { method: 'DELETE' });
+    loadAgenda();
+  };
+
+  const addItem = async (day: number) => {
+    if (!newItem.title || !newItem.time) return;
+    const cat = viewMode === 'workshop5' ? 'workshop5' : 'plenary';
+    await modFetch('/api/event/admin/agenda', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...newItem,
+        day,
+        category: cat,
+        speaker: newItem.speaker || null,
+        note: newItem.note || null,
+        page_url: newItem.page_url || null,
+      }),
+    });
+    setNewItem({ time: '', duration_minutes: 30, item_type: 'vortrag', title: '', speaker: '', note: '', page_url: '' });
+    setShowAddForm(null);
     loadAgenda();
   };
 
@@ -594,6 +650,21 @@ export default function AgendaPage() {
                                     <ExternalLink size={10} />
                                   </Link>
                                 )}
+                                {/* Seiten-Link */}
+                                {item.page_url && (
+                                  <Link
+                                    to={item.page_url}
+                                    className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all duration-300 ${
+                                      isActive
+                                        ? 'bg-indigo-200 dark:bg-indigo-800/60 text-indigo-800 dark:text-indigo-200 shadow-md scale-105'
+                                        : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800/50'
+                                    }`}
+                                  >
+                                    <Link2 size={12} />
+                                    Seite oeffnen
+                                    <ExternalLink size={10} />
+                                  </Link>
+                                )}
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 {/* Status-Badge mit Animation */}
@@ -664,19 +735,79 @@ export default function AgendaPage() {
                                     )}
                                   </div>
                                 )}
-                                {/* Reorder-Buttons fuer Moderatoren */}
-                                {isAdmin && !isPause && (
-                                  <div className="flex flex-col gap-0.5 ml-1">
+                                {/* Reorder + Edit/Delete fuer Moderatoren */}
+                                {isAdmin && (
+                                  <div className="flex items-center gap-0.5 ml-1">
                                     <button onClick={() => moveItem(item.id, -1)} className="p-0.5 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Nach oben"><ArrowUp size={11} /></button>
                                     <button onClick={() => moveItem(item.id, 1)} className="p-0.5 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Nach unten"><ArrowDown size={11} /></button>
+                                    <button onClick={() => startEdit(item)} className="p-1 rounded text-slate-400 hover:bg-indigo-100 hover:text-indigo-600 transition-colors" title="Bearbeiten"><Pencil size={11} /></button>
+                                    <button onClick={() => { if (confirm('Programmpunkt loeschen?')) deleteItem(item.id); }} className="p-1 rounded text-slate-400 hover:bg-red-100 hover:text-red-600 transition-colors" title="Loeschen"><Trash2 size={11} /></button>
                                   </div>
                                 )}
                               </div>
                             </div>
                           </div>
+
+                          {/* Inline-Edit-Formular */}
+                          {editId === item.id && isAdmin && (
+                            <div className="ml-[88px] -mt-1 mb-2 rounded-xl border-2 border-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/30 dark:border-indigo-600 p-3 space-y-2">
+                              <div className="grid gap-2 sm:grid-cols-6">
+                                <input value={editData.time || ''} onChange={(e) => setEditData({ ...editData, time: e.target.value })} placeholder="09:00" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                                <input type="number" value={editData.duration_minutes || 30} onChange={(e) => setEditData({ ...editData, duration_minutes: parseInt(e.target.value) || 30 })} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                                <select value={editData.item_type || 'vortrag'} onChange={(e) => setEditData({ ...editData, item_type: e.target.value })} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800">
+                                  <option value="vortrag">Vortrag</option><option value="diskussion">Diskussion</option><option value="workshop">Workshop</option><option value="pause">Pause</option><option value="organisation">Organisation</option>
+                                </select>
+                                <input value={editData.title || ''} onChange={(e) => setEditData({ ...editData, title: e.target.value })} placeholder="Titel" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm sm:col-span-2 dark:border-slate-600 dark:bg-slate-800" />
+                                <input value={(editData.speaker as string) || ''} onChange={(e) => setEditData({ ...editData, speaker: e.target.value })} placeholder="Referent" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                              </div>
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                <input value={(editData.note as string) || ''} onChange={(e) => setEditData({ ...editData, note: e.target.value })} placeholder="Notiz" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                                <input value={(editData.page_url as string) || ''} onChange={(e) => setEditData({ ...editData, page_url: e.target.value })} placeholder="Seiten-URL (z.B. /vorstellungsrunde)" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                              </div>
+                              <div className="flex gap-2">
+                                <button onClick={saveEdit} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700"><Save size={12} /> Speichern</button>
+                                <button onClick={() => { setEditId(null); setEditData({}); }} className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400"><X size={12} /> Abbrechen</button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
+
+                    {/* Neuen Punkt hinzufuegen — Moderator */}
+                    {isAdmin && (
+                      <div className="ml-[88px] mt-2">
+                        {showAddForm === dayGroup.day ? (
+                          <div className="rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-700 p-3 space-y-2">
+                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Neuer Programmpunkt — Tag {dayGroup.day}</p>
+                            <div className="grid gap-2 sm:grid-cols-6">
+                              <input value={newItem.time} onChange={(e) => setNewItem({ ...newItem, time: e.target.value })} placeholder="09:00 *" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                              <input type="number" value={newItem.duration_minutes} onChange={(e) => setNewItem({ ...newItem, duration_minutes: parseInt(e.target.value) || 30 })} placeholder="Min" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                              <select value={newItem.item_type} onChange={(e) => setNewItem({ ...newItem, item_type: e.target.value })} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800">
+                                <option value="vortrag">Vortrag</option><option value="diskussion">Diskussion</option><option value="workshop">Workshop</option><option value="pause">Pause</option><option value="organisation">Organisation</option>
+                              </select>
+                              <input value={newItem.title} onChange={(e) => setNewItem({ ...newItem, title: e.target.value })} placeholder="Titel *" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm sm:col-span-2 dark:border-slate-600 dark:bg-slate-800" />
+                              <input value={newItem.speaker} onChange={(e) => setNewItem({ ...newItem, speaker: e.target.value })} placeholder="Referent" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <input value={newItem.note} onChange={(e) => setNewItem({ ...newItem, note: e.target.value })} placeholder="Notiz" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                              <input value={newItem.page_url} onChange={(e) => setNewItem({ ...newItem, page_url: e.target.value })} placeholder="Seiten-URL (z.B. /vorstellungsrunde)" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => addItem(dayGroup.day)} disabled={!newItem.title || !newItem.time} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed"><Plus size={12} /> Hinzufuegen</button>
+                              <button onClick={() => setShowAddForm(null)} className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400"><X size={12} /> Abbrechen</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setShowAddForm(dayGroup.day)}
+                            className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm text-slate-400 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-all w-full"
+                          >
+                            <Plus size={14} /> Programmpunkt hinzufuegen
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

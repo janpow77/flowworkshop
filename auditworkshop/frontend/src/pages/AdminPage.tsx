@@ -14,7 +14,7 @@ interface Meta {
 
 interface AgendaItem {
   id: string; time: string; duration_minutes: number; item_type: string;
-  title: string; speaker: string | null; note: string | null; sort_order: number;
+  title: string; speaker: string | null; note: string | null; page_url: string | null; sort_order: number;
 }
 
 type Tab = 'agenda' | 'meta' | 'qr' | 'registrations' | 'topics';
@@ -39,6 +39,8 @@ export default function AdminPage() {
   const [newType, setNewType] = useState('vortrag');
   const [newTitle, setNewTitle] = useState('');
   const [newSpeaker, setNewSpeaker] = useState('');
+  const [newNote, setNewNote] = useState('');
+  const [newPageUrl, setNewPageUrl] = useState('');
 
   // Agenda inline edit
   const [editId, setEditId] = useState<string | null>(null);
@@ -113,9 +115,9 @@ export default function AdminPage() {
     if (!newTitle || !newTime) return;
     await fetch(`/api/event/admin/agenda?pin=${pin}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ time: newTime, duration_minutes: newDuration, item_type: newType, title: newTitle, speaker: newSpeaker || null }),
+      body: JSON.stringify({ time: newTime, duration_minutes: newDuration, item_type: newType, title: newTitle, speaker: newSpeaker || null, note: newNote || null, page_url: newPageUrl || null }),
     });
-    setNewTime(''); setNewTitle(''); setNewSpeaker(''); setNewDuration(30);
+    setNewTime(''); setNewTitle(''); setNewSpeaker(''); setNewDuration(30); setNewNote(''); setNewPageUrl('');
     setAgendaAdded(true);
     setTimeout(() => setAgendaAdded(false), 2000);
     loadAll(pin);
@@ -140,7 +142,7 @@ export default function AdminPage() {
 
   const startEdit = (item: AgendaItem) => {
     setEditId(item.id);
-    setEditData({ time: item.time, duration_minutes: item.duration_minutes, item_type: item.item_type, title: item.title, speaker: item.speaker || '', note: item.note || '' });
+    setEditData({ time: item.time, duration_minutes: item.duration_minutes, item_type: item.item_type, title: item.title, speaker: item.speaker || '', note: item.note || '', page_url: item.page_url || '' });
   };
 
   const cancelEdit = () => { setEditId(null); setEditData({}); };
@@ -228,6 +230,10 @@ export default function AdminPage() {
                     <input value={editData.title || ''} onChange={(e) => setEditData({ ...editData, title: e.target.value })} placeholder="Titel" aria-label="Titel" className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm sm:col-span-2 dark:border-slate-600 dark:bg-slate-800" />
                     <input value={editData.speaker || ''} onChange={(e) => setEditData({ ...editData, speaker: e.target.value })} placeholder="Referent" aria-label="Referent" className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
                   </div>
+                  <div className="grid gap-2 sm:grid-cols-2 mt-2">
+                    <input value={(editData as Record<string, string>).note || ''} onChange={(e) => setEditData({ ...editData, note: e.target.value })} placeholder="Notiz" aria-label="Notiz" className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                    <input value={(editData as Record<string, string>).page_url || ''} onChange={(e) => setEditData({ ...editData, page_url: e.target.value })} placeholder="Seiten-URL (z.B. /vorstellungsrunde)" aria-label="Seiten-URL" className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                  </div>
                   <div className="flex gap-2 mt-2">
                     <button onClick={saveEdit} aria-label="Änderungen speichern" className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700"><Check size={12} /> Speichern</button>
                     <button onClick={cancelEdit} aria-label="Bearbeitung abbrechen" className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400"><X size={12} /> Abbrechen</button>
@@ -239,6 +245,7 @@ export default function AdminPage() {
                   <span className="text-xs text-slate-400 w-10">{item.duration_minutes}m</span>
                   <span className="text-[10px] uppercase tracking-wider text-slate-400 w-20">{item.item_type}</span>
                   <span className="flex-1 text-sm text-slate-900 dark:text-white truncate">{item.title}</span>
+                  {item.page_url && <span className="text-[10px] text-indigo-500 shrink-0 font-mono">{item.page_url}</span>}
                   {item.speaker && <span className="text-xs text-slate-400 shrink-0">{item.speaker}</span>}
                   <button onClick={() => startEdit(item)} aria-label="Bearbeiten" className="p-1.5 text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={14} /></button>
                   <button onClick={() => moveAgendaItem(i, -1)} disabled={i === 0} aria-label="Nach oben verschieben" className="p-1.5 text-slate-300 hover:text-slate-600 disabled:opacity-30"><ArrowUp size={14} /></button>
@@ -262,6 +269,10 @@ export default function AdminPage() {
               </select>
               <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Titel *" aria-label="Titel" className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2 dark:border-slate-600 dark:bg-slate-800" />
               <input value={newSpeaker} onChange={(e) => setNewSpeaker(e.target.value)} placeholder="Referent" aria-label="Referent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800" />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 mt-2">
+              <input value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Notiz" aria-label="Notiz" className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800" />
+              <input value={newPageUrl} onChange={(e) => setNewPageUrl(e.target.value)} placeholder="Seiten-URL (z.B. /vorstellungsrunde)" aria-label="Seiten-URL" className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800" />
             </div>
             <button onClick={addAgendaItem} disabled={!newTitle || !newTime} className={`mt-3 flex items-center gap-1 rounded-full px-4 py-2 text-sm text-white disabled:bg-slate-300 transition-colors ${agendaAdded ? 'bg-emerald-600' : 'bg-slate-900 hover:bg-slate-800 dark:bg-indigo-500'}`}>
               {agendaAdded ? <><CheckCircle size={14} /> Hinzugefügt</> : <><Plus size={14} /> Hinzufügen</>}

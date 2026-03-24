@@ -14,6 +14,7 @@ from database import get_db
 from models.registration import (
     WorkshopMeta, AgendaItem, AgendaItemType, AgendaItemStatus,
     Registration, TopicSubmission, SubmissionVisibility,
+    IcebreakerQuestion,
 )
 
 router = APIRouter(prefix="/api/event", tags=["event"])
@@ -67,6 +68,7 @@ class AgendaItemOut(BaseModel):
     started_at: datetime | None = None
     visible: bool = True
     scenario_id: int | None = None
+    page_url: str | None = None
     sort_order: int
     model_config = {"from_attributes": True}
 
@@ -80,6 +82,7 @@ class AgendaItemCreate(BaseModel):
     note: str | None = None
     category: str = "plenary"
     scenario_id: int | None = None
+    page_url: str | None = None
 
 class AgendaItemUpdate(BaseModel):
     day: int | None = None
@@ -93,6 +96,7 @@ class AgendaItemUpdate(BaseModel):
     status: AgendaItemStatus | None = None
     visible: bool | None = None
     scenario_id: int | None = None
+    page_url: str | None = None
     sort_order: int | None = None
 
 class RegistrationCreate(BaseModel):
@@ -133,6 +137,27 @@ class TopicOut(BaseModel):
     created_at: datetime | None = None
     model_config = {"from_attributes": True}
 
+class IcebreakerOut(BaseModel):
+    id: str
+    label: str
+    hint: str | None = None
+    icon_name: str = "Users"
+    color: str = "blue"
+    sort_order: int
+    model_config = {"from_attributes": True}
+
+class IcebreakerCreate(BaseModel):
+    label: str = Field(..., min_length=1, max_length=255)
+    hint: str | None = None
+    icon_name: str = "Users"
+    color: str = "blue"
+
+class IcebreakerUpdate(BaseModel):
+    label: str | None = None
+    hint: str | None = None
+    icon_name: str | None = None
+    color: str | None = None
+
 class AdminAuth(BaseModel):
     pin: str
 
@@ -162,7 +187,8 @@ def _seed_default_agenda(db: Session) -> None:
         {"day": 3, "time": "10:15", "duration_minutes": 165, "item_type": "diskussion", "title": "Vorstellung der Workshop-Ergebnisse", "category": "plenary", "sort_order": 22},
         {"day": 3, "time": "13:00", "duration_minutes": 15, "item_type": "organisation", "title": "Verabschiedung und Ende der Veranstaltung", "category": "plenary", "sort_order": 23},
         # ── Tag 1 — Workshop 5 Detail (15:30–17:00) ─────────────────────
-        {"day": 1, "time": "15:30", "duration_minutes": 20, "item_type": "vortrag", "title": "Einführung: KI in der EFRE-Prüfbehörde", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 100, "scenario_id": None},
+        {"day": 1, "time": "15:30", "duration_minutes": 15, "item_type": "organisation", "title": "Vorstellungsrunde", "note": "Kurze Vorstellung aller Teilnehmenden", "category": "workshop5", "sort_order": 99, "page_url": "/vorstellungsrunde"},
+        {"day": 1, "time": "15:45", "duration_minutes": 15, "item_type": "vortrag", "title": "Einführung: KI in der EFRE-Prüfbehörde", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 100, "scenario_id": None},
         {"day": 1, "time": "15:50", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 1: Dokumentenanalyse", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 101, "scenario_id": 1},
         {"day": 1, "time": "16:10", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 2: Checklisten-Unterstützung (VKO)", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 102, "scenario_id": 2},
         {"day": 1, "time": "16:30", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 3: Halluzinations-Demo (RAG)", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 103, "scenario_id": 3},
@@ -467,6 +493,7 @@ def create_agenda_item(data: AgendaItemCreate, request: Request, pin: str = "", 
         note=data.note,
         category=data.category,
         scenario_id=data.scenario_id,
+        page_url=data.page_url,
         sort_order=max_order,
     )
     db.add(item)
@@ -666,3 +693,77 @@ def list_all_topics(request: Request, pin: str = "", db: Session = Depends(get_d
             for t in topics
         ],
     }
+
+
+# ── Icebreaker-Fragen (Vorstellungsrunde) ──────────────────────────────────
+
+_ICEBREAKER_DEFAULTS = [
+    {"label": "Ihr Name", "hint": "Vor- und Nachname", "icon_name": "Users", "color": "blue", "sort_order": 0},
+    {"label": "Organisation & Bundesland", "hint": "Welche Institution vertreten Sie? Aus welchem Bundesland?", "icon_name": "Building2", "color": "emerald", "sort_order": 1},
+    {"label": "Ihre Rolle", "hint": "Welche Aufgabe haben Sie in der Pruefbehoerde?", "icon_name": "Briefcase", "color": "amber", "sort_order": 2},
+    {"label": "Erfahrung mit KI / LLMs", "hint": "Haben Sie bereits mit KI-Tools gearbeitet? ChatGPT, Copilot, ...?", "icon_name": "Cpu", "color": "violet", "sort_order": 3},
+    {"label": "Erwartungen an den Workshop", "hint": "Was moechten Sie heute mitnehmen? Welche Fragen bringen Sie mit?", "icon_name": "Target", "color": "rose", "sort_order": 4},
+]
+
+
+def _seed_icebreaker(db: Session) -> None:
+    """Erstellt Default-Icebreaker-Fragen (nur wenn leer)."""
+    if db.query(IcebreakerQuestion).count() > 0:
+        return
+    for q in _ICEBREAKER_DEFAULTS:
+        db.add(IcebreakerQuestion(**q))
+    db.commit()
+    log.info("Default-Icebreaker-Fragen erstellt (%d).", len(_ICEBREAKER_DEFAULTS))
+
+
+@router.get("/icebreaker", response_model=list[IcebreakerOut])
+def get_icebreaker(db: Session = Depends(get_db)):
+    """Oeffentlich: Icebreaker-Fragen fuer die Vorstellungsrunde."""
+    _seed_icebreaker(db)
+    return db.query(IcebreakerQuestion).order_by(IcebreakerQuestion.sort_order).all()
+
+
+@router.post("/admin/icebreaker", response_model=IcebreakerOut, status_code=201)
+def create_icebreaker(data: IcebreakerCreate, request: Request, pin: str = "", db: Session = Depends(get_db)):
+    _check_moderator(request, pin, db)
+    max_order = db.query(IcebreakerQuestion).count()
+    q = IcebreakerQuestion(label=data.label, hint=data.hint, icon_name=data.icon_name, color=data.color, sort_order=max_order)
+    db.add(q)
+    db.commit()
+    db.refresh(q)
+    return q
+
+
+@router.put("/admin/icebreaker/{q_id}", response_model=IcebreakerOut)
+def update_icebreaker(q_id: str, data: IcebreakerUpdate, request: Request, pin: str = "", db: Session = Depends(get_db)):
+    _check_moderator(request, pin, db)
+    q = db.query(IcebreakerQuestion).filter(IcebreakerQuestion.id == q_id).first()
+    if not q:
+        raise HTTPException(404, "Frage nicht gefunden.")
+    for key, val in data.model_dump(exclude_unset=True).items():
+        setattr(q, key, val)
+    db.commit()
+    db.refresh(q)
+    return q
+
+
+@router.delete("/admin/icebreaker/{q_id}", status_code=204)
+def delete_icebreaker(q_id: str, request: Request, pin: str = "", db: Session = Depends(get_db)):
+    _check_moderator(request, pin, db)
+    q = db.query(IcebreakerQuestion).filter(IcebreakerQuestion.id == q_id).first()
+    if not q:
+        raise HTTPException(404, "Frage nicht gefunden.")
+    db.delete(q)
+    db.commit()
+
+
+@router.put("/admin/icebreaker/reorder")
+def reorder_icebreaker(order: list[str], request: Request, pin: str = "", db: Session = Depends(get_db)):
+    """Reihenfolge der Icebreaker-Fragen aktualisieren."""
+    _check_moderator(request, pin, db)
+    for idx, q_id in enumerate(order):
+        q = db.query(IcebreakerQuestion).filter(IcebreakerQuestion.id == q_id).first()
+        if q:
+            q.sort_order = idx
+    db.commit()
+    return {"status": "reordered"}
