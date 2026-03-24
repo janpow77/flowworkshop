@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Send, Sparkles, FolderOpen, Loader2, Database, ShieldCheck, Building2,
@@ -59,12 +59,35 @@ const SCENARIO_INFO: Record<number, {
   },
   6: {
     title: 'Begünstigtenverzeichnis',
-    description: 'Analyse des hessischen EFRE-Begünstigtenverzeichnisses mit statistischen Auswertungen.',
+    description: 'Laden Sie Begünstigtenverzeichnisse beliebiger Bundesländer hoch. Die KI erstellt statistische Auswertungen, die Karte zeigt die Förderverteilung.',
     placeholder: 'z.B. "Welche Kommunen erhalten die höchste Förderung?"',
     accent: 'from-rose-700 via-orange-700 to-amber-600',
     eyebrow: 'Raumbezogene Förderanalyse',
     hint: 'Laden Sie ein Begünstigtenverzeichnis als XLSX hoch. Die Karte wird automatisch befüllt.',
   },
+};
+
+const DEMO_QUESTIONS: Record<number, string[]> = {
+  1: [
+    'Welche Auflagen enthält der Bescheid?',
+    'Welche Fristen sind einzuhalten?',
+    'Welche Nachweise sind vorzulegen?',
+  ],
+  3: [
+    'Welche Schwellenwerte gelten für die Vergabe nach VO 2021/1060?',
+    'Was regelt Art. 74 der Dachverordnung zur Verwaltungsprüfung?',
+    'Wann muss eine Finanzkorrektion nach Art. 104 verhängt werden?',
+  ],
+  4: [
+    'Vergabevermerk fehlt. Publizitätspflichten nach Art. 50 nicht eingehalten.',
+    'Zuwendungsbescheid-Auflagen Nr. 3 und 7 nicht erfüllt. Belege unvollständig.',
+    'Doppelförderung bei Personalkosten festgestellt. Keine Abgrenzung der Zeiträume.',
+  ],
+  6: [
+    'Welche Kommunen erhalten die höchste Förderung?',
+    'Wie verteilt sich die Fördersumme auf die Bundesländer?',
+    'Welche Branchen werden am stärksten gefördert?',
+  ],
 };
 
 export default function ScenarioPage() {
@@ -86,6 +109,22 @@ export default function ScenarioPage() {
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [splitResponses, setSplitResponses] = useState<{without?: string; with?: string}>({});
   const controllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { controllerRef.current?.abort(); };
+  }, []);
+
+  // Draft saving
+  const draftKey = `scenario_draft_${num}`;
+  useEffect(() => {
+    const saved = localStorage.getItem(draftKey);
+    if (saved && !prompt) setPrompt(saved);
+  }, [num]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (prompt) localStorage.setItem(draftKey, prompt);
+    else localStorage.removeItem(draftKey);
+  }, [prompt, draftKey]);
 
   const handleSubmit = useCallback(() => {
     if (!prompt.trim() || streaming) return;
@@ -126,6 +165,45 @@ export default function ScenarioPage() {
     controllerRef.current?.abort();
     setStreaming(false);
   };
+
+  const handleAutoCompare = useCallback(async () => {
+    if (!prompt.trim() || streaming) return;
+    setSplitResponses({});
+
+    // First: without context
+    setWithContext(false);
+    setResponse('');
+    setStreaming(true);
+    setError(undefined);
+
+    const runQuery = (withCtx: boolean): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        let accumulated = '';
+        controllerRef.current = streamSSE(
+          '/workshop/stream',
+          { scenario: 3, prompt, documents, with_context: withCtx },
+          (token) => { accumulated += token; setResponse(prev => prev + token); },
+          () => { resolve(accumulated); },
+          (err) => { reject(err); },
+        );
+      });
+    };
+
+    try {
+      const withoutResult = await runQuery(false);
+      setSplitResponses(prev => ({ ...prev, without: withoutResult }));
+
+      // Then: with context
+      setResponse('');
+      setWithContext(true);
+      const withResult = await runQuery(true);
+      setSplitResponses(prev => ({ ...prev, with: withResult }));
+      setStreaming(false);
+    } catch (err) {
+      setStreaming(false);
+      setError(typeof err === 'string' ? err : 'Vergleich fehlgeschlagen.');
+    }
+  }, [prompt, documents, streaming]);
 
   const handleOpenDemoChecklist = async () => {
     setBootstrappingDemo(true);
@@ -259,19 +337,29 @@ export default function ScenarioPage() {
       {num === 6 && <BeneficiaryMap className="mb-2" />}
 
       {num === 3 && (
-        <div className="mb-4 flex items-center gap-3 rounded-[26px] border border-amber-200 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/20">
-          <label className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-300 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={withContext}
-              onChange={(e) => setWithContext(e.target.checked)}
-              className="rounded border-amber-300"
-            />
-            RAG-Kontext aktivieren (Wissensdatenbank)
-          </label>
-          <span className="text-xs text-amber-600 dark:text-amber-400">
-            {withContext ? 'Mit Kontext — reduziert Halluzinationen' : 'Ohne Kontext — zeigt Halluzinationsrisiko'}
-          </span>
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-[26px] border border-amber-200 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/20">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={withContext}
+                onChange={(e) => setWithContext(e.target.checked)}
+                className="rounded border-amber-300"
+              />
+              RAG-Kontext aktivieren (Wissensdatenbank)
+            </label>
+            <span className="text-xs text-amber-600 dark:text-amber-400">
+              {withContext ? 'Mit Kontext — reduziert Halluzinationen' : 'Ohne Kontext — zeigt Halluzinationsrisiko'}
+            </span>
+          </div>
+          <button
+            onClick={handleAutoCompare}
+            disabled={!prompt.trim() || streaming}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-amber-600 px-4 py-2 text-xs font-medium text-white transition hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-amber-500 dark:hover:bg-amber-400"
+          >
+            <RotateCcw size={12} />
+            Vergleich starten
+          </button>
         </div>
       )}
 
@@ -299,6 +387,20 @@ export default function ScenarioPage() {
 
       {num !== 2 && (
         <>
+          {DEMO_QUESTIONS[num] && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {DEMO_QUESTIONS[num].map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPrompt(q)}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-indigo-600 dark:hover:bg-indigo-950/30"
+                >
+                  <Sparkles size={10} />
+                  {q.length > 60 ? q.slice(0, 57) + '\u2026' : q}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="mb-6 flex gap-2">
             <textarea
               value={prompt}

@@ -185,12 +185,12 @@ def _get_meta(db: Session) -> WorkshopMeta:
         meta = WorkshopMeta(
             id=1,
             title="Prüferworkshop der Prüfbehörden 2026",
-            subtitle="KI und LLMs in der EFRE-Prüfbehörde",
+            subtitle="Workshop 5",
             date="05.–07. Mai 2026",
             time="Di ab 12:00, Mi/Do ab 09:00 Uhr",
             location_short="Hannover",
             location_full="Hannover Congress Centrum (HCC), Future Meeting Space, Theodor-Heuss-Platz 1-3, 30175 Hannover",
-            organizer="Hessische Prüfbehörde EFRE",
+            organizer="",
             registration_deadline="25. April 2026",
         )
         db.add(meta)

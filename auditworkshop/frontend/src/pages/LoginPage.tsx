@@ -137,6 +137,9 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
           </div>
         </div>
 
+        <p className="mt-6 text-center text-xs text-blue-200/50">
+          Kontakt: <a href="mailto:jan.riener@wirtschaft.hessen.de" className="text-blue-300/70 hover:text-blue-200 underline transition-colors">jan.riener@wirtschaft.hessen.de</a>
+        </p>
       </div>
     </div>
   );

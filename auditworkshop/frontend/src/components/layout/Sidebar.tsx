@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  Home, FolderOpen, Database, FileSpreadsheet, Sparkles, Building2, Scale,
+  Home, FolderOpen, Database, FileSpreadsheet, Building2, Scale,
   CalendarDays, UserPlus, Settings, Upload,
 } from 'lucide-react';
 
@@ -67,8 +67,25 @@ export default function Sidebar() {
               <p className="text-[11px] uppercase tracking-[0.24em] text-cyan-100/70">Pr&uuml;ferworkshop 2026</p>
               <h1 className="mt-2 text-2xl font-semibold tracking-tight">Pr&uuml;fbeh&ouml;rden</h1>
             </div>
-            <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
-              <Sparkles size={18} className="text-cyan-100" />
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-3 flex items-center justify-center">
+              <svg width="42" height="28" viewBox="0 0 810 540" aria-label="EU" role="img">
+                <rect width="810" height="540" fill="#003399" rx="40"/>
+                {[...Array(12)].map((_, i) => {
+                  const a = (i * 30 - 90) * Math.PI / 180;
+                  const cx = 405 + 130 * Math.cos(a);
+                  const cy = 270 + 130 * Math.sin(a);
+                  return (
+                    <polygon
+                      key={i}
+                      points={[...Array(5)].map((__, j) => {
+                        const sa = (j * 144 - 90) * Math.PI / 180;
+                        return `${cx + 22 * Math.cos(sa)},${cy + 22 * Math.sin(sa)}`;
+                      }).join(' ')}
+                      fill="#FFCC00"
+                    />
+                  );
+                })}
+              </svg>
             </div>
           </div>
           <p className="max-w-xs text-sm leading-6 text-cyan-50/85">

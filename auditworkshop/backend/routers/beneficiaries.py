@@ -36,7 +36,7 @@ async def upload_beneficiary_list(file: UploadFile = File(...)):
         raise HTTPException(422, "Nur XLSX/XLS-Dateien werden akzeptiert.")
 
     # 1. Metadaten erkennen
-    metadata = _detect_metadata(content, ext)
+    metadata = _detect_metadata(content, ext, source=file.filename)
     bundesland = metadata.get("bundesland") or "unbekannt"
     fonds = (metadata.get("fonds") or "EFRE").lower()
     periode = metadata.get("periode") or ""
@@ -61,7 +61,14 @@ async def upload_beneficiary_list(file: UploadFile = File(...)):
     # 4. Als DataFrame einlesen (smart header detection)
     # Versuche verschiedene Blätter (oft heißt das erste "Liste der Vorhaben" o.ä.)
     result = None
-    for sheet in [0, "Liste der Vorhaben", "Vorhaben", "Begünstigte", "Sheet1"]:
+    for sheet in [
+        0,
+        "Liste der Vorhaben", "Vorhaben", "Begünstigte",
+        "Transparenzliste", "Beneficiaries", "Förderempfänger",
+        "Daten", "Data", "Übersicht", "Overview",
+        "EFRE", "ESF", "JTF", "ELER",
+        "Sheet1", "Tabelle1", "Blatt1",
+    ]:
         try:
             result = ingest_dataframe(
                 content,
@@ -160,6 +167,14 @@ def search_beneficiaries(
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc))
+
+
+@router.get("/nuts")
+def get_nuts_regions():
+    """Gibt alle deutschen NUTS-3 Regionen zurueck."""
+    from services.geocoding_service import _load_nuts
+    nuts = _load_nuts()
+    return {"count": len(nuts), "regions": nuts}
 
 
 @router.delete("/{source}")

@@ -1,0 +1,196 @@
+{
+  "_info": "Oeffentliche Transparenzlisten gemaess Art. 49 VO (EU) 2021/1060. URLs fuer Workshop-Vorbereitung.",
+  "_updated": "2026-03-23",
+  "sources": [
+    {
+      "bundesland": "Baden-Wuerttemberg",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": "https://2021-27.efre-bw.de/wp-content/uploads/Liste-der-Vorhaben_31-12-2024.xlsx",
+      "portal": "https://2021-27.efre-bw.de/liste-der-vorhaben/",
+      "status": "ok",
+      "rows": 163,
+      "notes": null
+    },
+    {
+      "bundesland": "Bayern",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://www.stmwi.bayern.de/efre",
+      "status": "todo",
+      "rows": null,
+      "notes": "Bayern EFRE Verwaltungsbehoerde, Transparenzliste als XLSX auf Portal verfuegbar"
+    },
+    {
+      "bundesland": "Berlin",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": "https://www.berlin.de/sen/wirtschaft/gruenden-und-foerdern/europaeische-strukturfonds/efre-foerderperiode-2021-2027/projekte/liste_der_vorhaben_stand_2025-10-31.xlsx",
+      "portal": "https://www.berlin.de/sen/wirtschaft/gruenden-und-foerdern/europaeische-strukturfonds/efre-foerderperiode-2021-2027/projekte/",
+      "status": "ok",
+      "rows": 715,
+      "notes": null
+    },
+    {
+      "bundesland": "Brandenburg",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://efre.brandenburg.de/efre/de/kommunikation/beguenstigte-der-efre-foerderung/",
+      "status": "manual_download",
+      "rows": null,
+      "notes": "XLSX-Datei auf Portal verfuegbar, URL aendert sich mit jedem Update"
+    },
+    {
+      "bundesland": "Brandenburg",
+      "fonds": "JTF",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://efre.brandenburg.de/efre/de/kommunikation/beguenstigte-der-efre-foerderung/",
+      "status": "manual_download",
+      "rows": 10,
+      "notes": "XLSX-Datei auf Portal verfuegbar, URL aendert sich mit jedem Update"
+    },
+    {
+      "bundesland": "Bremen",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://www.transparenz.bremen.de/metainformationen/liste-der-vorhaben-efre-foerderperiode-2021-2027-253729",
+      "status": "todo",
+      "rows": null,
+      "notes": "Verfuegbar auf Bremer Transparenzportal"
+    },
+    {
+      "bundesland": "Hamburg",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": null,
+      "status": "todo",
+      "rows": null,
+      "notes": null
+    },
+    {
+      "bundesland": "Hessen",
+      "fonds": "EFRE",
+      "periode": "2014-2020",
+      "url": null,
+      "portal": "https://wirtschaft.hessen.de/Wirtschaft/EFRE-Europaeischer-Strukturfonds",
+      "status": "preloaded",
+      "rows": 182,
+      "notes": "Bereits als transparenzliste_hessen.xlsx im data-Verzeichnis"
+    },
+    {
+      "bundesland": "Hessen",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://wirtschaft.hessen.de/Wirtschaft/EFRE-Europaeischer-Strukturfonds",
+      "status": "preloaded",
+      "rows": 12,
+      "notes": "Bereits als transparenzliste_esf_hessen.xlsx im data-Verzeichnis"
+    },
+    {
+      "bundesland": "Mecklenburg-Vorpommern",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": null,
+      "status": "todo",
+      "rows": null,
+      "notes": null
+    },
+    {
+      "bundesland": "Niedersachsen",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": "https://www.europa-fuer-niedersachsen.niedersachsen.de/download/221566/Liste_der_Vorhaben_2021-2027_Multifonds_EFRE_Stand_31.05.2025.xlsx.xlsx",
+      "portal": "https://www.europa-fuer-niedersachsen.niedersachsen.de/",
+      "status": "ok",
+      "rows": 713,
+      "notes": null
+    },
+    {
+      "bundesland": "Niedersachsen",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://www.europa-fuer-niedersachsen.niedersachsen.de/download/221567/Liste_der_Vorhaben_2021-2027_Multifonds_ESF_Stand_31.05.2025.xlsx.xlsx",
+      "portal": "https://www.europa-fuer-niedersachsen.niedersachsen.de/",
+      "status": "ok",
+      "rows": 681,
+      "notes": null
+    },
+    {
+      "bundesland": "Nordrhein-Westfalen",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://www.efre.nrw/",
+      "status": "todo",
+      "rows": null,
+      "notes": "EFRE.NRW Portal pruefen fuer XLSX-Download"
+    },
+    {
+      "bundesland": "Rheinland-Pfalz",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://efre.rlp.de/foerderperiode-2021-2027",
+      "status": "todo",
+      "rows": null,
+      "notes": null
+    },
+    {
+      "bundesland": "Saarland",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": null,
+      "status": "todo",
+      "rows": null,
+      "notes": null
+    },
+    {
+      "bundesland": "Sachsen",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://www.strukturfonds.sachsen.de/liste-der-vorhaben-4520.html",
+      "status": "manual_download",
+      "rows": null,
+      "notes": "ZIP-Datei mit XLS, URL aendert sich mit jedem Update"
+    },
+    {
+      "bundesland": "Sachsen-Anhalt",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://eufonds.sachsen-anhalt.de/",
+      "status": "todo",
+      "rows": null,
+      "notes": null
+    },
+    {
+      "bundesland": "Schleswig-Holstein",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": "https://www.ib-sh.de/fileadmin/user_upload/downloads/arbeitsmarkt_strukturfoerderung/strukturfoerderung/lpw_21-27/allgemein/20240404_listedervorhaben_efre_bf.xlsx",
+      "portal": "https://www.ib-sh.de/infoseite/das-efre-programm-2021-2027-in-schleswig-holstein/",
+      "status": "404",
+      "rows": null,
+      "notes": "URL lieferte 404 am 2026-03-23, Portal pruefen fuer aktualisierten Link"
+    },
+    {
+      "bundesland": "Thueringen",
+      "fonds": "EFRE",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://efre-thueringen.de/",
+      "status": "todo",
+      "rows": null,
+      "notes": "Aufbaubank Thueringen oder EFRE-Portal pruefen"
+    }
+  ]
+}

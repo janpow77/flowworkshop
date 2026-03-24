@@ -12,7 +12,7 @@ MODEL_NAME    = os.getenv("MODEL_NAME",    "qwen3:14b")
 # Installieren: ollama pull mistral:7b
 WORKSHOP_ADMIN = os.getenv("WORKSHOP_ADMIN", "false").lower() == "true"
 ALLOW_REMOTE_GEOCODING = os.getenv("ALLOW_REMOTE_GEOCODING", "false").lower() == "true"
-ALLOW_REMOTE_TILES = os.getenv("ALLOW_REMOTE_TILES", "false").lower() == "true"
+ALLOW_REMOTE_TILES = os.getenv("ALLOW_REMOTE_TILES", "true").lower() == "true"
 
 # ── Embedding ──────────────────────────────────────────────────────────────
 EMBEDDING_MODEL = "paraphrase-multilingual-mpnet-base-v2"

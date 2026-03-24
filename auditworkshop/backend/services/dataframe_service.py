@@ -281,7 +281,7 @@ def ingest_dataframe(
     # Metadaten aus Titelzeilen extrahieren (Bundesland, Fonds, Periode)
     metadata = {}
     if ext in ("xlsx", "xls", "xlsm"):
-        metadata = _detect_metadata(file_bytes, ext, sheet_name)
+        metadata = _detect_metadata(file_bytes, ext, sheet_name, source=filename)
 
     # In PostgreSQL speichern (replace = DROP + CREATE)
     df.to_sql(table_name, engine, if_exists="replace", index=False)
@@ -332,7 +332,7 @@ def _read_excel_smart(file_bytes: bytes, ext: str, sheet_name: str | int | None 
     candidates = []
 
     for i, row in enumerate(ws.iter_rows(values_only=True)):
-        if i > 20:
+        if i > 30:
             break
         cells = [c for c in row if c is not None]
         non_empty = [str(c).strip() for c in cells if str(c).strip()]
@@ -415,10 +415,16 @@ PERIODEN = ["2014-2020", "2021-2027", "2014–2020", "2021–2027",
             "21-27", "14-20", "2028-2034"]
 
 
-def _detect_metadata(file_bytes: bytes, ext: str, sheet_name: str | int | None = 0) -> dict:
+def _detect_metadata(
+    file_bytes: bytes,
+    ext: str,
+    sheet_name: str | int | None = 0,
+    source: str | None = None,
+) -> dict:
     """
     Erkennt Bundesland, Fonds und Foerderperiode aus den Titelzeilen einer XLSX.
-    Liest die ersten 10 Zeilen VOR dem Daten-Header.
+    Liest die ersten 15 Zeilen VOR dem Daten-Header.
+    Falls nichts erkannt wird, wird der Dateiname (source) als Fallback herangezogen.
     """
     import openpyxl
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
@@ -430,10 +436,10 @@ def _detect_metadata(file_bytes: bytes, ext: str, sheet_name: str | int | None =
     else:
         ws = wb.worksheets[0]
 
-    # Alle Texte aus den ersten 10 Zeilen sammeln
+    # Alle Texte aus den ersten 15 Zeilen sammeln
     title_text = ""
     for i, row in enumerate(ws.iter_rows(values_only=True)):
-        if i > 10:
+        if i > 15:
             break
         for c in row:
             if c is not None:
@@ -475,6 +481,30 @@ def _detect_metadata(file_bytes: bytes, ext: str, sheet_name: str | int | None =
             if f.lower() in title_text_lower:
                 result["fonds"] = f
                 break
+
+    # Fallback: Bundesland und Fonds aus Dateinamen erkennen
+    # Greift z.B. bei "transparenzliste_sachsen_efre.xlsx" oder "Begünstigte_NRW_2021-2027.xlsx"
+    if source:
+        source_lower = source.lower()
+        if not result["bundesland"]:
+            for bl in BUNDESLAENDER:
+                if bl.lower().replace("-", "_").replace(" ", "_") in source_lower.replace("-", "_"):
+                    clean = bl.replace("Freistaat ", "")
+                    result["bundesland"] = clean
+                    break
+        if not result["fonds"]:
+            for f in FONDS:
+                if f.lower() in source_lower:
+                    result["fonds"] = f.upper()
+                    break
+        if not result["periode"]:
+            for p in PERIODEN:
+                p_normalized = p.replace("–", "-")
+                if p_normalized in source or p_normalized.replace("-", "_") in source_lower:
+                    result["periode"] = p_normalized
+                    if len(result["periode"]) <= 5:
+                        result["periode"] = "20" + result["periode"]
+                    break
 
     return result
 

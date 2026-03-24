@@ -15,8 +15,8 @@ test.describe('B: Agenda (Public Route)', () => {
 
   test('Agenda-Seite laedt ohne Fehler', async ({ page }) => {
     await assertNoErrorBoundary(page);
-    // Header mit Meta-Infos sollte sichtbar sein
-    await expect(page.getByText('Prueferworkshop der Pruefbehoerden 2026')).toBeVisible({ timeout: 10000 });
+    // Header mit Meta-Infos sollte sichtbar sein (echte Umlaute im UI)
+    await expect(page.getByRole('heading', { name: /Prüferworkshop der Prüfbehörden 2026/ })).toBeVisible({ timeout: 10000 });
   });
 
   test('Zeigt 3 Tage: Dienstag, Mittwoch, Donnerstag', async ({ page }) => {
@@ -51,7 +51,7 @@ test.describe('B: Agenda (Public Route)', () => {
   });
 
   test('Anmelden-Button ist sichtbar und fuehrt zu /register', async ({ page }) => {
-    await expect(page.getByText('Prueferworkshop der Pruefbehoerden 2026')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /Prüferworkshop der Prüfbehörden 2026/ })).toBeVisible({ timeout: 10000 });
     const registerLink = page.getByRole('link', { name: 'Anmelden' });
     await expect(registerLink).toBeVisible();
     await registerLink.click();
@@ -59,27 +59,23 @@ test.describe('B: Agenda (Public Route)', () => {
   });
 
   test('Meta-Informationen werden angezeigt', async ({ page }) => {
-    await expect(page.getByText('Prueferworkshop der Pruefbehoerden 2026')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /Prüferworkshop der Prüfbehörden 2026/ })).toBeVisible({ timeout: 10000 });
     // Ort und Datum
     await expect(page.getByText('Hannover').first()).toBeVisible();
     await expect(page.getByText('Mai 2026', { exact: false }).first()).toBeVisible();
   });
 
-  test('Themenboard-Bereich ist vorhanden', async ({ page }) => {
+  test('Wichtige Adressen und Programm-Bereiche sind vorhanden', async ({ page }) => {
     await expect(page.getByText('Dienstag')).toBeVisible({ timeout: 10000 });
 
-    // Themenboard wird weiter unten auf der Seite angezeigt
-    // Pruefen ob mindestens ein Topic sichtbar ist oder der Bereich existiert
-    const topicSection = page.getByText('Themenvorschl', { exact: false });
-    // Scrollen um den Bereich sichtbar zu machen
+    // Scrollen um untere Bereiche sichtbar zu machen
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.waitForTimeout(500);
 
-    // Es gibt entweder Topics oder den Abschnitt
-    const hasTopics = await topicSection.isVisible().catch(() => false);
-    // Alternativ: pruefen ob bekannte Topics da sind
-    const hasKnownTopic = await page.getByText('KI im Vergaberecht', { exact: false }).isVisible().catch(() => false);
+    // "Wichtige Adressen"-Bereich oder "Eingereichte Themen" sollte sichtbar sein
+    const hasAddresses = await page.getByText('Wichtige Adressen', { exact: false }).isVisible().catch(() => false);
+    const hasTopics = await page.getByText('Eingereichte Themen', { exact: false }).isVisible().catch(() => false);
 
-    expect(hasTopics || hasKnownTopic).toBeTruthy();
+    expect(hasAddresses || hasTopics).toBeTruthy();
   });
 });

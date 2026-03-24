@@ -24,16 +24,57 @@ log = logging.getLogger(__name__)
 _cache: dict[str, dict | None] = {}
 _last_request_time = 0.0
 
+# ── NUTS-3 Zuordnung ─────────────────────────────────────────────────────────
+
+_nuts_data: dict | None = None
+
+
+def _load_nuts() -> dict:
+    """Laedt die NUTS-3 Regionsdaten aus der JSON-Datei."""
+    global _nuts_data
+    if _nuts_data is None:
+        nuts_path = Path(__file__).parent.parent / "data" / "nuts_de.json"
+        if nuts_path.exists():
+            _nuts_data = json.loads(nuts_path.read_text(encoding="utf-8"))
+            log.info("NUTS-Daten geladen: %d Regionen", len(_nuts_data))
+        else:
+            _nuts_data = {}
+    return _nuts_data
+
+
+def lookup_nuts(lat: float, lon: float) -> dict | None:
+    """Findet die naechste NUTS-3 Region fuer gegebene Koordinaten (einfache Distanzsuche)."""
+    nuts = _load_nuts()
+    if not nuts:
+        return None
+    best_code = None
+    best_dist = float('inf')
+    for code, info in nuts.items():
+        dlat = lat - info["lat"]
+        dlon = lon - info["lon"]
+        dist = dlat * dlat + dlon * dlon
+        if dist < best_dist:
+            best_dist = dist
+            best_code = code
+    if best_code and best_dist < 0.5:  # ~50km Radius
+        info = nuts[best_code]
+        return {"nuts3": best_code, "region": info["name"], "bundesland": info["bundesland"]}
+    return None
+
 # ── Spalten-Erkennung ─────────────────────────────────────────────────────────
 # Patterns fuer automatische Zuordnung von Spalten in beliebigen Verzeichnissen
 
 COLUMN_PATTERNS = {
     "name": [
-        r"name.*begünstig", r"name.*auftrag", r"begünstig", r"beneficiary",
+        r"^name_des",  # Abgeschnittenes "Name des Begünstigten"
+        r"name.*begünstig", r"name.*auftrag",
+        r"(?:name|bezeichnung).*begünstig",  # Erfordert "name"/"bezeichnung" vor "begünstig"
+        r"beneficiary",
         r"contractor", r"zuwendungsempf", r"antragsteller", r"beguenstig",
         r"unternehmen", r"company", r"entity", r"organisation", r"organization",
         r"recipient", r"beneficiar", r"undertaking", r"subject.*name",
         r"entity.*name", r"beneficiary.*name", r"company.*name", r"name$",
+        r"förderempf", r"empf.*name", r"leistungsempf", r"firma", r"name.*firma",
     ],
     "projekt": [
         r"bezeichnung$", r"bezeichnung.*vorhaben", r"operation.*name",
@@ -44,15 +85,33 @@ COLUMN_PATTERNS = {
     "kosten": [
         r"förderf.*gesamt.*kosten", r"total.*cost", r"gesamtkosten",
         r"fördersumme", r"zuwendung.*betrag", r"bruttobetrag",
+        r"betrag", r"summe", r"zuschuss", r"eu.*beteiligung", r"eu.*beitrag",
+        r"amount", r"grant", r"funding", r"kofinanzierung", r"co.*finanz",
+        r"total.*eligible", r"eligible.*cost", r"public.*support", r"union.*support",
     ],
     "standort": [
+        r"standortindikator", r"standort.*plz", r"standort.*ort",  # Spezifischste zuerst
+        r"investitionsort",
+        r"ort.*begünstig", r"ort.*vorhaben",
+        r"location.*indicator", r"geolocation", r"geolokalisierung",
         r"standort", r"location", r"adresse", r"plz.*ort", r"anschrift", r"sitz",
-        r"address", r"region", r"city", r"municipality", r"nuts",
+        r"address", r"city", r"municipality",
+        r"einsatzort", r"betriebsst", r"verwaltungssitz", r"firmensitz",
+        r"hauptsitz", r"werk.*ort", r"street|straße|strasse", r"postanschrift",
+        r"nuts",  # NUTS-Spalte als letzter Fallback
     ],
     # Separate PLZ- und Ort-Spalten (werden bei Bedarf kombiniert)
-    "plz": [r"^plz$", r"postleitzahl"],
-    "ort": [r"^ort$", r"^stadt$", r"^gemeinde$", r"^kommune$"],
-    "landkreis": [r"landkreis", r"kreis", r"region"],
+    "plz": [r"^plz\b", r"postleitzahl", r"postal.*code", r"zip", r"postcode"],
+    "ort": [
+        r"^ort$", r"^stadt$", r"^gemeinde$", r"^kommune$",
+        r"ortschaft", r"wohnort", r"sitz.*ort", r"ort.*stadt",
+        r"town", r"city", r"municipality", r"gemeindename",
+    ],
+    "landkreis": [
+        r"landkreis", r"kreis", r"^region$",
+        r"bezirk", r"verwaltungsbezirk", r"distrikt", r"district",
+        r"kreis.*frei", r"regierungsbezirk", r"gebiet",
+    ],
     "sz": [
         r"spezifisches.*ziel", r"specific.*objective", r"priorit",
         r"interventions.*bereich", r"intervention.*field",
@@ -75,12 +134,15 @@ COLUMN_PATTERNS = {
 
 
 def _find_column(columns: list[str], role: str) -> str | None:
-    """Findet die passende Spalte fuer eine Rolle (name, standort, etc.)."""
+    """Findet die passende Spalte fuer eine Rolle (name, standort, etc.).
+    Patterns frueher in der Liste haben hoehere Prioritaet.
+    Bei mehreren Treffern fuer dasselbe Pattern wird die kuerzeste Spalte bevorzugt."""
     patterns = COLUMN_PATTERNS.get(role, [])
     for pattern in patterns:
-        for col in columns:
-            if re.search(pattern, col, re.IGNORECASE):
-                return col
+        candidates = [col for col in columns if re.search(pattern, col, re.IGNORECASE)]
+        if candidates:
+            # Bei mehreren Treffern: kuerzeste Spalte bevorzugen (= spezifischster Match)
+            return min(candidates, key=len)
     return None
 
 
@@ -139,19 +201,48 @@ def _parse_location(standort: str) -> tuple[str, str]:
       - '63477 Maintal'
       - 'Frankfurt am Main'
       - 'Kassel, Hessen'
+      - 'Landkreis Fulda, Hessen'
+      - 'LK Schmalkalden-Meiningen'
+      - 'Kreis Offenbach'
     """
     standort = standort.strip()
-    # PLZ + Ort extrahieren
-    m = re.match(r"(\d{4,5})\s+(.+)", standort)
+    if not standort:
+        return ("", "")
+
+    # Landkreis/Kreis-Prefix entfernen
+    standort_clean = re.sub(
+        r'^(?:Landkreis|LK|Kreis|Bezirk|Verwaltungsbezirk|Regierungsbezirk|Stadtkreis|SK)\s+',
+        '', standort, flags=re.IGNORECASE
+    ).strip()
+
+    # PLZ + Ort extrahieren (Formate: "63477 Maintal", "10625 - Berlin", "63477 Maintal / Straße")
+    m = re.match(r"(\d{4,5})\s*[-–]?\s*(.+)", standort_clean)
     if m:
         plz = m.group(1)
-        rest = m.group(2)
-        # Ort vor '/' oder '-' nehmen
-        ort = re.split(r"\s*/\s*|\s*-\s*", rest)[0].strip()
-        return (f"{plz} {ort}", "Deutschland")
+        rest = m.group(2).lstrip("- –").strip()
+        # Ort vor '/' oder ',' nehmen (Straße/Ortsteil abschneiden)
+        # NICHT auf '-' splitten wenn es der Stadtname selbst ist (z.B. "Frankfurt-Höchst")
+        ort = re.split(r"\s*/\s*|\s*,\s*", rest)[0].strip()
+        if ort:
+            return (f"{plz} {ort}", "Deutschland")
 
-    # Kein PLZ — Ort direkt
-    ort = re.split(r"\s*/\s*", standort)[0].strip()
+    # NUTS-Code erkennen (z.B. "DE714" → ignorieren, nur Ort suchen)
+    nuts_match = re.match(r'^DE[0-9A-G][0-9A-Z]{1,2}\s*(.*)', standort_clean)
+    if nuts_match and nuts_match.group(1):
+        standort_clean = nuts_match.group(1).strip()
+
+    # Kein PLZ — Ort direkt, Komma-Suffix (Bundesland) entfernen fuer Suche
+    ort = re.split(
+        r"\s*/\s*|\s*,\s*(?:Deutschland|Germany|Hessen|Bayern|Sachsen|Brandenburg|NRW"
+        r"|Niedersachsen|Thüringen|Sachsen-Anhalt|Mecklenburg-Vorpommern"
+        r"|Baden-Württemberg|Rheinland-Pfalz|Schleswig-Holstein|Saarland"
+        r"|Berlin|Hamburg|Bremen)\s*$",
+        standort_clean, flags=re.IGNORECASE
+    )[0].strip()
+
+    if not ort:
+        ort = standort_clean
+
     return (ort, "Deutschland")
 
 
@@ -172,6 +263,19 @@ def geocode_single(standort: str) -> dict | None:
     search_term, country = _parse_location(standort)
     if not search_term:
         return None
+
+    # Fallback: Wenn "PLZ Ort" nicht im Cache, versuche nur "Ort"
+    # z.B. "10625 Berlin" → fallback auf "berlin"
+    search_lower = search_term.strip().lower()
+    if search_lower != cache_key and search_lower in _cache:
+        result = _cache[search_lower]
+        _cache[cache_key] = result  # Cache auch unter Original-Key
+        return result
+    ort_only = re.sub(r'^\d{4,5}\s*', '', search_lower).strip()
+    if ort_only and ort_only != search_lower and ort_only in _cache:
+        result = _cache[ort_only]
+        _cache[cache_key] = result  # Cache auch unter Original-Key
+        return result
 
     if not ALLOW_REMOTE_GEOCODING:
         return None
@@ -322,6 +426,11 @@ def get_beneficiary_map_data(source: str) -> dict:
                 "kosten": float(row_dict["kosten"]) if "kosten" in row_dict and row_dict["kosten"] is not None else 0,
                 "kategorie": str(row_dict.get("kategorie", ""))[:50],
             }
+            # NUTS-3 Zuordnung
+            nuts_info = lookup_nuts(geo["lat"], geo["lon"])
+            if nuts_info:
+                entry["nuts3"] = nuts_info["nuts3"]
+                entry["region"] = nuts_info["region"]
             results.append(entry)
 
     return {

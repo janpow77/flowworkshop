@@ -231,14 +231,9 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
       )}
 
       {profile && profile.privacy_mode && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-300">
-          <div className="flex items-center gap-2 font-medium">
-            <ShieldCheck size={16} />
-            Datenschutzmodus aktiv
-          </div>
-          <p className="mt-1 leading-6">
-            Externe Tile- und Geocoding-Dienste sind deaktiviert. Die Karte nutzt nur lokal vorhandene Koordinaten aus dem Cache.
-          </p>
+        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-1">
+          <ShieldCheck size={12} />
+          <span>Geocoding nutzt lokalen Cache · Karten-Tiles via OpenStreetMap</span>
         </div>
       )}
 
@@ -289,13 +284,11 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
           </div>
 
           <div className="beneficiary-map-shell h-[500px]">
-            <MapContainer center={[51.0, 10.5]} zoom={6} className={`h-full w-full ${profile?.allow_remote_tiles ? '' : 'privacy-map'}`} scrollWheelZoom={true}>
-              {profile?.allow_remote_tiles && (
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-              )}
+            <MapContainer center={[51.0, 10.5]} zoom={6} className="h-full w-full" scrollWheelZoom={true}>
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
               {points.length > 0 && <FitBounds points={points} />}
               {filtered.map((b, i) => (
                 <CircleMarker key={`${b.lat}-${b.lon}-${i}`} center={[b.lat, b.lon]}
