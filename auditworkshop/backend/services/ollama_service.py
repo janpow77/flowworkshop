@@ -178,6 +178,12 @@ async def _stream_via_gateway(
     system_prompt: str,
     documents: list[str],
 ) -> AsyncGenerator[str, None]:
+    """Echtes Streaming ueber den egpu-manager LLM Gateway.
+
+    Sendet stream=True an den Gateway, der die Upstream-SSE 1:1 durchreicht.
+    Jeder OpenAI-Chunk wird sofort als Workshop-SSE-Event weitergegeben.
+    Unterstuetzt delta.content UND delta.reasoning_content (qwen3/qwq).
+    """
     model = await _resolve_model()
     full_prompt = _build_prompt(user_prompt, system_prompt, documents)
     t_start = time.monotonic()
@@ -188,38 +194,62 @@ async def _stream_via_gateway(
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": full_prompt},
         ],
-        "stream": False,
+        "stream": True,
         "temperature": LLM_TEMPERATURE,
         "workload_type": EGPU_WORKLOAD_TYPE,
     }
 
+    token_count = 0
+    model_name = model
+
     for attempt in range(3):
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(10, read=300)) as client:
-                resp = await client.post(
+                async with client.stream(
+                    "POST",
                     f"{EGPU_GATEWAY_URL}/api/llm/chat/completions",
                     json=payload,
                     headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
-                )
-                if resp.status_code >= 400:
-                    raise RuntimeError(_extract_gateway_error(resp))
+                ) as resp:
+                    if resp.status_code >= 400:
+                        body = await resp.aread()
+                        raise RuntimeError(
+                            f"Gateway HTTP {resp.status_code}: {body.decode(errors='replace')}"
+                        )
 
-                data = resp.json()
-                choice = (data.get("choices") or [{}])[0]
-                message = choice.get("message") or {}
-                content = message.get("content", "")
-                if not content:
-                    raise RuntimeError("Leere Gateway-Antwort")
+                    async for line in resp.aiter_lines():
+                        line = line.strip()
+                        if not line or line.startswith(":"):
+                            continue
+                        if not line.startswith("data:"):
+                            continue
 
-                usage = data.get("usage") or {}
-                token_count = int(
-                    usage.get("completion_tokens") or len(re.findall(r"\S+", content))
-                )
-                model_name = data.get("model") or model
+                        data_str = line[5:].strip()  # "data: ..." oder "data:..."
+                        if data_str == "[DONE]":
+                            break
 
-                for chunk in _chunk_text(content):
-                    yield f"data: {json.dumps({'token': chunk, 'done': False})}\n\n"
-                    await asyncio.sleep(0)
+                        try:
+                            chunk = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+
+                        model_name = chunk.get("model", model_name)
+
+                        for choice in chunk.get("choices", []):
+                            delta = choice.get("delta", {})
+                            # content und reasoning_content zusammenfuehren
+                            token = delta.get("content") or delta.get(
+                                "reasoning_content", ""
+                            )
+                            if token:
+                                token_count += 1
+                                yield f"data: {json.dumps({'token': token, 'done': False})}\n\n"
+
+                            # Token-Count aus usage im letzten Chunk uebernehmen
+                            if choice.get("finish_reason"):
+                                usage = chunk.get("usage") or {}
+                                if usage.get("completion_tokens"):
+                                    token_count = int(usage["completion_tokens"])
 
                 elapsed = round(time.monotonic() - t_start, 1)
                 tok_per_s = round(token_count / elapsed, 1) if elapsed > 0 else 0

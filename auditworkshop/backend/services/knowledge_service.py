@@ -143,8 +143,19 @@ def search(query: str, top_k: int = 5, source_filter: str | None = None) -> list
         [{"text": str, "source": str, "filename": str,
           "chunk_index": int, "score": float}, ...]
     """
-    model = _get_model()
-    vec = model.encode([query], normalize_embeddings=True)[0].tolist()
+    article_match = re.search(r'[Aa]rt(?:ikel)?\.?\s*(\d+)', query)
+    if article_match:
+        article_num = article_match.group(1)
+        keyword_results = _keyword_search(f"Artikel {article_num}", source_filter, top_k=top_k)
+        if keyword_results:
+            return keyword_results[:top_k]
+
+    try:
+        model = _get_model()
+        vec = model.encode([query], normalize_embeddings=True)[0].tolist()
+    except Exception:
+        log.exception("Vektorsuche fehlgeschlagen, nutze Keyword-Fallback fuer Query: %s", query)
+        return _keyword_search(query, source_filter, top_k=top_k)
 
     filter_clause = "WHERE source = %s" if source_filter else ""
     params: list = [str(vec)]
@@ -172,11 +183,8 @@ def search(query: str, top_k: int = 5, source_filter: str | None = None) -> list
         for r in rows
     ]
 
-    # Zusaetzlich: Keyword-Suche fuer Artikelverweise (z.B. "Art. 74")
-    article_match = re.search(r'[Aa]rt(?:ikel)?\.?\s*(\d+)', query)
     if article_match:
-        article_num = article_match.group(1)
-        keyword_results = _keyword_search(f"Artikel {article_num}", source_filter, top_k=2)
+        keyword_results = _keyword_search(f"Artikel {article_match.group(1)}", source_filter, top_k=2)
         # Merge: Keyword-Treffer vorne, dann Vektor-Treffer (ohne Duplikate)
         seen: set[tuple[str, int]] = set()
         merged: list[dict] = []
