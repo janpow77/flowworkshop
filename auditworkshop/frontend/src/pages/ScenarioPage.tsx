@@ -367,25 +367,71 @@ export default function ScenarioPage() {
         <div className="rounded-[26px] border border-slate-200/80 bg-white/85 p-5 shadow-[0_20px_70px_-46px_rgba(15,23,42,0.58)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-white">
             <Database size={16} className="text-rose-500" />
-            Statistikfragen sind jetzt an die geladenen Verzeichnisse gebunden
+            KI-Auswertung für die geladenen Begünstigtenverzeichnisse
           </div>
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Die KI erhält für Szenario 6 nur aggregierte Kennzahlen und Spitzendaten aus den aktuell eingelesenen Begünstigtenlisten. Antworten bleiben damit an die reale Datenlage gekoppelt.
+            Laden Sie oben ein Verzeichnis hoch und stellen Sie hier direkt freie Fragen. Die Auswertung läuft gegen die aktuell eingelesenen Begünstigtenlisten und bleibt damit an die reale Datenlage gekoppelt.
           </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link to="/company-search" className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-rose-500 dark:hover:bg-rose-400">
-              <Building2 size={15} />
-              Unternehmenssuche öffnen
-            </Link>
-            <Link to="/dataframes" className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-              <Database size={15} />
-              Datenraum öffnen
-            </Link>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {DEMO_QUESTIONS[6].map((q, i) => (
+              <button
+                key={i}
+                onClick={() => setPrompt(q)}
+                className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-rose-600 dark:hover:bg-rose-950/30"
+              >
+                <Sparkles size={10} />
+                {q}
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 flex gap-3 max-lg:flex-col">
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+              placeholder="z.B. Welche Kommunen erhalten die höchste Förderung und welche Träger dominieren?"
+              rows={4}
+              className="min-h-[132px] flex-1 rounded-[24px] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-[0_18px_60px_-48px_rgba(15,23,42,0.75)] focus:outline-none focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              aria-label="Prompt für Begünstigtenauswertung"
+            />
+            <div className="flex w-full max-w-[220px] flex-col gap-2">
+              <button
+                onClick={handleSubmit}
+                disabled={!prompt.trim() || streaming}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:bg-rose-500 dark:hover:bg-rose-400 dark:disabled:bg-slate-700"
+              >
+                {streaming ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                Auswertung starten
+              </button>
+              <Link to="/company-search" className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                <Building2 size={15} />
+                Unternehmenssuche
+              </Link>
+              <Link to="/dataframes" className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                <Database size={15} />
+                Datenraum
+              </Link>
+            </div>
+          </div>
+          <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+            Tipp: Für harte Filter und Einzeltreffer nutzen Sie die Unternehmenssuche. Für freie Zusammenfassungen und Fragen nutzen Sie dieses Prompt-Feld.
+          </div>
+          <div className="mt-4">
+            <LlmResponsePanel
+              response={response}
+              streaming={streaming}
+              tokenCount={tokenCount}
+              model={model}
+              tokPerS={tokPerS}
+              error={error}
+              onStop={handleStop}
+              onRetry={handleSubmit}
+            />
           </div>
         </div>
       )}
 
-      {num !== 2 && (
+      {num !== 2 && num !== 6 && (
         <>
           {DEMO_QUESTIONS[num] && (
             <div className="flex flex-wrap gap-2 mb-3">
@@ -420,7 +466,6 @@ export default function ScenarioPage() {
               <Send size={18} />
             </button>
           </div>
-
           <LlmResponsePanel
             response={response}
             streaming={streaming}
