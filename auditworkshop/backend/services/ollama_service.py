@@ -75,6 +75,20 @@ def _healthy_gateway_models(providers: list[dict]) -> list[str]:
     return models
 
 
+def _healthy_gateway_provider_names(providers: list[dict]) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for provider in providers:
+        if not provider.get("healthy"):
+            continue
+        name = provider.get("name") or "unknown"
+        if name in seen:
+            continue
+        seen.add(name)
+        names.append(name)
+    return names
+
+
 def _extract_gateway_error(resp: httpx.Response) -> str:
     try:
         data = resp.json()
@@ -100,7 +114,7 @@ async def check_ollama() -> dict:
 
             healthy_models = _healthy_gateway_models(providers)
             configured_ok = MODEL_NAME in healthy_models if MODEL_NAME else bool(healthy_models)
-            healthy_providers = [p["name"] for p in providers if p.get("healthy")]
+            healthy_providers = _healthy_gateway_provider_names(providers)
             return {
                 "ok": health.get("status") == "ok" and configured_ok,
                 "models": [MODEL_NAME] if configured_ok else healthy_models,
