@@ -7,6 +7,10 @@ import os
 # ── Verbindungen ───────────────────────────────────────────────────────────
 DATABASE_URL  = os.getenv("DATABASE_URL",  "postgresql://workshop:workshop@localhost:5433/workshop")
 OLLAMA_URL    = os.getenv("OLLAMA_URL",    "http://localhost:11434")
+LLM_BACKEND   = os.getenv("LLM_BACKEND",   "ollama").lower()
+EGPU_GATEWAY_URL = os.getenv("EGPU_GATEWAY_URL", "http://localhost:7842")
+EGPU_GATEWAY_APP_ID = os.getenv("EGPU_GATEWAY_APP_ID", "auditworkshop")
+EGPU_WORKLOAD_TYPE = os.getenv("EGPU_WORKLOAD_TYPE", "llm")
 MODEL_NAME    = os.getenv("MODEL_NAME",    "qwen3:14b")
 # Europaeische Alternative: MODEL_NAME = "mistral:7b" (Mistral AI, Paris)
 # Installieren: ollama pull mistral:7b

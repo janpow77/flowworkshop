@@ -36,7 +36,11 @@ services:
     environment:
       DATABASE_URL: postgresql://workshop:workshop@db:5432/workshop
       OLLAMA_URL: http://host.docker.internal:11434
-      MODEL_NAME: qwen3:14b
+      LLM_BACKEND: egpu-manager
+      EGPU_GATEWAY_URL: http://host.docker.internal:7842
+      EGPU_GATEWAY_APP_ID: auditworkshop
+      EGPU_WORKLOAD_TYPE: llm
+      MODEL_NAME: qwen2.5:72b-instruct-q4_K_M
       WORKSHOP_ADMIN: "true"   # Ingest-Endpunkt freischalten
       ALLOW_REMOTE_GEOCODING: "false"
       ALLOW_REMOTE_TILES: "false"

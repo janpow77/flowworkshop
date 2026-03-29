@@ -148,6 +148,8 @@ export interface SystemInfo {
 
 export interface SystemProfile {
   model_name: string;
+  llm_backend?: string;
+  llm_endpoint?: string;
   privacy_mode: boolean;
   allow_remote_geocoding: boolean;
   allow_remote_tiles: boolean;

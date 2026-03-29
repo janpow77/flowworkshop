@@ -9,7 +9,15 @@ import urllib.request
 from fastapi import APIRouter
 import psutil
 
-from config import OLLAMA_URL, MODEL_NAME, ALLOW_REMOTE_GEOCODING, ALLOW_REMOTE_TILES
+from config import (
+    ALLOW_REMOTE_GEOCODING,
+    ALLOW_REMOTE_TILES,
+    EGPU_GATEWAY_APP_ID,
+    EGPU_GATEWAY_URL,
+    LLM_BACKEND,
+    MODEL_NAME,
+    OLLAMA_URL,
+)
 from services.ollama_service import check_ollama
 
 router = APIRouter(prefix="/api/system", tags=["system"])
@@ -43,6 +51,42 @@ def get_gpu():
 
 def _get_ollama_models() -> list[dict]:
     """Fragt Ollama /api/ps ab und liefert aktuell geladene Modelle."""
+    if LLM_BACKEND in {"egpu-manager", "egpu_manager", "gateway"}:
+        try:
+            url = f"{EGPU_GATEWAY_URL}/api/llm/providers"
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read())
+
+            models = []
+            seen = set()
+            for provider in data.get("providers", []):
+                if not provider.get("healthy"):
+                    continue
+                for name in provider.get("models", []):
+                    if not name or name in seen:
+                        continue
+                    seen.add(name)
+                    models.append({
+                        "name": name,
+                        "size_gb": 0,
+                        "vram_gb": 0,
+                        "expires_at": "",
+                        "provider": provider.get("name", "unknown"),
+                    })
+
+            if MODEL_NAME and MODEL_NAME not in seen:
+                models.insert(0, {
+                    "name": MODEL_NAME,
+                    "size_gb": 0,
+                    "vram_gb": 0,
+                    "expires_at": "",
+                    "provider": EGPU_GATEWAY_APP_ID,
+                })
+            return models
+        except Exception:
+            return []
+
     try:
         url = f"{OLLAMA_URL}/api/ps"
         req = urllib.request.Request(url, method="GET")
@@ -142,6 +186,8 @@ async def get_ollama_status():
 def get_profile():
     return {
         "model_name": MODEL_NAME,
+        "llm_backend": LLM_BACKEND,
+        "llm_endpoint": EGPU_GATEWAY_URL if LLM_BACKEND in {"egpu-manager", "egpu_manager", "gateway"} else OLLAMA_URL,
         "privacy_mode": not (ALLOW_REMOTE_GEOCODING or ALLOW_REMOTE_TILES),
         "allow_remote_geocoding": ALLOW_REMOTE_GEOCODING,
         "allow_remote_tiles": ALLOW_REMOTE_TILES,
