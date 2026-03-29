@@ -29,6 +29,33 @@ _last_request_time = 0.0
 _nuts_data: dict | None = None
 
 
+def _parse_cost_value(value: object) -> float:
+    """Normalisiert Kostenwerte aus XLSX/CSV fuer Kartenantworten."""
+    if value is None:
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    text_value = str(value).strip()
+    if not text_value:
+        return 0.0
+
+    cleaned = text_value.replace("\xa0", " ").replace("EUR", "").replace("€", "")
+    cleaned = cleaned.replace(" ", "")
+    if "," in cleaned and "." in cleaned:
+        if cleaned.rfind(",") > cleaned.rfind("."):
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        else:
+            cleaned = cleaned.replace(",", "")
+    elif "," in cleaned:
+        cleaned = cleaned.replace(".", "").replace(",", ".")
+
+    try:
+        return float(cleaned)
+    except ValueError:
+        return 0.0
+
+
 def _load_nuts() -> dict:
     """Laedt die NUTS-3 Regionsdaten aus der JSON-Datei."""
     global _nuts_data
@@ -428,7 +455,7 @@ def get_beneficiary_map_data(source: str) -> dict:
                 "lon": geo["lon"],
                 "name": str(row_dict.get("name", "Unbekannt"))[:200],
                 "projekt": str(row_dict.get("projekt", ""))[:300],
-                "kosten": float(row_dict["kosten"]) if "kosten" in row_dict and row_dict["kosten"] is not None else 0,
+                "kosten": _parse_cost_value(row_dict.get("kosten")),
                 "kategorie": str(row_dict.get("kategorie", ""))[:50],
             }
             # NUTS-3 Zuordnung
