@@ -216,6 +216,48 @@ export interface BeneficiarySearchResponse {
   }>;
 }
 
+export type BeneficiaryAnalysisMode =
+  | 'top_beneficiaries'
+  | 'repeat_beneficiaries'
+  | 'state_fund_totals'
+  | 'top_locations';
+
+export interface BeneficiaryAnalysisItem {
+  rank: number;
+  label: string;
+  sublabel?: string;
+  value: number;
+  value_label: string;
+  project_count?: number;
+  source_count?: number;
+  bundesland?: string | null;
+  fonds?: string | null;
+  bundeslaender?: string[];
+  fonds_list?: string[];
+  locations?: string[];
+  sources?: string[];
+}
+
+export interface BeneficiaryAnalyticsResponse {
+  mode: BeneficiaryAnalysisMode;
+  title: string;
+  metric_label: string;
+  summary: {
+    sources_considered: number;
+    records_scanned: number;
+    items: number;
+    total_volume: number;
+    total_volume_label: string;
+  };
+  filters: {
+    bundesland?: string | null;
+    fonds?: string | null;
+    source?: string | null;
+    min_cost?: number | null;
+  };
+  items: BeneficiaryAnalysisItem[];
+}
+
 export type ReferenceRegistryType = 'sanctions' | 'tam' | 'state_aid' | 'cohesio' | 'other';
 
 export interface ReferenceRegistrySource {
@@ -335,6 +377,23 @@ export const searchBeneficiaries = (params: {
   if (typeof params.limit === 'number') query.set('limit', String(params.limit));
   if (typeof params.company_limit === 'number') query.set('company_limit', String(params.company_limit));
   return request<BeneficiarySearchResponse>(`/beneficiaries/search?${query.toString()}`);
+};
+export const analyzeBeneficiaries = (params: {
+  mode: BeneficiaryAnalysisMode;
+  bundesland?: string;
+  fonds?: string;
+  source?: string;
+  min_cost?: number;
+  limit?: number;
+}) => {
+  const query = new URLSearchParams();
+  query.set('mode', params.mode);
+  if (params.bundesland) query.set('bundesland', params.bundesland);
+  if (params.fonds) query.set('fonds', params.fonds);
+  if (params.source) query.set('source', params.source);
+  if (typeof params.min_cost === 'number') query.set('min_cost', String(params.min_cost));
+  if (typeof params.limit === 'number') query.set('limit', String(params.limit));
+  return request<BeneficiaryAnalyticsResponse>(`/beneficiaries/analytics?${query.toString()}`);
 };
 export const listReferenceSources = () => request<{ sources: ReferenceRegistrySource[] }>('/reference-data/sources');
 export const searchReferenceData = (params: {

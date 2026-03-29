@@ -7,6 +7,7 @@ import {
 import LlmResponsePanel from '../components/workshop/LlmResponsePanel';
 import DocumentDropzone from '../components/workshop/DocumentDropzone';
 import BeneficiaryMap from '../components/workshop/BeneficiaryMap';
+import BeneficiaryAnalyticsPanel from '../components/workshop/BeneficiaryAnalyticsPanel';
 import { seedDemoData, streamSSE } from '../lib/api';
 
 const SCENARIO_INFO: Record<number, {
@@ -335,6 +336,7 @@ export default function ScenarioPage() {
       )}
 
       {num === 6 && <BeneficiaryMap className="mb-2" />}
+      {num === 6 && <BeneficiaryAnalyticsPanel className="mb-2" onSelectPrompt={setPrompt} />}
 
       {num === 3 && (
         <div className="mb-4 flex items-center justify-between gap-3 rounded-[26px] border border-amber-200 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/20">

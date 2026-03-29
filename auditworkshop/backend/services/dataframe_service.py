@@ -1437,6 +1437,237 @@ def search_beneficiary_records(
     }
 
 
+def analyze_beneficiary_records(
+    mode: str = "top_beneficiaries",
+    bundesland: str | None = None,
+    fonds: str | None = None,
+    source: str | None = None,
+    min_cost: float | None = None,
+    limit: int = 10,
+) -> dict:
+    from services.geocoding_service import detect_columns
+
+    supported_modes = {
+        "top_beneficiaries",
+        "repeat_beneficiaries",
+        "state_fund_totals",
+        "top_locations",
+    }
+    if mode not in supported_modes:
+        raise ValueError(f"Unbekannter Analysemodus '{mode}'.")
+
+    limit = max(1, min(limit, 20))
+    beneficiary_sources = [
+        item for item in get_beneficiary_sources()
+        if (not bundesland or (item.get("bundesland") or "") == bundesland)
+        and (not fonds or (item.get("fonds") or "") == fonds)
+        and (not source or item.get("source") == source)
+    ]
+
+    scanned_records = 0
+    flat_results: list[dict[str, Any]] = []
+
+    for source_info in beneficiary_sources:
+        current_source = source_info["source"]
+        table_name = _safe_table_name(current_source)
+        columns = detect_columns(current_source)
+
+        name_col = columns.get("name")
+        project_col = columns.get("projekt")
+        cost_col = columns.get("kosten")
+        location_col = columns.get("standort") or columns.get("ort") or columns.get("landkreis")
+        category_col = columns.get("sz")
+
+        selected_cols: list[tuple[str, str]] = []
+        for alias, col in (
+            ("name", name_col),
+            ("projekt", project_col),
+            ("kosten", cost_col),
+            ("standort", location_col),
+            ("kategorie", category_col),
+        ):
+            if col:
+                selected_cols.append((alias, col))
+
+        if not selected_cols:
+            continue
+
+        sql = ", ".join(f"{_quote_ident(col)} AS {alias}" for alias, col in selected_cols)
+        with engine.connect() as conn:
+            rows = conn.execute(text(f'SELECT {sql} FROM "{table_name}"')).fetchall()
+
+        scanned_records += len(rows)
+        for row in rows:
+            entry = dict(row._mapping)
+            cost_value = _parse_numeric(entry.get("kosten"))
+            if min_cost is not None and (cost_value is None or cost_value < min_cost):
+                continue
+
+            flat_results.append({
+                "company_name": str(entry.get("name") or "").strip() or "Unbekannt",
+                "project_name": str(entry.get("projekt") or "").strip() or "",
+                "location": str(entry.get("standort") or "").strip() or "",
+                "category": str(entry.get("kategorie") or "").strip() or "",
+                "kosten": cost_value,
+                "source": current_source,
+                "bundesland": source_info.get("bundesland"),
+                "fonds": source_info.get("fonds"),
+                "periode": source_info.get("periode"),
+            })
+
+    total_volume = sum(float(item["kosten"]) for item in flat_results if item.get("kosten") is not None)
+    items: list[dict[str, Any]] = []
+    title = ""
+    metric_label = "Fördervolumen"
+
+    if mode in {"top_beneficiaries", "repeat_beneficiaries"}:
+        companies: dict[str, dict[str, Any]] = {}
+        for item in flat_results:
+            company_key = _normalize_search_text(item["company_name"]) or f"{item['source']}::{len(companies)}"
+            company = companies.setdefault(company_key, {
+                "label": item["company_name"],
+                "value": 0.0,
+                "project_count": 0,
+                "bundeslaender": set(),
+                "fonds": set(),
+                "sources": set(),
+                "locations": set(),
+            })
+            if item.get("kosten") is not None:
+                company["value"] += float(item["kosten"])
+            company["project_count"] += 1
+            if item.get("bundesland"):
+                company["bundeslaender"].add(item["bundesland"])
+            if item.get("fonds"):
+                company["fonds"].add(item["fonds"])
+            if item.get("source"):
+                company["sources"].add(item["source"])
+            if item.get("location"):
+                company["locations"].add(item["location"])
+
+        aggregated = []
+        for company in companies.values():
+            if mode == "repeat_beneficiaries" and company["project_count"] < 2:
+                continue
+            aggregated.append({
+                "label": company["label"],
+                "sublabel": " · ".join(part for part in [
+                    f"{company['project_count']} Vorhaben",
+                    ", ".join(sorted(company["bundeslaender"])[:3]),
+                    ", ".join(sorted(company["fonds"])[:2]),
+                ] if part),
+                "value": company["value"],
+                "value_label": _format_eur(company["value"] or None),
+                "project_count": company["project_count"],
+                "source_count": len(company["sources"]),
+                "sources": sorted(company["sources"]),
+                "bundeslaender": sorted(company["bundeslaender"]),
+                "fonds_list": sorted(company["fonds"]),
+                "locations": sorted(company["locations"])[:4],
+            })
+
+        aggregated.sort(key=lambda item: (-float(item["value"] or 0.0), -int(item["project_count"] or 0), item["label"]))
+        items = aggregated[:limit]
+        title = "Größte Begünstigte" if mode == "top_beneficiaries" else "Begünstigte mit mehreren Vorhaben"
+
+    elif mode == "state_fund_totals":
+        grouped: dict[tuple[str, str], dict[str, Any]] = {}
+        for item in flat_results:
+            state = item.get("bundesland") or "Unbekannt"
+            fund = item.get("fonds") or "Unbekannt"
+            key = (state, fund)
+            bucket = grouped.setdefault(key, {
+                "label": f"{state} · {fund}",
+                "value": 0.0,
+                "project_count": 0,
+                "bundesland": state,
+                "fonds": fund,
+                "sources": set(),
+            })
+            if item.get("kosten") is not None:
+                bucket["value"] += float(item["kosten"])
+            bucket["project_count"] += 1
+            if item.get("source"):
+                bucket["sources"].add(item["source"])
+
+        items = sorted([
+            {
+                "label": bucket["label"],
+                "sublabel": f"{bucket['project_count']} Vorhaben · {len(bucket['sources'])} Quelle(n)",
+                "value": bucket["value"],
+                "value_label": _format_eur(bucket["value"] or None),
+                "project_count": bucket["project_count"],
+                "source_count": len(bucket["sources"]),
+                "bundesland": bucket["bundesland"],
+                "fonds": bucket["fonds"],
+            }
+            for bucket in grouped.values()
+        ], key=lambda item: (-float(item["value"] or 0.0), item["label"]))[:limit]
+        title = "Fördervolumen nach Bundesland und Fonds"
+
+    elif mode == "top_locations":
+        grouped_locations: dict[str, dict[str, Any]] = {}
+        for item in flat_results:
+            location = item.get("location") or ""
+            if not location:
+                continue
+            bucket = grouped_locations.setdefault(location, {
+                "label": location,
+                "value": 0.0,
+                "project_count": 0,
+                "bundeslaender": set(),
+                "fonds": set(),
+            })
+            if item.get("kosten") is not None:
+                bucket["value"] += float(item["kosten"])
+            bucket["project_count"] += 1
+            if item.get("bundesland"):
+                bucket["bundeslaender"].add(item["bundesland"])
+            if item.get("fonds"):
+                bucket["fonds"].add(item["fonds"])
+
+        items = sorted([
+            {
+                "label": bucket["label"],
+                "sublabel": " · ".join(part for part in [
+                    f"{bucket['project_count']} Vorhaben",
+                    ", ".join(sorted(bucket["bundeslaender"])[:2]),
+                    ", ".join(sorted(bucket["fonds"])[:2]),
+                ] if part),
+                "value": bucket["value"],
+                "value_label": _format_eur(bucket["value"] or None),
+                "project_count": bucket["project_count"],
+                "bundeslaender": sorted(bucket["bundeslaender"]),
+                "fonds_list": sorted(bucket["fonds"]),
+            }
+            for bucket in grouped_locations.values()
+        ], key=lambda item: (-float(item["value"] or 0.0), item["label"]))[:limit]
+        title = "Standorte mit dem höchsten Fördervolumen"
+
+    for index, item in enumerate(items, start=1):
+        item["rank"] = index
+
+    return {
+        "mode": mode,
+        "title": title,
+        "metric_label": metric_label,
+        "summary": {
+            "sources_considered": len(beneficiary_sources),
+            "records_scanned": scanned_records,
+            "items": len(items),
+            "total_volume": total_volume,
+            "total_volume_label": _format_eur(total_volume or None),
+        },
+        "filters": {
+            "bundesland": bundesland,
+            "fonds": fonds,
+            "source": source,
+            "min_cost": min_cost,
+        },
+        "items": items,
+    }
+
+
 def search_reference_registry_records(
     query: str,
     registry_type: str | None = None,

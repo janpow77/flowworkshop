@@ -8,7 +8,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from services.geocoding_service import get_beneficiary_map_data, detect_columns
 from services.dataframe_service import (
     ingest_dataframe, get_beneficiary_sources, delete_dataframe_table,
-    _detect_metadata, _safe_table_name, search_beneficiary_records,
+    _detect_metadata, _safe_table_name, search_beneficiary_records, analyze_beneficiary_records,
 )
 
 router = APIRouter(prefix="/api/beneficiaries", tags=["beneficiaries"])
@@ -182,6 +182,28 @@ def search_beneficiaries(
             min_cost=min_cost,
             limit=limit,
             company_limit=company_limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@router.get("/analytics")
+def analyze_beneficiaries(
+    mode: str = Query("top_beneficiaries", description="top_beneficiaries|repeat_beneficiaries|state_fund_totals|top_locations"),
+    bundesland: str | None = Query(None),
+    fonds: str | None = Query(None),
+    source: str | None = Query(None),
+    min_cost: float | None = Query(None, ge=0),
+    limit: int = Query(10, ge=1, le=20),
+):
+    try:
+        return analyze_beneficiary_records(
+            mode=mode,
+            bundesland=bundesland,
+            fonds=fonds,
+            source=source,
+            min_cost=min_cost,
+            limit=limit,
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc))
