@@ -2,7 +2,10 @@
 flowworkshop · routers/workshop.py
 Streaming-Endpunkt für alle sechs Workshop-Szenarien + PDF-Parse-Endpunkt.
 """
+import asyncio
+import json
 import logging
+import re
 import time
 from collections import defaultdict
 
@@ -12,7 +15,10 @@ from pydantic import BaseModel, Field
 
 from config import SYSTEM_PROMPTS, DISCLAIMER
 from services import knowledge_service as ks
-from services.dataframe_service import get_beneficiary_llm_context
+from services.dataframe_service import (
+    build_beneficiary_analysis_answer,
+    get_beneficiary_llm_context,
+)
 from services.ollama_service import stream
 from services.file_parser import extract as file_extract, ALLOWED_EXTENSIONS
 
@@ -40,6 +46,90 @@ def _check_rate_limit(client_ip: str) -> None:
     _rate_limit[client_ip].append(now)
 
 
+def _chunk_text_for_sse(text: str, chunk_size: int = 56) -> list[str]:
+    parts = re.findall(r"\S+\s*|\n", text)
+    if not parts:
+        return [text] if text else []
+
+    chunks: list[str] = []
+    current = ""
+    for part in parts:
+        if current and len(current) + len(part) > chunk_size and not part.endswith("\n"):
+            chunks.append(current)
+            current = part
+            continue
+        current += part
+        if part.endswith("\n"):
+            chunks.append(current)
+            current = ""
+
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+async def _stream_static_response(text: str, model: str) -> StreamingResponse:
+    async def event_generator():
+        chunks = _chunk_text_for_sse(text)
+        for chunk in chunks:
+            yield f"data: {json.dumps({'token': chunk, 'done': False})}\n\n"
+            await asyncio.sleep(0)
+        yield (
+            "data: "
+            + json.dumps(
+                {
+                    "done": True,
+                    "token_count": len(chunks),
+                    "model": model,
+                    "elapsed_s": 0.0,
+                    "tok_per_s": 0.0,
+                }
+            )
+            + "\n\n"
+        )
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def _build_extract_response(hits: list[dict]) -> str:
+    cleaned_hits = sorted(
+        hits,
+        key=lambda hit: (
+            0 if str(hit.get("text", "")).strip()[:1].isupper() else 1,
+            -float(hit.get("score") or 0.0),
+            int(hit.get("chunk_index") or 0),
+        ),
+    )
+    uppercase_hits = [
+        hit for hit in cleaned_hits
+        if str(hit.get("text", "")).strip()[:1].isupper()
+    ]
+    if uppercase_hits:
+        cleaned_hits = uppercase_hits
+
+    lines = ["Relevante Fundstellen aus den geladenen Dokumenten:"]
+    for idx, hit in enumerate(cleaned_hits[:2], start=1):
+        excerpt = re.sub(r"\s+", " ", str(hit.get("text") or "")).strip()
+        excerpt = excerpt[:420]
+        if excerpt and not excerpt.endswith("."):
+            excerpt += " …"
+        lines.append(
+            f"{idx}. [{hit['source']} · Abschnitt {hit['chunk_index'] + 1}] {excerpt}"
+        )
+    lines.append(
+        "Die Antwort wird hier direkt aus den gefundenen Fundstellen wiedergegeben. "
+        "Wenn der Ausschnitt unvollständig wirkt, sollte der Volltext geprüft werden."
+    )
+    return "\n".join(lines)
+
+
 class StreamRequest(BaseModel):
     scenario: int = Field(..., ge=1, le=6)
     prompt: str = Field(..., min_length=1, max_length=2000)
@@ -49,11 +139,11 @@ class StreamRequest(BaseModel):
 
 
 SCENARIO_MAX_TOKENS = {
-    1: 420,
-    2: 320,
-    3: 280,
-    4: 420,
-    5: 320,
+    1: 320,
+    2: 260,
+    3: 180,
+    4: 320,
+    5: 220,
     6: 180,
 }
 
@@ -81,11 +171,18 @@ async def workshop_stream(req: StreamRequest, request: Request):
     docs = list(req.documents)
 
     # Szenario 3 mit Kontext: RAG-Retrieval aus pgvector
+    article_prompt = bool(re.search(r"[Aa]rt(?:ikel)?\.?\s*\d+", req.prompt))
+
     if req.scenario == 3 and req.with_context:
         try:
-            hits = ks.search(req.prompt, top_k=2)
+            hits = ks.search(req.prompt, top_k=3 if article_prompt else 2)
+            if article_prompt and hits:
+                return await _stream_static_response(
+                    _build_extract_response(hits),
+                    "knowledge-extract",
+                )
             rag_context = "\n\n".join(
-                f"[{h['source']} · Abschnitt {h['chunk_index'] + 1}]\n{h['text'][:1000]}"
+                f"[{h['source']} · Abschnitt {h['chunk_index'] + 1}]\n{h['text'][:650 if article_prompt else 850]}"
                 for h in hits
             )
             if rag_context:
@@ -96,9 +193,14 @@ async def workshop_stream(req: StreamRequest, request: Request):
     # Szenario 5: RAG-Retrieval auf Vorab-Upload-Dokumente
     if req.scenario == 5 and req.with_context:
         try:
-            hits = ks.search(req.prompt, top_k=2)
+            hits = ks.search(req.prompt, top_k=3 if article_prompt else 2)
+            if article_prompt and hits:
+                return await _stream_static_response(
+                    _build_extract_response(hits),
+                    "knowledge-extract",
+                )
             rag_context = "\n\n".join(
-                f"[{h['source']} · S. {h['chunk_index'] + 1}]\n{h['text'][:1000]}"
+                f"[{h['source']} · S. {h['chunk_index'] + 1}]\n{h['text'][:650 if article_prompt else 850]}"
                 for h in hits
             )
             if rag_context:
@@ -107,7 +209,10 @@ async def workshop_stream(req: StreamRequest, request: Request):
             log.exception("RAG-Kontext fuer Szenario 5 fehlgeschlagen.")
 
     if req.scenario == 6:
-        beneficiary_context = get_beneficiary_llm_context(max_entries_per_source=3)
+        direct_answer = build_beneficiary_analysis_answer(req.prompt, limit=5)
+        if direct_answer:
+            return await _stream_static_response(direct_answer, "beneficiary-analytics")
+        beneficiary_context = get_beneficiary_llm_context(req.prompt, max_entries_per_source=4)
         if beneficiary_context:
             docs.insert(0, beneficiary_context)
 

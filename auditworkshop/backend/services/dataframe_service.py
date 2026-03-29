@@ -912,144 +912,248 @@ def get_summary_stats(source: str) -> str:
     return "\n".join(lines)
 
 
-def get_beneficiary_llm_context(max_entries_per_source: int = 3) -> str:
-    from services.geocoding_service import detect_columns
+def _extract_beneficiary_prompt_filters(
+    prompt: str | None,
+    sources: list[dict[str, Any]],
+) -> tuple[str | None, str | None]:
+    normalized_prompt = _normalize_search_text(prompt)
+    if not normalized_prompt:
+        return None, None
 
+    bundesland = None
+    known_states = sorted(
+        {
+            str(item.get("bundesland")).strip()
+            for item in sources
+            if item.get("bundesland")
+        },
+        key=len,
+        reverse=True,
+    )
+    for state in known_states:
+        if _normalize_search_text(state) in normalized_prompt:
+            bundesland = state
+            break
+
+    fonds = None
+    for candidate in ("EFRE", "ESF", "JTF"):
+        if candidate.lower() in normalized_prompt:
+            fonds = candidate
+            break
+
+    return bundesland, fonds
+
+
+def _select_beneficiary_analysis_mode(prompt: str | None) -> str:
+    matched_mode = _match_beneficiary_analysis_mode(prompt)
+    return matched_mode or "top_beneficiaries"
+
+
+def _match_beneficiary_analysis_mode(prompt: str | None) -> str | None:
+    normalized_prompt = _normalize_search_text(prompt)
+    if not normalized_prompt:
+        return None
+
+    if any(
+        phrase in normalized_prompt
+        for phrase in (
+            "mehrere vorhaben",
+            "mehrfach",
+            "mehrere projekte",
+            "mehr als ein vorhaben",
+            "mehr als ein projekt",
+            "wiederholt gefoerdert",
+        )
+    ):
+        return "repeat_beneficiaries"
+
+    if any(
+        phrase in normalized_prompt
+        for phrase in (
+            "bundesland",
+            "bundesländer",
+            "bundeslaender",
+            "fonds",
+            "verteilung",
+            "aufteilung",
+            "efre",
+            "esf",
+            "jtf",
+        )
+    ):
+        return "state_fund_totals"
+
+    if any(
+        phrase in normalized_prompt
+        for phrase in (
+            "kommune",
+            "kommunen",
+            "standort",
+            "standorte",
+            "stadt",
+            "städte",
+            "staedte",
+            "orte",
+            "orte",
+            "landkreis",
+            "landkreise",
+        )
+    ):
+        return "top_locations"
+
+    if any(
+        phrase in normalized_prompt
+        for phrase in (
+            "groesste beguenstigte",
+            "größte begünstigte",
+            "groessten beguenstigten",
+            "größten begünstigten",
+            "top beguenstigte",
+            "top-beguenstigte",
+            "top begünstigte",
+            "beguenstigte",
+            "begünstigte",
+            "traeger",
+            "träger",
+        )
+    ):
+        return "top_beneficiaries"
+
+    return None
+
+
+def get_beneficiary_llm_context(
+    prompt: str | None = None,
+    max_entries_per_source: int = 3,
+) -> str:
     sources = get_beneficiary_sources()
     if not sources:
         return ""
 
+    bundesland, fonds = _extract_beneficiary_prompt_filters(prompt, sources)
+    mode = _select_beneficiary_analysis_mode(prompt)
+    limit = max(4, min(max_entries_per_source * 3, 12))
+    analysis = analyze_beneficiary_records(
+        mode=mode,
+        bundesland=bundesland,
+        fonds=fonds,
+        limit=limit,
+    )
+
+    summary = analysis["summary"]
+    filters = analysis["filters"]
+    items = analysis["items"]
+
     parts = [
-        "Aktuell geladene Beguenstigtenverzeichnisse.",
-        f"Anzahl Quellen: {len(sources)}",
-        "",
+        "Strukturierte Auswertung der geladenen Beguenstigtenverzeichnisse.",
+        f"Fokus: {analysis['title']}",
+        (
+            "Abdeckung: "
+            f"{summary['sources_considered']} Quelle(n), "
+            f"{summary['records_scanned']} Datensaetze, "
+            f"{summary['total_volume_label']} Gesamtvolumen"
+        ),
     ]
 
-    total_rows = 0
-    total_cost = 0.0
-    combined_top: list[dict[str, Any]] = []
+    active_filters = []
+    if filters.get("bundesland"):
+        active_filters.append(f"Bundesland={filters['bundesland']}")
+    if filters.get("fonds"):
+        active_filters.append(f"Fonds={filters['fonds']}")
+    if active_filters:
+        parts.append("Filter: " + ", ".join(active_filters))
 
-    for source_info in sources:
-        source = source_info["source"]
-        table_name = _safe_table_name(source)
-        columns = detect_columns(source)
+    if not items:
+        parts.append("Keine passenden Auswertungsdaten fuer diese Fragestellung vorhanden.")
+        parts.append("Wenn die Frage darueber hinausgeht, weise auf die fehlende Datengrundlage hin.")
+        return "\n".join(parts)
 
-        name_col = columns.get("name")
-        project_col = columns.get("projekt")
-        cost_col = columns.get("kosten")
-        location_col = columns.get("standort") or columns.get("ort") or columns.get("landkreis")
-        category_col = columns.get("sz")
+    parts.append("Rangliste:")
+    for item in items:
+        detail_parts = [
+            f"{item['rank']}. {item['label']}",
+            item.get("value_label") or _format_eur(item.get("value")),
+        ]
+        if item.get("project_count"):
+            detail_parts.append(f"{item['project_count']} Vorhaben")
+        if item.get("sublabel"):
+            detail_parts.append(str(item["sublabel"]))
+        parts.append("- " + " | ".join(str(part) for part in detail_parts if part))
 
-        selected_cols: list[tuple[str, str]] = []
-        for alias, col in (
-            ("name", name_col),
-            ("projekt", project_col),
-            ("kosten", cost_col),
-            ("standort", location_col),
-            ("kategorie", category_col),
-        ):
-            if col:
-                selected_cols.append((alias, col))
+    parts.append(
+        "Nutze nur diese Daten. Wenn die Nutzerfrage weitere Einzelwerte, Vollstaendigkeit "
+        "oder Detailbelege verlangt, benenne die Grenze klar."
+    )
+    return "\n".join(parts)
 
-        if not selected_cols:
-            continue
 
-        sql = ", ".join(f"{_quote_ident(col)} AS {alias}" for alias, col in selected_cols)
-        with engine.connect() as conn:
-            rows = conn.execute(text(f'SELECT {sql} FROM "{table_name}"')).fetchall()
+def build_beneficiary_analysis_answer(prompt: str, limit: int = 5) -> str | None:
+    sources = get_beneficiary_sources()
+    if not sources:
+        return "Es sind derzeit keine Begünstigtenverzeichnisse geladen."
 
-        parsed_rows: list[dict[str, Any]] = []
-        for row in rows:
-            entry = dict(row._mapping)
-            entry["kosten_num"] = _parse_numeric(entry.get("kosten"))
-            parsed_rows.append(entry)
+    matched_mode = _match_beneficiary_analysis_mode(prompt)
+    if not matched_mode:
+        return None
 
-        row_count = len(parsed_rows)
-        total_rows += row_count
-        cost_rows = [r for r in parsed_rows if r.get("kosten_num") is not None]
-        source_total = sum(r["kosten_num"] for r in cost_rows)
-        total_cost += source_total
+    bundesland, fonds = _extract_beneficiary_prompt_filters(prompt, sources)
+    analysis = analyze_beneficiary_records(
+        mode=matched_mode,
+        bundesland=bundesland,
+        fonds=fonds,
+        limit=max(3, min(limit, 8)),
+    )
+    items = analysis["items"]
+    summary = analysis["summary"]
+    filters = analysis["filters"]
 
-        top_rows = sorted(cost_rows, key=lambda item: item["kosten_num"], reverse=True)[:max_entries_per_source]
-        combined_top.extend(
-            {
-                "source": source,
-                "bundesland": source_info.get("bundesland") or source,
-                "name": row.get("name") or "Unbekannt",
-                "projekt": row.get("projekt") or "",
-                "standort": row.get("standort") or "",
-                "kosten_num": row["kosten_num"],
-            }
-            for row in top_rows
+    if not items:
+        missing_filters = [
+            part
+            for part in (
+                f"Bundesland {filters['bundesland']}" if filters.get("bundesland") else None,
+                f"Fonds {filters['fonds']}" if filters.get("fonds") else None,
+            )
+            if part
+        ]
+        filter_note = f" für {' und '.join(missing_filters)}" if missing_filters else ""
+        return (
+            f"Für diese Fragestellung{filter_note} liegen in den aktuell geladenen "
+            "Begünstigtenverzeichnissen keine passenden Auswertungsdaten vor."
         )
 
-        parts.extend([
-            f"Quelle: {source}",
-            f"- Bundesland: {source_info.get('bundesland') or 'k.A.'}",
-            f"- Fonds: {source_info.get('fonds') or 'k.A.'}",
-            f"- Foerderperiode: {source_info.get('periode') or 'k.A.'}",
-            f"- Datensaetze: {row_count}",
-            f"- Datensaetze mit Kosten: {len(cost_rows)}",
-            f"- Summe Gesamtkosten: {_format_eur(source_total)}",
-        ])
+    intro_map = {
+        "repeat_beneficiaries": "Die wichtigsten Begünstigten mit mehreren Vorhaben sind:",
+        "state_fund_totals": "Die höchsten Fördervolumina nach Bundesland und Fonds sind:",
+        "top_locations": "Die Standorte mit dem höchsten Fördervolumen sind:",
+        "top_beneficiaries": "Die größten Begünstigten sind:",
+    }
+    lines = [intro_map.get(matched_mode, analysis["title"] + ":")]
+    for item in items[:limit]:
+        line = f"{item['rank']}. {item['label']}: {item.get('value_label') or _format_eur(item.get('value'))}"
+        if item.get("project_count"):
+            line += f" bei {item['project_count']} Vorhaben"
+        if item.get("sublabel"):
+            line += f" ({item['sublabel']})"
+        lines.append(line)
 
-        if top_rows:
-            parts.append("- Hoechste Foerdersummen / Gesamtkosten:")
-            for idx, row in enumerate(top_rows, start=1):
-                details = [
-                    f"{idx}. {row.get('name') or 'Unbekannt'}",
-                    _format_eur(row.get("kosten_num")),
-                ]
-                if row.get("standort"):
-                    details.append(str(row["standort"]))
-                if row.get("projekt"):
-                    details.append(str(row["projekt"])[:120])
-                parts.append("  " + " | ".join(details))
-
-        category_counts: dict[str, int] = {}
-        for row in parsed_rows:
-            category = str(row.get("kategorie") or "").strip()
-            if category:
-                category_counts[category] = category_counts.get(category, 0) + 1
-        if category_counts:
-            parts.append("- Haeufigste Kategorien:")
-            for label, count in sorted(category_counts.items(), key=lambda item: item[1], reverse=True)[:3]:
-                parts.append(f"  {label}: {count}")
-
-        location_totals: dict[str, float] = {}
-        for row in cost_rows:
-            location = str(row.get("standort") or "").strip()
-            if not location:
-                continue
-            location_totals[location] = location_totals.get(location, 0.0) + float(row["kosten_num"])
-        if location_totals:
-            parts.append("- Top-Standorte nach aggregierten Kosten:")
-            for label, amount in sorted(location_totals.items(), key=lambda item: item[1], reverse=True)[:3]:
-                parts.append(f"  {label}: {_format_eur(amount)}")
-
-        parts.append("")
-
-    parts.extend([
-        "Quellenuebergreifende Kennzahlen:",
-        f"- Gesamtzahl Datensaetze: {total_rows}",
-        f"- Gesamtvolumen: {_format_eur(total_cost)}",
-    ])
-
-    if combined_top:
-        parts.append("- Hoechste Einzelvorhaben ueber alle Quellen:")
-        for idx, row in enumerate(sorted(combined_top, key=lambda item: item["kosten_num"], reverse=True)[:8], start=1):
-            parts.append(
-                "  "
-                + " | ".join(filter(None, [
-                    f"{idx}. {row['name']}",
-                    _format_eur(row["kosten_num"]),
-                    row.get("bundesland"),
-                    row.get("standort"),
-                    str(row.get("projekt", ""))[:120],
-                ]))
+    coverage = (
+        f"Datengrundlage: {summary['sources_considered']} Quelle(n), "
+        f"{summary['records_scanned']} Datensätze, "
+        f"{summary['total_volume_label']} Gesamtvolumen."
+    )
+    lines.append(coverage)
+    if filters.get("bundesland") or filters.get("fonds"):
+        active_filters = ", ".join(
+            part
+            for part in (
+                f"Bundesland={filters['bundesland']}" if filters.get("bundesland") else None,
+                f"Fonds={filters['fonds']}" if filters.get("fonds") else None,
             )
-
-    return "\n".join(parts).strip()
+            if part
+        )
+        lines.append(f"Verwendete Filter: {active_filters}.")
+    return "\n".join(lines)
 
 
 def _get_text_columns(source: str) -> list[str]:

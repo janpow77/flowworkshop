@@ -30,6 +30,10 @@ from config import (
 log = logging.getLogger(__name__)
 
 _local_model = None
+_REGULATION_SOURCE_HINTS = {
+    "2021/1060": "VO_2021_1060_DE",
+    "2021/1058": "VO_2021_1058_DE",
+}
 
 
 def _connect():
@@ -267,9 +271,13 @@ def reembed_all() -> dict:
 def search(query: str, top_k: int = 5, source_filter: str | None = None) -> list[dict]:
     """Semantische Ähnlichkeitssuche (cosine distance) mit Keyword-Fallback."""
     article_match = re.search(r"[Aa]rt(?:ikel)?\.?\s*(\d+)", query)
+    hinted_source = source_filter or _detect_regulation_source(query)
     if article_match:
         article_num = article_match.group(1)
-        keyword_results = _keyword_search(f"Artikel {article_num}", source_filter, top_k=top_k)
+        keyword_results = _article_search(query, article_num, hinted_source, top_k=top_k)
+        if keyword_results:
+            return keyword_results[:top_k]
+        keyword_results = _keyword_search(f"Artikel {article_num}", hinted_source, top_k=top_k)
         if keyword_results:
             return keyword_results[:top_k]
 
@@ -277,12 +285,12 @@ def search(query: str, top_k: int = 5, source_filter: str | None = None) -> list
         vec = _embed_texts([query])[0]
     except Exception:
         log.exception("Vektorsuche fehlgeschlagen, nutze Keyword-Fallback fuer Query: %s", query)
-        return _keyword_search(query, source_filter, top_k=top_k)
+        return _keyword_search(query, hinted_source, top_k=top_k)
 
-    filter_clause = "WHERE source = %s AND embedding IS NOT NULL" if source_filter else "WHERE embedding IS NOT NULL"
+    filter_clause = "WHERE source = %s AND embedding IS NOT NULL" if hinted_source else "WHERE embedding IS NOT NULL"
     params: list = [str(vec)]
-    if source_filter:
-        params.append(source_filter)
+    if hinted_source:
+        params.append(hinted_source)
     params.append(str(vec))
     params.append(top_k)
 
@@ -311,7 +319,9 @@ def search(query: str, top_k: int = 5, source_filter: str | None = None) -> list
     ]
 
     if article_match:
-        keyword_results = _keyword_search(f"Artikel {article_match.group(1)}", source_filter, top_k=2)
+        keyword_results = _article_search(query, article_match.group(1), hinted_source, top_k=2)
+        if not keyword_results:
+            keyword_results = _keyword_search(f"Artikel {article_match.group(1)}", hinted_source, top_k=2)
         seen: set[tuple[str, int]] = set()
         merged: list[dict] = []
         for result in keyword_results + results:
@@ -322,6 +332,89 @@ def search(query: str, top_k: int = 5, source_filter: str | None = None) -> list
         return merged[:top_k]
 
     return results
+
+
+def _detect_regulation_source(query: str) -> str | None:
+    normalized_query = query.replace(" ", "")
+    for regulation, source in _REGULATION_SOURCE_HINTS.items():
+        if regulation.replace(" ", "") in normalized_query:
+            return source
+    return None
+
+
+def _article_search(
+    query: str,
+    article_num: str,
+    source_filter: str | None = None,
+    top_k: int = 2,
+) -> list[dict]:
+    article_phrase = f"Artikel {article_num}"
+    filter_clause = "AND source = %s" if source_filter else ""
+    params: list = [f"%{article_phrase}%"]
+    if source_filter:
+        params.append(source_filter)
+    params.append(max(top_k * 8, 12))
+
+    sql = f"""
+        SELECT text, source, filename, chunk_index
+        FROM knowledge_chunks
+        WHERE text ILIKE %s
+          {filter_clause}
+        ORDER BY chunk_index
+        LIMIT %s
+    """
+
+    with _connect() as conn, conn.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+
+    query_keywords = [
+        token
+        for token in re.findall(r"[a-zäöüß]{5,}", query.lower())
+        if token not in {"artikel", "vo", "verwaltung", "durch", "fuer", "fonds"}
+    ]
+
+    scored_results: list[dict] = []
+    for row in rows:
+        text_value = row[0]
+        lower_text = text_value.lower()
+        article_mentions = len(re.findall(r"artikel\s+\d+", lower_text))
+        hit_pos = lower_text.find(article_phrase.lower())
+        keyword_hits = sum(
+            1
+            for token in query_keywords
+            if token in lower_text or token[:8] in lower_text
+        )
+
+        score = 1.0
+        if "inhaltsverzeichnis" in lower_text:
+            score -= 0.35
+        if hit_pos >= 0:
+            score -= min(hit_pos, 1200) / 10000
+        if article_mentions > 4:
+            score -= min(article_mentions - 4, 8) * 0.04
+        if keyword_hits:
+            score += min(keyword_hits, 3) * 0.05
+        if article_phrase.lower() in lower_text[:220]:
+            score += 0.08
+
+        scored_results.append(
+            {
+                "text": text_value,
+                "source": row[1],
+                "filename": row[2],
+                "chunk_index": row[3],
+                "score": round(score, 4),
+            }
+        )
+
+    scored_results.sort(
+        key=lambda item: (
+            -float(item["score"]),
+            item["chunk_index"],
+        )
+    )
+    return scored_results[:top_k]
 
 
 def _keyword_search(keyword: str, source_filter: str | None = None, top_k: int = 2) -> list[dict]:
@@ -335,7 +428,9 @@ def _keyword_search(keyword: str, source_filter: str | None = None, top_k: int =
         SELECT text, source, filename, chunk_index, 0.8 AS score
         FROM knowledge_chunks
         WHERE text ILIKE %s {filter_clause}
-        ORDER BY chunk_index
+        ORDER BY
+            CASE WHEN text ILIKE '%%inhaltsverzeichnis%%' THEN 1 ELSE 0 END,
+            chunk_index
         LIMIT %s
     """
 

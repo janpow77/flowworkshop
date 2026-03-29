@@ -35,6 +35,12 @@ def _use_gateway() -> bool:
     return LLM_BACKEND in {"egpu-manager", "egpu_manager", "gateway"}
 
 
+def _should_use_gateway(backend_override: str | None = None) -> bool:
+    if not backend_override:
+        return _use_gateway()
+    return backend_override.lower() not in {"ollama", "local"}
+
+
 def _chunk_text(text: str) -> list[str]:
     parts = re.findall(r"\S+\s*|\n", text)
     if not parts:
@@ -55,6 +61,15 @@ def _chunk_text(text: str) -> list[str]:
     if current:
         chunks.append(current)
     return chunks
+
+
+def _prepend_no_think(system_prompt: str, model: str) -> str:
+    """Verhindert bei qwen3 unnötige Reasoning-Prefill-Zeit über den Gateway."""
+    if "qwen3" not in model.lower():
+        return system_prompt
+    if system_prompt.lstrip().startswith("/no_think"):
+        return system_prompt
+    return f"/no_think\n{system_prompt}"
 
 
 async def _fetch_gateway_providers(client: httpx.AsyncClient) -> list[dict]:
@@ -142,23 +157,34 @@ async def check_ollama() -> dict:
         return {"ok": False, "error": str(e), "url": OLLAMA_URL, "backend": "ollama"}
 
 
-async def _resolve_model() -> str:
+async def _resolve_model(
+    preferred_model: str | None = None,
+    backend_override: str | None = None,
+) -> str:
     """Gibt das erste verfuegbare Modell zurueck."""
-    if _use_gateway():
-        return MODEL_NAME
+    if _should_use_gateway(backend_override):
+        return preferred_model or MODEL_NAME
 
     try:
         async with httpx.AsyncClient(timeout=3) as client:
             r = await client.get(f"{OLLAMA_URL}/api/tags")
             available = [m["name"] for m in r.json().get("models", [])]
-            for candidate in FALLBACK_MODELS:
+            candidates = []
+            if preferred_model:
+                candidates.append(preferred_model)
+            candidates.extend(candidate for candidate in FALLBACK_MODELS if candidate != preferred_model)
+            for candidate in candidates:
                 if any(candidate in a for a in available):
-                    if candidate != MODEL_NAME:
-                        log.warning("Modell-Fallback: %s -> %s", MODEL_NAME, candidate)
+                    if candidate != (preferred_model or MODEL_NAME):
+                        log.warning(
+                            "Modell-Fallback: %s -> %s",
+                            preferred_model or MODEL_NAME,
+                            candidate,
+                        )
                     return candidate
     except Exception:
         pass
-    return MODEL_NAME
+    return preferred_model or MODEL_NAME
 
 
 def _build_prompt(user_prompt: str, system_prompt: str, documents: list[str]) -> str:
@@ -179,6 +205,7 @@ async def _stream_via_gateway(
     system_prompt: str,
     documents: list[str],
     max_tokens: int | None = None,
+    model_override: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Echtes Streaming ueber den egpu-manager LLM Gateway.
 
@@ -187,14 +214,14 @@ async def _stream_via_gateway(
     Reasoning-Chunks halten den Stream per Status-Event aktiv, werden aber
     nicht als Antworttext an das UI weitergereicht.
     """
-    model = await _resolve_model()
+    model = await _resolve_model(model_override, backend_override="gateway")
     full_prompt = _build_prompt(user_prompt, system_prompt, documents)
     t_start = time.monotonic()
 
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": _prepend_no_think(system_prompt, model)},
             {"role": "user", "content": full_prompt},
         ],
         "stream": True,
@@ -206,6 +233,30 @@ async def _stream_via_gateway(
     token_count = 0
     model_name = model
     last_status_at = 0.0
+    saw_content = False
+
+    async def _fallback_non_streaming_answer() -> tuple[str, int | None, str]:
+        non_stream_payload = {**payload, "stream": False}
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10, read=300)) as client:
+            resp = await client.post(
+                f"{EGPU_GATEWAY_URL}/api/llm/chat/completions",
+                json=non_stream_payload,
+                headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
+            )
+            if resp.status_code >= 400:
+                body = await resp.aread()
+                raise RuntimeError(
+                    f"Gateway HTTP {resp.status_code}: {body.decode(errors='replace')}"
+                )
+            data = resp.json()
+        choice = (data.get("choices") or [{}])[0]
+        message = choice.get("message") or {}
+        usage = data.get("usage") or {}
+        return (
+            message.get("content") or "",
+            usage.get("completion_tokens"),
+            data.get("model") or model_name,
+        )
 
     for attempt in range(3):
         try:
@@ -249,6 +300,7 @@ async def _stream_via_gateway(
                                 or ""
                             )
                             if token:
+                                saw_content = True
                                 token_count += 1
                                 yield f"data: {json.dumps({'token': token, 'done': False})}\n\n"
                             elif reasoning:
@@ -262,6 +314,17 @@ async def _stream_via_gateway(
                                 usage = chunk.get("usage") or {}
                                 if usage.get("completion_tokens"):
                                     token_count = int(usage["completion_tokens"])
+
+                if not saw_content:
+                    fallback_text, fallback_completion_tokens, fallback_model_name = await _fallback_non_streaming_answer()
+                    if fallback_text:
+                        model_name = fallback_model_name or model_name
+                        fallback_chunks = _chunk_text(fallback_text)
+                        for chunk in fallback_chunks:
+                            token_count += 1
+                            yield f"data: {json.dumps({'token': chunk, 'done': False})}\n\n"
+                        if fallback_completion_tokens:
+                            token_count = int(fallback_completion_tokens)
 
                 elapsed = round(time.monotonic() - t_start, 1)
                 tok_per_s = round(token_count / elapsed, 1) if elapsed > 0 else 0
@@ -297,6 +360,8 @@ async def stream(
     system_prompt: str,
     documents: list[str] | None = None,
     max_tokens: int | None = None,
+    backend_override: str | None = None,
+    model_override: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """
     Streamt eine LLM-Antwort als Server-Sent-Events.
@@ -306,17 +371,18 @@ async def stream(
         Abschluss:  'data: {"done": true, "token_count": N, "model": "..."}\\n\\n'
         Fehler:     'data: {"error": "...", "done": true}\\n\\n'
     """
-    if _use_gateway():
+    if _should_use_gateway(backend_override):
         async for chunk in _stream_via_gateway(
             user_prompt,
             system_prompt,
             documents or [],
             max_tokens=max_tokens,
+            model_override=model_override,
         ):
             yield chunk
         return
 
-    model = await _resolve_model()
+    model = await _resolve_model(model_override, backend_override="ollama")
     full_prompt = _build_prompt(user_prompt, system_prompt, documents or [])
     token_count = 0
     t_start = time.monotonic()
