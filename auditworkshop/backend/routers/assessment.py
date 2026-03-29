@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from database import get_db
+from database import SessionLocal, get_db
 from models.checklist import WorkshopQuestion, WorkshopEvidence, RemarkAiStatus
 from schemas.checklist import RejectFeedbackIn, EditRemarkIn
 from services import knowledge_service as ks
@@ -63,6 +63,7 @@ def _get_question(question_id: str, db: Session) -> WorkshopQuestion:
 async def assess_question(question_id: str, db: Session = Depends(get_db)):
     """KI-Bemerkung fuer eine einzelne Frage generieren (SSE-Stream)."""
     q = _get_question(question_id, db)
+    question_id_value = q.id
 
     # RAG-Suche
     search_text = f"{q.question_text or ''} {q.category or ''}"
@@ -113,23 +114,30 @@ async def assess_question(question_id: str, db: Session = Depends(get_db)):
         # Nach dem Stream: Ergebnis in DB speichern
         full_response = "".join(accumulated)
         if full_response:
-            q.remark_ai = full_response
-            q.remark_ai_status = RemarkAiStatus.DRAFT
-            q.evidence.clear()
-
-            # Evidence-Eintraege aus RAG-Hits erstellen
-            for h in hits:
-                ev = WorkshopEvidence(
-                    question_id=q.id,
-                    source_name=h["source"],
-                    filename=h["filename"],
-                    location=f"Chunk {h['chunk_index']}",
-                    snippet=h["text"][:500],
-                    score=h["score"],
+            with SessionLocal() as save_db:
+                q_db = (
+                    save_db.query(WorkshopQuestion)
+                    .filter(WorkshopQuestion.id == question_id_value)
+                    .first()
                 )
-                db.add(ev)
+                if q_db:
+                    q_db.remark_ai = full_response
+                    q_db.remark_ai_status = RemarkAiStatus.DRAFT
+                    q_db.evidence.clear()
 
-            db.commit()
+                    # Evidence-Eintraege aus RAG-Hits erstellen
+                    for h in hits:
+                        ev = WorkshopEvidence(
+                            question_id=q_db.id,
+                            source_name=h["source"],
+                            filename=h["filename"],
+                            location=f"Chunk {h['chunk_index']}",
+                            snippet=h["text"][:500],
+                            score=h["score"],
+                        )
+                        save_db.add(ev)
+
+                    save_db.commit()
 
     return StreamingResponse(
         event_generator(),
