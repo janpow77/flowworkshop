@@ -59,6 +59,7 @@ async def upload_beneficiary_list(file: UploadFile = File(...)):
                 break
 
     result = None
+    last_error: Exception | None = None
     if ext == "csv":
         try:
             result = ingest_dataframe(
@@ -68,7 +69,9 @@ async def upload_beneficiary_list(file: UploadFile = File(...)):
                 0,
                 dataset_group="beneficiary",
             )
-        except Exception:
+        except Exception as exc:
+            last_error = exc
+            log.warning("Beneficiary-CSV-Ingest fehlgeschlagen: %s (%s)", file.filename, exc)
             result = None
     else:
         # 4. Als DataFrame einlesen (smart header detection)
@@ -91,10 +94,13 @@ async def upload_beneficiary_list(file: UploadFile = File(...)):
                 )
                 if result["rows"] > 0:
                     break
-            except Exception:
+            except Exception as exc:
+                last_error = exc
                 continue
 
     if not result or result["rows"] == 0:
+        if last_error:
+            log.warning("Beneficiary-Ingest ohne Ergebnis: %s (%s)", file.filename, last_error)
         raise HTTPException(422, "Keine Daten erkannt. Prüfen Sie das Dateiformat.")
 
     # 5. Spalten-Erkennung für Karte

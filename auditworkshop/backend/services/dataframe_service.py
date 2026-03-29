@@ -10,6 +10,7 @@ import csv
 import io
 import logging
 import re
+import unicodedata
 from typing import Any
 
 import pandas as pd
@@ -258,8 +259,8 @@ def ingest_dataframe(
     else:
         raise ValueError(f"DataFrame-Ingest nur fuer XLSX/XLS/CSV, nicht '{ext}'")
 
-    # Spalten bereinigen
-    df.columns = [_clean_column_name(str(c)) for c in df.columns]
+    # Spalten bereinigen und Kollisionen aufloesen
+    df.columns = _make_unique_column_names([str(c) for c in df.columns])
 
     # Leere Zeilen/Spalten entfernen
     df = df.dropna(how="all").dropna(axis=1, how="all")
@@ -434,11 +435,10 @@ def _read_csv_smart(file_bytes: bytes) -> pd.DataFrame:
 
 
 def _clean_column_name(name: str) -> str:
-    """Bereinigt Spaltennamen fuer SQL. Nimmt bei zweisprachigen Headern den deutschen Teil."""
+    """Bereinigt Spaltennamen fuer SQL und behaelt genug Kontext fuer mehrzeilige Header."""
     name = name.strip()
-    # Zweisprachige Header (DE\n\nEN) → nur deutschen Teil nehmen
     if "\n" in name:
-        name = name.split("\n")[0].strip()
+        name = " ".join(part.strip() for part in name.splitlines() if part.strip())
     name = name.lower()
     name = re.sub(r"\s+", "_", name)
     name = re.sub(r"[^a-zA-Z0-9_äöüß]", "", name)
@@ -446,6 +446,27 @@ def _clean_column_name(name: str) -> str:
     if not name or name[0].isdigit():
         name = "col_" + name
     return name[:63]  # PostgreSQL Limit
+
+
+def _make_unique_column_names(names: list[str]) -> list[str]:
+    """Bereinigt Spaltennamen und haengt bei Kollisionen stabile Suffixe an."""
+    counts: dict[str, int] = {}
+    unique_names: list[str] = []
+
+    for raw_name in names:
+        base = _clean_column_name(raw_name)
+        next_index = counts.get(base, 0)
+        counts[base] = next_index + 1
+
+        if next_index == 0:
+            unique_names.append(base)
+            continue
+
+        suffix = f"_{next_index + 1}"
+        trimmed = base[: max(1, 63 - len(suffix))]
+        unique_names.append(f"{trimmed}{suffix}")
+
+    return unique_names
 
 
 def _is_number(s: str) -> bool:
@@ -464,10 +485,26 @@ BUNDESLAENDER = [
     "Hamburg", "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen",
     "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen",
     "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen",
-    # Varianten
-    "Freistaat Sachsen", "Freistaat Bayern", "Freistaat Thüringen",
-    "NRW",
 ]
+
+BUNDESLAND_ALIASES = {
+    "Baden-Württemberg": ["Baden-Württemberg", "Baden-Wuerttemberg"],
+    "Bayern": ["Bayern", "Freistaat Bayern"],
+    "Berlin": ["Berlin"],
+    "Brandenburg": ["Brandenburg"],
+    "Bremen": ["Bremen"],
+    "Hamburg": ["Hamburg"],
+    "Hessen": ["Hessen"],
+    "Mecklenburg-Vorpommern": ["Mecklenburg-Vorpommern", "Mecklenburg Vorpommern"],
+    "Niedersachsen": ["Niedersachsen"],
+    "Nordrhein-Westfalen": ["Nordrhein-Westfalen", "Nordrhein Westfalen", "NRW"],
+    "Rheinland-Pfalz": ["Rheinland-Pfalz", "Rheinland Pfalz"],
+    "Saarland": ["Saarland"],
+    "Sachsen": ["Sachsen", "Freistaat Sachsen"],
+    "Sachsen-Anhalt": ["Sachsen-Anhalt", "Sachsen Anhalt"],
+    "Schleswig-Holstein": ["Schleswig-Holstein", "Schleswig Holstein"],
+    "Thüringen": ["Thüringen", "Thueringen", "Freistaat Thüringen"],
+}
 
 FONDS = ["EFRE", "ESF", "ESF+", "ELER", "EMFAF", "ERDF", "JTF", "AMIF", "ISF", "REACT-EU"]
 
@@ -514,20 +551,20 @@ def _detect_metadata(
             except UnicodeDecodeError:
                 continue
 
-    # Auch Dateinamen durchsuchen
-    title_text_lower = title_text.lower()
-
     result = {"bundesland": None, "fonds": None, "periode": None}
 
+    title_text_lower = title_text.lower()
     source_lower = (source or "").lower()
+    normalized_title = _normalize_lookup_text(title_text)
+    normalized_source = _normalize_lookup_text(source or "")
 
-    # Bundesland erkennen
-    for bl in BUNDESLAENDER:
-        if bl.lower() in title_text_lower:
-            # Normalisieren (Freistaat X → X)
-            clean = bl.replace("Freistaat ", "")
-            result["bundesland"] = clean
-            break
+    # Bundesland erkennen: Dateiname hat Vorrang, danach Titeltext.
+    source_state = _detect_bundesland_from_text(normalized_source)
+    title_state = _detect_bundesland_from_text(normalized_title)
+    if source_state:
+        result["bundesland"] = source_state
+    elif title_state:
+        result["bundesland"] = title_state
 
     # Fonds erkennen
     for f in FONDS:
@@ -555,12 +592,7 @@ def _detect_metadata(
     # Fallback: Bundesland und Fonds aus Dateinamen erkennen
     # Greift z.B. bei "transparenzliste_sachsen_efre.xlsx" oder "Begünstigte_NRW_2021-2027.xlsx"
     if source:
-        normalized_source = source_lower.replace("-", "_").replace(" ", "_")
-        source_state = None
-        for bl in BUNDESLAENDER:
-            if bl.lower().replace("-", "_").replace(" ", "_") in normalized_source:
-                source_state = bl.replace("Freistaat ", "")
-                break
+        source_state = _detect_bundesland_from_text(normalized_source)
         if source_state:
             result["bundesland"] = source_state
 
@@ -578,6 +610,41 @@ def _detect_metadata(
                 break
 
     return result
+
+
+def _normalize_lookup_text(value: str) -> str:
+    """Normalisiert Text fuer robuste Laender- und Dateinamen-Erkennung."""
+    text = str(value or "").lower()
+    text = (
+        text.replace("ä", "ae")
+        .replace("ö", "oe")
+        .replace("ü", "ue")
+        .replace("ß", "ss")
+    )
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = re.sub(r"[_/\\.-]+", " ", text)
+    text = re.sub(r"[^a-z0-9 ]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _detect_bundesland_from_text(normalized_text: str) -> str | None:
+    """Findet das passendste Bundesland in normalisiertem Text."""
+    if not normalized_text:
+        return None
+
+    candidates: list[tuple[int, str]] = []
+    for canonical, aliases in BUNDESLAND_ALIASES.items():
+        for alias in aliases:
+            normalized_alias = _normalize_lookup_text(alias)
+            if normalized_alias and normalized_alias in normalized_text:
+                candidates.append((len(normalized_alias), canonical))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    return candidates[0][1]
 
 
 def _ensure_metadata_table():

@@ -237,40 +237,40 @@
       "fonds": "EFRE",
       "periode": "2021-2027",
       "url": null,
-      "portal": "https://www.saarland.de/",
+      "portal": "https://www.saarland.de/DE/portale/eu-foerderportal/strukturfondsfoerderung/efre/efre-fp-20212027",
       "status": "manual_download",
       "rows": null,
-      "notes": "Offizielles Saarland-Portal bekannt, direkter maschinenlesbarer Link noch nicht stabil extrahiert"
+      "notes": "Exakte offizielle EFRE-Seite bekannt; automatisierte Extraktion scheitert aktuell an der Bunny-Shield-Challenge des Portals"
     },
     {
       "bundesland": "Saarland",
       "fonds": "ESF",
       "periode": "2021-2027",
       "url": null,
-      "portal": "https://www.saarland.de/",
+      "portal": "https://www.saarland.de/DE/portale/eu-foerderportal/strukturfondsfoerderung/esf/esf-fp-20212027",
       "status": "manual_download",
       "rows": null,
-      "notes": "Offizielles Saarland-Portal bekannt, direkter maschinenlesbarer Link noch nicht stabil extrahiert"
+      "notes": "Exakte offizielle ESF-Seite bekannt; automatisierte Extraktion scheitert aktuell an der Bunny-Shield-Challenge des Portals"
     },
     {
       "bundesland": "Sachsen",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://www.strukturfonds.sachsen.de/liste-der-vorhaben-4520.html",
-      "status": "manual_download",
-      "rows": null,
-      "notes": "Offizielle Saechsische Seite bekannt; direkter Tabellenlink derzeit nicht statisch extrahierbar"
+      "url": "https://www.xn--europa-frdert-sachsen-oec.de/files/media/projekte/2026/2025-12-31-liste-der-vorhaben-efre-21-27.xlsx",
+      "portal": "https://www.xn--europa-frdert-sachsen-oec.de/de/projekte/foerderzeitraum-2021-2027",
+      "status": "ok",
+      "rows": 5763,
+      "notes": "Direkter offizieller XLSX-Link aus dem Sachsen-Portal, Stand 31.12.2025"
     },
     {
       "bundesland": "Sachsen",
       "fonds": "ESF",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://www.xn--europa-frdert-sachsen-oec.de/",
-      "status": "manual_download",
-      "rows": null,
-      "notes": "Offizielles ESF-Portal laut Bundes-ESF-Seite bekannt; direkter Tabellenlink derzeit nicht statisch extrahierbar"
+      "url": "https://www.xn--europa-frdert-sachsen-oec.de/files/media/projekte/2026/2025-12-31-liste-der-beguenstigten-esf-plus.xlsx",
+      "portal": "https://www.xn--europa-frdert-sachsen-oec.de/de/projekte/foerderzeitraum-2021-2027",
+      "status": "ok",
+      "rows": 2576,
+      "notes": "Direkter offizieller XLSX-Link aus dem Sachsen-Portal, Stand 31.12.2025"
     },
     {
       "bundesland": "Sachsen-Anhalt",
@@ -306,11 +306,11 @@
       "bundesland": "Schleswig-Holstein",
       "fonds": "ESF",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://www.schleswig-holstein.de/DE/fachinhalte/A/arbeitsmarktfoerderung/esf_downloads.html",
-      "status": "manual_download",
-      "rows": null,
-      "notes": "Offizielle ESF-Seite bekannt; statischer XLSX-Link derzeit nicht direkt im HTML exponiert"
+      "url": "https://www.ib-sh.de/fileadmin/user_upload/downloads/arbeitsmarkt_strukturfoerderung/arbeitsmarktfoerderung/lpa_2021-2027/allgemein/liste_der_vorhaben_aktuell.csv",
+      "portal": "https://www.ib-sh.de/infoseite/landesprogramm-arbeit-2021-bis-2027/",
+      "status": "ok",
+      "rows": 222,
+      "notes": "Offizieller CSV-Direktlink aus dem IB-SH-Downloadblock"
     },
     {
       "bundesland": "Thueringen",
