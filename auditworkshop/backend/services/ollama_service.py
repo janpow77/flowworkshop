@@ -237,9 +237,12 @@ async def _stream_via_gateway(
 
                         for choice in chunk.get("choices", []):
                             delta = choice.get("delta", {})
-                            # content und reasoning_content zusammenfuehren
-                            token = delta.get("content") or delta.get(
-                                "reasoning_content", ""
+                            # qwen3/qwq senden je nach OpenAI-kompatiblem Adapter
+                            # content, reasoning_content oder reasoning.
+                            token = (
+                                delta.get("content")
+                                or delta.get("reasoning_content")
+                                or delta.get("reasoning", "")
                             )
                             if token:
                                 token_count += 1
