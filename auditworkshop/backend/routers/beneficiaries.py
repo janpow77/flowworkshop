@@ -32,8 +32,8 @@ async def upload_beneficiary_list(file: UploadFile = File(...)):
         raise HTTPException(422, "Datei zu gross (max. 50 MB).")
 
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
-    if ext not in ("xlsx", "xls", "xlsm"):
-        raise HTTPException(422, "Nur XLSX/XLS-Dateien werden akzeptiert.")
+    if ext not in ("xlsx", "xls", "xlsm", "csv"):
+        raise HTTPException(422, "Nur XLSX/XLS/CSV-Dateien werden akzeptiert.")
 
     # 1. Metadaten erkennen
     metadata = _detect_metadata(content, ext, source=file.filename)
@@ -58,29 +58,41 @@ async def upload_beneficiary_list(file: UploadFile = File(...)):
                 replaced = True
                 break
 
-    # 4. Als DataFrame einlesen (smart header detection)
-    # Versuche verschiedene Blätter (oft heißt das erste "Liste der Vorhaben" o.ä.)
     result = None
-    for sheet in [
-        0,
-        "Liste der Vorhaben", "Vorhaben", "Begünstigte",
-        "Transparenzliste", "Beneficiaries", "Förderempfänger",
-        "Daten", "Data", "Übersicht", "Overview",
-        "EFRE", "ESF", "JTF", "ELER",
-        "Sheet1", "Tabelle1", "Blatt1",
-    ]:
+    if ext == "csv":
         try:
             result = ingest_dataframe(
                 content,
                 file.filename,
                 source,
-                sheet,
+                0,
                 dataset_group="beneficiary",
             )
-            if result["rows"] > 0:
-                break
         except Exception:
-            continue
+            result = None
+    else:
+        # 4. Als DataFrame einlesen (smart header detection)
+        # Versuche verschiedene Blätter (oft heißt das erste "Liste der Vorhaben" o.ä.)
+        for sheet in [
+            0,
+            "Liste der Vorhaben", "Vorhaben", "Begünstigte",
+            "Transparenzliste", "Beneficiaries", "Förderempfänger",
+            "Daten", "Data", "Übersicht", "Overview",
+            "EFRE", "ESF", "JTF", "ELER",
+            "Sheet1", "Tabelle1", "Blatt1",
+        ]:
+            try:
+                result = ingest_dataframe(
+                    content,
+                    file.filename,
+                    source,
+                    sheet,
+                    dataset_group="beneficiary",
+                )
+                if result["rows"] > 0:
+                    break
+            except Exception:
+                continue
 
     if not result or result["rows"] == 0:
         raise HTTPException(422, "Keine Daten erkannt. Prüfen Sie das Dateiformat.")

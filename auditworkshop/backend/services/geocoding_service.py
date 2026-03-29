@@ -67,6 +67,7 @@ def lookup_nuts(lat: float, lon: float) -> dict | None:
 COLUMN_PATTERNS = {
     "name": [
         r"^name_des",  # Abgeschnittenes "Name des Begünstigten"
+        r"^benef_?name$",
         r"name.*begünstig", r"name.*auftrag",
         r"(?:name|bezeichnung).*begünstig",  # Erfordert "name"/"bezeichnung" vor "begünstig"
         r"beneficiary",
@@ -77,12 +78,14 @@ COLUMN_PATTERNS = {
         r"förderempf", r"empf.*name", r"leistungsempf", r"firma", r"name.*firma",
     ],
     "projekt": [
+        r"^op_?name$",
         r"bezeichnung$", r"bezeichnung.*vorhaben", r"operation.*name",
         r"projekt", r"vorhaben", r"massnahme", r"maßnahme", r"title",
         r"subject", r"measure", r"operation", r"project", r"scheme",
         r"aid.*measure", r"programme?", r"program",
     ],
     "kosten": [
+        r"^op_?total_?cost$",
         r"förderf.*gesamt.*kosten", r"total.*cost", r"gesamtkosten",
         r"fördersumme", r"zuwendung.*betrag", r"bruttobetrag",
         r"betrag", r"summe", r"zuschuss", r"eu.*beteiligung", r"eu.*beitrag",
@@ -90,6 +93,7 @@ COLUMN_PATTERNS = {
         r"total.*eligible", r"eligible.*cost", r"public.*support", r"union.*support",
     ],
     "standort": [
+        r"^op_?geo_?location$",
         r"standortindikator", r"standort.*plz", r"standort.*ort",  # Spezifischste zuerst
         r"investitionsort",
         r"ort.*begünstig", r"ort.*vorhaben",
@@ -117,6 +121,7 @@ COLUMN_PATTERNS = {
         r"interventions.*bereich", r"intervention.*field",
     ],
     "beschreibung": [
+        r"^op_?purp_?achi$",
         r"zweck", r"errungenschaft", r"purpose", r"achievement",
         r"beschreibung", r"description", r"reason", r"summary",
         r"remarks", r"gegenstand", r"comment", r"objective", r"instrument",

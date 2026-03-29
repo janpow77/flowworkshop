@@ -19,8 +19,17 @@ ALLOW_REMOTE_GEOCODING = os.getenv("ALLOW_REMOTE_GEOCODING", "false").lower() ==
 ALLOW_REMOTE_TILES = os.getenv("ALLOW_REMOTE_TILES", "true").lower() == "true"
 
 # ── Embedding ──────────────────────────────────────────────────────────────
-EMBEDDING_MODEL = "paraphrase-multilingual-mpnet-base-v2"
-EMBEDDING_DIM   = 768
+EMBEDDING_BACKEND = os.getenv(
+    "EMBEDDING_BACKEND",
+    "gateway" if LLM_BACKEND in {"egpu-manager", "egpu_manager", "gateway"} else "local",
+).lower()
+EMBEDDING_GATEWAY_URL = os.getenv("EMBEDDING_GATEWAY_URL", EGPU_GATEWAY_URL)
+EMBEDDING_GATEWAY_APP_ID = os.getenv("EMBEDDING_GATEWAY_APP_ID", EGPU_GATEWAY_APP_ID)
+EMBEDDING_MODEL = os.getenv(
+    "EMBEDDING_MODEL",
+    "bge-m3" if EMBEDDING_BACKEND == "gateway" else "paraphrase-multilingual-mpnet-base-v2",
+)
+EMBEDDING_DIM   = int(os.getenv("EMBEDDING_DIM", "1024" if EMBEDDING_BACKEND == "gateway" else "768"))
 
 # ── Chunking ───────────────────────────────────────────────────────────────
 CHUNK_WORDS   = 700    # Zielgröße je Chunk (wortbasiert)
@@ -31,6 +40,7 @@ CHUNK_OVERLAP = 150    # Überlappung in Wörtern
 LLM_NUM_CTX     = int(os.getenv("LLM_NUM_CTX", "8192"))
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 LLM_NUM_GPU     = int(os.getenv("LLM_NUM_GPU", "99"))  # Alle Layer auf GPU
+LLM_MAX_TOKENS_DEFAULT = int(os.getenv("LLM_MAX_TOKENS_DEFAULT", "384"))
 
 # ── Begünstigtenverzeichnis ────────────────────────────────────────────────
 BENEFICIARY_URL = (

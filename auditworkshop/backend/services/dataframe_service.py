@@ -6,6 +6,7 @@ Ermoeglicht SQL-Abfragen und Statistik-Aggregationen durch das LLM.
 Tabellen werden als workshop_df_{source_name} gespeichert.
 """
 from __future__ import annotations
+import csv
 import io
 import logging
 import re
@@ -253,14 +254,7 @@ def ingest_dataframe(
         # Immer smart header detection (EFRE-Tabellen haben oft Titelzeilen)
         df = _read_excel_smart(file_bytes, ext, sheet_name)
     elif ext == "csv":
-        for enc in ("utf-8", "latin-1", "cp1252"):
-            try:
-                df = pd.read_csv(io.BytesIO(file_bytes), encoding=enc)
-                break
-            except UnicodeDecodeError:
-                continue
-        else:
-            df = pd.read_csv(io.BytesIO(file_bytes), encoding="utf-8", errors="replace")
+        df = _read_csv_smart(file_bytes)
     else:
         raise ValueError(f"DataFrame-Ingest nur fuer XLSX/XLS/CSV, nicht '{ext}'")
 
@@ -280,7 +274,7 @@ def ingest_dataframe(
 
     # Metadaten aus Titelzeilen extrahieren (Bundesland, Fonds, Periode)
     metadata = {}
-    if ext in ("xlsx", "xls", "xlsm"):
+    if ext in ("xlsx", "xls", "xlsm", "csv"):
         metadata = _detect_metadata(file_bytes, ext, sheet_name, source=filename)
 
     # In PostgreSQL speichern (replace = DROP + CREATE)
@@ -373,6 +367,72 @@ def _read_excel_smart(file_bytes: bytes, ext: str, sheet_name: str | int | None 
     return df
 
 
+def _read_csv_smart(file_bytes: bytes) -> pd.DataFrame:
+    """
+    Erkennt Delimiter und Header-Zeile fuer Transparenzlisten im CSV-Format.
+    Behandelt Titelzeilen vor dem Header und zweisprachige Doppel-Header.
+    """
+    text = ""
+    for enc in ("utf-8", "cp1252", "latin-1"):
+        try:
+            text = file_bytes.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    if not text:
+        text = file_bytes.decode("utf-8", errors="replace")
+
+    sample = text[:8192]
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=";,\t|")
+        sep = dialect.delimiter
+    except csv.Error:
+        sep = ";"
+
+    raw = pd.read_csv(
+        io.StringIO(text),
+        sep=sep,
+        header=None,
+        dtype=str,
+        engine="python",
+        keep_default_na=False,
+    )
+
+    best_row = 0
+    candidates: list[tuple[int, int, float]] = []
+    for idx in range(min(len(raw), 25)):
+        values = [str(v).strip() for v in raw.iloc[idx].tolist()]
+        non_empty = [v for v in values if v]
+        if len(non_empty) < 2:
+            continue
+        text_cells = sum(1 for v in non_empty if any(ch.isalpha() for ch in v))
+        text_ratio = text_cells / max(len(non_empty), 1)
+        candidates.append((idx, len(non_empty), text_ratio))
+
+    if candidates:
+        for idx, count, ratio in candidates:
+            if count >= 3 and ratio >= 0.6:
+                best_row = idx
+                break
+        else:
+            best_row = max(candidates, key=lambda item: (item[2], item[1]))[0]
+
+    # Manche Transparenzlisten haben DE-Header + maschinenlesbaren EN-Header direkt darunter.
+    if best_row + 1 < len(raw):
+        next_values = [str(v).strip() for v in raw.iloc[best_row + 1].tolist()]
+        next_non_empty = [v for v in next_values if v]
+        snake_like = sum(1 for v in next_non_empty if re.fullmatch(r"[a-z0-9_]+", v))
+        if next_non_empty and snake_like >= max(3, len(next_non_empty) // 2):
+            best_row += 1
+
+    return pd.read_csv(
+        io.StringIO(text),
+        sep=sep,
+        header=best_row,
+        engine="python",
+    )
+
+
 def _clean_column_name(name: str) -> str:
     """Bereinigt Spaltennamen fuer SQL. Nimmt bei zweisprachigen Headern den deutschen Teil."""
     name = name.strip()
@@ -426,30 +486,40 @@ def _detect_metadata(
     Liest die ersten 15 Zeilen VOR dem Daten-Header.
     Falls nichts erkannt wird, wird der Dateiname (source) als Fallback herangezogen.
     """
-    import openpyxl
-    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
-
-    if isinstance(sheet_name, str) and sheet_name in wb.sheetnames:
-        ws = wb[sheet_name]
-    elif isinstance(sheet_name, int) and sheet_name < len(wb.worksheets):
-        ws = wb.worksheets[sheet_name]
-    else:
-        ws = wb.worksheets[0]
-
-    # Alle Texte aus den ersten 15 Zeilen sammeln
     title_text = ""
-    for i, row in enumerate(ws.iter_rows(values_only=True)):
-        if i > 15:
-            break
-        for c in row:
-            if c is not None:
-                title_text += " " + str(c)
-    wb.close()
+    if ext in ("xlsx", "xls", "xlsm"):
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
+
+        if isinstance(sheet_name, str) and sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+        elif isinstance(sheet_name, int) and sheet_name < len(wb.worksheets):
+            ws = wb.worksheets[sheet_name]
+        else:
+            ws = wb.worksheets[0]
+
+        # Alle Texte aus den ersten 15 Zeilen sammeln
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            if i > 15:
+                break
+            for c in row:
+                if c is not None:
+                    title_text += " " + str(c)
+        wb.close()
+    else:
+        for enc in ("utf-8", "cp1252", "latin-1"):
+            try:
+                title_text = file_bytes[:16000].decode(enc)
+                break
+            except UnicodeDecodeError:
+                continue
 
     # Auch Dateinamen durchsuchen
     title_text_lower = title_text.lower()
 
     result = {"bundesland": None, "fonds": None, "periode": None}
+
+    source_lower = (source or "").lower()
 
     # Bundesland erkennen
     for bl in BUNDESLAENDER:
@@ -485,26 +555,27 @@ def _detect_metadata(
     # Fallback: Bundesland und Fonds aus Dateinamen erkennen
     # Greift z.B. bei "transparenzliste_sachsen_efre.xlsx" oder "Begünstigte_NRW_2021-2027.xlsx"
     if source:
-        source_lower = source.lower()
-        if not result["bundesland"]:
-            for bl in BUNDESLAENDER:
-                if bl.lower().replace("-", "_").replace(" ", "_") in source_lower.replace("-", "_"):
-                    clean = bl.replace("Freistaat ", "")
-                    result["bundesland"] = clean
-                    break
-        if not result["fonds"]:
-            for f in FONDS:
-                if f.lower() in source_lower:
-                    result["fonds"] = f.upper()
-                    break
-        if not result["periode"]:
-            for p in PERIODEN:
-                p_normalized = p.replace("–", "-")
-                if p_normalized in source or p_normalized.replace("-", "_") in source_lower:
-                    result["periode"] = p_normalized
-                    if len(result["periode"]) <= 5:
-                        result["periode"] = "20" + result["periode"]
-                    break
+        normalized_source = source_lower.replace("-", "_").replace(" ", "_")
+        source_state = None
+        for bl in BUNDESLAENDER:
+            if bl.lower().replace("-", "_").replace(" ", "_") in normalized_source:
+                source_state = bl.replace("Freistaat ", "")
+                break
+        if source_state:
+            result["bundesland"] = source_state
+
+        for f in FONDS:
+            if f.lower() in source_lower:
+                result["fonds"] = f.upper()
+                break
+
+        for p in PERIODEN:
+            p_normalized = p.replace("–", "-")
+            if p_normalized in source or p_normalized.replace("-", "_") in source_lower:
+                result["periode"] = p_normalized
+                if len(result["periode"]) <= 5:
+                    result["periode"] = "20" + result["periode"]
+                break
 
     return result
 
@@ -774,7 +845,7 @@ def get_summary_stats(source: str) -> str:
     return "\n".join(lines)
 
 
-def get_beneficiary_llm_context(max_entries_per_source: int = 8) -> str:
+def get_beneficiary_llm_context(max_entries_per_source: int = 3) -> str:
     from services.geocoding_service import detect_columns
 
     sources = get_beneficiary_sources()
@@ -875,7 +946,7 @@ def get_beneficiary_llm_context(max_entries_per_source: int = 8) -> str:
                 category_counts[category] = category_counts.get(category, 0) + 1
         if category_counts:
             parts.append("- Haeufigste Kategorien:")
-            for label, count in sorted(category_counts.items(), key=lambda item: item[1], reverse=True)[:5]:
+            for label, count in sorted(category_counts.items(), key=lambda item: item[1], reverse=True)[:3]:
                 parts.append(f"  {label}: {count}")
 
         location_totals: dict[str, float] = {}
@@ -886,7 +957,7 @@ def get_beneficiary_llm_context(max_entries_per_source: int = 8) -> str:
             location_totals[location] = location_totals.get(location, 0.0) + float(row["kosten_num"])
         if location_totals:
             parts.append("- Top-Standorte nach aggregierten Kosten:")
-            for label, amount in sorted(location_totals.items(), key=lambda item: item[1], reverse=True)[:5]:
+            for label, amount in sorted(location_totals.items(), key=lambda item: item[1], reverse=True)[:3]:
                 parts.append(f"  {label}: {_format_eur(amount)}")
 
         parts.append("")
@@ -899,7 +970,7 @@ def get_beneficiary_llm_context(max_entries_per_source: int = 8) -> str:
 
     if combined_top:
         parts.append("- Hoechste Einzelvorhaben ueber alle Quellen:")
-        for idx, row in enumerate(sorted(combined_top, key=lambda item: item["kosten_num"], reverse=True)[:12], start=1):
+        for idx, row in enumerate(sorted(combined_top, key=lambda item: item["kosten_num"], reverse=True)[:8], start=1):
             parts.append(
                 "  "
                 + " | ".join(filter(None, [

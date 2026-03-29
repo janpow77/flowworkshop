@@ -1,6 +1,6 @@
 {
-  "_info": "Oeffentliche Transparenzlisten gemaess Art. 49 VO (EU) 2021/1060. URLs fuer Workshop-Vorbereitung.",
-  "_updated": "2026-03-23",
+  "_info": "Oeffentliche Transparenzlisten gemaess Art. 49 VO (EU) 2021/1060. Bundesweite Quellenbasis fuer EFRE, ESF+ und JTF im Workshop.",
+  "_updated": "2026-03-29",
   "sources": [
     {
       "bundesland": "Baden-Wuerttemberg",
@@ -13,14 +13,34 @@
       "notes": null
     },
     {
+      "bundesland": "Baden-Wuerttemberg",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://www.esf-bw.de/fileadmin/user_upload/Foerderperiode_2021-2027/Liste_der_Vorhaben/Liste_der_Vorhaben_01_2026_BS.xlsx",
+      "portal": "https://www.esf-bw.de/esf-plus-in-bw/zahlen-und-fakten/liste-der-vorhaben",
+      "status": "ok",
+      "rows": null,
+      "notes": "Direktlink Stand 29.01.2026"
+    },
+    {
       "bundesland": "Bayern",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://www.stmwi.bayern.de/efre",
-      "status": "todo",
+      "url": "https://www.efre-bayern.de/fileadmin/user_upload/efre/Liste_der_Vorhaben/Liste_der_Vorhaben_Bayern_Deutschland__Stand_28.02.2026.xlsx",
+      "portal": "https://www.efre-bayern.de/projekte/projekte-a-z/",
+      "status": "ok",
       "rows": null,
-      "notes": "Bayern EFRE Verwaltungsbehoerde, Transparenzliste als XLSX auf Portal verfuegbar"
+      "notes": "Direktlink Stand 28.02.2026"
+    },
+    {
+      "bundesland": "Bayern",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://www.esf.bayern.de/imperia/md/images/stmas/esf_2022/liste_der_vorhaben.xlsx",
+      "portal": "https://www.esf.bayern.de/esf-bayern/zahlen/",
+      "status": "ok",
+      "rows": null,
+      "notes": "Direktlink aus offizieller Bayern-ESF-Seite"
     },
     {
       "bundesland": "Berlin",
@@ -33,112 +53,182 @@
       "notes": null
     },
     {
+      "bundesland": "Berlin",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://www.berlin.de/sen/wirtschaft/gruenden-und-foerdern/europaeische-strukturfonds/esf-foerderperiode-2021-2027/aktuell-gefoerderte-projekte/20260325_liste_der_vorhaben.xlsx?ts=1774519001",
+      "portal": "https://www.berlin.de/sen/wirtschaft/gruenden-und-foerdern/europaeische-strukturfonds/esf-foerderperiode-2021-2027/buergerinnen-und-buerger/artikel.1215438.php",
+      "status": "ok",
+      "rows": null,
+      "notes": "Direktlink Stand 09.02.2026"
+    },
+    {
       "bundesland": "Brandenburg",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://efre.brandenburg.de/efre/de/kommunikation/beguenstigte-der-efre-foerderung/",
-      "status": "manual_download",
+      "url": "https://efre.brandenburg.de/sixcms/media.php/9/2025_12_31%20Liste%20der%20Vorhaben.xlsx",
+      "portal": "https://efre.brandenburg.de/efre/de/projekte/liste-der-vorhaben/",
+      "status": "ok",
       "rows": null,
-      "notes": "XLSX-Datei auf Portal verfuegbar, URL aendert sich mit jedem Update"
+      "notes": "Direktlink Stand 31.12.2025"
+    },
+    {
+      "bundesland": "Brandenburg",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://esf.brandenburg.de/sixcms/media.php/9/Liste_der_Vorhaben_20251231.xlsx",
+      "portal": "https://esf.brandenburg.de/esf/de/aktuelles/projekte-in-brandenburg/",
+      "status": "ok",
+      "rows": null,
+      "notes": "Direktlink Stand 31.12.2025"
     },
     {
       "bundesland": "Brandenburg",
       "fonds": "JTF",
       "periode": "2021-2027",
       "url": null,
-      "portal": "https://efre.brandenburg.de/efre/de/kommunikation/beguenstigte-der-efre-foerderung/",
-      "status": "manual_download",
+      "portal": "https://efre.brandenburg.de/efre/de/projekte/liste-der-vorhaben/",
+      "status": "preloaded",
       "rows": 10,
-      "notes": "XLSX-Datei auf Portal verfuegbar, URL aendert sich mit jedem Update"
+      "notes": "Bereits lokal geladen; oeffentliche Quelle ist im Brandenburg-Portal verfuegbar"
     },
     {
       "bundesland": "Bremen",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://www.transparenz.bremen.de/metainformationen/liste-der-vorhaben-efre-foerderperiode-2021-2027-253729",
-      "status": "todo",
+      "url": "https://www.efre-bremen.de/sixcms/media.php/13/ListederVorhaben.xlsx",
+      "portal": "https://www.efre-bremen.de/projekte/liste-der-vorhaben-15110",
+      "status": "ok",
       "rows": null,
-      "notes": "Verfuegbar auf Bremer Transparenzportal"
+      "notes": null
+    },
+    {
+      "bundesland": "Bremen",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://www.esfplus.bremen.de/sixcms/media.php/13/Liste%20der%20Vorhaben_20260303.xlsx",
+      "portal": "https://www.esfplus.bremen.de/projekte/projekt-liste-22216",
+      "status": "ok",
+      "rows": null,
+      "notes": "Kombinierte Bremer Liste fuer 2014-2021 und 2021-2027"
     },
     {
       "bundesland": "Hamburg",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": null,
-      "status": "todo",
+      "url": "https://www.hamburg.de/resource/blob/1142360/3d2587be69ceef0cc0140c23df71cbac/liste-der-vorhaben-stand-februar-2026-excel-data.xlsx",
+      "portal": "https://www.hamburg.de/politik-und-verwaltung/behoerden/bwai/efre/foerderprogramm-2021-2027-295394",
+      "status": "ok",
       "rows": null,
-      "notes": null
+      "notes": "Direktlink Stand Februar 2026"
+    },
+    {
+      "bundesland": "Hamburg",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://www.esf-hamburg.de/resource/blob/619304/f0a0016df61bc2b1302a46466f7f8cf8/liste-der-vorhaben-2021-2027-excel-63-kb--data.xlsx",
+      "portal": "https://www.esf-hamburg.de/downloads/informationen-zum-esf-plus-",
+      "status": "ok",
+      "rows": null,
+      "notes": "Direktlink aus offiziellem Downloadbereich"
     },
     {
       "bundesland": "Hessen",
       "fonds": "EFRE",
-      "periode": "2014-2020",
+      "periode": "2021-2027",
       "url": null,
-      "portal": "https://wirtschaft.hessen.de/Wirtschaft/EFRE-Europaeischer-Strukturfonds",
+      "portal": "https://wirtschaft.hessen.de/wirtschaft/efre-europaeischer-strukturfonds/foerderung-2021-2027",
       "status": "preloaded",
       "rows": 182,
-      "notes": "Bereits als transparenzliste_hessen.xlsx im data-Verzeichnis"
+      "notes": "Bereits lokal geladen; bisherige harte XLSX-URL lieferte am 29.03.2026 HTTP 404"
     },
     {
       "bundesland": "Hessen",
       "fonds": "ESF",
       "periode": "2021-2027",
       "url": null,
-      "portal": "https://wirtschaft.hessen.de/Wirtschaft/EFRE-Europaeischer-Strukturfonds",
+      "portal": "https://www.esf-hessen.de/esf-hessen/zahlen-fakten-und-erfolge/liste-der-vorhaben",
       "status": "preloaded",
       "rows": 12,
-      "notes": "Bereits als transparenzliste_esf_hessen.xlsx im data-Verzeichnis"
+      "notes": "Bereits lokal geladen; öffentliche Seite verlinkt den XLSX-Download derzeit nicht statisch im HTML"
     },
     {
       "bundesland": "Mecklenburg-Vorpommern",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": null,
-      "status": "todo",
+      "url": "https://www.europa-mv.de/serviceassistent/download?id=1686365",
+      "portal": "https://www.europa-mv.de/foerderinstrumente/fonds_mv/efre/",
+      "status": "ok",
       "rows": null,
-      "notes": null
+      "notes": "Offizieller Download, Dateiname: Liste der Vorhaben_31.12.2025_EFRE 21-27"
+    },
+    {
+      "bundesland": "Mecklenburg-Vorpommern",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://www.europa-mv.de/serviceassistent/download?id=1685807",
+      "portal": "https://www.europa-mv.de/foerderinstrumente/fonds_mv/esf/",
+      "status": "ok",
+      "rows": null,
+      "notes": "Offizieller Download, Dateiname: 2025 12 31 Liste der Vorhaben ESF 21 MV"
     },
     {
       "bundesland": "Niedersachsen",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": "https://www.europa-fuer-niedersachsen.niedersachsen.de/download/221566/Liste_der_Vorhaben_2021-2027_Multifonds_EFRE_Stand_31.05.2025.xlsx.xlsx",
-      "portal": "https://www.europa-fuer-niedersachsen.niedersachsen.de/",
-      "status": "ok",
+      "url": null,
+      "portal": "https://www.europa-fuer-niedersachsen.niedersachsen.de/startseite/regionen_und_foerderung/efre_und_esf/",
+      "status": "preloaded",
       "rows": 713,
-      "notes": null
+      "notes": "Bereits lokal geladen; fruehere Direkt-URL lieferte am 29.03.2026 HTTP 400"
     },
     {
       "bundesland": "Niedersachsen",
       "fonds": "ESF",
       "periode": "2021-2027",
-      "url": "https://www.europa-fuer-niedersachsen.niedersachsen.de/download/221567/Liste_der_Vorhaben_2021-2027_Multifonds_ESF_Stand_31.05.2025.xlsx.xlsx",
-      "portal": "https://www.europa-fuer-niedersachsen.niedersachsen.de/",
-      "status": "ok",
+      "url": null,
+      "portal": "https://www.europa-fuer-niedersachsen.niedersachsen.de/startseite/regionen_und_foerderung/efre_und_esf/",
+      "status": "preloaded",
       "rows": 681,
-      "notes": null
+      "notes": "Bereits lokal geladen; fruehere Direkt-URL lieferte am 29.03.2026 HTTP 400"
     },
     {
       "bundesland": "Nordrhein-Westfalen",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://www.efre.nrw/",
-      "status": "todo",
+      "url": "https://www.efre.nrw/sites/default/files/media/document/file/liste-der-vorhaben_1.zip",
+      "portal": "https://www.efre.nrw.de/daten-fakten/liste-der-vorhaben/",
+      "status": "ok",
       "rows": null,
-      "notes": "EFRE.NRW Portal pruefen fuer XLSX-Download"
+      "notes": "Offizieller Download als ZIP; Harvester extrahiert erste Tabellen-Datei"
+    },
+    {
+      "bundesland": "Nordrhein-Westfalen",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://www.mags.nrw/system/files/media/document/file/esf_2021-2027_liste_der_vorhaben.xlsx",
+      "portal": "https://www.mags.nrw/esf-2021-2027-transparenzliste",
+      "status": "ok",
+      "rows": null,
+      "notes": "Offizieller Direktdownload"
     },
     {
       "bundesland": "Rheinland-Pfalz",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://efre.rlp.de/foerderperiode-2021-2027",
-      "status": "todo",
+      "url": "https://efre.rlp.de/fileadmin/efre.rlp.de/Liste_der_Vorhaben/Liste_der_Vorhaben_Stand_Maerz_2026.xlsx",
+      "portal": "https://efre.rlp.de/der-efre-und-seine-projekte/liste-der-vorhaben",
+      "status": "ok",
+      "rows": null,
+      "notes": "Direktlink Stand Maerz 2026"
+    },
+    {
+      "bundesland": "Rheinland-Pfalz",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://esf.rlp.de/fileadmin/esf.rlp.de/Service/Liste_der_Vorhaben/Liste_der_Vorhaben_NEU.xlsx",
+      "portal": "https://esf.rlp.de/service/liste-der-vorhaben",
+      "status": "ok",
       "rows": null,
       "notes": null
     },
@@ -147,10 +237,20 @@
       "fonds": "EFRE",
       "periode": "2021-2027",
       "url": null,
-      "portal": null,
-      "status": "todo",
+      "portal": "https://www.saarland.de/",
+      "status": "manual_download",
       "rows": null,
-      "notes": null
+      "notes": "Offizielles Saarland-Portal bekannt, direkter maschinenlesbarer Link noch nicht stabil extrahiert"
+    },
+    {
+      "bundesland": "Saarland",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://www.saarland.de/",
+      "status": "manual_download",
+      "rows": null,
+      "notes": "Offizielles Saarland-Portal bekannt, direkter maschinenlesbarer Link noch nicht stabil extrahiert"
     },
     {
       "bundesland": "Sachsen",
@@ -160,37 +260,77 @@
       "portal": "https://www.strukturfonds.sachsen.de/liste-der-vorhaben-4520.html",
       "status": "manual_download",
       "rows": null,
-      "notes": "ZIP-Datei mit XLS, URL aendert sich mit jedem Update"
+      "notes": "Offizielle Saechsische Seite bekannt; direkter Tabellenlink derzeit nicht statisch extrahierbar"
+    },
+    {
+      "bundesland": "Sachsen",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://www.xn--europa-frdert-sachsen-oec.de/",
+      "status": "manual_download",
+      "rows": null,
+      "notes": "Offizielles ESF-Portal laut Bundes-ESF-Seite bekannt; direkter Tabellenlink derzeit nicht statisch extrahierbar"
     },
     {
       "bundesland": "Sachsen-Anhalt",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://eufonds.sachsen-anhalt.de/",
-      "status": "todo",
+      "url": "https://eufonds.sachsen-anhalt.de/fileadmin/Bibliothek/Politik_und_Verwaltung/MF/EU_Fonds/EU-Fonds_2021-2027/EFRE_JTF/Liste_der_Vorhaben/26_01_13_Liste_der_Vorhaben_EFRE_JTF_31.12.2025.xlsx",
+      "portal": "https://eufonds.sachsen-anhalt.de/efre-und-jtf/informationen-fuer-interessierte",
+      "status": "ok",
       "rows": null,
-      "notes": null
+      "notes": "Offizielle kombinierte EFRE/JTF-Liste, Datenstand 31.12.2025"
+    },
+    {
+      "bundesland": "Sachsen-Anhalt",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://eufonds.sachsen-anhalt.de/fileadmin/Bibliothek/Politik_und_Verwaltung/MF/EU_Fonds/EU-Fonds_2021-2027/ESF/Liste_der_Vorhaben/26_01_13_Liste_der_Vorhaben_ESF__31.12.2025.xlsx",
+      "portal": "https://eufonds.sachsen-anhalt.de/esf/informationen-fuer-interessierte",
+      "status": "ok",
+      "rows": null,
+      "notes": "Offizielle ESF+-Liste, Datenstand 31.12.2025"
     },
     {
       "bundesland": "Schleswig-Holstein",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": "https://www.ib-sh.de/fileadmin/user_upload/downloads/arbeitsmarkt_strukturfoerderung/strukturfoerderung/lpw_21-27/allgemein/20240404_listedervorhaben_efre_bf.xlsx",
-      "portal": "https://www.ib-sh.de/infoseite/das-efre-programm-2021-2027-in-schleswig-holstein/",
-      "status": "404",
+      "url": "https://www.schleswig-holstein.de/DE/fachinhalte/F/foerderprogramme/MWAVT/Downloads/FP_21_27/liste_Vorhaben-efre21_exc.xlsx?__blob=publicationFile&v=8",
+      "portal": "https://www.schleswig-holstein.de/DE/landesregierung/themen/wirtschaft/lpw/ergebnisse/liste-vorhaben",
+      "status": "ok",
       "rows": null,
-      "notes": "URL lieferte 404 am 2026-03-23, Portal pruefen fuer aktualisierten Link"
+      "notes": "Aktueller offizieller XLSX-Link; ersetzt alte 404-IB-SH-URL"
+    },
+    {
+      "bundesland": "Schleswig-Holstein",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": null,
+      "portal": "https://www.schleswig-holstein.de/DE/fachinhalte/A/arbeitsmarktfoerderung/esf_downloads.html",
+      "status": "manual_download",
+      "rows": null,
+      "notes": "Offizielle ESF-Seite bekannt; statischer XLSX-Link derzeit nicht direkt im HTML exponiert"
     },
     {
       "bundesland": "Thueringen",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://efre-thueringen.de/",
-      "status": "todo",
+      "url": "https://efre-thueringen.de/fileadmin/user_upload/Liste_der_Vorhaben_2026_01_10T03_01_08.825.xlsx",
+      "portal": "https://efre-thueringen.de/vorhaben-daten-und-fakten/erfolgreich-gefoerderte-vorhaben/",
+      "status": "ok",
       "rows": null,
-      "notes": "Aufbaubank Thueringen oder EFRE-Portal pruefen"
+      "notes": "Offizielle Liste der Vorhaben, Stand 10.01.2026"
+    },
+    {
+      "bundesland": "Thueringen",
+      "fonds": "ESF",
+      "periode": "2021-2027",
+      "url": "https://www.esf-thueringen.de/fileadmin/Liste_der_Vorhaben/06_Liste_der_Vorhaben_31.12.2025_Version_2.xlsx",
+      "portal": "https://www.esf-thueringen.de/liste-der-vorhaben",
+      "status": "ok",
+      "rows": null,
+      "notes": "Offizielle Liste der Vorhaben, Stand 31.12.2025"
     }
   ]
 }

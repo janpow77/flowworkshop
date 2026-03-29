@@ -24,7 +24,7 @@ services:
     build: ./backend
     container_name: auditworkshop-backend
     restart: unless-stopped
-    mem_limit: 512M
+    mem_limit: 1024M
     depends_on:
       db:
         condition: service_healthy
@@ -41,6 +41,11 @@ services:
       EGPU_GATEWAY_URL: http://host.docker.internal:7842
       EGPU_GATEWAY_APP_ID: auditworkshop
       EGPU_WORKLOAD_TYPE: llm
+      EMBEDDING_BACKEND: gateway
+      EMBEDDING_GATEWAY_URL: http://host.docker.internal:7842
+      EMBEDDING_GATEWAY_APP_ID: auditworkshop
+      EMBEDDING_MODEL: bge-m3
+      EMBEDDING_DIM: "1024"
       MODEL_NAME: qwen3:32b
       WORKSHOP_ADMIN: "true"   # Ingest-Endpunkt freischalten
       ALLOW_REMOTE_GEOCODING: "false"

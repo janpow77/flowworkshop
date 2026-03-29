@@ -25,9 +25,11 @@ Voraussetzungen:
 import argparse
 import io
 import json
+import mimetypes
 import sys
 import time
 import zipfile
+from urllib.parse import urlparse
 from datetime import date
 from pathlib import Path
 
@@ -77,37 +79,56 @@ def make_label(source: dict) -> str:
 
 # --- Download / Upload / Geocoding ---
 
-def download(label: str, url: str) -> bytes | None:
+def _guess_filename(url: str, response: requests.Response, fallback_label: str) -> str:
+    cd = response.headers.get("content-disposition", "")
+    if "filename=" in cd:
+        filename = cd.split("filename=", 1)[1].strip().strip('"')
+        if filename:
+            return filename.replace("%2B", "+")
+    path = urlparse(str(response.url)).path
+    name = Path(path).name
+    if name:
+        return name
+    return f"{fallback_label}.xlsx"
+
+
+def _guess_mime(filename: str) -> str:
+    return mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+
+def download(label: str, url: str) -> tuple[bytes, str] | None:
     """Laedt eine Datei herunter. Behandelt Redirects und ZIP-Archive."""
     print(f"  Download {label} ...")
     try:
         r = requests.get(url, headers=HEADERS, timeout=TIMEOUT_DOWNLOAD, allow_redirects=True)
         r.raise_for_status()
         content = r.content
+        filename = _guess_filename(url, r, label)
         size_kb = len(content) / 1024
         print(f"    {size_kb:.0f} KB heruntergeladen")
 
-        # ZIP-Archiv? Erste XLSX extrahieren.
+        # ZIP-Archiv? Erste tabellarische Datei extrahieren.
         # HINWEIS: XLSX-Dateien sind intern ebenfalls ZIP-Archive (PK-Header),
         # daher nur bei expliziter .zip-URL extrahieren.
-        if url.lower().endswith(".zip"):
+        if url.lower().endswith(".zip") or filename.lower().endswith(".zip"):
             try:
                 with zipfile.ZipFile(io.BytesIO(content)) as zf:
-                    xlsx_files = [
+                    table_files = [
                         n for n in zf.namelist()
-                        if n.lower().endswith((".xlsx", ".xls"))
+                        if n.lower().endswith((".xlsx", ".xls", ".csv"))
                     ]
-                    if xlsx_files:
-                        print(f"    ZIP enthaelt: {xlsx_files[0]}")
-                        content = zf.read(xlsx_files[0])
+                    if table_files:
+                        print(f"    ZIP enthaelt: {table_files[0]}")
+                        filename = Path(table_files[0]).name
+                        content = zf.read(table_files[0])
                     else:
-                        print("    WARNUNG: Kein XLSX in ZIP gefunden")
+                        print("    WARNUNG: Keine XLSX/XLS/CSV-Datei in ZIP gefunden")
                         return None
             except zipfile.BadZipFile:
                 print("    WARNUNG: URL endet auf .zip, aber Datei ist kein gueltiges ZIP")
                 return None
 
-        return content
+        return content, filename
     except requests.exceptions.HTTPError as e:
         print(f"    FEHLER: HTTP {e.response.status_code} -- {e}")
         return None
@@ -122,16 +143,17 @@ def download(label: str, url: str) -> bytes | None:
         return None
 
 
-def upload(label: str, content: bytes, backend: str) -> dict | None:
-    """Laedt XLSX ueber die Backend-API hoch."""
+def upload(label: str, content: bytes, filename: str, backend: str) -> dict | None:
+    """Laedt Transparenzliste ueber die Backend-API hoch."""
     print(f"  Upload {label} ...")
     try:
-        filename = f"{label}.xlsx"
+        suffix = Path(filename).suffix.lower() or ".xlsx"
+        filename = f"{label}{suffix}"
         files = {
             "file": (
                 filename,
                 content,
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                _guess_mime(filename),
             )
         }
         r = requests.post(
@@ -318,17 +340,18 @@ def cmd_harvest(registry: dict, backend: str, force: bool) -> None:
         print(f"\n--- {label} ---")
 
         # Herunterladen
-        content = download(label, url)
-        if content is None:
+        downloaded = download(label, url)
+        if downloaded is None:
             results["failed"].append((label, "Download"))
             # URL-Status aktualisieren
             src["status"] = "404"
             src["notes"] = f"Download fehlgeschlagen am {date.today().isoformat()}"
             changed = True
             continue
+        content, filename = downloaded
 
         # Hochladen
-        data = upload(label, content, backend)
+        data = upload(label, content, filename, backend)
         if data is None:
             results["failed"].append((label, "Upload"))
             continue

@@ -99,7 +99,12 @@ async def assess_question(question_id: str, db: Session = Depends(get_db)):
     accumulated = []
 
     async def event_generator():
-        async for chunk in ollama_stream(user_prompt, ASSESS_SYSTEM_PROMPT, docs):
+        async for chunk in ollama_stream(
+            user_prompt,
+            ASSESS_SYSTEM_PROMPT,
+            docs,
+            max_tokens=260,
+        ):
             yield chunk
             # Token aus SSE extrahieren
             if chunk.startswith("data: "):
@@ -188,7 +193,12 @@ async def assess_all(checklist_id: str, db: Session = Depends(get_db)):
 
             # LLM-Antwort sammeln (nicht streamen, nur Ergebnis)
             accumulated = []
-            async for chunk in ollama_stream(user_prompt, ASSESS_SYSTEM_PROMPT, docs):
+            async for chunk in ollama_stream(
+                user_prompt,
+                ASSESS_SYSTEM_PROMPT,
+                docs,
+                max_tokens=260,
+            ):
                 if chunk.startswith("data: "):
                     try:
                         data = json.loads(chunk[6:].strip())

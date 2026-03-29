@@ -2,6 +2,7 @@
 flowworkshop · routers/workshop.py
 Streaming-Endpunkt für alle sechs Workshop-Szenarien + PDF-Parse-Endpunkt.
 """
+import logging
 import time
 from collections import defaultdict
 
@@ -16,6 +17,7 @@ from services.ollama_service import stream
 from services.file_parser import extract as file_extract, ALLOWED_EXTENSIONS
 
 router = APIRouter(prefix="/api/workshop", tags=["workshop"])
+log = logging.getLogger(__name__)
 
 
 # ── Rate-Limiting (In-Memory, 10 Requests/Minute pro IP) ────────────────────
@@ -46,6 +48,16 @@ class StreamRequest(BaseModel):
     demo_doc: str | None = None  # Name des Demo-Dokuments (wird serverseitig geladen)
 
 
+SCENARIO_MAX_TOKENS = {
+    1: 420,
+    2: 320,
+    3: 280,
+    4: 420,
+    5: 320,
+    6: 180,
+}
+
+
 @router.post("/stream")
 async def workshop_stream(req: StreamRequest, request: Request):
     """
@@ -70,26 +82,32 @@ async def workshop_stream(req: StreamRequest, request: Request):
 
     # Szenario 3 mit Kontext: RAG-Retrieval aus pgvector
     if req.scenario == 3 and req.with_context:
-        hits = ks.search(req.prompt, top_k=3)
-        rag_context = "\n\n".join(
-            f"[{h['source']} · Abschnitt {h['chunk_index'] + 1}]\n{h['text'][:1500]}"
-            for h in hits
-        )
-        if rag_context:
-            docs.insert(0, rag_context)
+        try:
+            hits = ks.search(req.prompt, top_k=2)
+            rag_context = "\n\n".join(
+                f"[{h['source']} · Abschnitt {h['chunk_index'] + 1}]\n{h['text'][:1000]}"
+                for h in hits
+            )
+            if rag_context:
+                docs.insert(0, rag_context)
+        except Exception:
+            log.exception("RAG-Kontext fuer Szenario 3 fehlgeschlagen.")
 
     # Szenario 5: RAG-Retrieval auf Vorab-Upload-Dokumente
     if req.scenario == 5 and req.with_context:
-        hits = ks.search(req.prompt, top_k=3)
-        rag_context = "\n\n".join(
-            f"[{h['source']} · S. {h['chunk_index'] + 1}]\n{h['text'][:1500]}"
-            for h in hits
-        )
-        if rag_context:
-            docs.insert(0, rag_context)
+        try:
+            hits = ks.search(req.prompt, top_k=2)
+            rag_context = "\n\n".join(
+                f"[{h['source']} · S. {h['chunk_index'] + 1}]\n{h['text'][:1000]}"
+                for h in hits
+            )
+            if rag_context:
+                docs.insert(0, rag_context)
+        except Exception:
+            log.exception("RAG-Kontext fuer Szenario 5 fehlgeschlagen.")
 
     if req.scenario == 6:
-        beneficiary_context = get_beneficiary_llm_context()
+        beneficiary_context = get_beneficiary_llm_context(max_entries_per_source=3)
         if beneficiary_context:
             docs.insert(0, beneficiary_context)
 
@@ -97,7 +115,12 @@ async def workshop_stream(req: StreamRequest, request: Request):
     full_prompt = f"{req.prompt}\n\n---\n{DISCLAIMER}"
 
     async def event_generator():
-        async for chunk in stream(full_prompt, system_prompt, docs):
+        async for chunk in stream(
+            full_prompt,
+            system_prompt,
+            docs,
+            max_tokens=SCENARIO_MAX_TOKENS.get(req.scenario),
+        ):
             yield chunk
 
     return StreamingResponse(

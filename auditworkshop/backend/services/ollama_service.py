@@ -18,6 +18,7 @@ from config import (
     EGPU_GATEWAY_URL,
     EGPU_WORKLOAD_TYPE,
     LLM_BACKEND,
+    LLM_MAX_TOKENS_DEFAULT,
     LLM_NUM_CTX,
     LLM_NUM_GPU,
     LLM_TEMPERATURE,
@@ -177,12 +178,14 @@ async def _stream_via_gateway(
     user_prompt: str,
     system_prompt: str,
     documents: list[str],
+    max_tokens: int | None = None,
 ) -> AsyncGenerator[str, None]:
     """Echtes Streaming ueber den egpu-manager LLM Gateway.
 
     Sendet stream=True an den Gateway, der die Upstream-SSE 1:1 durchreicht.
     Jeder OpenAI-Chunk wird sofort als Workshop-SSE-Event weitergegeben.
-    Unterstuetzt delta.content UND delta.reasoning_content (qwen3/qwq).
+    Reasoning-Chunks halten den Stream per Status-Event aktiv, werden aber
+    nicht als Antworttext an das UI weitergereicht.
     """
     model = await _resolve_model()
     full_prompt = _build_prompt(user_prompt, system_prompt, documents)
@@ -195,12 +198,14 @@ async def _stream_via_gateway(
             {"role": "user", "content": full_prompt},
         ],
         "stream": True,
+        "max_tokens": max_tokens or LLM_MAX_TOKENS_DEFAULT,
         "temperature": LLM_TEMPERATURE,
         "workload_type": EGPU_WORKLOAD_TYPE,
     }
 
     token_count = 0
     model_name = model
+    last_status_at = 0.0
 
     for attempt in range(3):
         try:
@@ -237,16 +242,20 @@ async def _stream_via_gateway(
 
                         for choice in chunk.get("choices", []):
                             delta = choice.get("delta", {})
-                            # qwen3/qwq senden je nach OpenAI-kompatiblem Adapter
-                            # content, reasoning_content oder reasoning.
-                            token = (
-                                delta.get("content")
-                                or delta.get("reasoning_content")
-                                or delta.get("reasoning", "")
+                            token = delta.get("content") or ""
+                            reasoning = (
+                                delta.get("reasoning_content")
+                                or delta.get("reasoning")
+                                or ""
                             )
                             if token:
                                 token_count += 1
                                 yield f"data: {json.dumps({'token': token, 'done': False})}\n\n"
+                            elif reasoning:
+                                now = time.monotonic()
+                                if now - last_status_at >= 2.5:
+                                    last_status_at = now
+                                    yield "data: {\"type\":\"status\",\"state\":\"thinking\"}\n\n"
 
                             # Token-Count aus usage im letzten Chunk uebernehmen
                             if choice.get("finish_reason"):
@@ -287,6 +296,7 @@ async def stream(
     user_prompt: str,
     system_prompt: str,
     documents: list[str] | None = None,
+    max_tokens: int | None = None,
 ) -> AsyncGenerator[str, None]:
     """
     Streamt eine LLM-Antwort als Server-Sent-Events.
@@ -297,7 +307,12 @@ async def stream(
         Fehler:     'data: {"error": "...", "done": true}\\n\\n'
     """
     if _use_gateway():
-        async for chunk in _stream_via_gateway(user_prompt, system_prompt, documents or []):
+        async for chunk in _stream_via_gateway(
+            user_prompt,
+            system_prompt,
+            documents or [],
+            max_tokens=max_tokens,
+        ):
             yield chunk
         return
 
@@ -316,6 +331,7 @@ async def stream(
             "temperature": LLM_TEMPERATURE,
             "num_ctx": LLM_NUM_CTX,
             "num_gpu": LLM_NUM_GPU,
+            "num_predict": max_tokens or LLM_MAX_TOKENS_DEFAULT,
         },
     }
 
