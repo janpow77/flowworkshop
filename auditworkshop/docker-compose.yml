@@ -46,7 +46,7 @@ services:
       EMBEDDING_GATEWAY_APP_ID: auditworkshop
       EMBEDDING_MODEL: bge-m3
       EMBEDDING_DIM: "1024"
-      MODEL_NAME: qwen3:32b
+      MODEL_NAME: qwen3:14b
       WORKSHOP_ADMIN: "true"   # Ingest-Endpunkt freischalten
       ALLOW_REMOTE_GEOCODING: "false"
       ALLOW_REMOTE_TILES: "false"

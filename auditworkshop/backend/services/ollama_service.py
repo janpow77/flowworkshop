@@ -72,6 +72,51 @@ def _prepend_no_think(system_prompt: str, model: str) -> str:
     return f"/no_think\n{system_prompt}"
 
 
+def _strip_think_tags(text: str) -> str:
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.IGNORECASE | re.DOTALL).strip()
+
+
+def _sanitize_stream_token(
+    token: str,
+    think_state: dict[str, object],
+) -> str:
+    if not token:
+        return ""
+
+    buffer = str(think_state.get("buffer", "")) + token
+    in_think = bool(think_state.get("in_think", False))
+    visible_parts: list[str] = []
+
+    while buffer:
+        if in_think:
+            end_idx = buffer.find("</think>")
+            if end_idx == -1:
+                buffer = buffer[-8:]
+                break
+            buffer = buffer[end_idx + len("</think>"):]
+            in_think = False
+            continue
+
+        start_idx = buffer.find("<think>")
+        if start_idx == -1:
+            partial_idx = buffer.rfind("<")
+            if partial_idx != -1 and "<think>".startswith(buffer[partial_idx:]):
+                visible_parts.append(buffer[:partial_idx])
+                buffer = buffer[partial_idx:]
+            else:
+                visible_parts.append(buffer)
+                buffer = ""
+            break
+
+        visible_parts.append(buffer[:start_idx])
+        buffer = buffer[start_idx + len("<think>"):]
+        in_think = True
+
+    think_state["buffer"] = buffer
+    think_state["in_think"] = in_think
+    return "".join(visible_parts)
+
+
 async def _fetch_gateway_providers(client: httpx.AsyncClient) -> list[dict]:
     resp = await client.get(f"{EGPU_GATEWAY_URL}/api/llm/providers")
     resp.raise_for_status()
@@ -157,6 +202,41 @@ async def check_ollama() -> dict:
         return {"ok": False, "error": str(e), "url": OLLAMA_URL, "backend": "ollama"}
 
 
+async def warmup_gateway_model() -> None:
+    """Laedt das konfigurierte Gateway-Modell vor, damit der erste Nutzerrequest nicht kalt startet."""
+    if not _use_gateway():
+        return
+
+    payload = {
+        "model": MODEL_NAME,
+        "messages": [
+            {"role": "system", "content": _prepend_no_think("Antworte kurz auf Deutsch.", MODEL_NAME)},
+            {"role": "user", "content": "Antworte nur mit OK."},
+        ],
+        "stream": False,
+        "max_tokens": 8,
+        "temperature": 0,
+        "workload_type": EGPU_WORKLOAD_TYPE,
+    }
+
+    started = time.monotonic()
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10, read=90)) as client:
+            resp = await client.post(
+                f"{EGPU_GATEWAY_URL}/api/llm/chat/completions",
+                json=payload,
+                headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
+            )
+            resp.raise_for_status()
+        log.info(
+            "Gateway-Warmup fuer %s erfolgreich in %.1fs.",
+            MODEL_NAME,
+            time.monotonic() - started,
+        )
+    except Exception as exc:
+        log.warning("Gateway-Warmup fuer %s fehlgeschlagen: %s", MODEL_NAME, exc)
+
+
 async def _resolve_model(
     preferred_model: str | None = None,
     backend_override: str | None = None,
@@ -227,6 +307,7 @@ async def _stream_via_gateway(
         "stream": True,
         "max_tokens": max_tokens or LLM_MAX_TOKENS_DEFAULT,
         "temperature": LLM_TEMPERATURE,
+        "think": False,
         "workload_type": EGPU_WORKLOAD_TYPE,
     }
 
@@ -234,6 +315,7 @@ async def _stream_via_gateway(
     model_name = model
     last_status_at = 0.0
     saw_content = False
+    think_state: dict[str, object] = {"buffer": "", "in_think": False}
 
     async def _fallback_non_streaming_answer() -> tuple[str, int | None, str]:
         non_stream_payload = {**payload, "stream": False}
@@ -253,7 +335,7 @@ async def _stream_via_gateway(
         message = choice.get("message") or {}
         usage = data.get("usage") or {}
         return (
-            message.get("content") or "",
+            _strip_think_tags(message.get("content") or ""),
             usage.get("completion_tokens"),
             data.get("model") or model_name,
         )
@@ -293,7 +375,7 @@ async def _stream_via_gateway(
 
                         for choice in chunk.get("choices", []):
                             delta = choice.get("delta", {})
-                            token = delta.get("content") or ""
+                            token = _sanitize_stream_token(delta.get("content") or "", think_state)
                             reasoning = (
                                 delta.get("reasoning_content")
                                 or delta.get("reasoning")

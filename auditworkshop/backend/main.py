@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, Base
 from services.knowledge_service import init_db
-from services.ollama_service import check_ollama
+from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
 from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth
 
@@ -53,6 +53,7 @@ async def lifespan(app: FastAPI):
     status = await check_ollama()
     if status["ok"]:
         log.info("Ollama erreichbar — Modelle: %s", status.get("models", []))
+        await warmup_gateway_model()
     else:
         log.warning("Ollama nicht erreichbar: %s", status.get("error"))
 

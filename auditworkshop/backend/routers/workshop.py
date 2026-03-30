@@ -130,6 +130,158 @@ def _build_extract_response(hits: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _normalize_text(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _split_sentences(text: str) -> list[str]:
+    protected = (
+        text.replace("Art.", "Art§")
+        .replace("Abs.", "Abs§")
+        .replace("Nr.", "Nr§")
+    )
+    raw_parts = re.split(r"(?<=[.!?])\s+|\n+", protected)
+    return [
+        _normalize_text(part.replace("Art§", "Art.").replace("Abs§", "Abs.").replace("Nr§", "Nr."))
+        for part in raw_parts
+        if _normalize_text(part)
+    ]
+
+
+def _default_article_query(prompt: str) -> str:
+    lowered = prompt.lower()
+    if "2021/1060" in lowered or "1060" in lowered:
+        return prompt
+    if any(keyword in lowered for keyword in ["verwaltungsprüfung", "verwaltungspruefung", "dachverordnung"]):
+        return f"{prompt} VO (EU) 2021/1060"
+    return prompt
+
+
+def _pick_relevant_sentences(
+    texts: list[str],
+    keywords: list[str],
+    limit: int = 6,
+) -> list[str]:
+    matches: list[str] = []
+    seen: set[str] = set()
+    for text in texts:
+        for sentence in _split_sentences(text):
+            lowered = sentence.lower()
+            if not any(keyword in lowered for keyword in keywords):
+                continue
+            if sentence in seen:
+                continue
+            seen.add(sentence)
+            matches.append(sentence)
+            if len(matches) >= limit:
+                return matches
+    return matches
+
+
+def _build_scenario1_direct_answer(prompt: str, docs: list[str]) -> str | None:
+    matches = _pick_relevant_sentences(
+        docs,
+        [
+            "auflage",
+            "auflagen",
+            "nachreichen",
+            "vorlegen",
+            "einhalten",
+            "nachweis",
+            "publizität",
+            "zwischenbericht",
+            "spätestens",
+        ],
+        limit=6,
+    )
+    if not matches:
+        return None
+
+    lines = ["Erkannte Auflagen und Nachweispflichten im Dokument:"]
+    for idx, sentence in enumerate(matches, start=1):
+        deadline = re.search(r"\b\d{1,2}\.\d{1,2}\.\d{4}\b", sentence)
+        suffix = f" Frist: {deadline.group(0)}." if deadline else ""
+        lines.append(f"{idx}. {sentence}{suffix}")
+    lines.append("Hinweis: Die Antwort wird direkt aus den geladenen Dokumenttexten extrahiert.")
+    return "\n".join(lines)
+
+
+def _build_scenario2_direct_answer(prompt: str, docs: list[str]) -> str | None:
+    findings = _pick_relevant_sentences(
+        docs,
+        [
+            "fehlt",
+            "fehlend",
+            "nicht eingehalten",
+            "unvollständig",
+            "eingehalten",
+            "vorhanden",
+            "dokumentation",
+            "vergabevermerk",
+            "publizität",
+        ],
+        limit=8,
+    )
+    if not findings:
+        return None
+
+    lines = ["Schnellbewertung der erkannten Prüfpunkte:"]
+    for idx, sentence in enumerate(findings, start=1):
+        lowered = sentence.lower()
+        if any(marker in lowered for marker in ["fehlt", "nicht eingehalten", "unvollständig", "fehlend"]):
+            rating = "kritisch"
+        elif any(marker in lowered for marker in ["eingehalten", "vorhanden"]):
+            rating = "unauffällig"
+        else:
+            rating = "prüfen"
+        lines.append(f"{idx}. [{rating}] {sentence}")
+    lines.append("Hinweis: Dies ist eine direkte Auswertung der gelieferten Checklisten-/Feststellungstexte.")
+    return "\n".join(lines)
+
+
+def _build_scenario4_direct_answer(prompt: str, docs: list[str]) -> str | None:
+    source_texts = [prompt, *docs]
+    findings = _pick_relevant_sentences(
+        source_texts,
+        [
+            "fehlt",
+            "nicht eingehalten",
+            "unvollständig",
+            "nachreichen",
+            "publizität",
+            "vergabevermerk",
+            "feststellung",
+        ],
+        limit=6,
+    )
+    if not findings:
+        return None
+
+    lines = [
+        "Berichtsentwurf",
+        "",
+        "1. Sachverhalt",
+        "Die nachfolgenden Punkte wurden aus den vorliegenden Feststellungen übernommen.",
+        "",
+        "2. Feststellungen",
+    ]
+    for idx, finding in enumerate(findings, start=1):
+        lines.append(f"{idx}. {finding}")
+    lines.extend(
+        [
+            "",
+            "3. Vorläufige Bewertung",
+            "Die Punkte sind prüfungsrelevant und sollten vor einer Schlussbewertung mit Belegen oder Nachreichungen abgeglichen werden.",
+            "",
+            "4. Empfohlene nächste Schritte",
+            "1. Fehlende Unterlagen gezielt nachfordern.",
+            "2. Fristen und Nachweise dokumentieren.",
+            "3. Die Feststellungen nach Vorlage der Nachweise erneut bewerten.",
+        ]
+    )
+    return "\n".join(lines)
+
+
 class StreamRequest(BaseModel):
     scenario: int = Field(..., ge=1, le=6)
     prompt: str = Field(..., min_length=1, max_length=2000)
@@ -139,10 +291,10 @@ class StreamRequest(BaseModel):
 
 
 SCENARIO_MAX_TOKENS = {
-    1: 320,
-    2: 260,
+    1: 220,
+    2: 200,
     3: 180,
-    4: 320,
+    4: 240,
     5: 220,
     6: 180,
 }
@@ -175,7 +327,8 @@ async def workshop_stream(req: StreamRequest, request: Request):
 
     if req.scenario == 3 and req.with_context:
         try:
-            hits = ks.search(req.prompt, top_k=3 if article_prompt else 2)
+            search_prompt = _default_article_query(req.prompt) if article_prompt else req.prompt
+            hits = ks.search(search_prompt, top_k=3 if article_prompt else 2)
             if article_prompt and hits:
                 return await _stream_static_response(
                     _build_extract_response(hits),
@@ -193,7 +346,8 @@ async def workshop_stream(req: StreamRequest, request: Request):
     # Szenario 5: RAG-Retrieval auf Vorab-Upload-Dokumente
     if req.scenario == 5 and req.with_context:
         try:
-            hits = ks.search(req.prompt, top_k=3 if article_prompt else 2)
+            search_prompt = _default_article_query(req.prompt) if article_prompt else req.prompt
+            hits = ks.search(search_prompt, top_k=3 if article_prompt else 2)
             if article_prompt and hits:
                 return await _stream_static_response(
                     _build_extract_response(hits),
@@ -215,6 +369,21 @@ async def workshop_stream(req: StreamRequest, request: Request):
         beneficiary_context = get_beneficiary_llm_context(req.prompt, max_entries_per_source=4)
         if beneficiary_context:
             docs.insert(0, beneficiary_context)
+
+    if req.scenario == 1:
+        direct_answer = _build_scenario1_direct_answer(req.prompt, docs)
+        if direct_answer:
+            return await _stream_static_response(direct_answer, "document-extract")
+
+    if req.scenario == 2:
+        direct_answer = _build_scenario2_direct_answer(req.prompt, docs)
+        if direct_answer:
+            return await _stream_static_response(direct_answer, "checklist-analytics")
+
+    if req.scenario == 4:
+        direct_answer = _build_scenario4_direct_answer(req.prompt, docs)
+        if direct_answer:
+            return await _stream_static_response(direct_answer, "report-draft")
 
     # Disclaimer ans Ende des Prompts
     full_prompt = f"{req.prompt}\n\n---\n{DISCLAIMER}"
