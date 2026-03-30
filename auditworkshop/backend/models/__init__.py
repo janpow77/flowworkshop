@@ -21,4 +21,5 @@ from models.registration import (  # noqa: F401
     Registration,
     TopicSubmission,
     SubmissionVisibility,
+    AgendaForumPost,
 )

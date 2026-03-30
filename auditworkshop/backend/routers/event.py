@@ -8,13 +8,14 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.registration import (
     WorkshopMeta, AgendaItem, AgendaItemType, AgendaItemStatus,
     Registration, TopicSubmission, SubmissionVisibility,
-    IcebreakerQuestion,
+    IcebreakerQuestion, AgendaForumPost,
 )
 
 router = APIRouter(prefix="/api/event", tags=["event"])
@@ -137,6 +138,41 @@ class TopicOut(BaseModel):
     created_at: datetime | None = None
     model_config = {"from_attributes": True}
 
+
+class AgendaForumPostCreate(BaseModel):
+    title: str = Field(..., min_length=3, max_length=200)
+    body: str = Field(..., min_length=3, max_length=5000)
+
+
+class AgendaForumPostOut(BaseModel):
+    id: str
+    agenda_item_id: str
+    author_registration_id: str | None = None
+    title: str
+    body: str
+    author_name: str
+    author_organization: str | None = None
+    author_role: str
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class AgendaForumThreadOut(BaseModel):
+    item: AgendaItemOut
+    post_count: int
+    posts: list[AgendaForumPostOut]
+
+
+class AgendaForumSummaryEntry(BaseModel):
+    agenda_item_id: str
+    post_count: int
+    last_post_at: datetime | None = None
+
+
+class AgendaForumSummaryOut(BaseModel):
+    items: list[AgendaForumSummaryEntry]
+
+
 class IcebreakerOut(BaseModel):
     id: str
     label: str
@@ -225,6 +261,42 @@ def _get_meta(db: Session) -> WorkshopMeta:
         # Auch Default-Agenda erstellen
         _seed_default_agenda(db)
     return meta
+
+
+def _get_agenda_item_or_404(item_id: str, db: Session) -> AgendaItem:
+    item = db.query(AgendaItem).filter(AgendaItem.id == item_id).first()
+    if not item:
+        raise HTTPException(404, "Programmpunkt nicht gefunden.")
+    return item
+
+
+def _get_authenticated_registration(request: Request, db: Session) -> tuple[dict, Registration]:
+    from routers.auth import _sessions
+
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    session = _sessions.get(token)
+    if not session:
+        raise HTTPException(401, "Bitte zuerst anmelden.")
+
+    reg = db.query(Registration).filter(Registration.id == session.get("user_id")).first()
+    if not reg:
+        raise HTTPException(401, "Anmeldung zur Sitzung nicht gefunden.")
+    return session, reg
+
+
+def _forum_post_out(post: AgendaForumPost) -> AgendaForumPostOut:
+    return AgendaForumPostOut(
+        id=post.id,
+        agenda_item_id=post.agenda_item_id,
+        author_registration_id=post.author_registration_id,
+        title=post.title,
+        body=post.body,
+        author_name=post.author_name,
+        author_organization=post.author_organization,
+        author_role=post.author_role,
+        created_at=post.created_at,
+        updated_at=post.updated_at,
+    )
 
 def _check_moderator(request: Request, pin: str, db: Session):
     """Prueft ob der Aufruf von einem Moderator (Token) oder Admin (PIN) kommt."""
@@ -446,6 +518,105 @@ def vote_topic(topic_id: str, db: Session = Depends(get_db)):
     topic.votes = (topic.votes or 0) + 1
     db.commit()
     return {"votes": topic.votes}
+
+
+# ── Forum je Programmpunkt ──────────────────────────────────────────────────
+
+@router.get("/forum/summary", response_model=AgendaForumSummaryOut)
+def get_forum_summary(category: str | None = None, db: Session = Depends(get_db)):
+    q = (
+        db.query(
+            AgendaForumPost.agenda_item_id,
+            func.count(AgendaForumPost.id).label("post_count"),
+            func.max(AgendaForumPost.created_at).label("last_post_at"),
+        )
+        .join(AgendaItem, AgendaItem.id == AgendaForumPost.agenda_item_id)
+    )
+    if category:
+        q = q.filter(AgendaItem.category == category)
+    rows = q.group_by(AgendaForumPost.agenda_item_id).order_by(func.max(AgendaForumPost.created_at).desc()).all()
+    return AgendaForumSummaryOut(
+        items=[
+            AgendaForumSummaryEntry(
+                agenda_item_id=row.agenda_item_id,
+                post_count=int(row.post_count or 0),
+                last_post_at=row.last_post_at,
+            )
+            for row in rows
+        ]
+    )
+
+
+@router.get("/agenda/{item_id}/forum", response_model=AgendaForumThreadOut)
+def get_agenda_forum(item_id: str, db: Session = Depends(get_db)):
+    item = _get_agenda_item_or_404(item_id, db)
+    posts = (
+        db.query(AgendaForumPost)
+        .filter(AgendaForumPost.agenda_item_id == item_id)
+        .order_by(AgendaForumPost.created_at.asc())
+        .all()
+    )
+    return AgendaForumThreadOut(
+        item=AgendaItemOut.model_validate(item),
+        post_count=len(posts),
+        posts=[_forum_post_out(post) for post in posts],
+    )
+
+
+@router.post("/agenda/{item_id}/forum/posts", response_model=AgendaForumPostOut, status_code=201)
+def create_agenda_forum_post(
+    item_id: str,
+    data: AgendaForumPostCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    session, reg = _get_authenticated_registration(request, db)
+    item = _get_agenda_item_or_404(item_id, db)
+    if item.item_type == AgendaItemType.PAUSE:
+        raise HTTPException(400, "Für Pausen können keine Beiträge erstellt werden.")
+
+    post = AgendaForumPost(
+        agenda_item_id=item.id,
+        author_registration_id=reg.id,
+        title=data.title.strip(),
+        body=data.body.strip(),
+        author_name=f"{reg.first_name} {reg.last_name}",
+        author_organization=reg.organization,
+        author_role=session.get("role", "participant"),
+    )
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+    return _forum_post_out(post)
+
+
+@router.delete("/agenda/{item_id}/forum/posts/{post_id}", status_code=204)
+def delete_agenda_forum_post(
+    item_id: str,
+    post_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    session, reg = _get_authenticated_registration(request, db)
+    _get_agenda_item_or_404(item_id, db)
+    post = (
+        db.query(AgendaForumPost)
+        .filter(
+            AgendaForumPost.id == post_id,
+            AgendaForumPost.agenda_item_id == item_id,
+        )
+        .first()
+    )
+    if not post:
+        raise HTTPException(404, "Beitrag nicht gefunden.")
+
+    is_moderator = session.get("role") == "moderator"
+    is_author = post.author_registration_id == reg.id
+    if not is_moderator and not is_author:
+        raise HTTPException(403, "Beitrag darf nur vom Autor oder Moderator gelöscht werden.")
+
+    db.delete(post)
+    db.commit()
 
 
 # ── Admin: PIN-Authentifizierung ──────────────────────────────────────────────

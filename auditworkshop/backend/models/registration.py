@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Column, String, Text, Integer, Float, Boolean, DateTime, Enum, func,
+    Column, String, Text, Integer, Float, Boolean, DateTime, Enum, ForeignKey, func,
 )
 from sqlalchemy.orm import relationship
 
@@ -72,6 +72,11 @@ class AgendaItem(Base):
     sort_order = Column(Integer, default=0)
     page_url = Column(String(500), nullable=True)  # Interne Seite (z.B. /vorstellungsrunde)
     created_at = Column(DateTime, server_default=func.now())
+    forum_posts = relationship(
+        "AgendaForumPost",
+        back_populates="agenda_item",
+        cascade="all, delete-orphan",
+    )
 
 
 class Registration(Base):
@@ -89,6 +94,33 @@ class Registration(Base):
     anthropic_consent = Column(Boolean, default=False)
     filename = Column(String(255), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
+
+
+class AgendaForumPost(Base):
+    __tablename__ = "workshop_agenda_forum_posts"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    agenda_item_id = Column(
+        String(36),
+        ForeignKey("workshop_agenda_items.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    author_registration_id = Column(
+        String(36),
+        ForeignKey("workshop_registrations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    title = Column(String(200), nullable=False)
+    body = Column(Text, nullable=False)
+    author_name = Column(String(255), nullable=False)
+    author_organization = Column(String(255), nullable=True)
+    author_role = Column(String(50), nullable=False, default="participant")
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    agenda_item = relationship("AgendaItem", back_populates="forum_posts")
 
 
 class IcebreakerQuestion(Base):

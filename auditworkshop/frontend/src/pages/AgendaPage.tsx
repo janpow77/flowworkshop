@@ -53,6 +53,11 @@ interface Topic {
   votes: number;
 }
 
+interface ForumSummaryItem {
+  agenda_item_id: string;
+  post_count: number;
+}
+
 const TYPE_STYLES: Record<string, { icon: typeof Mic2; color: string; bg: string; border: string }> = {
   vortrag: { icon: Mic2, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-50 dark:bg-blue-950/40', border: 'border-blue-200 dark:border-blue-800' },
   diskussion: { icon: MessageSquare, color: 'text-sky-700 dark:text-sky-300', bg: 'bg-sky-50 dark:bg-sky-950/40', border: 'border-sky-200 dark:border-sky-800' },
@@ -130,6 +135,7 @@ export default function AgendaPage() {
   const [days, setDays] = useState<DayGroup[]>([]);
   const [ws5Days, setWs5Days] = useState<DayGroup[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [forumCounts, setForumCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('plenary');
@@ -152,6 +158,13 @@ export default function AgendaPage() {
   const countdown = useCountdown(activeItem);
   const elapsed = countdownFraction(activeItem);
 
+  const applyForumSummary = (payload: { items?: ForumSummaryItem[] }) => {
+    const entries = payload?.items || [];
+    setForumCounts(
+      Object.fromEntries(entries.map((entry) => [entry.agenda_item_id, entry.post_count || 0])),
+    );
+  };
+
   const loadAgenda = useCallback(() => {
     const hiddenParam = isAdmin ? 'show_hidden=true' : '';
     const plenaryUrl = hiddenParam ? `/api/event/agenda/days?${hiddenParam}` : '/api/event/agenda/days';
@@ -159,9 +172,11 @@ export default function AgendaPage() {
     Promise.all([
       fetch(plenaryUrl).then((r) => r.json()),
       fetch(ws5Url).then((r) => r.json()),
-    ]).then(([d, w]) => {
+      fetch('/api/event/forum/summary').then((r) => r.json()),
+    ]).then(([d, w, forum]) => {
       setDays(d);
       setWs5Days(w);
+      applyForumSummary(forum);
     });
   }, [isAdmin]);
 
@@ -174,11 +189,13 @@ export default function AgendaPage() {
       fetch(plenaryUrl).then((r) => r.json()),
       fetch(ws5Url).then((r) => r.json()),
       fetch('/api/event/topics').then((r) => r.json()),
-    ]).then(([m, d, w, t]) => {
+      fetch('/api/event/forum/summary').then((r) => r.json()),
+    ]).then(([m, d, w, t, forum]) => {
       setMeta(m);
       setDays(d);
       setWs5Days(w);
       setTopics(t);
+      applyForumSummary(forum);
     }).finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -433,7 +450,7 @@ export default function AgendaPage() {
             </div>
             {activeItem.scenario_id && (
               <Link
-                to={`/scenarios/${activeItem.scenario_id}`}
+                to={`/scenario/${activeItem.scenario_id}`}
                 className="shrink-0 flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-200 transition-colors"
               >
                 <Beaker size={13} /> Szenario {activeItem.scenario_id}
@@ -556,6 +573,8 @@ export default function AgendaPage() {
                       const isDone = item.status === 'done';
                       const isSkipped = item.status === 'skipped';
                       const transition = transitioningIds[item.id];
+                      const forumCount = forumCounts[item.id] || 0;
+                      const canDiscuss = item.item_type !== 'pause';
 
                       return (
                         <div
@@ -619,14 +638,28 @@ export default function AgendaPage() {
                               </span>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <h3 className={`font-medium transition-all duration-300 ${
-                                    isPause ? 'text-sm text-slate-500'
-                                    : isDone ? 'line-through text-slate-400 dark:text-slate-500'
-                                    : isActive ? 'text-green-800 dark:text-green-100'
-                                    : 'text-slate-900 dark:text-white'
-                                  }`}>
-                                    {item.title}
-                                  </h3>
+                                  {canDiscuss ? (
+                                    <Link
+                                      to={`/agenda/forum/${item.id}`}
+                                      className={`font-medium transition-all duration-300 hover:underline ${
+                                        isPause ? 'text-sm text-slate-500'
+                                        : isDone ? 'line-through text-slate-400 dark:text-slate-500'
+                                        : isActive ? 'text-green-800 dark:text-green-100'
+                                        : 'text-slate-900 dark:text-white'
+                                      }`}
+                                    >
+                                      {item.title}
+                                    </Link>
+                                  ) : (
+                                    <h3 className={`font-medium transition-all duration-300 ${
+                                      isPause ? 'text-sm text-slate-500'
+                                      : isDone ? 'line-through text-slate-400 dark:text-slate-500'
+                                      : isActive ? 'text-green-800 dark:text-green-100'
+                                      : 'text-slate-900 dark:text-white'
+                                    }`}>
+                                      {item.title}
+                                    </h3>
+                                  )}
                                   {isActive && <span className="shrink-0 h-2 w-2 rounded-full bg-green-500 animate-pulse" />}
                                 </div>
                                 {item.speaker && (
@@ -635,10 +668,23 @@ export default function AgendaPage() {
                                 {item.note && (
                                   <p className="text-xs text-slate-400 mt-1">{item.note}</p>
                                 )}
+                                {canDiscuss && (
+                                  <Link
+                                    to={`/agenda/forum/${item.id}`}
+                                    className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all duration-300 ${
+                                      isActive
+                                        ? 'bg-cyan-200 dark:bg-cyan-800/60 text-cyan-800 dark:text-cyan-100 shadow-md scale-105'
+                                        : 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-200 dark:hover:bg-cyan-800/50'
+                                    }`}
+                                  >
+                                    <MessageSquare size={12} />
+                                    {forumCount > 0 ? `Diskussion (${forumCount})` : 'Beitrag schreiben'}
+                                  </Link>
+                                )}
                                 {/* Szenario-Badge */}
                                 {item.scenario_id && (
                                   <Link
-                                    to={`/scenarios/${item.scenario_id}`}
+                                    to={`/scenario/${item.scenario_id}`}
                                     className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all duration-300 ${
                                       isActive
                                         ? 'bg-amber-200 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200 shadow-md scale-105'
