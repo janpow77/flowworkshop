@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Moon, Sun, Cpu, Wifi, WifiOff, ShieldCheck, AlertTriangle, LogOut } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Moon, Sun, Cpu, Wifi, WifiOff, ShieldCheck, AlertTriangle, LogOut, User } from 'lucide-react';
 import { getOllamaStatus, getSystemProfile, type SystemProfile } from '../../lib/api';
 
 interface Props {
@@ -19,6 +20,21 @@ export default function TopBar({ dark, onToggleDark }: Props) {
     }, 30_000);
     return () => clearInterval(iv);
   }, []);
+
+  const handleLogout = async () => {
+    const token = localStorage.getItem('workshop_token');
+    try {
+      if (token) {
+        await fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      }
+    } catch {
+      // bewusst ignoriert, lokaler Logout muss trotzdem funktionieren
+    } finally {
+      localStorage.removeItem('workshop_token');
+      localStorage.removeItem('workshop_role');
+      window.location.href = '/';
+    }
+  };
 
   return (
     <header className="sticky top-0 z-20 border-b border-white/60 bg-white/65 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/60">
@@ -81,8 +97,18 @@ export default function TopBar({ dark, onToggleDark }: Props) {
             {dark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           {localStorage.getItem('workshop_token') && (
+            <Link
+              to="/account"
+              className="rounded-2xl border border-slate-200 bg-white/80 p-2.5 text-slate-500 transition-colors hover:bg-cyan-100 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400 dark:hover:bg-cyan-900/40"
+              aria-label="Benutzerkonto"
+              title="Benutzerkonto"
+            >
+              <User size={18} />
+            </Link>
+          )}
+          {localStorage.getItem('workshop_token') && (
             <button
-              onClick={() => { localStorage.removeItem('workshop_token'); window.location.href = '/'; }}
+              onClick={handleLogout}
               className="rounded-2xl border border-slate-200 bg-white/80 p-2.5 text-slate-500 transition-colors hover:bg-red-100 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400 dark:hover:bg-red-900/40"
               aria-label="Abmelden"
               title="Abmelden"

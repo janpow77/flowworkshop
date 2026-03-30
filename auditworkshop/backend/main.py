@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         log.info("SQLAlchemy-Tabellen erstellt/geprueft.")
-        # Spalten-Migration: page_url fuer Agenda-Items (fuer bestehende DBs)
+        # Uebergangsweise: fehlende Spalten fuer bestehende Workshop-DBs nachziehen.
         from sqlalchemy import text, inspect
         with engine.connect() as conn:
             inspector = inspect(engine)
@@ -39,6 +39,19 @@ async def lifespan(app: FastAPI):
                 conn.execute(text("ALTER TABLE workshop_agenda_items ADD COLUMN page_url VARCHAR(500)"))
                 conn.commit()
                 log.info("Spalte page_url zu workshop_agenda_items hinzugefuegt.")
+            reg_cols = [c["name"] for c in inspector.get_columns("workshop_registrations")]
+            registration_migrations = {
+                "password_hash": "ALTER TABLE workshop_registrations ADD COLUMN password_hash VARCHAR(255)",
+                "password_updated_at": "ALTER TABLE workshop_registrations ADD COLUMN password_updated_at TIMESTAMP",
+                "last_login_at": "ALTER TABLE workshop_registrations ADD COLUMN last_login_at TIMESTAMP",
+                "qr_login_secret": "ALTER TABLE workshop_registrations ADD COLUMN qr_login_secret VARCHAR(128)",
+                "qr_secret_rotated_at": "ALTER TABLE workshop_registrations ADD COLUMN qr_secret_rotated_at TIMESTAMP",
+            }
+            for col, ddl in registration_migrations.items():
+                if col not in reg_cols:
+                    conn.execute(text(ddl))
+                    conn.commit()
+                    log.info("Spalte %s zu workshop_registrations hinzugefuegt.", col)
     except Exception as e:
         log.error("SQLAlchemy-Init fehlgeschlagen: %s", e)
 

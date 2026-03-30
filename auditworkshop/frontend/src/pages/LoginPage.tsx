@@ -1,12 +1,21 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LogIn, UserPlus, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { LogIn, UserPlus, Loader2, Eye, EyeOff, QrCode } from 'lucide-react';
 
 export default function LoginPage({ onLogin }: { onLogin: (token: string, user: { name: string; organization: string; role: string }) => void }) {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const qrToken = searchParams.get('qr');
+
+  const finishLogin = (data: { token: string; name: string; organization: string; role: string }) => {
+    onLogin(data.token, { name: data.name, organization: data.organization, role: data.role });
+    navigate('/');
+  };
 
   const handleLogin = async () => {
     if (!email.includes('@')) { setError('Bitte g\u00fcltige E-Mail eingeben.'); return; }
@@ -16,7 +25,7 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, password: password || null }),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -24,13 +33,45 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
         return;
       }
       const data = await res.json();
-      onLogin(data.token, { name: data.name, organization: data.organization, role: data.role });
+      finishLogin(data);
     } catch {
       setError('Verbindungsfehler.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!qrToken) return;
+    let cancelled = false;
+
+    const run = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await fetch('/api/auth/qr-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: qrToken }),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          if (!cancelled) setError(d.detail || 'QR-Login fehlgeschlagen.');
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled) finishLogin(data);
+      } catch {
+        if (!cancelled) setError('QR-Login fehlgeschlagen.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    run();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrToken]);
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden"
@@ -103,10 +144,14 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
 
         <div className="glass-card rounded-2xl p-8">
           <div className="flex items-center gap-2 mb-6">
-            <LogIn size={20} className="text-blue-300" />
-            <h2 className="text-lg font-semibold text-white">Anmelden</h2>
+            {qrToken ? <QrCode size={20} className="text-blue-300" /> : <LogIn size={20} className="text-blue-300" />}
+            <h2 className="text-lg font-semibold text-white">{qrToken ? 'QR-Login' : 'Anmelden'}</h2>
           </div>
-          <p className="text-sm text-blue-200/60 mb-4">Melden Sie sich mit Ihrer registrierten E-Mail-Adresse an.</p>
+          <p className="text-sm text-blue-200/60 mb-4">
+            {qrToken
+              ? 'Der QR-Code wird geprüft. Falls der Link abgelaufen ist, können Sie sich unten normal anmelden.'
+              : 'Melden Sie sich mit Ihrer registrierten E-Mail-Adresse an. Falls gesetzt, können Sie zusätzlich Ihr Passwort eingeben.'}
+          </p>
           <input
             type="email"
             value={email}
@@ -117,6 +162,25 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
             className="login-input w-full rounded-xl px-4 py-3 text-sm"
             autoFocus
           />
+          <div className="relative mt-3">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
+              placeholder="Passwort (optional, falls gesetzt)"
+              aria-label="Passwort"
+              className="login-input w-full rounded-xl px-4 py-3 pr-11 text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute inset-y-0 right-0 flex items-center px-3 text-blue-200/70 hover:text-blue-100"
+              aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
           {error && (
             <div className="mt-2 rounded-lg border border-red-400/30 bg-red-500/20 px-3 py-2 text-xs text-red-200">
               {error}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Home, FolderOpen, Database, FileSpreadsheet, Building2, Scale,
-  CalendarDays, UserPlus, Settings, Upload,
+  CalendarDays, UserPlus, Settings, Upload, User,
 } from 'lucide-react';
 
 function isModerator(): boolean {
@@ -46,6 +46,7 @@ const NAV = [
       { to: '/dataframes', label: 'Datenanalyse', icon: FileSpreadsheet },
       { to: '/company-search', label: 'Unternehmenssuche', icon: Building2 },
       { to: '/ai-act', label: 'AI Act', icon: Scale },
+      { to: '/account', label: 'Benutzerkonto', icon: User },
       { to: '/admin', label: 'Verwaltung', icon: Settings },
     ],
   },

@@ -89,6 +89,11 @@ class Registration(Base):
     email = Column(String(255), nullable=False)
     department = Column(String(255), nullable=True)
     fund = Column(String(100), nullable=True)  # EFRE, ESF, ESF+, INTERREG, etc.
+    password_hash = Column(String(255), nullable=True)
+    password_updated_at = Column(DateTime, nullable=True)
+    last_login_at = Column(DateTime, nullable=True)
+    qr_login_secret = Column(String(128), nullable=True)
+    qr_secret_rotated_at = Column(DateTime, nullable=True)
     invite_token = Column(String(64), nullable=True, unique=True)
     privacy_accepted = Column(Boolean, default=False)
     anthropic_consent = Column(Boolean, default=False)

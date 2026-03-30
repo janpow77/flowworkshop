@@ -12,6 +12,7 @@ import VorstellungsrundePage from './pages/VorstellungsrundePage';
 
 // Geschuetzte Routen (lazy loaded)
 const AgendaForumPage = lazy(() => import('./pages/AgendaForumPage'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const ScenarioPage = lazy(() => import('./pages/ScenarioPage'));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
@@ -55,6 +56,7 @@ export default function App() {
         {authToken ? (
           <Route element={<AppShell />}>
             <Route index element={<LazyPage><HomePage /></LazyPage>} />
+            <Route path="/account" element={<LazyPage><AccountPage /></LazyPage>} />
             <Route path="/scenario/:id" element={<LazyPage><ScenarioPage /></LazyPage>} />
             <Route path="/projects" element={<LazyPage><ProjectsPage /></LazyPage>} />
             <Route path="/projects/:projectId" element={<LazyPage><ProjectDetailPage /></LazyPage>} />
