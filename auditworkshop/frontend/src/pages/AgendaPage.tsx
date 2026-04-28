@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Calendar, Clock, MapPin, Building2, Mic2, MessageSquare,
-  Wrench, Coffee, ClipboardCheck, UserPlus, ThumbsUp,
+  Wrench, Coffee, ClipboardCheck, UserPlus, ThumbsUp, CheckCircle,
   ChevronDown, Cpu, Play, CheckCircle2, SkipForward,
   RotateCcw, Beaker, ExternalLink, Timer, TimerReset,
   Eye, EyeOff, ArrowUp, ArrowDown,
@@ -141,6 +141,7 @@ export default function AgendaPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('plenary');
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3]));
   const [isAdmin] = useState(() => localStorage.getItem('workshop_role') === 'moderator');
+  const [alreadyRegistered] = useState(() => !!localStorage.getItem('workshop_token'));
   const [prevActiveId, setPrevActiveId] = useState<string | null>(null);
   const [transitioningIds, setTransitioningIds] = useState<Record<string, string>>({});
 
@@ -394,13 +395,17 @@ export default function AgendaPage() {
             </div>
             {meta.location_full && <p className="mt-2 text-xs text-cyan-100/60">{meta.location_full}</p>}
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link to="/register" className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-cyan-50 transition-colors">
-                <UserPlus size={16} /> Anmelden
-              </Link>
-              {meta.registration_deadline && (
-                <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-xs text-white/80">
-                  Anmeldeschluss: {meta.registration_deadline}
+              {alreadyRegistered ? (
+                <span
+                  aria-disabled="true"
+                  className="inline-flex cursor-not-allowed items-center gap-2 rounded-full bg-white/40 px-5 py-2.5 text-sm font-medium text-white/70"
+                >
+                  <CheckCircle size={16} /> Bereits angemeldet
                 </span>
+              ) : (
+                <Link to="/register" className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-cyan-50 transition-colors">
+                  <UserPlus size={16} /> Anmelden
+                </Link>
               )}
             </div>
           </div>

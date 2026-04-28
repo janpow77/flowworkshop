@@ -34,5 +34,9 @@ auditworkshop/backend/data/knowledge_raw/
 # Lokale Daten-Exports (Beguenstigte / RAG-Snapshots)
 export/
 
+# Generierte Einladungs-Pakete (siehe einladungs-emails.md als Quelle)
+einladungen.zip
+einladungen_txt/
+
 # Compiled
 *.pyc

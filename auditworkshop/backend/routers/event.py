@@ -103,7 +103,7 @@ class AgendaItemUpdate(BaseModel):
 class RegistrationCreate(BaseModel):
     first_name: str = Field(..., min_length=1)
     last_name: str = Field(..., min_length=1)
-    organization: str = Field(..., min_length=1)
+    organization: str = ""
     email: str = Field(..., min_length=5)
     department: str | None = None
     fund: str | None = None

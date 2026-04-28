@@ -106,8 +106,8 @@ export default function RegisterPage() {
   };
 
   const canProceed = (s: Step): boolean => {
-    if (s === 1) return !!(firstName && lastName && organization && email && email.includes('@'));
-    if (s === 2) return !!topic;
+    if (s === 1) return !!(firstName && lastName && email && email.includes('@'));
+    if (s === 2) return true;
     if (s === 3) return privacyAccepted;
     return true;
   };
@@ -233,12 +233,12 @@ export default function RegisterPage() {
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
               <UserPlus size={20} /> Pers&ouml;nliche Daten
             </h2>
-            <p className="text-sm text-slate-500">Name, Beh&ouml;rde und dienstliche E-Mail-Adresse.</p>
+            <p className="text-sm text-slate-500">Name und dienstliche E-Mail-Adresse. Beh&ouml;rde ist optional.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Vorname *" aria-label="Vorname" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
               <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Nachname *" aria-label="Nachname" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
             </div>
-            <input value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="Beh&ouml;rde / Organisation *" aria-label="Organisation" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
+            <input value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="Beh&ouml;rde / Organisation (optional)" aria-label="Organisation" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
             <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Dienstliche E-Mail-Adresse *" aria-label="Dienstliche E-Mail" readOnly={isInvite} className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800 ${isInvite ? 'bg-slate-50 text-slate-600 dark:bg-slate-700' : ''}`} />
             <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Fachbereich (optional)" aria-label="Fachbereich" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800" />
           </div>
@@ -248,8 +248,8 @@ export default function RegisterPage() {
         {step === 2 && (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Themenvorschlag &amp; Dokumente</h2>
-            <p className="text-sm text-slate-500">Welches Thema soll im Workshop besprochen werden? Sie k&ouml;nnen auch Dokumente beif&uuml;gen.</p>
-            <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Themenvorschlag *" aria-label="Themenvorschlag" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800" />
+            <p className="text-sm text-slate-500">Welches Thema soll im Workshop besprochen werden? Sie k&ouml;nnen auch Dokumente beif&uuml;gen. Dieser Schritt ist optional &mdash; ohne Vorschlag einfach mit &bdquo;Weiter&ldquo; &uuml;berspringen.</p>
+            <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Themenvorschlag (optional)" aria-label="Themenvorschlag" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-800" />
             <textarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={3} placeholder="Konkrete Fragestellung (optional)" aria-label="Konkrete Fragestellung" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm resize-none dark:border-slate-600 dark:bg-slate-800" />
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Anmerkungen (optional)" aria-label="Anmerkungen" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm resize-none dark:border-slate-600 dark:bg-slate-800" />
 
