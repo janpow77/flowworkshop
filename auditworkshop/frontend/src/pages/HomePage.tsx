@@ -150,7 +150,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-cyan-200/60 bg-white/80 p-4 dark:border-cyan-800/40 dark:bg-slate-900/60">
+          <div className="flex flex-col rounded-2xl border border-cyan-200/60 bg-white/80 p-4 dark:border-cyan-800/40 dark:bg-slate-900/60">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-cyan-700 dark:text-cyan-300">
               <Upload size={16} />
               Dokumente hochladen
@@ -160,8 +160,14 @@ export default function HomePage() {
               Die KI beantwortet Fragen ausschlie&szlig;lich auf Basis Ihrer Unterlagen &mdash;
               nichts verl&auml;sst das Ger&auml;t.
             </p>
+            <Link
+              to="/knowledge"
+              className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-cyan-700 hover:text-cyan-800 dark:text-cyan-300 dark:hover:text-cyan-200"
+            >
+              Zur Wissensbasis <ArrowRight size={12} />
+            </Link>
           </div>
-          <div className="rounded-2xl border border-amber-200/60 bg-white/80 p-4 dark:border-amber-800/40 dark:bg-slate-900/60">
+          <div className="flex flex-col rounded-2xl border border-amber-200/60 bg-white/80 p-4 dark:border-amber-800/40 dark:bg-slate-900/60">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
               <MessageCircle size={16} />
               Themen vorschlagen &amp; voten
@@ -171,8 +177,14 @@ export default function HomePage() {
               Auf der <strong>Tagesordnung</strong> sehen Sie eingereichte Themen und k&ouml;nnen
               per Klick daf&uuml;r abstimmen &mdash; die beliebtesten werden im Workshop behandelt.
             </p>
+            <Link
+              to="/agenda"
+              className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+            >
+              Zur Tagesordnung <ArrowRight size={12} />
+            </Link>
           </div>
-          <div className="rounded-2xl border border-emerald-200/60 bg-white/80 p-4 dark:border-emerald-800/40 dark:bg-slate-900/60">
+          <div className="flex flex-col rounded-2xl border border-emerald-200/60 bg-white/80 p-4 dark:border-emerald-800/40 dark:bg-slate-900/60">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
               <QrCode size={16} />
               QR-Code f&uuml;r Schnellzugang
@@ -182,6 +194,12 @@ export default function HomePage() {
               auf die Anmeldeseite zu gelangen. Dort k&ouml;nnen Sie sich registrieren, Themen
               einreichen und Dokumente bereitstellen.
             </p>
+            <Link
+              to="/account"
+              className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200"
+            >
+              Zum eigenen QR-Code <ArrowRight size={12} />
+            </Link>
           </div>
         </div>
       </section>
