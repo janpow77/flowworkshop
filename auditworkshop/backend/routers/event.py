@@ -271,10 +271,9 @@ def _get_agenda_item_or_404(item_id: str, db: Session) -> AgendaItem:
 
 
 def _get_authenticated_registration(request: Request, db: Session) -> tuple[dict, Registration]:
-    from routers.auth import _sessions
+    from routers.auth import _session_from_request
 
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    session = _sessions.get(token)
+    session = _session_from_request(request)
     if not session:
         raise HTTPException(401, "Bitte zuerst anmelden.")
 
@@ -301,9 +300,8 @@ def _forum_post_out(post: AgendaForumPost) -> AgendaForumPostOut:
 def _check_moderator(request: Request, pin: str, db: Session):
     """Prueft ob der Aufruf von einem Moderator (Token) oder Admin (PIN) kommt."""
     # 1. Token-basierte Auth
-    from routers.auth import _sessions, MODERATOR_EMAILS
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    session = _sessions.get(token)
+    from routers.auth import _session_from_request, MODERATOR_EMAILS
+    session = _session_from_request(request)
     if session and session.get("email", "").lower() in MODERATOR_EMAILS:
         return True
     # 2. PIN-basierte Auth (Fallback)
@@ -624,9 +622,8 @@ def delete_agenda_forum_post(
 @router.post("/admin/auth")
 def admin_auth(body: AdminAuth, request: Request, db: Session = Depends(get_db)):
     # Auth-Endpoint: Token ODER PIN akzeptieren
-    from routers.auth import _sessions, MODERATOR_EMAILS
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    session = _sessions.get(token)
+    from routers.auth import _session_from_request, MODERATOR_EMAILS
+    session = _session_from_request(request)
     if session and session.get("email", "").lower() in MODERATOR_EMAILS:
         return {"status": "ok"}
     meta = _get_meta(db)
