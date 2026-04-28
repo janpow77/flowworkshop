@@ -1,7 +1,7 @@
-# FlowWorkshop
+# AuditWorkshop
 
-KI-Workshop-Demo für EFRE-Prüfbehörden — sechs Szenarien,
-lokale Inferenz, pgvector-Wissensdatenbank.
+KI-Workshop-Demo für EFRE-Prüfbehörden. Die Demo nutzt bewusst
+einige deterministische Direktantworten für stabile Workshop-Szenarien.
 
 ## Voraussetzungen
 
@@ -17,25 +17,25 @@ lokale Inferenz, pgvector-Wissensdatenbank.
 docker compose up -d
 
 # 2. Verordnungen in die Wissensdatenbank einlesen (einmalig, ~5 Min.)
-docker exec flowworkshop-backend python scripts/ingest_knowledge.py --all
+docker exec auditworkshop-backend python scripts/ingest_knowledge.py --all
 
 # 3. Frontend öffnen
-open http://localhost:3000
+open http://localhost:3004
 
 # 4. Backend-API (Swagger)
-open http://localhost:8000/docs
+open http://localhost:8006/docs
 ```
 
 ## Eigene Dokumente einlesen (Szenario 5)
 
 ```bash
 # Via API (WORKSHOP_ADMIN=true ist im docker-compose.yml gesetzt)
-curl -X POST http://localhost:8000/api/knowledge/ingest \
+curl -X POST http://localhost:8006/api/knowledge/ingest \
   -F "file=@/pfad/zum/bescheid.pdf" \
   -F "source=foerderbescheid_musterstadt_2025"
 
 # Oder das Skript direkt nutzen:
-docker exec flowworkshop-backend \
+docker exec auditworkshop-backend \
   python scripts/ingest_knowledge.py \
   --file /app/data/mein_dokument.pdf \
   --source mein_bescheid
@@ -45,32 +45,32 @@ docker exec flowworkshop-backend \
 
 ```bash
 # Inhalt anzeigen
-curl http://localhost:8000/api/knowledge/stats
+curl http://localhost:8006/api/knowledge/stats
 
 # Suche testen
-curl "http://localhost:8000/api/knowledge/search?q=Verwendungsnachweis&top_k=3"
+curl "http://localhost:8006/api/knowledge/search?q=Verwendungsnachweis&top_k=3"
 
 # Quelle entfernen
-curl -X DELETE http://localhost:8000/api/knowledge/source/foerderbescheid_musterstadt_2025
+curl -X DELETE http://localhost:8006/api/knowledge/source/foerderbescheid_musterstadt_2025
 ```
 
 ## System-Status
 
 ```bash
 # Ollama-Status
-curl http://localhost:8000/api/system/ollama
+curl http://localhost:8006/api/system/ollama
 
 # GPU-Metriken
-curl http://localhost:8000/api/system/gpu
+curl http://localhost:8006/api/system/gpu
 
 # System-Info (RAM, CPU, Worker)
-curl http://localhost:8000/api/system/info
+curl http://localhost:8006/api/system/info
 ```
 
 ## Streaming-Endpunkt testen
 
 ```bash
-curl -X POST http://localhost:8000/api/workshop/stream \
+curl -X POST http://localhost:8006/api/workshop/stream \
   -H "Content-Type: application/json" \
   -d '{
     "scenario": 1,
@@ -79,6 +79,10 @@ curl -X POST http://localhost:8000/api/workshop/stream \
     "with_context": true
   }'
 ```
+
+## Demo-Hinweis
+
+Einige Szenarien liefern bewusst direkte, deterministische Antworten statt einer freien LLM-Antwort. Das ist Teil des Workshop-Setups und soll die Vorführung stabil halten.
 
 ## Stoppen
 

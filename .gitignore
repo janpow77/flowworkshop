@@ -31,5 +31,8 @@ Thumbs.db
 auditworkshop/backend/data/uploads/
 auditworkshop/backend/data/knowledge_raw/
 
+# Lokale Daten-Exports (Beguenstigte / RAG-Snapshots)
+export/
+
 # Compiled
 *.pyc
