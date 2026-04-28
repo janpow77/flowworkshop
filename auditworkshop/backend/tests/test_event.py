@@ -14,8 +14,8 @@ class TestMeta:
         assert "location_short" in data
         assert data["location_short"] == "Hannover"
 
-    def test_update_meta_requires_pin(self, client):
-        r = client.put("/api/event/admin/meta", params={"pin": "wrong"}, json={"title": "x"})
+    def test_update_meta_requires_pin(self, unauthed_client):
+        r = unauthed_client.put("/api/event/admin/meta", params={"pin": "wrong"}, json={"title": "x"})
         assert r.status_code == 403
 
     def test_update_meta_with_pin(self, client, admin_pin):
@@ -237,10 +237,10 @@ class TestTopics:
 
 
 class TestAgendaForum:
-    def test_forum_requires_login_for_posting(self, client):
+    def test_forum_requires_login_for_posting(self, client, unauthed_client):
         items = client.get("/api/event/agenda", params={"category": "workshop5"}).json()
         item = next(i for i in items if i["item_type"] != "pause")
-        r = client.post(
+        r = unauthed_client.post(
             f"/api/event/agenda/{item['id']}/forum/posts",
             json={"title": "Testbeitrag", "body": "Sollte ohne Login scheitern."},
         )

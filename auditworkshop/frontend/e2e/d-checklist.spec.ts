@@ -52,16 +52,9 @@ test.describe('D: Checklist AI Workflow', () => {
     // Checklisten-Name im Breadcrumb oder Header
     await expect(page.getByText('VKO-Checkliste', { exact: false })).toBeVisible({ timeout: 10000 });
 
-    // Die Checkliste hat 30 Fragen — mindestens einige sollten in der Sidebar sichtbar sein
-    // Fragen werden als Liste links angezeigt
-    const questionItems = page.locator('[role="button"], [data-question-id]');
-    // Alternativ: nach typischen Checklistenfragen-Texten suchen
-    // Die Fragen enthalten Nummern wie "1.", "2." etc.
-
     // Warten bis Fragen geladen sind (nicht mehr Skeleton)
     await page.waitForTimeout(2000);
 
-    // Es sollten mehrere klickbare Elemente in der Fragen-Sidebar geben
     // Pruefe ob mindestens die Seitenstruktur korrekt ist (zwei Spalten)
     const mainContent = page.locator('main');
     await expect(mainContent).toBeVisible();

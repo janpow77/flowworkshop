@@ -188,15 +188,15 @@ test.describe('E: Szenarien 1-6 (LLM-Streaming)', () => {
     await page.waitForLoadState('networkidle');
     await assertNoErrorBoundary(page);
 
-    // Statistikfragen-Hinweis
-    await expect(page.getByText('Statistikfragen', { exact: false })).toBeVisible();
+    // Strukturierte Schnellauswertung mit Frageauswahl
+    await expect(page.getByText('Strukturierte Schnellauswertung', { exact: false })).toBeVisible();
 
     // Links zu Unternehmenssuche und Datenraum
-    await expect(page.getByRole('link', { name: 'Unternehmenssuche öffnen' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Datenraum öffnen' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Unternehmenssuche' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Datenraum' })).toBeVisible();
 
     // Prompt-Textarea
-    await expect(page.getByLabel('Prompt eingeben')).toBeVisible();
+    await expect(page.getByLabel('Prompt für Begünstigtenauswertung')).toBeVisible();
   });
 
   test('SSE-Streaming zeigt Modell-Info nach Abschluss', async ({ page }) => {
