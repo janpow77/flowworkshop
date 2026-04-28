@@ -14,12 +14,25 @@ export function getWorkshopAuthHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+let authExpiredHandled = false;
+function handleAuthExpired(): void {
+  if (authExpiredHandled) return;
+  authExpiredHandled = true;
+  localStorage.removeItem('workshop_token');
+  localStorage.removeItem('workshop_role');
+  // Auf den Login-Screen zurueckfuehren (App.tsx zeigt LoginPage, wenn kein Token vorhanden ist).
+  window.location.assign('/');
+}
+
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   const { headers: customHeaders, ...rest } = opts ?? {};
   const res = await fetch(`${BASE}${path}`, {
     ...rest,
     headers: { 'Content-Type': 'application/json', ...getWorkshopAuthHeaders(), ...customHeaders },
   });
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`${res.status}: ${body}`);
@@ -34,6 +47,9 @@ async function requestForm<T>(path: string, form: FormData): Promise<T> {
     headers: { ...getWorkshopAuthHeaders() },
     body: form,
   });
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`${res.status}: ${body}`);
@@ -445,6 +461,11 @@ export function streamSSE(
     signal: controller.signal,
   })
     .then(async (res) => {
+      if (res.status === 401 && getWorkshopAuthToken()) {
+        handleAuthExpired();
+        onError('Sitzung abgelaufen. Bitte erneut anmelden.');
+        return;
+      }
       if (!res.ok) {
         onError(`HTTP ${res.status}`);
         return;

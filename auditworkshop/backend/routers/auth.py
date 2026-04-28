@@ -17,16 +17,14 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from database import get_db
+from database import SessionLocal, get_db
 from models.registration import Registration
 from models.audit_log import AuditLog
+from models.session import WorkshopSession
 from config import AUTH_TOKEN_SECRET
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 log = logging.getLogger(__name__)
-
-# In-Memory Session Store (fuer Workshop ausreichend)
-_sessions: dict[str, dict] = {}
 
 # Moderatoren-E-Mails (case-insensitive geprueft)
 MODERATOR_EMAILS = {
@@ -126,9 +124,35 @@ def _resolve_role(reg: Registration) -> str:
     return "moderator" if reg.email.lower() in MODERATOR_EMAILS else "participant"
 
 
+def _extract_token(request: Request) -> str:
+    return request.headers.get("Authorization", "").replace("Bearer ", "").strip()
+
+
+def _load_session(token: str) -> dict | None:
+    """Liest eine persistente Session aus der DB und aktualisiert last_seen_at."""
+    if not token:
+        return None
+    db = SessionLocal()
+    try:
+        sess = db.query(WorkshopSession).filter(WorkshopSession.token == token).first()
+        if not sess:
+            return None
+        sess.last_seen_at = _utcnow().replace(tzinfo=None)
+        db.commit()
+        return {
+            "user_id": sess.user_id,
+            "email": sess.email,
+            "name": sess.name,
+            "organization": sess.organization,
+            "role": sess.role,
+            "created_at": sess.created_at.isoformat() if sess.created_at else None,
+        }
+    finally:
+        db.close()
+
+
 def _session_from_request(request: Request) -> dict | None:
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    return _sessions.get(token)
+    return _load_session(_extract_token(request))
 
 
 def require_session(request: Request) -> dict:
@@ -148,16 +172,18 @@ def require_moderator(request: Request) -> dict:
     raise HTTPException(403, "Moderator-Login erforderlich.")
 
 
-def _create_session(reg: Registration, role: str) -> LoginResponse:
+def _create_session(reg: Registration, role: str, db: Session) -> LoginResponse:
     token = str(uuid.uuid4())
-    _sessions[token] = {
-        "user_id": reg.id,
-        "email": reg.email,
-        "name": f"{reg.first_name} {reg.last_name}",
-        "organization": reg.organization,
-        "role": role,
-        "created_at": _utcnow().isoformat(),
-    }
+    sess = WorkshopSession(
+        token=token,
+        user_id=reg.id,
+        email=reg.email,
+        name=f"{reg.first_name} {reg.last_name}",
+        organization=reg.organization or "",
+        role=role,
+    )
+    db.add(sess)
+    db.commit()
     return LoginResponse(
         token=token,
         name=f"{reg.first_name} {reg.last_name}",
@@ -217,7 +243,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     db.commit()
 
     log.info("Login: %s (%s) role=%s", reg.email, reg.organization, role)
-    return _create_session(reg, role)
+    return _create_session(reg, role, db)
 
 
 @router.post("/qr-login", response_model=LoginResponse)
@@ -243,23 +269,24 @@ def qr_login(body: QrLoginRequest, db: Session = Depends(get_db)):
     reg.last_login_at = _utcnow()
     db.commit()
     log.info("QR-Login: %s (%s) role=%s", reg.email, reg.organization, role)
-    return _create_session(reg, role)
+    return _create_session(reg, role, db)
 
 
 @router.get("/me")
 def get_me(request: Request):
     """Gibt aktuelle Session-Infos zurueck."""
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    session = _sessions.get(token)
+    session = _session_from_request(request)
     if not session:
         raise HTTPException(401, "Nicht angemeldet.")
     return session
 
 
 @router.post("/logout")
-def logout(request: Request):
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    _sessions.pop(token, None)
+def logout(request: Request, db: Session = Depends(get_db)):
+    token = _extract_token(request)
+    if token:
+        db.query(WorkshopSession).filter(WorkshopSession.token == token).delete()
+        db.commit()
     return {"status": "logged_out"}
 
 
@@ -313,15 +340,22 @@ def rotate_qr_secret(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/sessions")
-def list_sessions(pin: str = ""):
+def list_sessions(pin: str = "", db: Session = Depends(get_db)):
     """Admin: Zeigt aktive Sessions."""
     if pin != "1234":
         raise HTTPException(403, "Falscher PIN.")
+    sessions = db.query(WorkshopSession).order_by(WorkshopSession.last_seen_at.desc()).all()
     return {
-        "active_sessions": len(_sessions),
+        "active_sessions": len(sessions),
         "sessions": [
-            {"name": s["name"], "organization": s["organization"], "created_at": s["created_at"]}
-            for s in _sessions.values()
+            {
+                "name": s.name,
+                "organization": s.organization,
+                "role": s.role,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "last_seen_at": s.last_seen_at.isoformat() if s.last_seen_at else None,
+            }
+            for s in sessions
         ],
     }
 
@@ -334,15 +368,10 @@ def log_action(
     action: str, detail: str = "", request: Request = None, db: Session = Depends(get_db),
 ):
     """Loggt eine Aktion im Audit-Trail."""
-    token = (
-        request.headers.get("Authorization", "").replace("Bearer ", "")
-        if request
-        else ""
-    )
-    session = _sessions.get(token, {})
+    session = _session_from_request(request) if request else None
     entry = AuditLog(
-        user_name=session.get("name", "Anonym"),
-        organization=session.get("organization", ""),
+        user_name=(session or {}).get("name", "Anonym"),
+        organization=(session or {}).get("organization", ""),
         action=action,
         detail=detail[:500],
     )

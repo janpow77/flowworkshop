@@ -23,3 +23,4 @@ from models.registration import (  # noqa: F401
     SubmissionVisibility,
     AgendaForumPost,
 )
+from models.session import WorkshopSession  # noqa: F401
