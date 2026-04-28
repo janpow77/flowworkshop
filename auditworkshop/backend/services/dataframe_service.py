@@ -779,25 +779,49 @@ def query_dataframe(source: str, sql_query: str) -> list[dict]:
     Fuehrt eine SQL-Abfrage auf einer DataFrame-Tabelle aus.
     SICHERHEIT: Nur SELECT auf die spezifische Tabelle, kein DML/DDL.
     """
+    table_name = _safe_table_name(source)
     cleaned = sql_query.strip()
     upper = cleaned.upper()
 
     if not upper.startswith("SELECT"):
         raise ValueError("Nur SELECT-Abfragen erlaubt.")
+    if ";" in cleaned:
+        raise ValueError("Mehrere Statements (;) sind nicht erlaubt.")
 
-    # Blockliste fuer gefaehrliche SQL-Keywords
-    blocked = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "TRUNCATE",
-               "GRANT", "REVOKE", "EXEC", "EXECUTE", "INTO", "COPY", ";"]
+    blocked = [
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "DROP",
+        "ALTER",
+        "CREATE",
+        "TRUNCATE",
+        "GRANT",
+        "REVOKE",
+        "EXEC",
+        "EXECUTE",
+        "INTO",
+        "COPY",
+        "UNION",
+        "INTERSECT",
+        "EXCEPT",
+        "JOIN",
+        "WITH",
+    ]
+    import re
+
     for keyword in blocked:
-        # Pruefe ob das Keyword als eigenstaendiges Wort vorkommt (nicht in Spaltennamen)
-        import re
-        if keyword == ";":
-            if ";" in cleaned:
-                raise ValueError("Mehrere Statements (;) sind nicht erlaubt.")
-        elif re.search(rf"\b{keyword}\b", upper):
+        if re.search(rf"\b{keyword}\b", upper):
             raise ValueError(f"'{keyword}' ist in Abfragen nicht erlaubt.")
 
-    table_name = _safe_table_name(source)
+    from_count = len(re.findall(r"\bFROM\b", upper))
+    select_count = len(re.findall(r"\bSELECT\b", upper))
+    if select_count != 1 or from_count != 1:
+        raise ValueError("Nur einfache SELECT-Abfragen mit genau einer Tabelle sind erlaubt.")
+
+    placeholder_count = cleaned.count("{table}")
+    if placeholder_count != 1:
+        raise ValueError("Die Abfrage muss genau einmal '{table}' enthalten.")
 
     # Tabelle pruefen
     with engine.connect() as conn:
@@ -810,6 +834,8 @@ def query_dataframe(source: str, sql_query: str) -> list[dict]:
 
     # Nur {table} durch den sicheren Tabellennamen ersetzen
     safe_sql = cleaned.replace("{table}", f'"{table_name}"')
+    if re.search(rf"\bFROM\s+(?!\"{re.escape(table_name)}\")", safe_sql, flags=re.IGNORECASE):
+        raise ValueError("Die Abfrage darf nur auf die freigegebene Tabelle zugreifen.")
 
     # Maximal 1000 Zeilen zurueckgeben
     if "LIMIT" not in upper:

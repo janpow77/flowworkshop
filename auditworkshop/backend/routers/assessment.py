@@ -5,19 +5,33 @@ KI-Bewertung: Bemerkungen generieren, akzeptieren, ablehnen, bearbeiten.
 import json
 import logging
 import re
+from pydantic import BaseModel, Field, ValidationError
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from database import SessionLocal, get_db
+from routers.auth import require_session
 from models.checklist import WorkshopQuestion, WorkshopEvidence, RemarkAiStatus
 from schemas.checklist import RejectFeedbackIn, EditRemarkIn
 from services import knowledge_service as ks
 from services.ollama_service import stream as ollama_stream
 from config import SYSTEM_PROMPTS, DISCLAIMER
 
-router = APIRouter(prefix="/api/assessment", tags=["assessment"])
+router = APIRouter(
+    prefix="/api/assessment",
+    tags=["assessment"],
+    dependencies=[Depends(require_session)],
+)
 log = logging.getLogger(__name__)
+
+ALLOWED_REMARK_STATUSES = {"erfuellt", "nicht_erfuellt", "nicht_beurteilbar"}
+
+
+class AssessmentRemarkPayload(BaseModel):
+    status: str = Field(..., min_length=1)
+    begruendung: str = Field(..., min_length=1)
+    fundstellen: list[str] = Field(default_factory=list)
 
 
 def _clean_llm_json(text: str) -> str:
@@ -39,6 +53,42 @@ def _parse_llm_json(text: str) -> dict | list | None:
     except (json.JSONDecodeError, ValueError):
         log.warning("LLM-JSON konnte nicht geparst werden: %s...", cleaned[:200])
         return None
+
+
+def _canonicalize_remark_ai(text: str) -> str:
+    """Normalisiert LLM-Ausgaben auf ein stabiles JSON-Format."""
+    parsed = _parse_llm_json(text)
+    if isinstance(parsed, dict):
+        status = str(parsed.get("status", "nicht_beurteilbar")).strip().lower()
+        status = status.replace(" ", "_")
+        if status not in ALLOWED_REMARK_STATUSES:
+            status = "nicht_beurteilbar"
+
+        begruendung = str(parsed.get("begruendung", "")).strip()
+        fundstellen_raw = parsed.get("fundstellen", [])
+        if isinstance(fundstellen_raw, list):
+            fundstellen = [str(item).strip() for item in fundstellen_raw if str(item).strip()]
+        elif fundstellen_raw:
+            fundstellen = [str(fundstellen_raw).strip()]
+        else:
+            fundstellen = []
+
+        try:
+            payload = AssessmentRemarkPayload(
+                status=status,
+                begruendung=begruendung or text.strip(),
+                fundstellen=fundstellen,
+            )
+            return payload.model_dump_json()
+        except ValidationError:
+            pass
+
+    fallback = AssessmentRemarkPayload(
+        status="nicht_beurteilbar",
+        begruendung=text.strip() or "Keine verwertbare KI-Antwort erhalten.",
+        fundstellen=[],
+    )
+    return fallback.model_dump_json()
 
 ASSESS_SYSTEM_PROMPT = """Du bist ein Hilfswerkzeug fuer EFRE-Pruefer.
 Beurteile den folgenden Pruefpunkt auf Basis der beigefuegten Dokumente.
@@ -126,7 +176,7 @@ async def assess_question(question_id: str, db: Session = Depends(get_db)):
                     .first()
                 )
                 if q_db:
-                    q_db.remark_ai = full_response
+                    q_db.remark_ai = _canonicalize_remark_ai(full_response)
                     q_db.remark_ai_status = RemarkAiStatus.DRAFT
                     q_db.evidence.clear()
 
@@ -210,7 +260,8 @@ async def assess_all(checklist_id: str, db: Session = Depends(get_db)):
 
             full_response = "".join(accumulated)
             if full_response:
-                q.remark_ai = full_response
+                canonical = _canonicalize_remark_ai(full_response)
+                q.remark_ai = canonical
                 q.remark_ai_status = RemarkAiStatus.DRAFT
                 q.evidence.clear()
 

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Upload, FileText, X, Loader2, CheckCircle } from 'lucide-react';
+import { getWorkshopAuthHeaders } from '../../lib/api';
 
 interface Props {
   onFilesRead: (texts: string[]) => void;
@@ -53,7 +54,11 @@ export default function DocumentDropzone({ onFilesRead, maxFiles = 3, accept = A
           // Alle anderen Formate serverseitig parsen
           const form = new FormData();
           form.append('file', f);
-          const res = await fetch('/api/workshop/parse-file', { method: 'POST', body: form });
+          const res = await fetch('/api/workshop/parse-file', {
+            method: 'POST',
+            headers: { ...getWorkshopAuthHeaders() },
+            body: form,
+          });
           if (!res.ok) {
             const err = await res.json().catch(() => ({ detail: 'Fehler' }));
             throw new Error(err.detail || `HTTP ${res.status}`);

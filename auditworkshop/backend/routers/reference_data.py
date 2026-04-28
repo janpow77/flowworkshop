@@ -3,7 +3,7 @@ flowworkshop · routers/reference_data.py
 Lokaler Import und Suche fuer Referenzregister wie Sanktionslisten,
 TAM, State Aid oder Cohesio.
 """
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, Depends
 
 from config import WORKSHOP_ADMIN
 from services.dataframe_service import (
@@ -13,8 +13,13 @@ from services.dataframe_service import (
     search_reference_registry_records,
 )
 from services.geocoding_service import detect_columns
+from routers.auth import require_moderator, require_session
 
-router = APIRouter(prefix="/api/reference-data", tags=["reference-data"])
+router = APIRouter(
+    prefix="/api/reference-data",
+    tags=["reference-data"],
+    dependencies=[Depends(require_session)],
+)
 
 ALLOWED_REGISTRY_TYPES = {"sanctions", "tam", "state_aid", "cohesio", "other"}
 
@@ -31,6 +36,7 @@ async def import_reference_data(
     registry_type: str = Form(..., description="sanctions|tam|state_aid|cohesio|other"),
     source: str = Form("", description="Optionaler technischer Name"),
     sheet: str = Form("0", description="Blattname oder Index"),
+    _session: dict = Depends(require_moderator),
 ):
     if not WORKSHOP_ADMIN:
         raise HTTPException(403, "Nicht freigeschaltet.")
@@ -91,7 +97,7 @@ def search_reference_data(
 
 
 @router.delete("/{source}")
-def delete_reference_source(source: str):
+def delete_reference_source(source: str, _session: dict = Depends(require_moderator)):
     if not WORKSHOP_ADMIN:
         raise HTTPException(403, "Nicht freigeschaltet.")
     delete_dataframe_table(source)

@@ -8,8 +8,13 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.project import WorkshopProject
 from schemas.project import ProjectCreate, ProjectUpdate, ProjectOut, ProjectListOut
+from routers.auth import require_session
 
-router = APIRouter(prefix="/api/projects", tags=["projects"])
+router = APIRouter(
+    prefix="/api/projects",
+    tags=["projects"],
+    dependencies=[Depends(require_session)],
+)
 
 
 @router.post("/", response_model=ProjectOut, status_code=201)

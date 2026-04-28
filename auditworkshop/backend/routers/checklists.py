@@ -20,8 +20,13 @@ from schemas.checklist import (
     QuestionCreate, QuestionUpdate, QuestionOut, QuestionDetailOut,
     EvidenceOut,
 )
+from routers.auth import require_session
 
-router = APIRouter(prefix="/api/projects/{project_id}/checklists", tags=["checklists"])
+router = APIRouter(
+    prefix="/api/projects/{project_id}/checklists",
+    tags=["checklists"],
+    dependencies=[Depends(require_session)],
+)
 TEMPLATES_DIR = Path(__file__).parent.parent / "data" / "demo_templates"
 
 

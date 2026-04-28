@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Database, Table, Upload, Trash2, Search, Loader2, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
+import { getWorkshopAuthHeaders } from '../lib/api';
 
 interface DfTable {
   table_name: string;
@@ -44,7 +45,7 @@ export default function DataFramePage() {
   const loadTables = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/dataframes/');
+      const res = await fetch('/api/dataframes/', { headers: { ...getWorkshopAuthHeaders() } });
       const data = await res.json();
       setTables(data.tables || []);
     } finally {
@@ -61,8 +62,8 @@ export default function DataFramePage() {
     setSqlQuery(`SELECT * FROM {table} LIMIT 10`);
 
     const [infoRes, summaryRes] = await Promise.all([
-      fetch(`/api/dataframes/${source}/info`),
-      fetch(`/api/dataframes/${source}/summary`),
+      fetch(`/api/dataframes/${source}/info`, { headers: { ...getWorkshopAuthHeaders() } }),
+      fetch(`/api/dataframes/${source}/summary`, { headers: { ...getWorkshopAuthHeaders() } }),
     ]);
     setTableInfo(await infoRes.json());
     const summaryData = await summaryRes.json();
@@ -74,7 +75,9 @@ export default function DataFramePage() {
     setQuerying(true);
     setQueryError('');
     try {
-      const res = await fetch(`/api/dataframes/${encodeURIComponent(selectedSource)}/query?sql=${encodeURIComponent(sqlQuery)}`);
+      const res = await fetch(`/api/dataframes/${encodeURIComponent(selectedSource)}/query?sql=${encodeURIComponent(sqlQuery)}`, {
+        headers: { ...getWorkshopAuthHeaders() },
+      });
       const data = await res.json();
       if (!res.ok) {
         setQueryError(data.detail || 'Fehler');
@@ -91,7 +94,10 @@ export default function DataFramePage() {
 
   const deleteTable = async (source: string) => {
     if (!confirm(`Tabelle "${source}" wirklich löschen?`)) return;
-    await fetch(`/api/dataframes/${encodeURIComponent(source)}`, { method: 'DELETE' });
+    await fetch(`/api/dataframes/${encodeURIComponent(source)}`, {
+      method: 'DELETE',
+      headers: { ...getWorkshopAuthHeaders() },
+    });
     if (selectedSource === source) {
       setSelectedSource(null);
       setTableInfo(null);
@@ -108,7 +114,11 @@ export default function DataFramePage() {
       form.append('file', ingestFile);
       form.append('source', ingestSource);
       form.append('sheet', ingestSheet);
-      const res = await fetch('/api/dataframes/ingest', { method: 'POST', body: form });
+      const res = await fetch('/api/dataframes/ingest', {
+        method: 'POST',
+        headers: { ...getWorkshopAuthHeaders() },
+        body: form,
+      });
       const data = await res.json();
       if (res.ok) {
         setIngestResult(`${data.rows} Zeilen, ${data.columns.length} Spalten → ${data.table_name}`);

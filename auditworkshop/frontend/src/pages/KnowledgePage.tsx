@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Database, Search, MessageSquare, Trash2, Upload, Loader2, FileText, ChevronDown, ChevronRight, Eye } from 'lucide-react';
 import {
   getKnowledgeStats, searchKnowledge, deleteKnowledgeSource, streamSSE,
+  getWorkshopAuthHeaders,
   type KnowledgeStats, type SearchResult,
 } from '../lib/api';
 
@@ -73,7 +74,11 @@ export default function KnowledgePage() {
       const form = new FormData();
       form.append('file', ingestFile);
       form.append('source', ingestSource);
-      const res = await fetch('/api/knowledge/ingest', { method: 'POST', body: form });
+      const res = await fetch('/api/knowledge/ingest', {
+        method: 'POST',
+        headers: { ...getWorkshopAuthHeaders() },
+        body: form,
+      });
       const data = await res.json();
       if (res.ok) {
         setIngestResult(`${data.chunks_stored} Textabschnitte gespeichert (${data.method})`);
@@ -98,7 +103,9 @@ export default function KnowledgePage() {
   const loadChunks = async (source: string, offset = 0) => {
     setChunksLoading(true);
     try {
-      const res = await fetch(`/api/knowledge/source/${source}/chunks?offset=${offset}&limit=10`);
+      const res = await fetch(`/api/knowledge/source/${source}/chunks?offset=${offset}&limit=10`, {
+        headers: { ...getWorkshopAuthHeaders() },
+      });
       const data = await res.json();
       setChunks(data.chunks);
       setChunksTotal(data.total);

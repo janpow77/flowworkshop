@@ -9,11 +9,12 @@ import re
 import time
 from collections import defaultdict
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Request
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from config import SYSTEM_PROMPTS, DISCLAIMER
+from routers.auth import require_session
 from services import knowledge_service as ks
 from services.dataframe_service import (
     build_beneficiary_analysis_answer,
@@ -22,7 +23,11 @@ from services.dataframe_service import (
 from services.ollama_service import stream
 from services.file_parser import extract as file_extract, ALLOWED_EXTENSIONS
 
-router = APIRouter(prefix="/api/workshop", tags=["workshop"])
+router = APIRouter(
+    prefix="/api/workshop",
+    tags=["workshop"],
+    dependencies=[Depends(require_session)],
+)
 log = logging.getLogger(__name__)
 
 

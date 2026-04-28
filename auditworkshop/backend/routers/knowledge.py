@@ -7,17 +7,18 @@ GET  /api/knowledge/search?q=...&top_k=5&source=...
 POST /api/knowledge/ingest        — Datei hochladen (nur WORKSHOP_ADMIN)
 DELETE /api/knowledge/source/{source}  — Quelle entfernen (nur WORKSHOP_ADMIN)
 """
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, Depends
 
 from config import WORKSHOP_ADMIN
 from services import knowledge_service as ks
 from services.file_parser import extract
+from routers.auth import require_moderator, require_session
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 
 
 @router.get("/stats")
-def get_stats():
+def get_stats(_session: dict = Depends(require_session)):
     """Anzahl Dokumente und Chunks in der Wissensdatenbank."""
     return ks.stats()
 
@@ -27,6 +28,7 @@ def search(
     q: str = Query(..., min_length=3, description="Suchanfrage"),
     top_k: int = Query(5, ge=1, le=20),
     source: str | None = Query(None, description="Nur diese Quelle durchsuchen"),
+    _session: dict = Depends(require_session),
 ):
     """Semantische Ähnlichkeitssuche in den gespeicherten Chunks."""
     results = ks.search(q, top_k=top_k, source_filter=source)
@@ -37,6 +39,7 @@ def search(
 async def ingest_document(
     file: UploadFile = File(...),
     source: str = Form(..., description="Logischer Name, z. B. 'foerderbescheid_musterstadt'"),
+    _session: dict = Depends(require_session),
 ):
     """
     Liest eine Datei ein, extrahiert den Text und speichert Chunks in pgvector.
@@ -80,6 +83,7 @@ def get_source_chunks(
     source: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    _session: dict = Depends(require_session),
 ):
     """Gibt die Chunks einer Quelle paginiert zurueck (fuer Transparenz-Ansicht)."""
     chunks = ks.get_chunks(source, offset=offset, limit=limit)
@@ -87,7 +91,7 @@ def get_source_chunks(
 
 
 @router.delete("/source/{source}")
-def delete_source(source: str):
+def delete_source(source: str, _session: dict = Depends(require_moderator)):
     """Entfernt alle Chunks einer Quelle aus der Wissensdatenbank."""
     if not WORKSHOP_ADMIN:
         raise HTTPException(status_code=403, detail="Nicht freigeschaltet.")

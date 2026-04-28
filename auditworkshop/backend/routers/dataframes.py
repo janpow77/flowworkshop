@@ -2,14 +2,19 @@
 flowworkshop · routers/dataframes.py
 API fuer DataFrame-Tabellen (XLSX/CSV → SQL).
 """
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, Depends
 from services.dataframe_service import (
     ingest_dataframe, query_dataframe, get_table_info,
     get_summary_stats, list_dataframe_tables, delete_dataframe_table,
 )
 from config import WORKSHOP_ADMIN
+from routers.auth import require_moderator, require_session
 
-router = APIRouter(prefix="/api/dataframes", tags=["dataframes"])
+router = APIRouter(
+    prefix="/api/dataframes",
+    tags=["dataframes"],
+    dependencies=[Depends(require_session)],
+)
 
 
 @router.get("/")
@@ -23,6 +28,7 @@ async def ingest(
     file: UploadFile = File(...),
     source: str = Form(..., description="Logischer Name, z.B. 'transparenzliste_hessen'"),
     sheet: str = Form("0", description="Blattname oder Index (default: 0)"),
+    _session: dict = Depends(require_moderator),
 ):
     """XLSX/CSV als SQL-Tabelle speichern."""
     if not WORKSHOP_ADMIN:
@@ -68,7 +74,7 @@ def query_table(
 
 
 @router.delete("/{source}")
-def delete_table(source: str):
+def delete_table(source: str, _session: dict = Depends(require_moderator)):
     """DataFrame-Tabelle loeschen."""
     if not WORKSHOP_ADMIN:
         raise HTTPException(403, "Nicht freigeschaltet.")

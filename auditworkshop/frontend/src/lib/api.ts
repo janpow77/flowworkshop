@@ -5,10 +5,20 @@
 
 const BASE = '/api';
 
+export function getWorkshopAuthToken(): string | null {
+  return localStorage.getItem('workshop_token');
+}
+
+export function getWorkshopAuthHeaders(): HeadersInit {
+  const token = getWorkshopAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
+  const { headers: customHeaders, ...rest } = opts ?? {};
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...opts?.headers },
-    ...opts,
+    ...rest,
+    headers: { 'Content-Type': 'application/json', ...getWorkshopAuthHeaders(), ...customHeaders },
   });
   if (!res.ok) {
     const body = await res.text();
@@ -21,6 +31,7 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
 async function requestForm<T>(path: string, form: FormData): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
+    headers: { ...getWorkshopAuthHeaders() },
     body: form,
   });
   if (!res.ok) {
@@ -429,7 +440,7 @@ export function streamSSE(
   const controller = new AbortController();
   fetch(`${BASE}${url}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getWorkshopAuthHeaders() },
     body: JSON.stringify(body),
     signal: controller.signal,
   })

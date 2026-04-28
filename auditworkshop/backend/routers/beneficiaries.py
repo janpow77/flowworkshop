@@ -4,19 +4,24 @@ Begünstigtenverzeichnis: Upload → Auto-Erkennung → Geocoding → Karte.
 Alles in einem Flow, kein manuelles Tagging nötig.
 """
 import logging
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Depends
 from services.geocoding_service import get_beneficiary_map_data, detect_columns
 from services.dataframe_service import (
     ingest_dataframe, get_beneficiary_sources, delete_dataframe_table,
     _detect_metadata, _safe_table_name, search_beneficiary_records, analyze_beneficiary_records,
 )
+from routers.auth import require_moderator, require_session
 
-router = APIRouter(prefix="/api/beneficiaries", tags=["beneficiaries"])
+router = APIRouter(
+    prefix="/api/beneficiaries",
+    tags=["beneficiaries"],
+    dependencies=[Depends(require_session)],
+)
 log = logging.getLogger(__name__)
 
 
 @router.post("/upload")
-async def upload_beneficiary_list(file: UploadFile = File(...)):
+async def upload_beneficiary_list(file: UploadFile = File(...), _session: dict = Depends(require_moderator)):
     """
     Begünstigtenverzeichnis hochladen.
     - Erkennt automatisch Bundesland, Fonds, Förderperiode
@@ -218,7 +223,7 @@ def get_nuts_regions():
 
 
 @router.delete("/{source}")
-def delete_source(source: str):
+def delete_source(source: str, _session: dict = Depends(require_moderator)):
     """Begünstigtenverzeichnis entfernen."""
     delete_dataframe_table(source)
     return {"status": "deleted", "source": source}

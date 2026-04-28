@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import { Loader2, MapPin, AlertTriangle, Upload, X, CheckCircle, FileSpreadsheet, Trash2, ShieldCheck } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
-import { getSystemProfile, type SystemProfile } from '../../lib/api';
+import { getSystemProfile, getWorkshopAuthHeaders, type SystemProfile } from '../../lib/api';
 
 interface Beneficiary {
   name: string;
@@ -71,7 +71,9 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/beneficiaries/map');
+      const res = await fetch('/api/beneficiaries/map', {
+        headers: { ...getWorkshopAuthHeaders() },
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json.beneficiaries || []);
@@ -95,7 +97,11 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
     try {
       const form = new FormData();
       form.append('file', file);
-      const res = await fetch('/api/beneficiaries/upload', { method: 'POST', body: form });
+      const res = await fetch('/api/beneficiaries/upload', {
+        method: 'POST',
+        headers: { ...getWorkshopAuthHeaders() },
+        body: form,
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.detail || 'Upload fehlgeschlagen');
       setUploadResult({
@@ -122,7 +128,10 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
 
   const handleDeleteSource = async (source: string) => {
     if (!confirm('Verzeichnis entfernen?')) return;
-    await fetch(`/api/beneficiaries/${encodeURIComponent(source)}`, { method: 'DELETE' });
+    await fetch(`/api/beneficiaries/${encodeURIComponent(source)}`, {
+      method: 'DELETE',
+      headers: { ...getWorkshopAuthHeaders() },
+    });
     await loadMap();
   };
 
@@ -134,6 +143,7 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
   });
   const points: [number, number][] = filtered.map((b) => [b.lat, b.lon]);
   const totalKosten = filtered.reduce((s, b) => s + b.kosten, 0);
+  const allowRemoteTiles = profile?.allow_remote_tiles ?? false;
 
   const getRadius = (kosten: number): number => {
     if (kosten <= 0) return 3;
@@ -233,7 +243,7 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
       {profile && profile.privacy_mode && (
         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-1">
           <ShieldCheck size={12} />
-          <span>Geocoding nutzt lokalen Cache · Karten-Tiles via OpenStreetMap</span>
+          <span>Geocoding nutzt lokalen Cache · Karten-Tiles bleiben lokal deaktiviert</span>
         </div>
       )}
 
@@ -284,29 +294,38 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
           </div>
 
           <div className="beneficiary-map-shell h-[500px]">
-            <MapContainer center={[51.0, 10.5]} zoom={6} className="h-full w-full" scrollWheelZoom={true}>
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              {points.length > 0 && <FitBounds points={points} />}
-              {filtered.map((b, i) => (
-                <CircleMarker key={`${b.lat}-${b.lon}-${i}`} center={[b.lat, b.lon]}
-                  radius={getRadius(b.kosten)}
-                  pathOptions={{ color: getBlColor(b.bundesland), fillColor: getBlColor(b.bundesland), fillOpacity: 0.5, weight: 1 }}>
-                  <Popup>
-                    <div className="text-xs leading-relaxed min-w-[220px]">
-                      <p className="font-bold text-sm mb-1">{b.name}</p>
-                      {b.projekt && <p className="text-slate-600 mb-1 line-clamp-2">{b.projekt}</p>}
-                      {b.kosten > 0 && <p><strong>Gesamtkosten:</strong> {formatEur(b.kosten)}</p>}
-                      <p><strong>Standort:</strong> {b.standort}</p>
-                      <p><strong>Land:</strong> {b.bundesland}{b.fonds && ` · ${b.fonds}`}</p>
-                      {b.kategorie && <p><strong>Ziel:</strong> {b.kategorie}</p>}
-                    </div>
-                  </Popup>
-                </CircleMarker>
-              ))}
-            </MapContainer>
+            <div className="relative h-full w-full">
+              <MapContainer center={[51.0, 10.5]} zoom={6} className="h-full w-full" scrollWheelZoom={true}>
+                {allowRemoteTiles && (
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                )}
+                {points.length > 0 && <FitBounds points={points} />}
+                {filtered.map((b, i) => (
+                  <CircleMarker key={`${b.lat}-${b.lon}-${i}`} center={[b.lat, b.lon]}
+                    radius={getRadius(b.kosten)}
+                    pathOptions={{ color: getBlColor(b.bundesland), fillColor: getBlColor(b.bundesland), fillOpacity: 0.5, weight: 1 }}>
+                    <Popup>
+                      <div className="text-xs leading-relaxed min-w-[220px]">
+                        <p className="font-bold text-sm mb-1">{b.name}</p>
+                        {b.projekt && <p className="text-slate-600 mb-1 line-clamp-2">{b.projekt}</p>}
+                        {b.kosten > 0 && <p><strong>Gesamtkosten:</strong> {formatEur(b.kosten)}</p>}
+                        <p><strong>Standort:</strong> {b.standort}</p>
+                        <p><strong>Land:</strong> {b.bundesland}{b.fonds && ` · ${b.fonds}`}</p>
+                        {b.kategorie && <p><strong>Ziel:</strong> {b.kategorie}</p>}
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                ))}
+              </MapContainer>
+              {!allowRemoteTiles && (
+                <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-md bg-white/90 dark:bg-slate-900/90 px-2 py-1 text-[10px] text-slate-500 shadow">
+                  Kartenkacheln lokal deaktiviert
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Legende */}

@@ -126,6 +126,28 @@ def _resolve_role(reg: Registration) -> str:
     return "moderator" if reg.email.lower() in MODERATOR_EMAILS else "participant"
 
 
+def _session_from_request(request: Request) -> dict | None:
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    return _sessions.get(token)
+
+
+def require_session(request: Request) -> dict:
+    """FastAPI dependency: verlangt eine gueltige Workshop-Session."""
+    session = _session_from_request(request)
+    if not session:
+        raise HTTPException(401, "Nicht angemeldet.")
+    return session
+
+
+def require_moderator(request: Request) -> dict:
+    """FastAPI dependency: verlangt einen Moderator-Login."""
+    session = require_session(request)
+    email = str(session.get("email", "")).lower()
+    if session.get("role") == "moderator" or email in MODERATOR_EMAILS:
+        return session
+    raise HTTPException(403, "Moderator-Login erforderlich.")
+
+
 def _create_session(reg: Registration, role: str) -> LoginResponse:
     token = str(uuid.uuid4())
     _sessions[token] = {
@@ -145,10 +167,7 @@ def _create_session(reg: Registration, role: str) -> LoginResponse:
 
 
 def _get_authenticated_registration(request: Request, db: Session) -> tuple[dict, Registration]:
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    session = _sessions.get(token)
-    if not session:
-        raise HTTPException(401, "Nicht angemeldet.")
+    session = require_session(request)
 
     reg = db.query(Registration).filter(Registration.id == session.get("user_id")).first()
     if not reg:
