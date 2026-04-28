@@ -4,10 +4,9 @@ Anmeldung, Tagesordnung, Themenboard.
 """
 import enum
 import uuid
-from datetime import datetime
 
 from sqlalchemy import (
-    Column, String, Text, Integer, Float, Boolean, DateTime, Enum, ForeignKey, func,
+    Column, String, Text, Integer, Boolean, DateTime, Enum, ForeignKey, func,
 )
 from sqlalchemy.orm import relationship
 

@@ -430,7 +430,6 @@ def get_beneficiary_map_data(source: str) -> dict:
 
     with engine.connect() as conn:
         rows = conn.execute(text(sql)).fetchall()
-        columns = list(conn.execute(text(sql)).keys()) if not rows else None
 
     if not _cache:
         _load_cache()

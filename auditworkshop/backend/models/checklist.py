@@ -5,7 +5,6 @@ Referenz: audit_designer VpChecklist/VpQuestion (vollwertiges Modell).
 """
 import enum
 import uuid
-from datetime import datetime
 
 from sqlalchemy import (
     Column, String, Text, Integer, Float, DateTime, Enum, ForeignKey,

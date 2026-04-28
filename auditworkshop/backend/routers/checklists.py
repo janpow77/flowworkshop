@@ -12,8 +12,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.project import WorkshopProject
 from models.checklist import (
-    WorkshopChecklist, WorkshopQuestion, WorkshopEvidence,
-    RemarkAiStatus,
+    WorkshopChecklist, WorkshopQuestion,
 )
 from schemas.checklist import (
     ChecklistCreate, ChecklistUpdate, ChecklistOut, ChecklistDetailOut,

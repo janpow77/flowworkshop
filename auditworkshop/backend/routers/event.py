@@ -327,7 +327,7 @@ def get_agenda(category: str | None = None, show_hidden: bool = False, db: Sessi
     """Tagesordnung, optional gefiltert nach Kategorie (plenary, workshop5)."""
     q = db.query(AgendaItem)
     if not show_hidden:
-        q = q.filter(AgendaItem.visible == True)
+        q = q.filter(AgendaItem.visible.is_(True))
     if category:
         q = q.filter(AgendaItem.category == category)
     return q.order_by(AgendaItem.day, AgendaItem.sort_order).all()
@@ -337,7 +337,7 @@ def get_agenda_by_days(category: str | None = None, show_hidden: bool = False, d
     """Tagesordnung gruppiert nach Tagen."""
     q = db.query(AgendaItem)
     if not show_hidden:
-        q = q.filter(AgendaItem.visible == True)
+        q = q.filter(AgendaItem.visible.is_(True))
     if category:
         q = q.filter(AgendaItem.category == category)
     items = q.order_by(AgendaItem.day, AgendaItem.sort_order).all()

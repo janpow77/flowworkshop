@@ -88,7 +88,6 @@ def _extract_excel(file_bytes: bytes, filename: str, ext: str) -> dict:
         for ws in wb.worksheets:
             # Header-Zeile finden (erste Zeile mit mindestens 2 nicht-leeren Zellen)
             headers: list[str] = []
-            header_row_idx = 0
             data_rows: list[tuple[int, list]] = []
 
             for i, row in enumerate(ws.iter_rows(values_only=True)):
@@ -99,7 +98,6 @@ def _extract_excel(file_bytes: bytes, filename: str, ext: str) -> dict:
                     # Das ist vermutlich die Header-Zeile
                     headers = [str(c).strip() if c is not None else f"Spalte_{j+1}"
                                for j, c in enumerate(cells)]
-                    header_row_idx = i
                 elif headers:
                     # Datenzeile — nur wenn mindestens ein Wert vorhanden
                     if non_empty:

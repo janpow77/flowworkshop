@@ -186,7 +186,7 @@ def trigger_geocoding(backend: str) -> int:
     Der /api/beneficiaries/map-Endpunkt geocodiert automatisch alle Standorte.
     Gibt die Anzahl geocodierter Eintraege zurueck.
     """
-    print(f"  Geocoding ausloesen ...")
+    print("  Geocoding ausloesen ...")
     try:
         r = requests.get(f"{backend}/api/beneficiaries/map", timeout=TIMEOUT_GEOCODE)
         if r.ok:
@@ -370,7 +370,7 @@ def cmd_harvest(registry: dict, backend: str, force: bool) -> None:
     # Geocoding fuer alle Quellen ausloesen
     geocoded = 0
     if results["success"]:
-        print(f"\n--- Geocoding ---")
+        print("\n--- Geocoding ---")
         print("Rufe /api/beneficiaries/map auf (loest Geocoding aus)...")
         print("Das kann mehrere Minuten dauern (1 Request/s Nominatim-Limit).")
         geocoded = trigger_geocoding(backend)

@@ -13,7 +13,6 @@ Für eigene Dokumente (lokal):
 """
 import argparse
 import sys
-import os
 import requests
 from pathlib import Path
 
@@ -62,7 +61,7 @@ def download(url: str, dest: Path) -> bytes:
 
 
 def ingest_file(file_bytes: bytes, filename: str, source: str, label: str):
-    print(f"  → Extrahiere Text …")
+    print("  → Extrahiere Text …")
     parsed = extract(file_bytes, filename)
     if not parsed["text"]:
         print(f"  ✗ Kein Text extrahierbar. Warnungen: {parsed['warnings']}")

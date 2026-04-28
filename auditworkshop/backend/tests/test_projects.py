@@ -1,5 +1,4 @@
 """Projekt- und Checklisten-CRUD-Tests."""
-import pytest
 
 
 class TestProjects:

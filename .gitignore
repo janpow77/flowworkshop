@@ -38,5 +38,11 @@ export/
 einladungen.zip
 einladungen_txt/
 
+# Test-Artefakte (Playwright / lokale UX-Screenshots)
+.playwright-mcp/
+auditworkshop/frontend/playwright-report/
+auditworkshop/frontend/test-results/
+*.png
+
 # Compiled
 *.pyc

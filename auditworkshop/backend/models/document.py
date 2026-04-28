@@ -3,7 +3,6 @@ flowworkshop · models/document.py
 Projektdokumente — hochgeladene Unterlagen pro Projekt.
 """
 import uuid
-from datetime import datetime
 
 from sqlalchemy import Column, String, Text, Integer, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship

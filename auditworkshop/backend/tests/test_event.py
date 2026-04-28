@@ -89,7 +89,7 @@ class TestAgendaAdmin:
         active = next((i for i in items if i["status"] == "active"), items[0])
         if active["status"] != "active":
             client.post(f"/api/event/admin/agenda/{active['id']}/start", params={"pin": admin_pin})
-            active = client.get(f"/api/event/agenda", params={"category": "workshop5"}).json()
+            active = client.get("/api/event/agenda", params={"category": "workshop5"}).json()
             active = next(i for i in active if i["status"] == "active")
 
         current_dur = active["duration_minutes"]

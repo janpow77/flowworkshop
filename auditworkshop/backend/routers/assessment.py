@@ -16,7 +16,7 @@ from models.checklist import WorkshopQuestion, WorkshopEvidence, RemarkAiStatus
 from schemas.checklist import RejectFeedbackIn, EditRemarkIn
 from services import knowledge_service as ks
 from services.ollama_service import stream as ollama_stream
-from config import SYSTEM_PROMPTS, DISCLAIMER
+from config import DISCLAIMER
 
 router = APIRouter(
     prefix="/api/assessment",

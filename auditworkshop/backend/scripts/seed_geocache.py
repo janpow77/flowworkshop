@@ -956,9 +956,6 @@ CITIES: dict[str, tuple[float, float, str]] = {
     "büdingen": (50.2892, 9.1128, "Büdingen, Hessen"),
     "63654 büdingen": (50.2892, 9.1128, "Büdingen, Hessen"),
 
-    "nidderau": (50.2364, 8.8597, "Nidderau, Hessen"),
-    "61130 nidderau": (50.2364, 8.8597, "Nidderau, Hessen"),
-
     "lollar": (50.6486, 8.7061, "Lollar, Hessen"),
     "35457 lollar": (50.6486, 8.7061, "Lollar, Hessen"),
 

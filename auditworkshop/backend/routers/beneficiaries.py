@@ -8,7 +8,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Depends
 from services.geocoding_service import get_beneficiary_map_data, detect_columns
 from services.dataframe_service import (
     ingest_dataframe, get_beneficiary_sources, delete_dataframe_table,
-    _detect_metadata, _safe_table_name, search_beneficiary_records, analyze_beneficiary_records,
+    _detect_metadata, search_beneficiary_records, analyze_beneficiary_records,
 )
 from routers.auth import require_moderator, require_session
 

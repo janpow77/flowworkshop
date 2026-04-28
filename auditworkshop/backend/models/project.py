@@ -4,7 +4,6 @@ WorkshopProject — Referenz: audit_designer VpProject (vereinfacht, ohne Auth).
 """
 import enum
 import uuid
-from datetime import datetime
 
 from sqlalchemy import Column, String, DateTime, Enum, func
 from sqlalchemy.orm import relationship

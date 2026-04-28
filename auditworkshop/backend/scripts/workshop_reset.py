@@ -25,9 +25,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.knowledge_service import init_db, ingest, stats, delete_source
 from services.pdf_parser import extract
-from database import engine, Base, SessionLocal
+from database import engine, SessionLocal
 from models.project import WorkshopProject
-from models.registration import Registration, TopicSubmission, AgendaItem, WorkshopMeta
+from models.registration import Registration, TopicSubmission
 from sqlalchemy import text
 import requests
 
@@ -137,15 +137,15 @@ def main():
     # Ergebnis
     st = stats()
     print(f"\n{'═' * 48}")
-    print(f"Workshop-System bereit!")
+    print("Workshop-System bereit!")
     print(f"  Knowledge Base: {st['documents']} Dokumente, {st['chunks']} Chunks")
-    print(f"  (nur EU-Verordnungen — OP-Dokumente werden live hochgeladen)")
-    print(f"  Beguenstigte: 0 (werden live hochgeladen)")
-    print(f"  Projekte: 0 (werden live angelegt)")
-    print(f"\nWorkshop-Ablauf:")
-    print(f"  1. OP-Dokumente des Ziel-Bundeslandes hochladen (Wissensbasis)")
-    print(f"  2. Beguenstigtenverzeichnis hochladen (Szenario 6)")
-    print(f"  3. Demo-Projekt + Checkliste live anlegen (Szenario 2)")
+    print("  (nur EU-Verordnungen — OP-Dokumente werden live hochgeladen)")
+    print("  Beguenstigte: 0 (werden live hochgeladen)")
+    print("  Projekte: 0 (werden live angelegt)")
+    print("\nWorkshop-Ablauf:")
+    print("  1. OP-Dokumente des Ziel-Bundeslandes hochladen (Wissensbasis)")
+    print("  2. Beguenstigtenverzeichnis hochladen (Szenario 6)")
+    print("  3. Demo-Projekt + Checkliste live anlegen (Szenario 2)")
     print(f"{'═' * 48}")
 
     db.close()
