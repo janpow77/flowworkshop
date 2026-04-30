@@ -316,6 +316,16 @@ def _make_invite_token(email: str) -> str:
     return hashlib.sha256(f"workshop2026:{email.lower().strip()}".encode()).hexdigest()[:16]
 
 
+def _normalize_invite_token(token: str) -> str:
+    """Repariert Tokens, deren Quoted-Printable-Encoding (`=` -> `=3D`)
+    der empfangende Mail-Client nicht dekodiert hat.
+    Echte Tokens sind 16 Zeichen lowercase-Hex; ein vorangestelltes `3D`
+    kann nur aus einem falsch gerenderten `=3D` stammen."""
+    if token.startswith("3D") and len(token) > 2:
+        return token[2:]
+    return token
+
+
 # ── Public: Tagesordnung ─────────────────────────────────────────────────────
 
 @router.get("/meta", response_model=MetaOut)
@@ -356,6 +366,7 @@ def get_agenda_by_days(category: str | None = None, show_hidden: bool = False, d
 @router.get("/invite/{token}", response_model=InviteOut)
 def get_invite(token: str, db: Session = Depends(get_db)):
     """Liest vorausgefuellte Daten fuer einen Einladungslink."""
+    token = _normalize_invite_token(token)
     reg = db.query(Registration).filter(Registration.invite_token == token).first()
     if not reg:
         raise HTTPException(404, "Einladungslink ungueltig oder abgelaufen.")
@@ -379,6 +390,7 @@ def register(data: RegistrationCreate, token: str | None = None, db: Session = D
 
     # Bei Einladungslink: bestehende Registrierung aktualisieren
     if token:
+        token = _normalize_invite_token(token)
         reg = db.query(Registration).filter(Registration.invite_token == token).first()
         if reg:
             reg.privacy_accepted = data.privacy_accepted
