@@ -182,12 +182,33 @@ export interface SystemProfile {
   allow_remote_tiles: boolean;
 }
 
+export type CountryCode = 'DE' | 'AT';
+
 export interface BeneficiarySource {
   source: string;
   bundesland: string | null;
   fonds: string | null;
   periode: string | null;
   row_count: number;
+  country_code?: CountryCode | null;
+  country_name?: string | null;
+}
+
+export interface CountryProfile {
+  country_code: CountryCode;
+  country_name: string;
+  region_label: string;
+  regions: string[];
+}
+
+export interface AustriaPresetSource {
+  source_id: string;
+  country_code: 'AT';
+  country_name: string;
+  fonds: string;
+  periode: string;
+  source_url: string;
+  display_name: string;
 }
 
 export interface BeneficiaryProjectHit {
@@ -383,7 +404,17 @@ export const getGpuInfo = () => request<GpuInfo[]>('/system/gpu');
 export const getSystemInfo = () => request<SystemInfo>('/system/info');
 export const getOllamaStatus = () => request<{ ok: boolean; models?: string[] }>('/system/ollama');
 export const getSystemProfile = () => request<SystemProfile>('/system/profile');
-export const listBeneficiarySources = () => request<{ sources: BeneficiarySource[] }>('/beneficiaries/sources');
+export const listBeneficiaryCountries = () =>
+  request<{ countries: CountryProfile[]; presets: { AT?: AustriaPresetSource[] } }>('/beneficiaries/countries');
+
+export const listBeneficiarySources = (country_code?: CountryCode | '') => {
+  const query = new URLSearchParams();
+  if (country_code) query.set('country_code', country_code);
+  const suffix = query.toString();
+  return request<{ country_code: CountryCode | null; available_country_codes: CountryCode[]; sources: BeneficiarySource[] }>(
+    `/beneficiaries/sources${suffix ? `?${suffix}` : ''}`,
+  );
+};
 export const searchBeneficiaries = (params: {
   q?: string;
   scope?: 'all' | 'company' | 'project' | 'aktenzeichen' | 'location';
@@ -393,6 +424,7 @@ export const searchBeneficiaries = (params: {
   min_cost?: number;
   limit?: number;
   company_limit?: number;
+  country_code?: CountryCode | '';
 }) => {
   const query = new URLSearchParams();
   if (params.q) query.set('q', params.q);
@@ -403,6 +435,7 @@ export const searchBeneficiaries = (params: {
   if (typeof params.min_cost === 'number') query.set('min_cost', String(params.min_cost));
   if (typeof params.limit === 'number') query.set('limit', String(params.limit));
   if (typeof params.company_limit === 'number') query.set('company_limit', String(params.company_limit));
+  if (params.country_code) query.set('country_code', params.country_code);
   return request<BeneficiarySearchResponse>(`/beneficiaries/search?${query.toString()}`);
 };
 export const analyzeBeneficiaries = (params: {
@@ -412,6 +445,7 @@ export const analyzeBeneficiaries = (params: {
   source?: string;
   min_cost?: number;
   limit?: number;
+  country_code?: CountryCode | '';
 }) => {
   const query = new URLSearchParams();
   query.set('mode', params.mode);
@@ -420,6 +454,7 @@ export const analyzeBeneficiaries = (params: {
   if (params.source) query.set('source', params.source);
   if (typeof params.min_cost === 'number') query.set('min_cost', String(params.min_cost));
   if (typeof params.limit === 'number') query.set('limit', String(params.limit));
+  if (params.country_code) query.set('country_code', params.country_code);
   return request<BeneficiaryAnalyticsResponse>(`/beneficiaries/analytics?${query.toString()}`);
 };
 export const listReferenceSources = () => request<{ sources: ReferenceRegistrySource[] }>('/reference-data/sources');

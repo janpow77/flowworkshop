@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import { Loader2, MapPin, AlertTriangle, Upload, X, CheckCircle, FileSpreadsheet, Trash2, ShieldCheck } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
-import { getSystemProfile, getWorkshopAuthHeaders, type SystemProfile } from '../../lib/api';
+import { getSystemProfile, getWorkshopAuthHeaders, type SystemProfile, type CountryCode } from '../../lib/api';
 
 interface Beneficiary {
   name: string;
@@ -12,6 +12,8 @@ interface Beneficiary {
   kategorie: string;
   bundesland: string;
   fonds: string;
+  country_code?: CountryCode | null;
+  country_name?: string | null;
   lat: number;
   lon: number;
 }
@@ -21,12 +23,16 @@ interface SourceInfo {
   bundesland: string | null;
   fonds: string | null;
   periode: string | null;
+  region_label?: string | null;
+  country_code?: CountryCode | null;
+  country_name?: string | null;
   count: number;
   total_rows: number;
 }
 
-// Bundesland → Farbe
+// Bundesland/Region → Farbe (DE + AT)
 const BL_COLORS: Record<string, string> = {
+  // Deutschland
   'Hessen': '#3b82f6', 'Sachsen': '#10b981', 'Bayern': '#6366f1',
   'Nordrhein-Westfalen': '#f59e0b', 'NRW': '#f59e0b',
   'Baden-Württemberg': '#ec4899', 'Niedersachsen': '#14b8a6',
@@ -35,6 +41,15 @@ const BL_COLORS: Record<string, string> = {
   'Mecklenburg-Vorpommern': '#84cc16', 'Schleswig-Holstein': '#a855f7',
   'Rheinland-Pfalz': '#e11d48', 'Saarland': '#0ea5e9',
   'Hamburg': '#d946ef', 'Bremen': '#fbbf24',
+  // Österreich
+  'Burgenland': '#dc2626', 'Kärnten': '#0891b2', 'Niederösterreich': '#2563eb',
+  'Oberösterreich': '#7c3aed', 'Salzburg': '#db2777', 'Steiermark': '#16a34a',
+  'Tirol': '#ea580c', 'Vorarlberg': '#0d9488', 'Wien': '#9333ea',
+};
+
+const COUNTRY_CENTER: Record<string, { center: [number, number]; zoom: number }> = {
+  DE: { center: [51.0, 10.5], zoom: 6 },
+  AT: { center: [47.6, 13.5], zoom: 7 },
 };
 function getBlColor(bl: string): string { return BL_COLORS[bl] || '#6b7280'; }
 function formatEur(val: number): string { return val.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' €'; }
@@ -51,9 +66,15 @@ function FitBounds({ points }: { points: [number, number][] }) {
   return null;
 }
 
-export default function BeneficiaryMap({ className }: { className?: string }) {
+type BeneficiaryMapProps = {
+  className?: string;
+  countryCode?: CountryCode | '';
+};
+
+export default function BeneficiaryMap({ className, countryCode = 'DE' }: BeneficiaryMapProps) {
   const [data, setData] = useState<Beneficiary[]>([]);
   const [sources, setSources] = useState<SourceInfo[]>([]);
+  const [regionLabel, setRegionLabel] = useState<string>('Bundesland');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [profile, setProfile] = useState<SystemProfile | null>(null);
@@ -67,24 +88,32 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
   const [filterBl, setFilterBl] = useState('');
   const [minKosten, setMinKosten] = useState(0);
 
+  const countryQuery = countryCode ? `?country_code=${countryCode}` : '';
+
   const loadMap = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/beneficiaries/map', {
+      const res = await fetch(`/api/beneficiaries/map${countryQuery}`, {
         headers: { ...getWorkshopAuthHeaders() },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json.beneficiaries || []);
       setSources(json.sources || []);
+      if (typeof json.region_label === 'string' && json.region_label) {
+        setRegionLabel(json.region_label);
+      } else {
+        setRegionLabel(countryCode === 'AT' ? 'Bundesland' : 'Bundesland');
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [countryQuery, countryCode]);
 
+  useEffect(() => { setFilterBl(''); }, [countryCode]);
   useEffect(() => { loadMap(); }, [loadMap]);
   useEffect(() => {
     getSystemProfile().then(setProfile).catch(() => setProfile(null));
@@ -144,6 +173,15 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
   const points: [number, number][] = filtered.map((b) => [b.lat, b.lon]);
   const totalKosten = filtered.reduce((s, b) => s + b.kosten, 0);
   const allowRemoteTiles = profile?.allow_remote_tiles ?? false;
+  const mapView = useMemo(() => {
+    if (countryCode && COUNTRY_CENTER[countryCode]) return COUNTRY_CENTER[countryCode];
+    return { center: [49.5, 11.5] as [number, number], zoom: 5 };
+  }, [countryCode]);
+  const emptyStateText = useMemo(() => {
+    if (countryCode === 'AT') return 'Für Österreich sind noch keine Begünstigtenverzeichnisse geladen.';
+    if (countryCode === 'DE') return 'Noch keine deutschen Begünstigtenverzeichnisse eingelesen.';
+    return 'Noch keine Begünstigtenverzeichnisse eingelesen.';
+  }, [countryCode]);
 
   const getRadius = (kosten: number): number => {
     if (kosten <= 0) return 3;
@@ -256,8 +294,12 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
       ) : data.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 p-10 text-center">
           <MapPin size={32} className="mx-auto text-slate-300 mb-2" />
-          <p className="text-sm text-slate-400">Noch keine Begünstigtenverzeichnisse eingelesen.</p>
-          <p className="text-xs text-slate-400 mt-1">Laden Sie eine XLSX-Transparenzliste hoch.</p>
+          <p className="text-sm text-slate-400">{emptyStateText}</p>
+          <p className="text-xs text-slate-400 mt-1">
+            {countryCode === 'AT'
+              ? 'Quellen: efre.gv.at/projekte/projektlandkarte und esf.at/projekte/liste-der-vorhaben-2/.'
+              : 'Laden Sie eine XLSX-Transparenzliste hoch.'}
+          </p>
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
@@ -276,8 +318,8 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
               {bundeslaender.length > 1 && (
                 <select value={filterBl} onChange={(e) => setFilterBl(e.target.value)}
                   className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
-                  aria-label="Bundesland filtern">
-                  <option value="">Alle Bundesländer</option>
+                  aria-label={`${regionLabel} filtern`}>
+                  <option value="">Alle {regionLabel === 'Bundesland' ? 'Bundesländer' : `${regionLabel}e`}</option>
                   {bundeslaender.map((bl) => <option key={bl} value={bl}>{bl}</option>)}
                 </select>
               )}
@@ -295,7 +337,7 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
 
           <div className="beneficiary-map-shell h-[500px]">
             <div className="relative h-full w-full">
-              <MapContainer center={[51.0, 10.5]} zoom={6} className="h-full w-full" scrollWheelZoom={true}>
+              <MapContainer key={countryCode || 'all'} center={mapView.center} zoom={mapView.zoom} className="h-full w-full" scrollWheelZoom={true}>
                 {allowRemoteTiles && (
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -313,7 +355,8 @@ export default function BeneficiaryMap({ className }: { className?: string }) {
                         {b.projekt && <p className="text-slate-600 mb-1 line-clamp-2">{b.projekt}</p>}
                         {b.kosten > 0 && <p><strong>Gesamtkosten:</strong> {formatEur(b.kosten)}</p>}
                         <p><strong>Standort:</strong> {b.standort}</p>
-                        <p><strong>Land:</strong> {b.bundesland}{b.fonds && ` · ${b.fonds}`}</p>
+                        <p><strong>{regionLabel}:</strong> {b.bundesland}{b.fonds && ` · ${b.fonds}`}</p>
+                        {b.country_name && <p><strong>Land:</strong> {b.country_name}</p>}
                         {b.kategorie && <p><strong>Ziel:</strong> {b.kategorie}</p>}
                       </div>
                     </Popup>

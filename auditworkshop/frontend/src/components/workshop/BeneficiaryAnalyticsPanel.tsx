@@ -7,7 +7,13 @@ import {
   type BeneficiaryAnalyticsResponse,
   type BeneficiaryAnalysisMode,
   type BeneficiarySource,
+  type CountryCode,
 } from '../../lib/api';
+
+const REGION_LABEL_BY_COUNTRY: Record<string, string> = {
+  DE: 'Bundesland',
+  AT: 'Bundesland',
+};
 
 const ANALYSIS_OPTIONS: Array<{
   value: BeneficiaryAnalysisMode;
@@ -57,8 +63,14 @@ function buildPrompt(mode: BeneficiaryAnalysisMode, bundesland: string, fonds: s
   }
 }
 
+type BeneficiaryAnalyticsPanelProps = {
+  className?: string;
+  onSelectPrompt?: (prompt: string) => void;
+  countryCode?: CountryCode | '';
+};
+
 export default function BeneficiaryAnalyticsPanel(
-  { className, onSelectPrompt }: { className?: string; onSelectPrompt?: (prompt: string) => void },
+  { className, onSelectPrompt, countryCode = 'DE' }: BeneficiaryAnalyticsPanelProps,
 ) {
   const [sources, setSources] = useState<BeneficiarySource[]>([]);
   const [mode, setMode] = useState<BeneficiaryAnalysisMode>('top_beneficiaries');
@@ -69,11 +81,18 @@ export default function BeneficiaryAnalyticsPanel(
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
+  const regionLabel = countryCode ? REGION_LABEL_BY_COUNTRY[countryCode] || 'Region/Bundesland' : 'Region/Bundesland';
+
+  // Bei Wechsel des Landes Filter zurücksetzen, damit AT keinen DE-Bundesland-Filter erbt.
+  useEffect(() => {
+    setBundesland('');
+  }, [countryCode]);
+
   useEffect(() => {
     let cancelled = false;
     async function loadSources() {
       try {
-        const response = await listBeneficiarySources();
+        const response = await listBeneficiarySources(countryCode || undefined);
         if (!cancelled) setSources(response.sources || []);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Quellen konnten nicht geladen werden.');
@@ -81,10 +100,11 @@ export default function BeneficiaryAnalyticsPanel(
     }
     loadSources();
     return () => { cancelled = true; };
-  }, []);
+  }, [countryCode]);
 
   useEffect(() => {
     if (!sources.length) {
+      setAnalysis(null);
       setLoading(false);
       return;
     }
@@ -99,6 +119,7 @@ export default function BeneficiaryAnalyticsPanel(
           bundesland: bundesland || undefined,
           fonds: fonds || undefined,
           limit: 10,
+          country_code: countryCode || undefined,
         });
         if (!cancelled) setAnalysis(response);
       } catch (err) {
@@ -109,7 +130,7 @@ export default function BeneficiaryAnalyticsPanel(
     }
     loadAnalysis();
     return () => { cancelled = true; };
-  }, [sources, mode, bundesland, fonds]);
+  }, [sources, mode, bundesland, fonds, countryCode]);
 
   const bundeslaender = useMemo(
     () => [...new Set(sources.map((item) => item.bundesland).filter(Boolean))].sort() as string[],
@@ -130,6 +151,7 @@ export default function BeneficiaryAnalyticsPanel(
         bundesland: bundesland || undefined,
         fonds: fonds || undefined,
         limit: 10,
+        country_code: countryCode || undefined,
       });
       setAnalysis(response);
       setError('');
@@ -177,13 +199,13 @@ export default function BeneficiaryAnalyticsPanel(
           </select>
         </label>
         <label className="space-y-1 text-sm">
-          <span className="text-slate-500 dark:text-slate-400">Bundesland</span>
+          <span className="text-slate-500 dark:text-slate-400">{regionLabel}</span>
           <select
             value={bundesland}
             onChange={(event) => setBundesland(event.target.value)}
             className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-rose-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
           >
-            <option value="">Alle Länder</option>
+            <option value="">{`Alle ${regionLabel === 'Bundesland' ? 'Bundesländer' : `${regionLabel}e`}`}</option>
             {bundeslaender.map((item) => (
               <option key={item} value={item}>{item}</option>
             ))}

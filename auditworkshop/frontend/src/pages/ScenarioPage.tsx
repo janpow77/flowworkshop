@@ -8,7 +8,7 @@ import LlmResponsePanel from '../components/workshop/LlmResponsePanel';
 import DocumentDropzone from '../components/workshop/DocumentDropzone';
 import BeneficiaryMap from '../components/workshop/BeneficiaryMap';
 import BeneficiaryAnalyticsPanel from '../components/workshop/BeneficiaryAnalyticsPanel';
-import { seedDemoData, streamSSE } from '../lib/api';
+import { seedDemoData, streamSSE, type CountryCode } from '../lib/api';
 
 const SCENARIO_INFO: Record<number, {
   title: string;
@@ -109,6 +109,8 @@ export default function ScenarioPage() {
   const [bootstrappingDemo, setBootstrappingDemo] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [splitResponses, setSplitResponses] = useState<{without?: string; with?: string}>({});
+  // Szenario 6: Land-Filter (default Deutschland, "" = alle Länder zusammen)
+  const [countryCode, setCountryCode] = useState<CountryCode | ''>('DE');
   const controllerRef = useRef<AbortController | null>(null);
 
   // Cleanup on unmount
@@ -335,8 +337,44 @@ export default function ScenarioPage() {
         </div>
       )}
 
-      {num === 6 && <BeneficiaryMap className="mb-2" />}
-      {num === 6 && <BeneficiaryAnalyticsPanel className="mb-2" onSelectPrompt={setPrompt} />}
+      {num === 6 && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-[26px] border border-rose-200/70 bg-rose-50/70 px-4 py-3 dark:border-rose-900/60 dark:bg-rose-950/30">
+          <div className="text-xs uppercase tracking-[0.18em] text-rose-700/80 dark:text-rose-300/80">
+            Land
+          </div>
+          <div
+            role="tablist"
+            aria-label="Begünstigtenverzeichnis nach Land filtern"
+            className="inline-flex rounded-full border border-rose-200 bg-white p-1 text-xs font-semibold dark:border-rose-900/60 dark:bg-slate-900"
+          >
+            {[
+              { value: 'DE' as const, label: 'Deutschland' },
+              { value: 'AT' as const, label: 'Österreich' },
+              { value: '' as const, label: 'Alle' },
+            ].map((option) => {
+              const active = countryCode === option.value;
+              return (
+                <button
+                  key={option.label}
+                  role="tab"
+                  type="button"
+                  aria-selected={active}
+                  onClick={() => setCountryCode(option.value)}
+                  className={`rounded-full px-4 py-1.5 transition ${
+                    active
+                      ? 'bg-rose-600 text-white shadow dark:bg-rose-500'
+                      : 'text-slate-600 hover:bg-rose-100 dark:text-slate-300 dark:hover:bg-rose-900/40'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {num === 6 && <BeneficiaryMap className="mb-2" countryCode={countryCode} />}
+      {num === 6 && <BeneficiaryAnalyticsPanel className="mb-2" onSelectPrompt={setPrompt} countryCode={countryCode} />}
 
       {num === 3 && (
         <div className="mb-4 flex items-center justify-between gap-3 rounded-[26px] border border-amber-200 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/20">

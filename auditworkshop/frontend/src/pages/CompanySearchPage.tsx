@@ -18,11 +18,18 @@ import {
   type BeneficiaryCompanyHit,
   type BeneficiarySearchResponse,
   type BeneficiarySource,
+  type CountryCode,
   type ReferenceRegistrySearchResponse,
   type ReferenceRegistrySource,
   type ReferenceRegistryType,
   type SystemProfile,
 } from '../lib/api';
+
+const COUNTRY_OPTIONS: Array<{ value: CountryCode | ''; label: string }> = [
+  { value: '', label: 'Alle Länder' },
+  { value: 'DE', label: 'Deutschland' },
+  { value: 'AT', label: 'Österreich' },
+];
 
 const SCOPE_OPTIONS = [
   { value: 'all', label: 'Alles' },
@@ -129,6 +136,7 @@ export default function CompanySearchPage() {
   const [fonds, setFonds] = useState('');
   const [beneficiarySourceFilter, setBeneficiarySourceFilter] = useState('');
   const [minCost, setMinCost] = useState(0);
+  const [countryCode, setCountryCode] = useState<CountryCode | ''>('');
 
   const [result, setResult] = useState<BeneficiarySearchResponse>(emptyBeneficiaryResult('', 'all'));
   const [referenceResult, setReferenceResult] = useState<ReferenceRegistrySearchResponse>(emptyReferenceResult(''));
@@ -193,6 +201,7 @@ export default function CompanySearchPage() {
                 min_cost: minCost || undefined,
                 limit: 80,
                 company_limit: 18,
+                country_code: countryCode || undefined,
               })
             : Promise.resolve(emptyBeneficiaryResult(deferredQuery, scope)),
           referenceSources.length > 0
@@ -224,6 +233,7 @@ export default function CompanySearchPage() {
     beneficiarySourceFilter,
     beneficiarySources.length,
     bundesland,
+    countryCode,
     deferredQuery,
     fonds,
     loading,
@@ -240,7 +250,7 @@ export default function CompanySearchPage() {
     () => [...new Set(beneficiarySources.map((item) => item.fonds).filter(Boolean))].sort() as string[],
     [beneficiarySources],
   );
-  const activeFilters = [bundesland, fonds, beneficiarySourceFilter, minCost > 0 ? String(minCost) : ''].filter(Boolean).length;
+  const activeFilters = [countryCode, bundesland, fonds, beneficiarySourceFilter, minCost > 0 ? String(minCost) : ''].filter(Boolean).length;
   const resultTitle = deferredQuery
     ? `Treffer für "${deferredQuery}"`
     : 'Top-Unternehmen nach Fördervolumen';
@@ -438,6 +448,16 @@ export default function CompanySearchPage() {
               Filter für Begünstigtenquellen
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <select
+                value={countryCode}
+                onChange={(event) => setCountryCode(event.target.value as CountryCode | '')}
+                aria-label="Land filtern"
+                className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                {COUNTRY_OPTIONS.map((item) => (
+                  <option key={item.value || 'all'} value={item.value}>{item.label}</option>
+                ))}
+              </select>
               <select value={bundesland} onChange={(event) => setBundesland(event.target.value)} className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                 <option value="">Alle Bundesländer</option>
                 {bundeslaender.map((item) => <option key={item} value={item}>{item}</option>)}

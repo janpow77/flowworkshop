@@ -18,6 +18,10 @@ from sqlalchemy import text
 
 from config import GEOCODE_CACHE, ALLOW_REMOTE_GEOCODING
 from database import engine
+from services.country_profiles import (
+    get_country_name,
+    get_country_profile,
+)
 
 log = logging.getLogger(__name__)
 
@@ -113,10 +117,15 @@ COLUMN_PATTERNS = {
     ],
     "kosten": [
         r"^op_?total_?cost$",
-        r"förderf.*gesamt.*kosten", r"total.*cost", r"gesamtkosten",
+        r"kofinanziert.*projekt.*kosten",
+        r"co.?financed.*project.*cost",
+        r"projekt.*kosten", r"gesamtkosten", r"total.*cost",
+        r"förderf.*gesamt.*kosten",
         r"fördersumme", r"zuwendung.*betrag", r"bruttobetrag",
         r"betrag", r"summe", r"zuschuss", r"eu.*beteiligung", r"eu.*beitrag",
-        r"amount", r"grant", r"funding", r"kofinanzierung", r"co.*finanz",
+        r"amount", r"grant",
+        r"funding(?!.*rate)(?!.*satz)(?!quote)",
+        r"kofinanzierung", r"co.*finanz",
         r"total.*eligible", r"eligible.*cost", r"public.*support", r"union.*support",
     ],
     "standort": [
@@ -132,9 +141,10 @@ COLUMN_PATTERNS = {
         r"nuts",  # NUTS-Spalte als letzter Fallback
     ],
     # Separate PLZ- und Ort-Spalten (werden bei Bedarf kombiniert)
-    "plz": [r"^plz\b", r"postleitzahl", r"postal.*code", r"zip", r"postcode"],
+    "plz": [r"^plz\b", r"postleitzahl", r"postal.*code", r"zip", r"postcode", r"_plz_|_plz$"],
     "ort": [
         r"^ort$", r"^stadt$", r"^gemeinde$", r"^kommune$",
+        r"_ort_|_ort$", r"projekt.*ort", r"projektstandort_ort",
         r"ortschaft", r"wohnort", r"sitz.*ort", r"ort.*stadt",
         r"town", r"city", r"municipality", r"gemeindename",
     ],
@@ -162,6 +172,8 @@ COLUMN_PATTERNS = {
     ],
     "country": [r"country", r"land$", r"staat", r"member.*state", r"nationality", r"citizenship"],
     "status": [r"status", r"listing.*status", r"decision", r"phase", r"late", r"active"],
+    "latitude": [r"^lat$", r"^latitude$", r"^breitengrad$", r"breitengrad", r"^y_?coord", r"y_?wgs"],
+    "longitude": [r"^lon$", r"^lng$", r"^longitude$", r"^laengengrad$", r"^längengrad$", r"laengengrad", r"längengrad", r"^x_?coord", r"x_?wgs"],
 }
 
 
@@ -225,7 +237,7 @@ def _save_cache():
 
 # ── Geocoding ─────────────────────────────────────────────────────────────────
 
-def _parse_location(standort: str) -> tuple[str, str]:
+def _parse_location(standort: str, country_code: str | None = None) -> tuple[str, str]:
     """
     Parst verschiedene Standort-Formate → (suchbegriff, land).
     Unterstuetzte Formate:
@@ -236,49 +248,65 @@ def _parse_location(standort: str) -> tuple[str, str]:
       - 'Landkreis Fulda, Hessen'
       - 'LK Schmalkalden-Meiningen'
       - 'Kreis Offenbach'
+      - '1010 Wien' / 'Wien, Österreich' (mit country_code='AT')
     """
+    cc = (country_code or "DE").upper()
+    country_label = get_country_name(cc) or "Deutschland"
+    profile = get_country_profile(cc)
+    region_aliases = []
+    if profile:
+        for region in profile.get("regions", []):
+            region_aliases.append(region)
+            region_aliases.append(region.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue"))
+        region_aliases.extend(profile.get("aliases", []))
+
     standort = standort.strip()
     if not standort:
         return ("", "")
 
-    # Landkreis/Kreis-Prefix entfernen
+    # Landkreis/Kreis-Prefix entfernen (DE/AT-relevante Begriffe)
     standort_clean = re.sub(
-        r'^(?:Landkreis|LK|Kreis|Bezirk|Verwaltungsbezirk|Regierungsbezirk|Stadtkreis|SK)\s+',
+        r'^(?:Landkreis|LK|Kreis|Bezirk|Verwaltungsbezirk|Regierungsbezirk|Stadtkreis|SK|Politischer Bezirk)\s+',
         '', standort, flags=re.IGNORECASE
     ).strip()
 
-    # PLZ + Ort extrahieren (Formate: "63477 Maintal", "10625 - Berlin", "63477 Maintal / Straße")
+    # PLZ + Ort extrahieren (DE: 5-stellig, AT: 4-stellig)
     m = re.match(r"(\d{4,5})\s*[-–]?\s*(.+)", standort_clean)
     if m:
         plz = m.group(1)
         rest = m.group(2).lstrip("- –").strip()
-        # Ort vor '/' oder ',' nehmen (Straße/Ortsteil abschneiden)
-        # NICHT auf '-' splitten wenn es der Stadtname selbst ist (z.B. "Frankfurt-Höchst")
         ort = re.split(r"\s*/\s*|\s*,\s*", rest)[0].strip()
         if ort:
-            return (f"{plz} {ort}", "Deutschland")
+            return (f"{plz} {ort}", country_label)
 
-    # NUTS-Code erkennen (z.B. "DE714" → ignorieren, nur Ort suchen)
-    nuts_match = re.match(r'^DE[0-9A-G][0-9A-Z]{1,2}\s*(.*)', standort_clean)
-    if nuts_match and nuts_match.group(1):
-        standort_clean = nuts_match.group(1).strip()
+    # DE-NUTS-Code nur fuer DE entfernen
+    if cc == "DE":
+        nuts_match = re.match(r'^DE[0-9A-G][0-9A-Z]{1,2}\s*(.*)', standort_clean)
+        if nuts_match and nuts_match.group(1):
+            standort_clean = nuts_match.group(1).strip()
+    elif cc == "AT":
+        # AT-NUTS-Codes (AT11..AT34) am Anfang entfernen
+        nuts_match = re.match(r'^AT[0-9]{1,3}\s*(.*)', standort_clean)
+        if nuts_match and nuts_match.group(1):
+            standort_clean = nuts_match.group(1).strip()
 
-    # Kein PLZ — Ort direkt, Komma-Suffix (Bundesland) entfernen fuer Suche
-    ort = re.split(
-        r"\s*/\s*|\s*,\s*(?:Deutschland|Germany|Hessen|Bayern|Sachsen|Brandenburg|NRW"
-        r"|Niedersachsen|Thüringen|Sachsen-Anhalt|Mecklenburg-Vorpommern"
-        r"|Baden-Württemberg|Rheinland-Pfalz|Schleswig-Holstein|Saarland"
-        r"|Berlin|Hamburg|Bremen)\s*$",
-        standort_clean, flags=re.IGNORECASE
-    )[0].strip()
+    # Bundesland-/Land-Suffix nach Komma entfernen
+    suffix_alternatives = [re.escape(alias) for alias in region_aliases if alias]
+    suffix_alternatives.extend([re.escape(country_label), re.escape(cc)])
+    suffix_pattern = (
+        r"\s*/\s*|\s*,\s*(?:" + "|".join(suffix_alternatives) + r")\s*$"
+        if suffix_alternatives
+        else r"\s*/\s*"
+    )
+    ort = re.split(suffix_pattern, standort_clean, flags=re.IGNORECASE)[0].strip()
 
     if not ort:
         ort = standort_clean
 
-    return (ort, "Deutschland")
+    return (ort, country_label)
 
 
-def geocode_single(standort: str) -> dict | None:
+def geocode_single(standort: str, country_code: str | None = None) -> dict | None:
     """
     Geocodiert einen einzelnen Standort.
     Gibt {lat, lon, display_name} oder None zurueck.
@@ -288,26 +316,34 @@ def geocode_single(standort: str) -> dict | None:
     if not _cache:
         _load_cache()
 
-    cache_key = standort.strip().lower()
+    cc = (country_code or "DE").upper()
+    profile = get_country_profile(cc)
+    nominatim_country = (profile or {}).get("nominatim_countrycode", "de")
+
+    base_key = standort.strip().lower()
+    cache_key = f"{cc.lower()}::{base_key}"
+
+    # Cache: zuerst landesspezifisch, dann legacy ohne Praefix
     if cache_key in _cache:
         return _cache[cache_key]
+    if cc == "DE" and base_key in _cache:
+        return _cache[base_key]
 
-    search_term, country = _parse_location(standort)
+    search_term, country = _parse_location(standort, country_code=cc)
     if not search_term:
         return None
 
     # Fallback: Wenn "PLZ Ort" nicht im Cache, versuche nur "Ort"
-    # z.B. "10625 Berlin" → fallback auf "berlin"
     search_lower = search_term.strip().lower()
-    if search_lower != cache_key and search_lower in _cache:
-        result = _cache[search_lower]
-        _cache[cache_key] = result  # Cache auch unter Original-Key
-        return result
+    fallback_key = f"{cc.lower()}::{search_lower}"
+    if fallback_key in _cache:
+        _cache[cache_key] = _cache[fallback_key]
+        return _cache[cache_key]
     ort_only = re.sub(r'^\d{4,5}\s*', '', search_lower).strip()
-    if ort_only and ort_only != search_lower and ort_only in _cache:
-        result = _cache[ort_only]
-        _cache[cache_key] = result  # Cache auch unter Original-Key
-        return result
+    ort_key = f"{cc.lower()}::{ort_only}" if ort_only else None
+    if ort_key and ort_key in _cache:
+        _cache[cache_key] = _cache[ort_key]
+        return _cache[cache_key]
 
     if not ALLOW_REMOTE_GEOCODING:
         return None
@@ -326,7 +362,7 @@ def geocode_single(standort: str) -> dict | None:
                 "q": f"{search_term}, {country}",
                 "format": "json",
                 "limit": 1,
-                "countrycodes": "de",
+                "countrycodes": nominatim_country,
             },
             headers={"User-Agent": "Auditworkshop-EFRE-Demo/1.0"},
             timeout=5,
@@ -342,7 +378,7 @@ def geocode_single(standort: str) -> dict | None:
             _save_cache()
             return geo
     except Exception as e:
-        log.warning("Geocoding fehlgeschlagen fuer '%s': %s", standort, e)
+        log.warning("Geocoding fehlgeschlagen fuer '%s' (cc=%s): %s", standort, cc, e)
 
     _cache[cache_key] = None
     _save_cache()
@@ -351,18 +387,15 @@ def geocode_single(standort: str) -> dict | None:
 
 # ── Karten-Daten ──────────────────────────────────────────────────────────────
 
-def get_beneficiary_map_data(source: str) -> dict:
+def get_beneficiary_map_data(source: str, country_code: str | None = None) -> dict:
     """
     Liest Beguenstigte aus einer beliebigen DataFrame-Tabelle,
     erkennt Spalten automatisch und geocodiert die Standorte.
 
-    Returns:
-        {
-            "count": int,
-            "beneficiaries": [{name, projekt, kosten, standort, kategorie, lat, lon}],
-            "columns_detected": {role: column_name},
-            "source": str,
-        }
+    Wenn die Tabelle latitude/longitude-Spalten enthaelt, werden diese
+    direkt genutzt und es wird nicht erneut geocodiert. country_code
+    steuert das Nominatim-Verhalten (DE/AT) und schaltet die NUTS-3
+    Zuordnung (nur DE).
     """
     from services.dataframe_service import _safe_table_name
 
@@ -388,9 +421,18 @@ def get_beneficiary_map_data(source: str) -> dict:
     plz_col = col_map.get("plz")
     ort_col = col_map.get("ort")
     landkreis_col = col_map.get("landkreis")
+    lat_col = col_map.get("latitude")
+    lon_col = col_map.get("longitude")
+    has_coordinates = bool(lat_col and lon_col)
+
+    # Wenn die Standort-Spalte effektiv nur die PLZ ist (z.B. AT-EFRE
+    # `projektstandort_plz`) und es eine separate Ort-Spalte gibt, verwenden
+    # wir lieber den kombinierten "PLZ Ort"-Pfad — Nominatim braucht den Ort.
+    if standort_col and standort_col == plz_col and ort_col:
+        standort_col = None
 
     # Standort-Spalte: direkt, oder PLZ+Ort kombiniert, oder nur Ort/Landkreis
-    has_location = standort_col or ort_col or plz_col or landkreis_col
+    has_location = standort_col or ort_col or plz_col or landkreis_col or has_coordinates
     if not has_location:
         return {
             "count": 0, "beneficiaries": [],
@@ -400,23 +442,32 @@ def get_beneficiary_map_data(source: str) -> dict:
         }
 
     # SQL dynamisch zusammenbauen
+    select_parts: list[str] = []
     if standort_col:
-        select_parts = [f'"{standort_col}" AS standort']
-        where_clause = f'"{standort_col}" IS NOT NULL'
+        select_parts.append(f'"{standort_col}" AS standort')
+        where_clauses = [f'"{standort_col}" IS NOT NULL']
     elif plz_col and ort_col:
         # PLZ + Ort kombinieren → "PLZ Ort"
-        select_parts = [f'CONCAT("{plz_col}", \' \', "{ort_col}") AS standort']
-        where_clause = f'"{ort_col}" IS NOT NULL'
+        select_parts.append(f'CONCAT("{plz_col}", \' \', "{ort_col}") AS standort')
+        where_clauses = [f'"{ort_col}" IS NOT NULL']
     elif ort_col:
-        select_parts = [f'"{ort_col}" AS standort']
-        where_clause = f'"{ort_col}" IS NOT NULL'
+        select_parts.append(f'"{ort_col}" AS standort')
+        where_clauses = [f'"{ort_col}" IS NOT NULL']
     elif landkreis_col:
-        select_parts = [f'"{landkreis_col}" AS standort']
-        where_clause = f'"{landkreis_col}" IS NOT NULL'
+        select_parts.append(f'"{landkreis_col}" AS standort')
+        where_clauses = [f'"{landkreis_col}" IS NOT NULL']
+    elif plz_col:
+        select_parts.append(f'"{plz_col}" AS standort')
+        where_clauses = [f'"{plz_col}" IS NOT NULL']
     else:
-        select_parts = [f'"{plz_col}" AS standort']
-        where_clause = f'"{plz_col}" IS NOT NULL'
+        # Nur lat/lon vorhanden -> Standort als Fallback aus Koordinaten zusammensetzen
+        select_parts.append("'' AS standort")
+        where_clauses = []
 
+    if has_coordinates:
+        select_parts.append(f'"{lat_col}" AS _lat')
+        select_parts.append(f'"{lon_col}" AS _lon')
+        where_clauses.append(f'"{lat_col}" IS NOT NULL AND "{lon_col}" IS NOT NULL')
     if name_col:
         select_parts.append(f'"{name_col}" AS name')
     if projekt_col:
@@ -426,7 +477,8 @@ def get_beneficiary_map_data(source: str) -> dict:
     if sz_col:
         select_parts.append(f'"{sz_col}" AS kategorie')
 
-    sql = f'SELECT {", ".join(select_parts)} FROM "{table_name}" WHERE {where_clause}'
+    where_sql = " AND ".join(where_clauses) if where_clauses else "TRUE"
+    sql = f'SELECT {", ".join(select_parts)} FROM "{table_name}" WHERE {where_sql}'
 
     with engine.connect() as conn:
         rows = conn.execute(text(sql)).fetchall()
@@ -434,18 +486,27 @@ def get_beneficiary_map_data(source: str) -> dict:
     if not _cache:
         _load_cache()
 
+    cc = (country_code or "DE").upper()
     results = []
     for row in rows:
         row_dict = dict(row._mapping)
-        standort = str(row_dict.get("standort", "")).strip()
-        if not standort:
-            continue
+        standort = str(row_dict.get("standort", "") or "").strip()
 
-        cache_key = standort.lower()
-        if cache_key in _cache and _cache[cache_key] is not None:
-            geo = _cache[cache_key]
-        else:
-            geo = geocode_single(standort)
+        geo: dict | None = None
+        if has_coordinates:
+            try:
+                lat_val = float(row_dict.get("_lat"))
+                lon_val = float(row_dict.get("_lon"))
+                geo = {"lat": lat_val, "lon": lon_val, "display_name": standort}
+                if not standort:
+                    standort = f"{lat_val:.4f}, {lon_val:.4f}"
+            except (TypeError, ValueError):
+                geo = None
+
+        if geo is None:
+            if not standort:
+                continue
+            geo = geocode_single(standort, country_code=cc)
 
         if geo:
             entry = {
@@ -457,11 +518,12 @@ def get_beneficiary_map_data(source: str) -> dict:
                 "kosten": _parse_cost_value(row_dict.get("kosten")),
                 "kategorie": str(row_dict.get("kategorie", ""))[:50],
             }
-            # NUTS-3 Zuordnung
-            nuts_info = lookup_nuts(geo["lat"], geo["lon"])
-            if nuts_info:
-                entry["nuts3"] = nuts_info["nuts3"]
-                entry["region"] = nuts_info["region"]
+            # NUTS-3 Zuordnung nur fuer Deutschland (Datei nuts_de.json)
+            if cc == "DE":
+                nuts_info = lookup_nuts(geo["lat"], geo["lon"])
+                if nuts_info:
+                    entry["nuts3"] = nuts_info["nuts3"]
+                    entry["region"] = nuts_info["region"]
             results.append(entry)
 
     return {
@@ -469,6 +531,8 @@ def get_beneficiary_map_data(source: str) -> dict:
         "beneficiaries": results,
         "columns_detected": col_map,
         "source": source,
+        "country_code": cc,
+        "country_name": get_country_name(cc),
     }
 
 

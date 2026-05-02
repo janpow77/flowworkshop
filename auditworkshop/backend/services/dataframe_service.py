@@ -17,6 +17,11 @@ import pandas as pd
 from sqlalchemy import text
 
 from database import engine
+from services.country_profiles import (
+    country_code_for_bundesland,
+    detect_country_code,
+    get_country_name,
+)
 
 log = logging.getLogger(__name__)
 
@@ -481,13 +486,18 @@ def _is_number(s: str) -> bool:
 # ── Metadaten-Erkennung ──────────────────────────────────────────────────────
 
 BUNDESLAENDER = [
+    # Deutschland
     "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen",
     "Hamburg", "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen",
     "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen",
     "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen",
+    # Österreich
+    "Burgenland", "Kärnten", "Niederösterreich", "Oberösterreich",
+    "Salzburg", "Steiermark", "Tirol", "Vorarlberg", "Wien",
 ]
 
 BUNDESLAND_ALIASES = {
+    # Deutschland
     "Baden-Württemberg": ["Baden-Württemberg", "Baden-Wuerttemberg"],
     "Bayern": ["Bayern", "Freistaat Bayern"],
     "Berlin": ["Berlin"],
@@ -504,9 +514,22 @@ BUNDESLAND_ALIASES = {
     "Sachsen-Anhalt": ["Sachsen-Anhalt", "Sachsen Anhalt"],
     "Schleswig-Holstein": ["Schleswig-Holstein", "Schleswig Holstein"],
     "Thüringen": ["Thüringen", "Thueringen", "Freistaat Thüringen"],
+    # Österreich
+    "Burgenland": ["Burgenland"],
+    "Kärnten": ["Kärnten", "Kaernten", "Carinthia"],
+    "Niederösterreich": ["Niederösterreich", "Niederoesterreich", "Lower Austria"],
+    "Oberösterreich": ["Oberösterreich", "Oberoesterreich", "Upper Austria"],
+    "Salzburg": ["Salzburg", "Land Salzburg"],
+    "Steiermark": ["Steiermark", "Styria"],
+    "Tirol": ["Tirol", "Tyrol"],
+    "Vorarlberg": ["Vorarlberg"],
+    "Wien": ["Wien", "Vienna"],
 }
 
-FONDS = ["EFRE", "ESF", "ESF+", "ELER", "EMFAF", "ERDF", "JTF", "AMIF", "ISF", "REACT-EU"]
+FONDS = [
+    "EFRE/JTF", "ESF+/JTF",
+    "EFRE", "ESF+", "ESF", "ELER", "EMFAF", "ERDF", "JTF", "AMIF", "ISF", "REACT-EU",
+]
 
 PERIODEN = ["2014-2020", "2021-2027", "2014–2020", "2021–2027",
             "21-27", "14-20", "2028-2034"]
@@ -551,20 +574,39 @@ def _detect_metadata(
             except UnicodeDecodeError:
                 continue
 
-    result = {"bundesland": None, "fonds": None, "periode": None}
+    result = {
+        "bundesland": None,
+        "fonds": None,
+        "periode": None,
+        "country_code": None,
+        "country_name": None,
+    }
 
     title_text_lower = title_text.lower()
     source_lower = (source or "").lower()
     normalized_title = _normalize_lookup_text(title_text)
     normalized_source = _normalize_lookup_text(source or "")
 
-    # Bundesland erkennen: Dateiname hat Vorrang, danach Titeltext.
+    # Bundesland erkennen: Dateiname hat Vorrang. Titel-Fallback nur, wenn der
+    # Dateiname kein Land verraet — sonst wuerden Datenzeilen einer Gesamtliste
+    # ein zufaellig zuerst auftauchendes Bundesland setzen (z.B. AT-Gesamtliste
+    # mit erstem Datensatz "Niederoesterreich").
     source_state = _detect_bundesland_from_text(normalized_source)
-    title_state = _detect_bundesland_from_text(normalized_title)
+    source_country_hint = detect_country_code(source)
     if source_state:
         result["bundesland"] = source_state
-    elif title_state:
-        result["bundesland"] = title_state
+    elif not source_country_hint:
+        title_state = _detect_bundesland_from_text(normalized_title)
+        if title_state:
+            result["bundesland"] = title_state
+
+    # Country-Code aus Bundesland (gewinnt eindeutig), sonst aus Datei-/Titel-Text
+    country_code = country_code_for_bundesland(result["bundesland"])
+    if not country_code:
+        country_code = detect_country_code(source, title_text)
+    if country_code:
+        result["country_code"] = country_code
+        result["country_name"] = get_country_name(country_code)
 
     # Fonds erkennen
     for f in FONDS:
@@ -661,7 +703,9 @@ def _ensure_metadata_table():
                 is_beneficiary BOOLEAN DEFAULT FALSE,
                 dataset_group TEXT DEFAULT 'generic',
                 registry_type TEXT,
-                filename TEXT
+                filename TEXT,
+                country_code TEXT,
+                country_name TEXT
             )
         """))
         conn.execute(text("""
@@ -675,6 +719,37 @@ def _ensure_metadata_table():
         conn.execute(text("""
             ALTER TABLE workshop_df_metadata
             ADD COLUMN IF NOT EXISTS filename TEXT
+        """))
+        conn.execute(text("""
+            ALTER TABLE workshop_df_metadata
+            ADD COLUMN IF NOT EXISTS country_code TEXT
+        """))
+        conn.execute(text("""
+            ALTER TABLE workshop_df_metadata
+            ADD COLUMN IF NOT EXISTS country_name TEXT
+        """))
+        # Bestehende deutsche Quellen ohne country_code automatisch auf DE setzen
+        conn.execute(text("""
+            UPDATE workshop_df_metadata
+            SET country_code = 'DE',
+                country_name = 'Deutschland'
+            WHERE country_code IS NULL
+              AND bundesland IN (
+                'Baden-Württemberg', 'Bayern', 'Berlin', 'Brandenburg', 'Bremen',
+                'Hamburg', 'Hessen', 'Mecklenburg-Vorpommern', 'Niedersachsen',
+                'Nordrhein-Westfalen', 'Rheinland-Pfalz', 'Saarland', 'Sachsen',
+                'Sachsen-Anhalt', 'Schleswig-Holstein', 'Thüringen'
+              )
+        """))
+        conn.execute(text("""
+            UPDATE workshop_df_metadata
+            SET country_code = 'AT',
+                country_name = 'Österreich'
+            WHERE country_code IS NULL
+              AND bundesland IN (
+                'Burgenland', 'Kärnten', 'Niederösterreich', 'Oberösterreich',
+                'Salzburg', 'Steiermark', 'Tirol', 'Vorarlberg', 'Wien'
+              )
         """))
         conn.commit()
 
@@ -707,16 +782,24 @@ def _save_metadata(
         except Exception:
             count = 0
 
+        # Country-Code aus Metadaten oder erschlossen aus Bundesland
+        country_code = metadata.get("country_code")
+        if not country_code:
+            country_code = country_code_for_bundesland(metadata.get("bundesland"))
+        country_name = metadata.get("country_name") or get_country_name(country_code)
+
         conn.execute(text("""
             INSERT INTO workshop_df_metadata (
                 table_name, source, bundesland, fonds, periode, row_count,
-                is_beneficiary, dataset_group, registry_type, filename
+                is_beneficiary, dataset_group, registry_type, filename,
+                country_code, country_name
             )
-            VALUES (:t, :s, :bl, :f, :p, :c, :b, :g, :rt, :fn)
+            VALUES (:t, :s, :bl, :f, :p, :c, :b, :g, :rt, :fn, :cc, :cn)
             ON CONFLICT (table_name) DO UPDATE SET
                 source = :s, bundesland = :bl, fonds = :f, periode = :p,
                 row_count = :c, is_beneficiary = :b,
-                dataset_group = :g, registry_type = :rt, filename = :fn
+                dataset_group = :g, registry_type = :rt, filename = :fn,
+                country_code = :cc, country_name = :cn
         """), {
             "t": table_name, "s": source,
             "bl": metadata.get("bundesland"),
@@ -727,27 +810,53 @@ def _save_metadata(
             "g": dataset_group,
             "rt": registry_type,
             "fn": filename,
+            "cc": country_code,
+            "cn": country_name,
         })
         conn.commit()
 
 
-def get_beneficiary_sources() -> list[dict]:
-    """Gibt alle DataFrame-Tabellen zurueck die Beguenstigtenverzeichnisse sind."""
+def get_beneficiary_sources(country_code: str | None = None) -> list[dict]:
+    """Gibt alle DataFrame-Tabellen zurueck die Beguenstigtenverzeichnisse sind.
+
+    Wenn country_code gesetzt ist, werden nur die Quellen dieses Landes
+    zurueckgegeben (DE/AT). Quellen ohne hinterlegten country_code, deren
+    Bundesland aber zu einem bekannten Land gehoert, werden mitgeliefert.
+    """
     _ensure_metadata_table()
     with engine.connect() as conn:
         rows = conn.execute(text("""
-            SELECT table_name, source, bundesland, fonds, periode, row_count, dataset_group, registry_type, filename
+            SELECT table_name, source, bundesland, fonds, periode, row_count,
+                   dataset_group, registry_type, filename, country_code, country_name
             FROM workshop_df_metadata
             WHERE dataset_group = 'beneficiary'
                OR (is_beneficiary = TRUE AND COALESCE(dataset_group, 'generic') IN ('generic', 'beneficiary'))
-            ORDER BY bundesland, source
+            ORDER BY country_code NULLS LAST, bundesland, source
         """)).fetchall()
-    return [
-        {"table_name": r[0], "source": r[1], "bundesland": r[2],
-         "fonds": r[3], "periode": r[4], "row_count": r[5],
-         "dataset_group": r[6], "registry_type": r[7], "filename": r[8]}
-        for r in rows
-    ]
+
+    sources = []
+    target_country = country_code.upper() if country_code else None
+    for r in rows:
+        stored_cc = (r[9] or "").upper() or None
+        # Fallback: aus Bundesland erschliessen
+        derived_cc = stored_cc or country_code_for_bundesland(r[2])
+        derived_name = r[10] or get_country_name(derived_cc)
+        if target_country and derived_cc != target_country:
+            continue
+        sources.append({
+            "table_name": r[0],
+            "source": r[1],
+            "bundesland": r[2],
+            "fonds": r[3],
+            "periode": r[4],
+            "row_count": r[5],
+            "dataset_group": r[6],
+            "registry_type": r[7],
+            "filename": r[8],
+            "country_code": derived_cc,
+            "country_name": derived_name,
+        })
+    return sources
 
 
 def list_reference_registry_sources() -> list[dict]:
@@ -1051,8 +1160,9 @@ def _match_beneficiary_analysis_mode(prompt: str | None) -> str | None:
 def get_beneficiary_llm_context(
     prompt: str | None = None,
     max_entries_per_source: int = 3,
+    country_code: str | None = None,
 ) -> str:
-    sources = get_beneficiary_sources()
+    sources = get_beneficiary_sources(country_code=country_code)
     if not sources:
         return ""
 
@@ -1064,6 +1174,7 @@ def get_beneficiary_llm_context(
         bundesland=bundesland,
         fonds=fonds,
         limit=limit,
+        country_code=country_code,
     )
 
     summary = analysis["summary"]
@@ -1113,10 +1224,18 @@ def get_beneficiary_llm_context(
     return "\n".join(parts)
 
 
-def build_beneficiary_analysis_answer(prompt: str, limit: int = 5) -> str | None:
-    sources = get_beneficiary_sources()
+def build_beneficiary_analysis_answer(
+    prompt: str,
+    limit: int = 5,
+    country_code: str | None = None,
+) -> str | None:
+    sources = get_beneficiary_sources(country_code=country_code)
     if not sources:
-        return "Es sind derzeit keine Begünstigtenverzeichnisse geladen."
+        country_hint = ""
+        if country_code:
+            name = get_country_name(country_code) or country_code
+            country_hint = f" für {name}"
+        return f"Es sind derzeit keine Begünstigtenverzeichnisse{country_hint} geladen."
 
     matched_mode = _match_beneficiary_analysis_mode(prompt)
     if not matched_mode:
@@ -1128,6 +1247,7 @@ def build_beneficiary_analysis_answer(prompt: str, limit: int = 5) -> str | None
         bundesland=bundesland,
         fonds=fonds,
         limit=max(3, min(limit, 8)),
+        country_code=country_code,
     )
     items = analysis["items"]
     summary = analysis["summary"]
@@ -1348,6 +1468,7 @@ def search_beneficiary_records(
     min_cost: float | None = None,
     limit: int = 60,
     company_limit: int = 14,
+    country_code: str | None = None,
 ) -> dict:
     from services.geocoding_service import detect_columns
 
@@ -1363,7 +1484,7 @@ def search_beneficiary_records(
 
     normalized_query = _normalize_search_text(query)
     beneficiary_sources = [
-        item for item in get_beneficiary_sources()
+        item for item in get_beneficiary_sources(country_code=country_code)
         if (not bundesland or (item.get("bundesland") or "") == bundesland)
         and (not fonds or (item.get("fonds") or "") == fonds)
         and (not source or item.get("source") == source)
@@ -1446,6 +1567,8 @@ def search_beneficiary_records(
                 "bundesland": source_info.get("bundesland"),
                 "fonds": source_info.get("fonds"),
                 "periode": source_info.get("periode"),
+                "country_code": source_info.get("country_code"),
+                "country_name": source_info.get("country_name"),
                 "matched_fields": matched_fields,
                 "match_score": match_score,
             })
@@ -1513,6 +1636,8 @@ def search_beneficiary_records(
                 "bundesland": item["bundesland"],
                 "fonds": item["fonds"],
                 "periode": item["periode"],
+                "country_code": item.get("country_code"),
+                "country_name": item.get("country_name"),
                 "matched_fields": item["matched_fields"],
                 "match_score": item["match_score"],
             })
@@ -1574,6 +1699,7 @@ def analyze_beneficiary_records(
     source: str | None = None,
     min_cost: float | None = None,
     limit: int = 10,
+    country_code: str | None = None,
 ) -> dict:
     from services.geocoding_service import detect_columns
 
@@ -1588,7 +1714,7 @@ def analyze_beneficiary_records(
 
     limit = max(1, min(limit, 20))
     beneficiary_sources = [
-        item for item in get_beneficiary_sources()
+        item for item in get_beneficiary_sources(country_code=country_code)
         if (not bundesland or (item.get("bundesland") or "") == bundesland)
         and (not fonds or (item.get("fonds") or "") == fonds)
         and (not source or item.get("source") == source)
@@ -1643,6 +1769,8 @@ def analyze_beneficiary_records(
                 "bundesland": source_info.get("bundesland"),
                 "fonds": source_info.get("fonds"),
                 "periode": source_info.get("periode"),
+                "country_code": source_info.get("country_code"),
+                "country_name": source_info.get("country_name"),
             })
 
     total_volume = sum(float(item["kosten"]) for item in flat_results if item.get("kosten") is not None)
@@ -1793,6 +1921,7 @@ def analyze_beneficiary_records(
             "fonds": fonds,
             "source": source,
             "min_cost": min_cost,
+            "country_code": country_code,
         },
         "items": items,
     }
