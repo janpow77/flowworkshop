@@ -13139,5 +13139,2345 @@
     "lat": 51.8097696,
     "lon": 10.2362972,
     "display_name": "Bad Grund, Landkreis Göttingen, Niedersachsen, 37539, Deutschland"
+  },
+  "at::1010 wien, innere stadt, fichtegasse 2": {
+    "lat": 48.2083622,
+    "lon": 16.3693966,
+    "display_name": "1010, Innere Stadt, Wien, Österreich"
+  },
+  "at::1010 wien, innere stadt, universitätsstraße 5/1": {
+    "lat": 48.2083622,
+    "lon": 16.3693966,
+    "display_name": "1010, Innere Stadt, Wien, Österreich"
+  },
+  "at::1020 wien, leopoldstadt, engerthstraße 163": {
+    "lat": 48.2036379,
+    "lon": 16.4232516,
+    "display_name": "1020, Katastralgemeinde Leopoldstadt, Leopoldstadt, Wien, Österreich"
+  },
+  "at::1020 wien, leopoldstadt, lassallestraße 1": {
+    "lat": 48.2036379,
+    "lon": 16.4232516,
+    "display_name": "1020, Katastralgemeinde Leopoldstadt, Leopoldstadt, Wien, Österreich"
+  },
+  "at::1020 wien, leopoldstadt, obere donaustraße 33": {
+    "lat": 48.2036379,
+    "lon": 16.4232516,
+    "display_name": "1020, Katastralgemeinde Leopoldstadt, Leopoldstadt, Wien, Österreich"
+  },
+  "at::1020 wien, leopoldstadt, schönngasse 15-17/2": {
+    "lat": 48.2036379,
+    "lon": 16.4232516,
+    "display_name": "1020, Katastralgemeinde Leopoldstadt, Leopoldstadt, Wien, Österreich"
+  },
+  "at::1020 wien, leopoldstadt, schönngasse 15-17/8": {
+    "lat": 48.2036379,
+    "lon": 16.4232516,
+    "display_name": "1020, Katastralgemeinde Leopoldstadt, Leopoldstadt, Wien, Österreich"
+  },
+  "at::1020 wien, leopoldstadt, volkertplatz 1": {
+    "lat": 48.2036379,
+    "lon": 16.4232516,
+    "display_name": "1020, Katastralgemeinde Leopoldstadt, Leopoldstadt, Wien, Österreich"
+  },
+  "at::1030 wien, landstraße, hintere zollamtsstraße 17": {
+    "lat": 48.1937566,
+    "lon": 16.3960892,
+    "display_name": "1030, Erdberg, Katastralgemeinde Landstraße, Landstraße, Wien, Österreich"
+  },
+  "at::1030 wien, landstraße, landstraßer hauptstraße 148/3/1b": {
+    "lat": 48.1937566,
+    "lon": 16.3960892,
+    "display_name": "1030, Erdberg, Katastralgemeinde Landstraße, Landstraße, Wien, Österreich"
+  },
+  "at::1030 wien, landstraße, landstraßer hauptstraße 148/3/b1": {
+    "lat": 48.1937566,
+    "lon": 16.3960892,
+    "display_name": "1030, Erdberg, Katastralgemeinde Landstraße, Landstraße, Wien, Österreich"
+  },
+  "at::1040 wien,wieden, favoritenstrasse 8/1/1": {
+    "lat": 48.1925686,
+    "lon": 16.3703751,
+    "display_name": "1040, Wieden, Wien, Österreich"
+  },
+  "at::1040 wien,wieden, favoritenstrasse 8/1b/1": {
+    "lat": 48.1925686,
+    "lon": 16.3703751,
+    "display_name": "1040, Wieden, Wien, Österreich"
+  },
+  "at::1040 wien,wieden, wiedner hauptstraße 32": {
+    "lat": 48.1925686,
+    "lon": 16.3703751,
+    "display_name": "1040, Wieden, Wien, Österreich"
+  },
+  "at::1050 wien, margareten, einsiedlerplatz 5/7": {
+    "lat": 48.186797,
+    "lon": 16.3559403,
+    "display_name": "1050, Margareten, Wien, Österreich"
+  },
+  "at::1050 wien, margareten, margaretenstraße": {
+    "lat": 48.186797,
+    "lon": 16.3559403,
+    "display_name": "1050, Margareten, Wien, Österreich"
+  },
+  "at::1050 wien, margareten, rainergasse 38": {
+    "lat": 48.186797,
+    "lon": 16.3559403,
+    "display_name": "1050, Margareten, Wien, Österreich"
+  },
+  "at::1070 wien, neubau, siebensterngasse": {
+    "lat": 48.2051745,
+    "lon": 16.3475106,
+    "display_name": "Youth Hostel International Myrthengasse, 7, Myrthengasse, Lerchenfeld, Neubau, Katastralgemeinde Neubau, Neubau, Wien, 1070, Österreich"
+  },
+  "at::1070 wien,neubau": {
+    "lat": 48.2051745,
+    "lon": 16.3475106,
+    "display_name": "Youth Hostel International Myrthengasse, 7, Myrthengasse, Lerchenfeld, Neubau, Katastralgemeinde Neubau, Neubau, Wien, 1070, Österreich"
+  },
+  "at::1090 wien, alsergrund, lustkandlgasse 50": {
+    "lat": 48.225073,
+    "lon": 16.3583976,
+    "display_name": "1090, Althangrund, Katastralgemeinde Alsergrund, Alsergrund, Wien, Österreich"
+  },
+  "at::1100 wien, favoriten, davidgasse 92 - 94": {
+    "lat": 48.1521104,
+    "lon": 16.3876195,
+    "display_name": "1100, Katastralgemeinde Oberlaa Stadt, Favoriten, Wien, Österreich"
+  },
+  "at::1100 wien, favoriten, davidgasse 92-94": {
+    "lat": 48.1521104,
+    "lon": 16.3876195,
+    "display_name": "1100, Katastralgemeinde Oberlaa Stadt, Favoriten, Wien, Österreich"
+  },
+  "at::1100 wien, favoriten, davidgasse 92-94/knöllgasse 15": {
+    "lat": 48.1521104,
+    "lon": 16.3876195,
+    "display_name": "1100, Katastralgemeinde Oberlaa Stadt, Favoriten, Wien, Österreich"
+  },
+  "at::1100 wien,favoriten": {
+    "lat": 48.1521104,
+    "lon": 16.3876195,
+    "display_name": "1100, Katastralgemeinde Oberlaa Stadt, Favoriten, Wien, Österreich"
+  },
+  "at::1110 wien, simmering, simmeringer hauptstraße 154": {
+    "lat": 48.1639952,
+    "lon": 16.4463043,
+    "display_name": "1110, Katastralgemeinde Kaiserebersdorf, Simmering, Wien, Österreich"
+  },
+  "at::1110 wien, simmering, wilhelm-weber-weg": {
+    "lat": 48.1639952,
+    "lon": 16.4463043,
+    "display_name": "1110, Katastralgemeinde Kaiserebersdorf, Simmering, Wien, Österreich"
+  },
+  "at::1110 wien, simmering, wilhelm-weber-weg 1/2/1+2": {
+    "lat": 48.1639952,
+    "lon": 16.4463043,
+    "display_name": "1110, Katastralgemeinde Kaiserebersdorf, Simmering, Wien, Österreich"
+  },
+  "at::1110 wien, simmering, zinnergasse 29b": {
+    "lat": 48.1639952,
+    "lon": 16.4463043,
+    "display_name": "1110, Katastralgemeinde Kaiserebersdorf, Simmering, Wien, Österreich"
+  },
+  "at::1120 wien, meidling, niederhofstraße 26-28": {
+    "lat": 48.1705255,
+    "lon": 16.322351,
+    "display_name": "1120, Katastralgemeinde Altmannsdorf, Meidling, Wien, Österreich"
+  },
+  "at::1120 wien, meidling, pottendorfer straße 23-25": {
+    "lat": 48.1705255,
+    "lon": 16.322351,
+    "display_name": "1120, Katastralgemeinde Altmannsdorf, Meidling, Wien, Österreich"
+  },
+  "at::1140 wien, penzing, lützowgasse 14/6": {
+    "lat": 48.2209671,
+    "lon": 16.2413317,
+    "display_name": "1140, Katastralgemeinde Hadersdorf, Penzing, Wien, Österreich"
+  },
+  "at::1150 wien, rudolfsheim-fünfhaus, felberstraße": {
+    "lat": 48.1954749,
+    "lon": 16.3260676,
+    "display_name": "1150, Katastralgemeinde Rudolfsheim, Rudolfsheim-Fünfhaus, Wien, Österreich"
+  },
+  "at::1150 wien, rudolfsheim-fünfhaus, nobilegasse 23-25": {
+    "lat": 48.1954749,
+    "lon": 16.3260676,
+    "display_name": "1150, Katastralgemeinde Rudolfsheim, Rudolfsheim-Fünfhaus, Wien, Österreich"
+  },
+  "at::1150 wien, rudolfsheim-fünfhaus, nobilegasse 23-25, 2. stock": {
+    "lat": 48.1954749,
+    "lon": 16.3260676,
+    "display_name": "1150, Katastralgemeinde Rudolfsheim, Rudolfsheim-Fünfhaus, Wien, Österreich"
+  },
+  "at::1160 wien, ottakring, koppstraße 38/8": {
+    "lat": 48.2154008,
+    "lon": 16.2995993,
+    "display_name": "1160, Katastralgemeinde Ottakring, Ottakring, Wien, Österreich"
+  },
+  "at::1160 wien, ottakring, koppstraße, 38/8": {
+    "lat": 48.2154008,
+    "lon": 16.2995993,
+    "display_name": "1160, Katastralgemeinde Ottakring, Ottakring, Wien, Österreich"
+  },
+  "at::1160 wien,ottakring": {
+    "lat": 48.2154008,
+    "lon": 16.2995993,
+    "display_name": "1160, Katastralgemeinde Ottakring, Ottakring, Wien, Österreich"
+  },
+  "at::1180 wien, währing, anastasius-grün-gasse 25/4": {
+    "lat": 48.2355523,
+    "lon": 16.3189765,
+    "display_name": "1180, Katastralgemeinde Gersthof, Währing, Wien, Österreich"
+  },
+  "at::1190 wien": {
+    "lat": 48.2590341,
+    "lon": 16.3336867,
+    "display_name": "1190, Katastralgemeinde Grinzing, Döbling, Wien, Österreich"
+  },
+  "at::1190 wien, döbling, mooslackengasse 17-19": {
+    "lat": 48.2590341,
+    "lon": 16.3336867,
+    "display_name": "1190, Katastralgemeinde Grinzing, Döbling, Wien, Österreich"
+  },
+  "at::1210 wien, floridsdorf, brünner straße 72": {
+    "lat": 48.2811956,
+    "lon": 16.4111732,
+    "display_name": "1210, Katastralgemeinde Großjedlersdorf I, Floridsdorf, Wien, Österreich"
+  },
+  "at::1210 wien, floridsdorf, brünnerstraße 72": {
+    "lat": 48.2811956,
+    "lon": 16.4111732,
+    "display_name": "1210, Katastralgemeinde Großjedlersdorf I, Floridsdorf, Wien, Österreich"
+  },
+  "at::1210 wien,floridsdorf": {
+    "lat": 48.2811956,
+    "lon": 16.4111732,
+    "display_name": "1210, Katastralgemeinde Großjedlersdorf I, Floridsdorf, Wien, Österreich"
+  },
+  "at::1220 wien, donaustadt, lieblgasse 3": {
+    "lat": 48.2188854,
+    "lon": 16.4949074,
+    "display_name": "1220, Katastralgemeinde Aspern, Donaustadt, Wien, Österreich"
+  },
+  "at::1220 wien,donaustadt": {
+    "lat": 48.2188854,
+    "lon": 16.4949074,
+    "display_name": "1220, Katastralgemeinde Aspern, Donaustadt, Wien, Österreich"
+  },
+  "at::2000 stockerau": {
+    "lat": 48.3870579,
+    "lon": 16.1924303,
+    "display_name": "2000, Katastralgemeinde Stockerau, Unterzögersdorf, Stockerau, Bezirk Korneuburg, Niederösterreich, Österreich"
+  },
+  "at::2011 höbersdorf": {
+    "lat": 48.4465835,
+    "lon": 16.1719178,
+    "display_name": "Katastralgemeinde Höbersdorf, Sierndorf, Bezirk Korneuburg, Niederösterreich, 2011, Österreich"
+  },
+  "at::2020 hollabrunn, eugen markus platz 6": {
+    "lat": 48.5747831,
+    "lon": 16.0594997,
+    "display_name": "2020, Katastralgemeinde Hollabrunn, Suttenbrunn, Hollabrunn, Bezirk Hollabrunn, Niederösterreich, Österreich"
+  },
+  "at::2201 hagenbrunn": {
+    "lat": 48.3327348,
+    "lon": 16.40673,
+    "display_name": "Hagenbrunn, Bezirk Korneuburg, Niederösterreich, Österreich"
+  },
+  "at::2320 schwechat": {
+    "lat": 48.1124544,
+    "lon": 16.5258291,
+    "display_name": "2320, Katastralgemeinde Mannswörth, Schwechat, Bezirk Bruck an der Leitha, Niederösterreich, Österreich"
+  },
+  "at::2340 mödling, eisentorgasse 5": {
+    "lat": 48.0848234,
+    "lon": 16.2832379,
+    "display_name": "2340 Mödling, 7, Kaiserin Elisabethstraße, Klausen, Schöffelstadt, Mödling, Bezirk Mödling, Niederösterreich, 2340, Österreich"
+  },
+  "at::2362 biedermannsdorf": {
+    "lat": 48.0858363,
+    "lon": 16.3464579,
+    "display_name": "2362, Biedermannsdorf, Bezirk Mödling, Niederösterreich, Österreich"
+  },
+  "at::2440 gramatneusiedl": {
+    "lat": 48.0291491,
+    "lon": 16.4886373,
+    "display_name": "Gramatneusiedl, Bezirk Bruck an der Leitha, Niederösterreich, Österreich"
+  },
+  "at::2444 seibersdorf": {
+    "lat": 47.9611278,
+    "lon": 16.5111837,
+    "display_name": "2444, Katastralgemeinde Seibersdorf, Seibersdorf, Bezirk Baden, Niederösterreich, Österreich"
+  },
+  "at::2542 kottingbrunn": {
+    "lat": 47.9545657,
+    "lon": 16.2411465,
+    "display_name": "2542, Katastralgemeinde Kottingbrunn, Kottingbrunn, Bezirk Baden, Niederösterreich, Österreich"
+  },
+  "at::2620 neunkirchen": {
+    "lat": 47.7189225,
+    "lon": 16.0754093,
+    "display_name": "2620, Katastralgemeinde Natschbach, Katastralgemeinde Neunkirchen, Loipersbach, Natschbach-Loipersbach, Bezirk Neunkirchen, Niederösterreich, Österreich"
+  },
+  "at::2700 wiener neustadt": {
+    "lat": 47.8013645,
+    "lon": 16.2227075,
+    "display_name": "2700, Wiener Neustadt, Niederösterreich, Österreich"
+  },
+  "at::2700 wiener neustadt, haidbrunngasse 18/1": {
+    "lat": 47.8013645,
+    "lon": 16.2227075,
+    "display_name": "2700, Wiener Neustadt, Niederösterreich, Österreich"
+  },
+  "at::2700 wiener neustadt, hauptplatz 14": {
+    "lat": 47.8013645,
+    "lon": 16.2227075,
+    "display_name": "2700, Wiener Neustadt, Niederösterreich, Österreich"
+  },
+  "at::2700 wiener neustadt, lise-meitner-straße 1": {
+    "lat": 47.8013645,
+    "lon": 16.2227075,
+    "display_name": "2700, Wiener Neustadt, Niederösterreich, Österreich"
+  },
+  "at::2700 wiener neustadt, wienerstraße 54": {
+    "lat": 47.8013645,
+    "lon": 16.2227075,
+    "display_name": "2700, Wiener Neustadt, Niederösterreich, Österreich"
+  },
+  "at::2880 kirchberg am wechsel-außen": null,
+  "at::3100 st. pölten": {
+    "lat": 48.1980457,
+    "lon": 15.6267927,
+    "display_name": "3100, Katastralgemeinde St. Pölten, Witzendorf, St. Pölten, Niederösterreich, Österreich"
+  },
+  "at::3100 st. pölten, daniel gran straße 36": {
+    "lat": 48.1980457,
+    "lon": 15.6267927,
+    "display_name": "3100, Katastralgemeinde St. Pölten, Witzendorf, St. Pölten, Niederösterreich, Österreich"
+  },
+  "at::3100 st. pölten, landhausplatz 1": {
+    "lat": 48.1980457,
+    "lon": 15.6267927,
+    "display_name": "3100, Katastralgemeinde St. Pölten, Witzendorf, St. Pölten, Niederösterreich, Österreich"
+  },
+  "at::3100 st. pölten, linzer straße 7": {
+    "lat": 48.1980457,
+    "lon": 15.6267927,
+    "display_name": "3100, Katastralgemeinde St. Pölten, Witzendorf, St. Pölten, Niederösterreich, Österreich"
+  },
+  "at::3100 st. pölten, mariazeller straße 97": {
+    "lat": 48.1980457,
+    "lon": 15.6267927,
+    "display_name": "3100, Katastralgemeinde St. Pölten, Witzendorf, St. Pölten, Niederösterreich, Österreich"
+  },
+  "at::3100 st. pölten, tor zum landhaus, wiener str. 54": {
+    "lat": 48.1980457,
+    "lon": 15.6267927,
+    "display_name": "3100, Katastralgemeinde St. Pölten, Witzendorf, St. Pölten, Niederösterreich, Österreich"
+  },
+  "at::3131 getzersdorf": {
+    "lat": 48.3169058,
+    "lon": 15.6884772,
+    "display_name": "3131, Katastralgemeinde Inzersdorf ob der Traisen, Inzersdorf-Getzersdorf, Bezirk St. Pölten, Niederösterreich, Österreich"
+  },
+  "at::3250 wieselburg": {
+    "lat": 48.1170089,
+    "lon": 15.1166914,
+    "display_name": "3250, Katastralgemeinde Marbach, Marbach an der Kleinen Erlauf, Wieselburg-Land, Bezirk Scheibbs, Niederösterreich, Österreich"
+  },
+  "at::3300 amstetten, arthur krupp straße 1": {
+    "lat": 48.1114089,
+    "lon": 14.8703746,
+    "display_name": "3300, Katastralgemeinde Schönbichl, Amstetten, Bezirk Amstetten, Niederösterreich, Österreich"
+  },
+  "at::3324 euratsfeld": {
+    "lat": 48.0675355,
+    "lon": 14.9362578,
+    "display_name": "3324, Katastralgemeinde Großaigen, Euratsfeld, Bezirk Amstetten, Niederösterreich, Österreich"
+  },
+  "at::3341 ybbsitz": {
+    "lat": 47.9470448,
+    "lon": 14.8951527,
+    "display_name": "3341 Ybbsitz, 24, Markt, Katastralgemeinde Ybbsitz, Ybbsitz, Bezirk Amstetten, Niederösterreich, 3341, Österreich"
+  },
+  "at::3400 klosterneuburg": {
+    "lat": 48.2889585,
+    "lon": 16.2757997,
+    "display_name": "3400, Katastralgemeinde Weidling, Weidling, Klosterneuburg, Bezirk Tulln, Niederösterreich, Österreich"
+  },
+  "at::3430 tulln an der donau": {
+    "lat": 48.3341046,
+    "lon": 16.0499932,
+    "display_name": "3430, Katastralgemeinde Tulln, Tulln an der Donau, Bezirk Tulln, Niederösterreich, Österreich"
+  },
+  "at::3484 grafenwörth": {
+    "lat": 48.4038204,
+    "lon": 15.7889898,
+    "display_name": "3484, Katastralgemeinde Grafenwörth, Sankt Johann, Grafenwörth, Bezirk Tulln, Niederösterreich, Österreich"
+  },
+  "at::3500 krems an der donau": {
+    "lat": 48.4184099,
+    "lon": 15.6013601,
+    "display_name": "3500, Katastralgemeinde Krems, Krems an der Donau, Niederösterreich, Österreich"
+  },
+  "at::3664 martinsberg": {
+    "lat": 48.3798456,
+    "lon": 15.1666535,
+    "display_name": "3664, Katastralgemeinde Martinsberg, Pitzeichen, Martinsberg, Bezirk Zwettl, Niederösterreich, Österreich"
+  },
+  "at::3843 dobersberg": {
+    "lat": 48.9139612,
+    "lon": 15.3155645,
+    "display_name": "3843, Katastralgemeinde Dobersberg, Lexnitz, Dobersberg, Bezirk Waidhofen an der Thaya, Niederösterreich, Österreich"
+  },
+  "at::3910 zwettl-niederösterreich": {
+    "lat": 48.6314003,
+    "lon": 15.1782913,
+    "display_name": "3910, Katastralgemeinde Gerotten, Gerotten, Zwettl-Niederösterreich, Bezirk Zwettl, Niederösterreich, Österreich"
+  },
+  "at::3920 wiesensfeld": {
+    "lat": 48.5228654,
+    "lon": 14.9884639,
+    "display_name": "Wiesensfeld, Arbesbach, Bezirk Zwettl, Niederösterreich, 3920, Österreich"
+  },
+  "at::3925 komau": {
+    "lat": 48.502851,
+    "lon": 14.9146808,
+    "display_name": "Komau, Liebenau, Bezirk Freistadt, Oberösterreich, 4252, Österreich"
+  },
+  "at::4020 linz": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4020 linz, bulgariplatz 12-14": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4020 linz, glimpfingerstraße 8": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4020 linz, graben 3": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4020 linz, hafnerstraße 28": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4020 linz, industriezeile 47a": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4020 linz, industriezeile 56b": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4020 linz, kärntnerstraße 26": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4020 linz, kärntnerstraße 26 (vhs linz)": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4020 linz, muldenstraße 5": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4020 linz, weißenwolffstraße 17a": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4020 linz, xx": {
+    "lat": 48.2873301,
+    "lon": 14.3074202,
+    "display_name": "4020, Bulgariplatz, Linz, Oberösterreich, Österreich"
+  },
+  "at::4040 linz": {
+    "lat": 48.3340714,
+    "lon": 14.296742,
+    "display_name": "4040, St. Magdalena, Linz, Oberösterreich, Österreich"
+  },
+  "at::4040 linz, volksgartenstraße": {
+    "lat": 48.3340714,
+    "lon": 14.296742,
+    "display_name": "4040, St. Magdalena, Linz, Oberösterreich, Österreich"
+  },
+  "at::4060 leonding": {
+    "lat": 48.2722177,
+    "lon": 14.2519758,
+    "display_name": "4060, Leonding, Bezirk Linz-Land, Oberösterreich, Österreich"
+  },
+  "at::4070 eferding": {
+    "lat": 48.3069271,
+    "lon": 14.0169216,
+    "display_name": "4070, Eferding, Bezirk Eferding, Oberösterreich, Österreich"
+  },
+  "at::4072 straß": {
+    "lat": 48.2211819,
+    "lon": 13.6324922,
+    "display_name": "Straß, Pram, Bezirk Grieskirchen, Oberösterreich, 4742, Österreich"
+  },
+  "at::4133 niederkappel": {
+    "lat": 48.4667541,
+    "lon": 13.8805639,
+    "display_name": "4133, Niederkappel, Bezirk Rohrbach, Oberösterreich, Österreich"
+  },
+  "at::4150 rohrbach in oberösterreich, bahnhofstraße 7 - 9": null,
+  "at::4150 rohrbach in oberösterreich, stadtplatz 11": null,
+  "at::4160 aigen im mühlkreis": {
+    "lat": 48.6465967,
+    "lon": 13.9717233,
+    "display_name": "Aigen im Mühlkreis, Aigen-Schlägl, Bezirk Rohrbach, Oberösterreich, 4160, Österreich"
+  },
+  "at::4175 herzogsdorf": {
+    "lat": 48.4245319,
+    "lon": 14.1305836,
+    "display_name": "4175, Herzogsdorf, Bezirk Urfahr-Umgebung, Oberösterreich, Österreich"
+  },
+  "at::4201 türkstetten": {
+    "lat": 48.3711911,
+    "lon": 14.2157862,
+    "display_name": "Türkstetten, Gramastetten, Bezirk Urfahr-Umgebung, Oberösterreich, 4201, Österreich"
+  },
+  "at::4210 unterweitersdorf": {
+    "lat": 48.3673201,
+    "lon": 14.4688722,
+    "display_name": "Unterweitersdorf, Bezirk Freistadt, Oberösterreich, 4213, Österreich"
+  },
+  "at::4212 neumarkt im mühlkreis": {
+    "lat": 48.4289712,
+    "lon": 14.4794291,
+    "display_name": "4212, Neumarkt im Mühlkreis, Bezirk Freistadt, Oberösterreich, Österreich"
+  },
+  "at::4230 pregarten": {
+    "lat": 48.3550852,
+    "lon": 14.5382118,
+    "display_name": "4230, Pregarten, Bezirk Freistadt, Oberösterreich, Österreich"
+  },
+  "at::4240 freistadt": {
+    "lat": 48.50873,
+    "lon": 14.4917291,
+    "display_name": "4240, Freistadt, Bezirk Freistadt, Oberösterreich, Österreich"
+  },
+  "at::4240 freistadt, zemannstraße 14": {
+    "lat": 48.50873,
+    "lon": 14.4917291,
+    "display_name": "4240, Freistadt, Bezirk Freistadt, Oberösterreich, Österreich"
+  },
+  "at::4261 rainbach im mühlkreis": {
+    "lat": 48.5607769,
+    "lon": 14.4605482,
+    "display_name": "4261, Rainbach im Mühlkreis, Bezirk Freistadt, Oberösterreich, Österreich"
+  },
+  "at::4291 lasberg": {
+    "lat": 48.4736091,
+    "lon": 14.5442934,
+    "display_name": "4291, Lasberg, Bezirk Freistadt, Oberösterreich, Österreich"
+  },
+  "at::4320 perg": {
+    "lat": 48.2531313,
+    "lon": 14.6382613,
+    "display_name": "4320, Perg, Bezirk Perg, Oberösterreich, Österreich"
+  },
+  "at::4331 naarn": {
+    "lat": 48.2209571,
+    "lon": 14.6210113,
+    "display_name": "4331, Naarn im Machlande, Bezirk Perg, Oberösterreich, Österreich"
+  },
+  "at::4400 steyr": {
+    "lat": 48.0408786,
+    "lon": 14.4189553,
+    "display_name": "4400, Steyr, Oberösterreich, Österreich"
+  },
+  "at::4400 steyr, hans-wagner-straße": {
+    "lat": 48.0408786,
+    "lon": 14.4189553,
+    "display_name": "4400, Steyr, Oberösterreich, Österreich"
+  },
+  "at::4400 steyr, hans-wagner-straße 2-4": {
+    "lat": 48.0408786,
+    "lon": 14.4189553,
+    "display_name": "4400, Steyr, Oberösterreich, Österreich"
+  },
+  "at::4400 steyr, schaftgasse 2": {
+    "lat": 48.0408786,
+    "lon": 14.4189553,
+    "display_name": "4400, Steyr, Oberösterreich, Österreich"
+  },
+  "at::4400 steyr, xx": {
+    "lat": 48.0408786,
+    "lon": 14.4189553,
+    "display_name": "4400, Steyr, Oberösterreich, Österreich"
+  },
+  "at::4407 steyr": {
+    "lat": 48.0823408,
+    "lon": 14.4220345,
+    "display_name": "4407, Dietach, Bezirk Steyr-Land, Oberösterreich, Österreich"
+  },
+  "at::4460 losenstein": {
+    "lat": 47.925918,
+    "lon": 14.4328573,
+    "display_name": "4460, Losenstein, Bezirk Steyr-Land, Oberösterreich, Österreich"
+  },
+  "at::4470 enns": {
+    "lat": 48.2127173,
+    "lon": 14.4716533,
+    "display_name": "4470, Enns, Bezirk Linz-Land, Oberösterreich, Österreich"
+  },
+  "at::4470 enns, xx": {
+    "lat": 48.2127173,
+    "lon": 14.4716533,
+    "display_name": "4470, Enns, Bezirk Linz-Land, Oberösterreich, Österreich"
+  },
+  "at::4484 kronstorf": {
+    "lat": 48.1525083,
+    "lon": 14.4672189,
+    "display_name": "4484, Kronstorf, Bezirk Linz-Land, Oberösterreich, Österreich"
+  },
+  "at::4522 sierning": {
+    "lat": 48.0451778,
+    "lon": 14.3081445,
+    "display_name": "4522, Sierning, Bezirk Steyr-Land, Oberösterreich, Österreich"
+  },
+  "at::4540 mühlgrub": {
+    "lat": 48.0226758,
+    "lon": 14.2088234,
+    "display_name": "Mühlgrub, Pfarrkirchen bei Bad Hall, Bezirk Steyr-Land, Oberösterreich, 4540, Österreich"
+  },
+  "at::4541 adlwang": {
+    "lat": 48.0056973,
+    "lon": 14.2240484,
+    "display_name": "4541, Adlwang, Bezirk Steyr-Land, Oberösterreich, Österreich"
+  },
+  "at::4551 großendorf": {
+    "lat": 48.0386649,
+    "lon": 14.0569696,
+    "display_name": "Großendorf, Ried im Traunkreis, Bezirk Kirchdorf, Oberösterreich, 4551, Österreich"
+  },
+  "at::4551 ried im traunkreis": {
+    "lat": 48.0257194,
+    "lon": 14.0734992,
+    "display_name": "4551 Ried im Traunkreis, 27, Hauptstraße, Pesendorf, Ried im Traunkreis, Bezirk Kirchdorf, Oberösterreich, 4551, Österreich"
+  },
+  "at::4553 schlierbach": {
+    "lat": 47.9374953,
+    "lon": 14.1258657,
+    "display_name": "4553 Schlierbach, 1, Stiftsstraße, Schlierbach, Bezirk Kirchdorf, Oberösterreich, 4553, Österreich"
+  },
+  "at::4560 kirchdorf an der krems": {
+    "lat": 47.9040748,
+    "lon": 14.1215351,
+    "display_name": "4560, Kirchdorf an der Krems, Bezirk Kirchdorf, Oberösterreich, Österreich"
+  },
+  "at::4563 micheldorf": {
+    "lat": 47.8816454,
+    "lon": 14.1358886,
+    "display_name": "4563, Micheldorf in Oberösterreich, Bezirk Kirchdorf, Oberösterreich, Österreich"
+  },
+  "at::4565 inzersdorf im kremstal": {
+    "lat": 47.9257432,
+    "lon": 14.0801387,
+    "display_name": "4565, Inzersdorf im Kremstal, Bezirk Kirchdorf, Oberösterreich, Österreich"
+  },
+  "at::4591 molln": {
+    "lat": 47.8779252,
+    "lon": 14.2586252,
+    "display_name": "4591, Molln, Bezirk Kirchdorf, Oberösterreich, Österreich"
+  },
+  "at::4595 waldneukirchen": {
+    "lat": 48.0011346,
+    "lon": 14.2622688,
+    "display_name": "4595, Waldneukirchen, Bezirk Steyr-Land, Oberösterreich, Österreich"
+  },
+  "at::4600 thalheim bei wels": {
+    "lat": 48.1522388,
+    "lon": 14.030993,
+    "display_name": "Thalheim bei Wels, Bezirk Wels-Land, Oberösterreich, 4600, Österreich"
+  },
+  "at::4600 wels": {
+    "lat": 48.1649487,
+    "lon": 14.011729,
+    "display_name": "4600 Wels, 8, Vogelweiderplatz, Gartenstadt, Vogelweide, Wels, Oberösterreich, 4603, Österreich"
+  },
+  "at::4600 wels, franz-fritsch-straße 11": {
+    "lat": 48.1649487,
+    "lon": 14.011729,
+    "display_name": "4600 Wels, 8, Vogelweiderplatz, Gartenstadt, Vogelweide, Wels, Oberösterreich, 4603, Österreich"
+  },
+  "at::4600 wels, kaiser-josef platz 41": {
+    "lat": 48.1649487,
+    "lon": 14.011729,
+    "display_name": "4600 Wels, 8, Vogelweiderplatz, Gartenstadt, Vogelweide, Wels, Oberösterreich, 4603, Österreich"
+  },
+  "at::4600 wels, lichteneggerstraße 101": {
+    "lat": 48.1649487,
+    "lon": 14.011729,
+    "display_name": "4600 Wels, 8, Vogelweiderplatz, Gartenstadt, Vogelweide, Wels, Oberösterreich, 4603, Österreich"
+  },
+  "at::4600 wels, lichteneggerstraße 97-101": {
+    "lat": 48.1649487,
+    "lon": 14.011729,
+    "display_name": "4600 Wels, 8, Vogelweiderplatz, Gartenstadt, Vogelweide, Wels, Oberösterreich, 4603, Österreich"
+  },
+  "at::4600 wels, maria-theresia-straße 41": {
+    "lat": 48.1649487,
+    "lon": 14.011729,
+    "display_name": "4600 Wels, 8, Vogelweiderplatz, Gartenstadt, Vogelweide, Wels, Oberösterreich, 4603, Österreich"
+  },
+  "at::4600 wels, xx": {
+    "lat": 48.1649487,
+    "lon": 14.011729,
+    "display_name": "4600 Wels, 8, Vogelweiderplatz, Gartenstadt, Vogelweide, Wels, Oberösterreich, 4603, Österreich"
+  },
+  "at::4615 holzhausen": {
+    "lat": 48.2225453,
+    "lon": 14.0992498,
+    "display_name": "4615, Holzhausen, Bezirk Wels-Land, Oberösterreich, Österreich"
+  },
+  "at::4621 schnarrndorf": {
+    "lat": 48.1208763,
+    "lon": 14.1152858,
+    "display_name": "Schnarrndorf, Sipbachzell, Bezirk Wels-Land, Oberösterreich, 4621, Österreich"
+  },
+  "at::4623 gunskirchen, rotaxstraße 3": {
+    "lat": 48.1332475,
+    "lon": 13.9412426,
+    "display_name": "4623 Gunskirchen, 3, Raiffeisenplatz, Ströblberg, Gunskirchen, Bezirk Wels-Land, Oberösterreich, 4623, Österreich"
+  },
+  "at::4632 pichl bei wels": {
+    "lat": 48.1885988,
+    "lon": 13.8987108,
+    "display_name": "4632, Pichl bei Wels, Bezirk Wels-Land, Oberösterreich, Österreich"
+  },
+  "at::4641 steinhaus": {
+    "lat": 48.1208915,
+    "lon": 14.0155777,
+    "display_name": "4641, Steinhaus, Bezirk Wels-Land, Oberösterreich, Österreich"
+  },
+  "at::4644 scharnstein": {
+    "lat": 47.9012881,
+    "lon": 13.9514686,
+    "display_name": "4644, Scharnstein, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4655 vorchdorf": {
+    "lat": 47.9981854,
+    "lon": 13.931956,
+    "display_name": "4655, Vorchdorf, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4661 roitham am traunfall": {
+    "lat": 48.0250864,
+    "lon": 13.8327939,
+    "display_name": "4661, Roitham am Traunfall, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4663 laakirchen": {
+    "lat": 47.9833982,
+    "lon": 13.8299714,
+    "display_name": "4663, Laakirchen, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4681 mühllehen": {
+    "lat": 48.0352251,
+    "lon": 15.3422948,
+    "display_name": "Mühllehen, Katastralgemeinde Fischbach, St. Gotthard, Texingtal, Bezirk Melk, Niederösterreich, Österreich"
+  },
+  "at::4694 ohlsdorf": {
+    "lat": 47.9614695,
+    "lon": 13.7927966,
+    "display_name": "4694, Ohlsdorf, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4715 taufkirchen an der trattnach": {
+    "lat": 48.2499981,
+    "lon": 13.7472732,
+    "display_name": "4715, Taufkirchen an der Trattnach, Bezirk Grieskirchen, Oberösterreich, Österreich"
+  },
+  "at::4723 natternbach": {
+    "lat": 48.4040457,
+    "lon": 13.7368471,
+    "display_name": "4723, Natternbach, Bezirk Grieskirchen, Oberösterreich, Österreich"
+  },
+  "at::4730 waizenkirchen": {
+    "lat": 48.3316686,
+    "lon": 13.8555906,
+    "display_name": "4730, Waizenkirchen, Bezirk Grieskirchen, Oberösterreich, Österreich"
+  },
+  "at::4731 prambachkirchen": {
+    "lat": 48.3130485,
+    "lon": 13.9128128,
+    "display_name": "4731, Prambachkirchen, Bezirk Eferding, Oberösterreich, Österreich"
+  },
+  "at::4780 schärding innere stadt": null,
+  "at::4780 schärding innere stadt, xx": null,
+  "at::4782 sankt florian am inn": {
+    "lat": 48.4338308,
+    "lon": 13.4636031,
+    "display_name": "4782, St. Florian am Inn, Bezirk Schärding, Oberösterreich, Österreich"
+  },
+  "at::4792 münzkirchen": {
+    "lat": 48.4823618,
+    "lon": 13.5697922,
+    "display_name": "4792, Münzkirchen, Bezirk Schärding, Oberösterreich, Österreich"
+  },
+  "at::4800 attnang, heizhausgasse 21": {
+    "lat": 48.0124115,
+    "lon": 13.7201701,
+    "display_name": "4800, Attnang-Puchheim, Bezirk Vöcklabruck, Oberösterreich, Österreich"
+  },
+  "at::4800 attnang, xx": {
+    "lat": 48.0124115,
+    "lon": 13.7201701,
+    "display_name": "4800, Attnang-Puchheim, Bezirk Vöcklabruck, Oberösterreich, Österreich"
+  },
+  "at::4802 ebensee, webereistr. 6": {
+    "lat": 47.7994524,
+    "lon": 13.7658087,
+    "display_name": "4802, Katastralgemeinde Ebensee, Ebensee am Traunsee, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4802 ebensee, webereistrasse 6": {
+    "lat": 47.7994524,
+    "lon": 13.7658087,
+    "display_name": "4802, Katastralgemeinde Ebensee, Ebensee am Traunsee, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4802 ebensee, webereistraße 6": {
+    "lat": 47.7994524,
+    "lon": 13.7658087,
+    "display_name": "4802, Katastralgemeinde Ebensee, Ebensee am Traunsee, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4802 ebensee, xx": {
+    "lat": 47.7994524,
+    "lon": 13.7658087,
+    "display_name": "4802, Katastralgemeinde Ebensee, Ebensee am Traunsee, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4810 gmunden": {
+    "lat": 47.919918,
+    "lon": 13.7998055,
+    "display_name": "4810, Gmunden, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4813 altmünster, ackerweg 22": {
+    "lat": 47.8952885,
+    "lon": 13.7608152,
+    "display_name": "4813, Altmünster, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4820 bad ischl": {
+    "lat": 47.7116769,
+    "lon": 13.6121868,
+    "display_name": "4820, Bad Ischl, Bezirk Gmunden, Oberösterreich, Österreich"
+  },
+  "at::4840 vöcklabruck": {
+    "lat": 48.0074804,
+    "lon": 13.6549634,
+    "display_name": "4840, Vöcklabruck, Bezirk Vöcklabruck, Oberösterreich, Österreich"
+  },
+  "at::4844 regau": {
+    "lat": 47.9909154,
+    "lon": 13.6844034,
+    "display_name": "4844, Regau, Bezirk Vöcklabruck, Oberösterreich, Österreich"
+  },
+  "at::4851 gampern": {
+    "lat": 47.9952472,
+    "lon": 13.55433,
+    "display_name": "4851, Gampern, Bezirk Vöcklabruck, Oberösterreich, Österreich"
+  },
+  "at::4860 lenzing": {
+    "lat": 47.9707175,
+    "lon": 13.6128555,
+    "display_name": "4860, Lenzing an der Ager, Bezirk Vöcklabruck, Oberösterreich, Österreich"
+  },
+  "at::4861 schörfling": {
+    "lat": 47.9439509,
+    "lon": 13.6269578,
+    "display_name": "4861, Schörfling am Attersee, Bezirk Vöcklabruck, Oberösterreich, Österreich"
+  },
+  "at::4873 dorf": {
+    "lat": 46.9218,
+    "lon": 12.5208519,
+    "display_name": "Hopfgarten in Defereggen, Bezirk Lienz, Tirol, 9961, Österreich"
+  },
+  "at::4873 frankenburg am hausruck": {
+    "lat": 48.071184,
+    "lon": 13.4861348,
+    "display_name": "4873, Frankenburg am Hausruck, Bezirk Vöcklabruck, Oberösterreich, Österreich"
+  },
+  "at::4880 st. georgen im attergau": {
+    "lat": 47.936688,
+    "lon": 13.4862998,
+    "display_name": "4880, St. Georgen im Attergau, Bezirk Vöcklabruck, Oberösterreich, Österreich"
+  },
+  "at::4890 frankenmarkt": {
+    "lat": 47.9798172,
+    "lon": 13.4180359,
+    "display_name": "4890, Frankenmarkt, Bezirk Vöcklabruck, Oberösterreich, Österreich"
+  },
+  "at::4901 ottnang": {
+    "lat": 48.0983075,
+    "lon": 13.6327158,
+    "display_name": "4901, Ottnang am Hausruck, Bezirk Vöcklabruck, Oberösterreich, Österreich"
+  },
+  "at::4906 eberschwang": {
+    "lat": 48.1523778,
+    "lon": 13.5632384,
+    "display_name": "4906, Eberschwang, Bezirk Ried, Oberösterreich, Österreich"
+  },
+  "at::4910 ried im innkreis, xx": {
+    "lat": 48.203228,
+    "lon": 13.4871577,
+    "display_name": "4910, Ried im Innkreis, Bezirk Ried, Oberösterreich, Österreich"
+  },
+  "at::4912 neuhofen im innkreis": {
+    "lat": 48.1903305,
+    "lon": 13.473281,
+    "display_name": "4912, Neuhofen im Innkreis, Bezirk Ried, Oberösterreich, Österreich"
+  },
+  "at::4942 gurten": {
+    "lat": 48.237633,
+    "lon": 13.357716,
+    "display_name": "4942, Gurten, Bezirk Ried, Oberösterreich, Österreich"
+  },
+  "at::4961 mühlheim am inn": {
+    "lat": 48.2789082,
+    "lon": 13.219887,
+    "display_name": "4961, Mühlheim am Inn, Bezirk Ried, Oberösterreich, Österreich"
+  },
+  "at::5020 salzburg": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, bayerhamerstraße 14b": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, eberhard fugger strasse": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, eberhard fugger strasse 7": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, eberhard-fugger-straße": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, josef-mayburger-kai 114/13a": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, josef-mayburgerkai 114/13a": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, lastenstraße 22": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, rainerstraße 27": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, schillerstraße": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, schillerstraße 30": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, strubergasse 18": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, strubergasse 26": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5020 salzburg, xx": {
+    "lat": 47.8243682,
+    "lon": 13.0453162,
+    "display_name": "5020 Salzburg, 5, Reimsstraße, Itzling, Salzburg, 5020, Österreich"
+  },
+  "at::5061 elsbethen, xx": {
+    "lat": 47.764502,
+    "lon": 13.0896697,
+    "display_name": "5061, Elsbethen, Bezirk Salzburg-Umgebung, Salzburg, Österreich"
+  },
+  "at::5090 lofer": {
+    "lat": 47.5897922,
+    "lon": 12.6971351,
+    "display_name": "5090, Lofer, Bezirk Zell am See, Salzburg, Österreich"
+  },
+  "at::5134 schwand im innkreis": {
+    "lat": 48.1796245,
+    "lon": 12.9696644,
+    "display_name": "5134, Schwand im Innkreis, Bezirk Braunau, Oberösterreich, Österreich"
+  },
+  "at::5163 palting": {
+    "lat": 48.0157311,
+    "lon": 13.1284622,
+    "display_name": "Palting, Bezirk Braunau, Oberösterreich, 5163, Österreich"
+  },
+  "at::5204 straßwalchen": {
+    "lat": 47.9750927,
+    "lon": 13.2684108,
+    "display_name": "5204, Straßwalchen, Bezirk Salzburg-Umgebung, Salzburg, Österreich"
+  },
+  "at::5230 mattighofen, xx": {
+    "lat": 48.1042697,
+    "lon": 13.1475759,
+    "display_name": "5230, Mattighofen, Bezirk Braunau, Oberösterreich, Österreich"
+  },
+  "at::5231 schalchen": {
+    "lat": 48.113139,
+    "lon": 13.1600626,
+    "display_name": "5231, Schalchen, Helpfau-Uttendorf, Bezirk Braunau, Oberösterreich, Österreich"
+  },
+  "at::5251 höhnhart": {
+    "lat": 48.161755,
+    "lon": 13.2673727,
+    "display_name": "5251, Höhnhart, Bezirk Braunau, Oberösterreich, Österreich"
+  },
+  "at::5261 höfen": {
+    "lat": 47.4725572,
+    "lon": 10.6869975,
+    "display_name": "Höfen, Bezirk Reutte, Tirol, 6604, Österreich"
+  },
+  "at::5280 braunau am inn": {
+    "lat": 48.2534124,
+    "lon": 13.0480806,
+    "display_name": "5280, Braunau am Inn, Bezirk Braunau, Oberösterreich, Österreich"
+  },
+  "at::5280 braunau am inn, xx": {
+    "lat": 48.2534124,
+    "lon": 13.0480806,
+    "display_name": "5280, Braunau am Inn, Bezirk Braunau, Oberösterreich, Österreich"
+  },
+  "at::5310 mondsee": {
+    "lat": 47.8560014,
+    "lon": 13.3500658,
+    "display_name": "Mondsee, Bezirk Vöcklabruck, Oberösterreich, 5310, Österreich"
+  },
+  "at::5412 puch bei hallein": {
+    "lat": 47.7228145,
+    "lon": 13.0941339,
+    "display_name": "5412, Puch bei Hallein, Bezirk Hallein, Salzburg, Österreich"
+  },
+  "at::5431 kuchl": {
+    "lat": 47.6282746,
+    "lon": 13.150376,
+    "display_name": "5431, Kuchl, Bezirk Hallein, Salzburg, Österreich"
+  },
+  "at::5440 scheffau am tennengebirge": {
+    "lat": 47.5845479,
+    "lon": 13.2316396,
+    "display_name": "Scheffau am Tennengebirge, Bezirk Hallein, Salzburg, 5440, Österreich"
+  },
+  "at::5500 bischofshofen, pestalozzigasse 6": {
+    "lat": 47.4180014,
+    "lon": 13.219635,
+    "display_name": "5500 Bischofshofen, 18, Bahnhofgasse, Buchberg, Salzburg, 5500, Österreich"
+  },
+  "at::5500 bischofshofen, xx": {
+    "lat": 47.4180014,
+    "lon": 13.219635,
+    "display_name": "5500 Bischofshofen, 18, Bahnhofgasse, Buchberg, Salzburg, 5500, Österreich"
+  },
+  "at::5524 annaberg im lammertal": {
+    "lat": 47.5167,
+    "lon": 13.4333333,
+    "display_name": "Annaberg im Lammertal, Annaberg-Lungötz, Bezirk Hallein, Salzburg, 5524, Österreich"
+  },
+  "at::5550 radstadt": {
+    "lat": 47.3752876,
+    "lon": 13.491216,
+    "display_name": "Radstadt, Salzburg, 5550, Österreich"
+  },
+  "at::5581 sankt margarethen im lungau": {
+    "lat": 47.0816239,
+    "lon": 13.6964202,
+    "display_name": "5581, Sankt Margarethen im Lungau, Bezirk Tamsweg, Salzburg, Österreich"
+  },
+  "at::5585 unternberg": {
+    "lat": 47.1087926,
+    "lon": 13.737534,
+    "display_name": "5585, Unternberg, Bezirk Tamsweg, Salzburg, Österreich"
+  },
+  "at::5611 großarl": {
+    "lat": 47.2374042,
+    "lon": 13.2013974,
+    "display_name": "Großarl, Salzburg, 5611, Österreich"
+  },
+  "at::5760 saalfelden am steinernen meer, almerstraße 4": {
+    "lat": 47.4245193,
+    "lon": 12.8408034,
+    "display_name": "5760, Saalfelden am Steinernen Meer, Bezirk Zell am See, Salzburg, Österreich"
+  },
+  "at::5760 saalfelden am steinernen meer, xx": {
+    "lat": 47.4245193,
+    "lon": 12.8408034,
+    "display_name": "5760, Saalfelden am Steinernen Meer, Bezirk Zell am See, Salzburg, Österreich"
+  },
+  "at::6020 innsbruck": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, colingasse 12": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, fischerhäuslweg 2": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, ing.-etzel-straße 7": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, leopoldstraße 3/eg": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, marktgraben 10": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, meinhardstrasse 16": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, meinhardstraße 16": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, meinhardstraße 3": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, rennweg 7a": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, südtirolerplatz": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, tschamlerstraße": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6020 innsbruck, xx": {
+    "lat": 47.2229349,
+    "lon": 11.3877288,
+    "display_name": "6020, Mutters, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6068 mils, xx": {
+    "lat": 47.2879714,
+    "lon": 11.533,
+    "display_name": "6068 Mils, 4, Unterdorf, Mils, Bezirk Innsbruck-Land, Tirol, 6068, Österreich"
+  },
+  "at::6108 scharnitz": {
+    "lat": 47.3880188,
+    "lon": 11.366783,
+    "display_name": "6108, Scharnitz, Bezirk Innsbruck-Land, Tirol, Österreich"
+  },
+  "at::6130 schwaz": {
+    "lat": 47.3392536,
+    "lon": 11.732758,
+    "display_name": "6130, Schwaz, Bezirk Schwaz, Tirol, Österreich"
+  },
+  "at::6250 kundl": {
+    "lat": 47.4625262,
+    "lon": 11.9947155,
+    "display_name": "6250, Kundl, Bezirk Kufstein, Tirol, Österreich"
+  },
+  "at::6290 mayrhofen": {
+    "lat": 47.103896,
+    "lon": 11.899469,
+    "display_name": "6290, Mayrhofen, Bezirk Schwaz, Tirol, Österreich"
+  },
+  "at::6300 wörgl, angatherweg 5b": {
+    "lat": 47.4803327,
+    "lon": 12.0792807,
+    "display_name": "6300, Winkl, Wörgl, Bezirk Kufstein, Tirol, Österreich"
+  },
+  "at::6336 oberlangkampfen": {
+    "lat": 47.5241403,
+    "lon": 12.0880059,
+    "display_name": "Oberlangkampfen, Langkampfen, Bezirk Kufstein, Tirol, 6336, Österreich"
+  },
+  "at::6352 ellmau": {
+    "lat": 47.5136972,
+    "lon": 12.3024747,
+    "display_name": "Ellmau, Bezirk Kufstein, Tirol, Österreich"
+  },
+  "at::6353 going am wilden kaiser": {
+    "lat": 47.5298304,
+    "lon": 12.3413878,
+    "display_name": "6353, Going am Wilden Kaiser, Bezirk Kitzbühel, Tirol, Österreich"
+  },
+  "at::6391 fieberbrunn": {
+    "lat": 47.4512967,
+    "lon": 12.5540443,
+    "display_name": "6391, Fieberbrunn, Bezirk Kitzbühel, Tirol, Österreich"
+  },
+  "at::6393 st. ulrich am pillersee": {
+    "lat": 47.5275162,
+    "lon": 12.5741526,
+    "display_name": "6393 St. Ulrich am Pillersee, Dorfstraße, Altwieben, Sankt Ulrich am Pillersee, Bezirk Kitzbühel, Tirol, 6393, Österreich"
+  },
+  "at::6460 imst, xx": {
+    "lat": 47.2686184,
+    "lon": 10.6683787,
+    "display_name": "6460, Imst, Bezirk Imst, Tirol, Österreich"
+  },
+  "at::6731 sonntag": {
+    "lat": 47.2394888,
+    "lon": 9.9029823,
+    "display_name": "6731 Sonntag, 57, Boden, Sonntag, Bezirk Bludenz, Vorarlberg, 6731, Österreich"
+  },
+  "at::6800 feldkirch, widnau 4": {
+    "lat": 47.2546773,
+    "lon": 9.5800741,
+    "display_name": "6800, Nofels, Feldkirch, Bezirk Feldkirch, Vorarlberg, Österreich"
+  },
+  "at::6820 frastanz, obere lände 5b": {
+    "lat": 47.1900507,
+    "lon": 9.616904,
+    "display_name": "6820, Frastanz, Bezirk Feldkirch, Vorarlberg, Österreich"
+  },
+  "at::6822 satteins": {
+    "lat": 47.2276656,
+    "lon": 9.6671841,
+    "display_name": "Satteins, Bezirk Feldkirch, Vorarlberg, Österreich"
+  },
+  "at::6840 götzis": {
+    "lat": 47.3367988,
+    "lon": 9.661638,
+    "display_name": "6840, Götzis, Bezirk Feldkirch, Vorarlberg, Österreich"
+  },
+  "at::6840 götzis, am garnmarkt 12": {
+    "lat": 47.3367988,
+    "lon": 9.661638,
+    "display_name": "6840, Götzis, Bezirk Feldkirch, Vorarlberg, Österreich"
+  },
+  "at::6840 götzis, am garnmarkt 3": {
+    "lat": 47.3367988,
+    "lon": 9.661638,
+    "display_name": "6840, Götzis, Bezirk Feldkirch, Vorarlberg, Österreich"
+  },
+  "at::6850 dornbirn": {
+    "lat": 47.3504002,
+    "lon": 9.7428554,
+    "display_name": "6850 Dornbirn, 8, Ebnit, Dornbirn, Bezirk Dornbirn, Vorarlberg, 6850, Österreich"
+  },
+  "at::6850 dornbirn, bahnhofstraße 24": {
+    "lat": 47.3504002,
+    "lon": 9.7428554,
+    "display_name": "6850 Dornbirn, 8, Ebnit, Dornbirn, Bezirk Dornbirn, Vorarlberg, 6850, Österreich"
+  },
+  "at::6850 dornbirn, bildgasse 18/top3": {
+    "lat": 47.3504002,
+    "lon": 9.7428554,
+    "display_name": "6850 Dornbirn, 8, Ebnit, Dornbirn, Bezirk Dornbirn, Vorarlberg, 6850, Österreich"
+  },
+  "at::6850 dornbirn, fäbergasse 15/304": {
+    "lat": 47.3504002,
+    "lon": 9.7428554,
+    "display_name": "6850 Dornbirn, 8, Ebnit, Dornbirn, Bezirk Dornbirn, Vorarlberg, 6850, Österreich"
+  },
+  "at::6850 dornbirn, färbergasse 15e/304": {
+    "lat": 47.3504002,
+    "lon": 9.7428554,
+    "display_name": "6850 Dornbirn, 8, Ebnit, Dornbirn, Bezirk Dornbirn, Vorarlberg, 6850, Österreich"
+  },
+  "at::6850 dornbirn, schlachthausstrasse 7c": {
+    "lat": 47.3504002,
+    "lon": 9.7428554,
+    "display_name": "6850 Dornbirn, 8, Ebnit, Dornbirn, Bezirk Dornbirn, Vorarlberg, 6850, Österreich"
+  },
+  "at::6850 dornbirn, schlachthausstraße 11": {
+    "lat": 47.3504002,
+    "lon": 9.7428554,
+    "display_name": "6850 Dornbirn, 8, Ebnit, Dornbirn, Bezirk Dornbirn, Vorarlberg, 6850, Österreich"
+  },
+  "at::6858 schwarzach": {
+    "lat": 47.4450945,
+    "lon": 9.7630419,
+    "display_name": "Schwarzach, Bezirk Bregenz, Vorarlberg, Österreich"
+  },
+  "at::6866 andelsbuch": {
+    "lat": 47.4037473,
+    "lon": 9.9020495,
+    "display_name": "6866, Andelsbuch, Bezirk Bregenz, Vorarlberg, Österreich"
+  },
+  "at::6870 bezau": {
+    "lat": 47.3645859,
+    "lon": 10.0345728,
+    "display_name": "Bezau, Bezirk Bregenz, Vorarlberg, Österreich"
+  },
+  "at::6890 lustenau": {
+    "lat": 47.4266327,
+    "lon": 9.6715842,
+    "display_name": "6890, Lustenau, Bezirk Dornbirn, Vorarlberg, Österreich"
+  },
+  "at::6900 bregenz, römerstraße 15": {
+    "lat": 47.5067821,
+    "lon": 9.7357009,
+    "display_name": "6900, Bregenz, Bezirk Bregenz, Vorarlberg, Österreich"
+  },
+  "at::6900 bregenz, römerstraße 18a/st. anna straße 1": {
+    "lat": 47.5067821,
+    "lon": 9.7357009,
+    "display_name": "6900, Bregenz, Bezirk Bregenz, Vorarlberg, Österreich"
+  },
+  "at::6922 wolfurt, xx": {
+    "lat": 47.4649023,
+    "lon": 9.7491011,
+    "display_name": "6922, Wolfurt, Bezirk Bregenz, Vorarlberg, Österreich"
+  },
+  "at::6971 hard": {
+    "lat": 47.489391,
+    "lon": 9.6916539,
+    "display_name": "Hard, Bezirk Bregenz, Vorarlberg, Österreich"
+  },
+  "at::7000 eisenstadt": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, domplatz 21": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, esterhazystrasse 20": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, esterhazystraße 22 / 4. og": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, esterhazystraße 22/4": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, marktstraße 2": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, pfarrgasse 10": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, pfarrgasse 28/1/3": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, robert graf-platz 1": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, wienerstraße 7": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, wr. str. 7": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, wechselnde orte": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7000 eisenstadt, xxx": {
+    "lat": 47.8452609,
+    "lon": 16.5332302,
+    "display_name": "7000, Katastralgemeinde Eisenstadt, Eisenstadt, Burgenland, Österreich"
+  },
+  "at::7011 siegendorf / cindrof": {
+    "lat": 47.7754365,
+    "lon": 16.5688061,
+    "display_name": "7011, Siegendorf/Cindrof, Bezirk Eisenstadt-Umgebung, Burgenland, Österreich"
+  },
+  "at::7023 pöttelsdorf": {
+    "lat": 47.7527394,
+    "lon": 16.4365938,
+    "display_name": "Pöttelsdorf, Bezirk Mattersburg, Burgenland, Österreich"
+  },
+  "at::7041 wulkaprodersdorf / vulkaprodrštof": {
+    "lat": 47.7971864,
+    "lon": 16.4918065,
+    "display_name": "7041, Wulkaprodersdorf/Vulkaprodrštof, Bezirk Eisenstadt-Umgebung, Burgenland, Österreich"
+  },
+  "at::7063 oggau am neusiedler see": {
+    "lat": 47.8342355,
+    "lon": 16.6669787,
+    "display_name": "7063, Oggau am Neusiedler See, Bezirk Eisenstadt-Umgebung, Burgenland, Österreich"
+  },
+  "at::7072 mörbisch am see": {
+    "lat": 47.7530589,
+    "lon": 16.6655271,
+    "display_name": "7072, Mörbisch am See, Bezirk Eisenstadt-Umgebung, Burgenland, Österreich"
+  },
+  "at::7100 neusiedl am see": {
+    "lat": 47.917702,
+    "lon": 16.8374825,
+    "display_name": "7100, Neusiedl am See, Bezirk Neusiedl am See, Burgenland, Österreich"
+  },
+  "at::7100 neusiedl am see, ludwig boltzmannstraße 2": {
+    "lat": 47.917702,
+    "lon": 16.8374825,
+    "display_name": "7100, Neusiedl am See, Bezirk Neusiedl am See, Burgenland, Österreich"
+  },
+  "at::7100 neusiedl am see, ludwig-boltzmann-straße 2": {
+    "lat": 47.917702,
+    "lon": 16.8374825,
+    "display_name": "7100, Neusiedl am See, Bezirk Neusiedl am See, Burgenland, Österreich"
+  },
+  "at::7142 illmitz": {
+    "lat": 47.761635,
+    "lon": 16.8018232,
+    "display_name": "7142, Illmitz, Bezirk Neusiedl am See, Burgenland, Österreich"
+  },
+  "at::7210 mattersburg, wr. str. 1/1a": {
+    "lat": 47.7209668,
+    "lon": 16.384173,
+    "display_name": "7210, Katastralgemeinde Mattersburg, Mattersburg, Bezirk Mattersburg, Burgenland, Österreich"
+  },
+  "at::7221 marz": {
+    "lat": 47.717302,
+    "lon": 16.4140796,
+    "display_name": "7221, Marz, Bezirk Mattersburg, Burgenland, Österreich"
+  },
+  "at::7343 neutal, hans nießl-platz 1": {
+    "lat": 47.5456753,
+    "lon": 16.4482395,
+    "display_name": "7343, Neutal, Bezirk Oberpullendorf, Burgenland, Österreich"
+  },
+  "at::7400 oberwart / felsöör, 86 grazer straße": {
+    "lat": 47.30274,
+    "lon": 16.1962584,
+    "display_name": "7400, Katastralgemeinde Oberwart, Oberwart/Felsőőr, Bezirk Oberwart, Burgenland, Österreich"
+  },
+  "at::7400 oberwart / felsöör, grazer straße 86": {
+    "lat": 47.30274,
+    "lon": 16.1962584,
+    "display_name": "7400, Katastralgemeinde Oberwart, Oberwart/Felsőőr, Bezirk Oberwart, Burgenland, Österreich"
+  },
+  "at::7400 oberwart / felsöör, raimundgasse 36": {
+    "lat": 47.30274,
+    "lon": 16.1962584,
+    "display_name": "7400, Katastralgemeinde Oberwart, Oberwart/Felsőőr, Bezirk Oberwart, Burgenland, Österreich"
+  },
+  "at::7423 pinkafeld": {
+    "lat": 47.3763921,
+    "lon": 16.094295,
+    "display_name": "7423, Katastralgemeinde Pinkafeld, Pinkafeld Nord, Pinkafeld, Bezirk Oberwart, Burgenland, Österreich"
+  },
+  "at::7501 siget in der wart / örisziget, 1. gewerbestraße 4": {
+    "lat": 47.2616436,
+    "lon": 16.2782953,
+    "display_name": "Siget in der Wart/Őrisziget, Rotenturm an der Pinka, Bezirk Oberwart, Burgenland, 7501, Österreich"
+  },
+  "at::7503 großpetersdorf": {
+    "lat": 47.2396295,
+    "lon": 16.3207266,
+    "display_name": "7503, Katastralgemeinde Großpetersdorf, Großpetersdorf, Bezirk Oberwart, Burgenland, Österreich"
+  },
+  "at::7503 großpetersdorf, fabriksgasse 3a": {
+    "lat": 47.2396295,
+    "lon": 16.3207266,
+    "display_name": "7503, Katastralgemeinde Großpetersdorf, Großpetersdorf, Bezirk Oberwart, Burgenland, Österreich"
+  },
+  "at::7531 kemeten": {
+    "lat": 47.2494183,
+    "lon": 16.1525568,
+    "display_name": "7531, Kemeten, Bezirk Oberwart, Burgenland, Österreich"
+  },
+  "at::7540 güssing, europaplatz 1": {
+    "lat": 47.0457105,
+    "lon": 16.3339634,
+    "display_name": "7540, Katastralgemeinde St. Nikolaus, Sankt Nikolaus, Güssing, Bezirk Güssing, Burgenland, Österreich"
+  },
+  "at::7540 güssing, europastraße 1": {
+    "lat": 47.0457105,
+    "lon": 16.3339634,
+    "display_name": "7540, Katastralgemeinde St. Nikolaus, Sankt Nikolaus, Güssing, Bezirk Güssing, Burgenland, Österreich"
+  },
+  "at::7540 güssing, wr. str. 60": {
+    "lat": 47.0457105,
+    "lon": 16.3339634,
+    "display_name": "7540, Katastralgemeinde St. Nikolaus, Sankt Nikolaus, Güssing, Bezirk Güssing, Burgenland, Österreich"
+  },
+  "at::7571 rudersdorf": {
+    "lat": 47.0539578,
+    "lon": 16.1288446,
+    "display_name": "7571, Katastralgemeinde Rudersdorf, Rudersdorf, Bezirk Jennersdorf, Burgenland, Österreich"
+  },
+  "at::7572 deutsch kaltenbrunn": {
+    "lat": 47.0938301,
+    "lon": 16.1229837,
+    "display_name": "7572 Deutsch Kaltenbrunn, 2, Panoramastraße, Kracherberg, Katastralgemeinde Deutsch Kaltenbrunn, Deutsch Kaltenbrunn, Bezirk Jennersdorf, Burgenland, 7572, Österreich"
+  },
+  "at::8010 graz": {
+    "lat": 47.0828999,
+    "lon": 15.4789207,
+    "display_name": "8010, Ries, Graz, Steiermark, Österreich"
+  },
+  "at::8010 graz,01.bez.:innere stadt": {
+    "lat": 47.0828999,
+    "lon": 15.4789207,
+    "display_name": "8010, Ries, Graz, Steiermark, Österreich"
+  },
+  "at::8010 graz,01.bez.:innere stadt, hauptplatz 16-17": {
+    "lat": 47.0828999,
+    "lon": 15.4789207,
+    "display_name": "8010, Ries, Graz, Steiermark, Österreich"
+  },
+  "at::8010 graz,01.bez.:innere stadt, neutorgasse 57": {
+    "lat": 47.0828999,
+    "lon": 15.4789207,
+    "display_name": "8010, Ries, Graz, Steiermark, Österreich"
+  },
+  "at::8010 graz,02.bez.:sankt leonhard, leonhardstraße 130": {
+    "lat": 47.0828999,
+    "lon": 15.4789207,
+    "display_name": "8010, Ries, Graz, Steiermark, Österreich"
+  },
+  "at::8010 graz,02.bez.:sankt leonhard, uhlandgasse 1": {
+    "lat": 47.0828999,
+    "lon": 15.4789207,
+    "display_name": "8010, Ries, Graz, Steiermark, Österreich"
+  },
+  "at::8010 graz,03.bez.:geidorf": {
+    "lat": 47.0828999,
+    "lon": 15.4789207,
+    "display_name": "8010, Ries, Graz, Steiermark, Österreich"
+  },
+  "at::8010 graz,03.bez.:geidorf, heinrichstraße 145": {
+    "lat": 47.0828999,
+    "lon": 15.4789207,
+    "display_name": "8010, Ries, Graz, Steiermark, Österreich"
+  },
+  "at::8010 graz,03.bez.:geidorf, körösistraße 17": {
+    "lat": 47.0828999,
+    "lon": 15.4789207,
+    "display_name": "8010, Ries, Graz, Steiermark, Österreich"
+  },
+  "at::8010 graz,06.bez.:jakomini, conrad-von-hötzendorf-straße 127": {
+    "lat": 47.0828999,
+    "lon": 15.4789207,
+    "display_name": "8010, Ries, Graz, Steiermark, Österreich"
+  },
+  "at::8010 graz,08.bez.:sankt peter": {
+    "lat": 47.0828999,
+    "lon": 15.4789207,
+    "display_name": "8010, Ries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,04.bez.:lend, arche noah 11": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,04.bez.:lend, dreihackengasse": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,04.bez.:lend, eggenberger allee 15": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,04.bez.:lend, keplerstraße 109": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,04.bez.:lend, lendplatz 35": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,04.bez.:lend, marienplatz 5": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,04.bez.:lend, marienplatz 5, 8020 graz": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,04.bez.:lend, waagner-biro-straße 108/108a": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,04.bez.:lend, wiener straße 58a": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,05.bez.:gries, belgiergasse 3": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,05.bez.:gries, dreihackengasse 2": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,05.bez.:gries, kärntnerstraße 25": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,14.bez.:eggenberg": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8020 graz,17.bez.:puntigam, herrgottwiesgasse 55": {
+    "lat": 47.0687152,
+    "lon": 15.4110456,
+    "display_name": "8020, Gries, Graz, Steiermark, Österreich"
+  },
+  "at::8041 graz,07.bez.:liebenau, liebenauer hauptstraße 2-6": {
+    "lat": 47.031265,
+    "lon": 15.4649965,
+    "display_name": "8041, Liebenau, Graz, Steiermark, Österreich"
+  },
+  "at::8051 graz,13.bez.:gösting, exerzierplatzstraße 33": {
+    "lat": 47.0909095,
+    "lon": 15.3693494,
+    "display_name": "8051, Gösting, Graz, Steiermark, Österreich"
+  },
+  "at::8053 graz,15.bez.:wetzelsdorf, alte poststraße 271": {
+    "lat": 47.0459829,
+    "lon": 15.4109794,
+    "display_name": "8053, Straßgang, Graz, Steiermark, Österreich"
+  },
+  "at::8054 graz,16.bez.:straßgang, kärntner straße 311": {
+    "lat": 47.019239,
+    "lon": 15.3821041,
+    "display_name": "8054, Seiersberg-Pirka, Bezirk Graz-Umgebung, Steiermark, Österreich"
+  },
+  "at::8055 graz,17.bez.:puntigam, paula-wallisch str.8": {
+    "lat": 47.0197946,
+    "lon": 15.4285474,
+    "display_name": "8055, Puntigam, Seiersberg-Pirka, Bezirk Graz-Umgebung, Steiermark, Österreich"
+  },
+  "at::8061 sankt radegund bei graz": {
+    "lat": 47.1792741,
+    "lon": 15.4815381,
+    "display_name": "8061, Sankt Radegund bei Graz, Bezirk Graz-Umgebung, Steiermark, Österreich"
+  },
+  "at::8074 grambach": {
+    "lat": 47.0228018,
+    "lon": 15.5027963,
+    "display_name": "8074, Raaba-Grambach, Bezirk Graz-Umgebung, Steiermark, Österreich"
+  },
+  "at::8076 vasoldsberg": {
+    "lat": 47.0236533,
+    "lon": 15.5626573,
+    "display_name": "8076, Vasoldsberg, Bezirk Graz-Umgebung, Steiermark, Österreich"
+  },
+  "at::8121 deutschfeistritz": {
+    "lat": 47.1966491,
+    "lon": 15.3359775,
+    "display_name": "8121 Deutschfeistritz, 344, Grazer Straße, Katastralgemeinde Deutschfeistritz, Kleinstübing, Deutschfeistritz, Bezirk Graz-Umgebung, Steiermark, 8121, Österreich"
+  },
+  "at::8130 frohnleiten": {
+    "lat": 47.2876377,
+    "lon": 15.2997918,
+    "display_name": "8130, Frohnleiten, Bezirk Graz-Umgebung, Steiermark, Österreich"
+  },
+  "at::8160 weiz": {
+    "lat": 47.2322425,
+    "lon": 15.6251647,
+    "display_name": "8160, Thannhausen, Bezirk Weiz, Steiermark, Österreich"
+  },
+  "at::8160 weiz, teichstraße": {
+    "lat": 47.2322425,
+    "lon": 15.6251647,
+    "display_name": "8160, Thannhausen, Bezirk Weiz, Steiermark, Österreich"
+  },
+  "at::8162 passail": {
+    "lat": 47.276556,
+    "lon": 15.5104388,
+    "display_name": "8162, Passail, Bezirk Weiz, Steiermark, Österreich"
+  },
+  "at::8181 sankt ruprecht an der raab": {
+    "lat": 47.1614446,
+    "lon": 15.6589081,
+    "display_name": "8181, Sankt Ruprecht an der Raab, Bezirk Weiz, Steiermark, Österreich"
+  },
+  "at::8200 gleisdorf": {
+    "lat": 47.0999778,
+    "lon": 15.7085241,
+    "display_name": "8200, Katastralgemeinde Gleisdorf, Gleisdorf, Bezirk Weiz, Steiermark, Österreich"
+  },
+  "at::8200 gleisdorf, business park 6": {
+    "lat": 47.0999778,
+    "lon": 15.7085241,
+    "display_name": "8200, Katastralgemeinde Gleisdorf, Gleisdorf, Bezirk Weiz, Steiermark, Österreich"
+  },
+  "at::8200 gleisdorf, mühlgasse 126 - 128": {
+    "lat": 47.0999778,
+    "lon": 15.7085241,
+    "display_name": "8200, Katastralgemeinde Gleisdorf, Gleisdorf, Bezirk Weiz, Steiermark, Österreich"
+  },
+  "at::8212 pischelsdorf in der steiermark": {
+    "lat": 47.1730085,
+    "lon": 15.8057833,
+    "display_name": "Pischelsdorf, Pischelsdorf am Kulm, Bezirk Weiz, Steiermark, 8212, Österreich"
+  },
+  "at::8225 pöllau": {
+    "lat": 47.3050919,
+    "lon": 15.8354423,
+    "display_name": "8225, Pöllau, Bezirk Hartberg-Fürstenfeld, Steiermark, Österreich"
+  },
+  "at::8230 greinbach": {
+    "lat": 47.3113284,
+    "lon": 15.9643405,
+    "display_name": "Greinbach, Bezirk Hartberg-Fürstenfeld, Steiermark, 8230, Österreich"
+  },
+  "at::8230 hartberg": {
+    "lat": 47.286272,
+    "lon": 15.9713852,
+    "display_name": "8230, Hartberg, Bezirk Hartberg-Fürstenfeld, Steiermark, Österreich"
+  },
+  "at::8230 hartberg, ressavarstraße 64": {
+    "lat": 47.286272,
+    "lon": 15.9713852,
+    "display_name": "8230, Hartberg, Bezirk Hartberg-Fürstenfeld, Steiermark, Österreich"
+  },
+  "at::8230 hartberg, xx": {
+    "lat": 47.286272,
+    "lon": 15.9713852,
+    "display_name": "8230, Hartberg, Bezirk Hartberg-Fürstenfeld, Steiermark, Österreich"
+  },
+  "at::8232 grafendorf bei hartberg": {
+    "lat": 47.3389754,
+    "lon": 15.9807409,
+    "display_name": "8232, Grafendorf bei Hartberg, Bezirk Hartberg-Fürstenfeld, Steiermark, Österreich"
+  },
+  "at::8240 friedberg": {
+    "lat": 47.4315428,
+    "lon": 16.0522402,
+    "display_name": "8240, Friedberg, Bezirk Hartberg-Fürstenfeld, Steiermark, Österreich"
+  },
+  "at::8241 dechantskirchen": {
+    "lat": 47.4149431,
+    "lon": 16.0119149,
+    "display_name": "8241, Dechantskirchen, Bezirk Hartberg-Fürstenfeld, Steiermark, Österreich"
+  },
+  "at::8243 pinggau": {
+    "lat": 47.4496495,
+    "lon": 16.0720663,
+    "display_name": "8243, Dirnegg, Pinggau, Bezirk Hartberg-Fürstenfeld, Steiermark, Österreich"
+  },
+  "at::8254 sommersgut": {
+    "lat": 47.4220853,
+    "lon": 15.8041091,
+    "display_name": "Sommersgut, Wenigzell, Bezirk Hartberg-Fürstenfeld, Steiermark, 8254, Österreich"
+  },
+  "at::8265 großsteinbach, großsteinbach 89": {
+    "lat": 47.1613512,
+    "lon": 15.8911108,
+    "display_name": "8265, Großsteinbach, Bezirk Hartberg-Fürstenfeld, Steiermark, Österreich"
+  },
+  "at::8280 fürstenfeld": {
+    "lat": 47.0476591,
+    "lon": 16.0730867,
+    "display_name": "8280, Fürstenfeld, Bezirk Hartberg-Fürstenfeld, Steiermark, Österreich"
+  },
+  "at::8292 neudau": {
+    "lat": 47.1807232,
+    "lon": 16.0984164,
+    "display_name": "8292, Neudau, Bezirk Hartberg-Fürstenfeld, Steiermark, Österreich"
+  },
+  "at::8330 feldbach, xx": {
+    "lat": 46.9526044,
+    "lon": 15.8859676,
+    "display_name": "8330, Feldbach, Bezirk Südoststeiermark, Steiermark, Österreich"
+  },
+  "at::8403 lebring": {
+    "lat": 46.8488547,
+    "lon": 15.5215077,
+    "display_name": "8403, Lebring-Sankt Margarethen, Bezirk Leibnitz, Steiermark, Österreich"
+  },
+  "at::8421 glojach": {
+    "lat": 46.873008,
+    "lon": 15.6830322,
+    "display_name": "Glojach, Sankt Stefan im Rosental, Bezirk Südoststeiermark, Steiermark, 8421, Österreich"
+  },
+  "at::8422 sankt nikolai ob draßling": {
+    "lat": 46.815737,
+    "lon": 15.6613995,
+    "display_name": "Sankt Nikolai ob Draßling, Sankt Veit in der Südsteiermark, Bezirk Leibnitz, Steiermark, 8422, Österreich"
+  },
+  "at::8430 leibnitz, xx": {
+    "lat": 46.7909221,
+    "lon": 15.5390664,
+    "display_name": "8430, Leibnitz, Bezirk Leibnitz, Steiermark, Österreich"
+  },
+  "at::8480 mureck": {
+    "lat": 46.7158149,
+    "lon": 15.7711718,
+    "display_name": "8480, Mureck, Bezirk Südoststeiermark, Steiermark, Österreich"
+  },
+  "at::8502 lannach": {
+    "lat": 46.944617,
+    "lon": 15.325199,
+    "display_name": "8502, Katastralgemeinde Lannach, Lannach, Bezirk Deutschlandsberg, Steiermark, Österreich"
+  },
+  "at::8504 mettersdorf": {
+    "lat": 46.8660103,
+    "lon": 15.3372031,
+    "display_name": "Mettersdorf, Stainz, Bezirk Deutschlandsberg, Steiermark, 8510, Österreich"
+  },
+  "at::8510 stainz": {
+    "lat": 46.8943728,
+    "lon": 15.2640344,
+    "display_name": "8510 Stainz, Grazer Straße, Katastralgemeinde Stainz, Stallhof, Stainz, Bezirk Deutschlandsberg, Steiermark, 8510, Österreich"
+  },
+  "at::8522 groß sankt florian": {
+    "lat": 46.8217482,
+    "lon": 15.3153146,
+    "display_name": "8522, Katastralgemeinde Groß St. Florian, Lebing, Groß Sankt Florian, Bezirk Deutschlandsberg, Steiermark, Österreich"
+  },
+  "at::8523 frauental an der laßnitz": {
+    "lat": 46.8243888,
+    "lon": 15.2577289,
+    "display_name": "8523, Katastralgemeinde Freidorf an der Laßnitz, Freidorf an der Laßnitz, Frauental an der Laßnitz, Bezirk Deutschlandsberg, Steiermark, Österreich"
+  },
+  "at::8530 deutschlandsberg": {
+    "lat": 46.816212,
+    "lon": 15.2153369,
+    "display_name": "8530 Deutschlandsberg, 5, Fabrikstraße, Katastralgemeinde Deutschlandsberg, Deutschlandsberg, Bezirk Deutschlandsberg, Steiermark, 8530, Österreich"
+  },
+  "at::8530 deutschlandsberg, rathausgasse 4": {
+    "lat": 46.816212,
+    "lon": 15.2153369,
+    "display_name": "8530 Deutschlandsberg, 5, Fabrikstraße, Katastralgemeinde Deutschlandsberg, Deutschlandsberg, Bezirk Deutschlandsberg, Steiermark, 8530, Österreich"
+  },
+  "at::8530 deutschlandsberg, xx": {
+    "lat": 46.816212,
+    "lon": 15.2153369,
+    "display_name": "8530 Deutschlandsberg, 5, Fabrikstraße, Katastralgemeinde Deutschlandsberg, Deutschlandsberg, Bezirk Deutschlandsberg, Steiermark, 8530, Österreich"
+  },
+  "at::8541 schwanberg": {
+    "lat": 46.763955,
+    "lon": 15.199411,
+    "display_name": "8541, Katastralgemeinde Mainsdorf, Bad Schwanberg, Bezirk Deutschlandsberg, Steiermark, Österreich"
+  },
+  "at::8551 wernersdorf": {
+    "lat": 46.7155673,
+    "lon": 15.2067752,
+    "display_name": "Wernersdorf, Wies, Bezirk Deutschlandsberg, Steiermark, 8551, Österreich"
+  },
+  "at::8551 wies": {
+    "lat": 46.7231242,
+    "lon": 15.2363312,
+    "display_name": "8551, Katastralgemeinde Etzendorf, Steyeregg, Wies, Bezirk Deutschlandsberg, Steiermark, Österreich"
+  },
+  "at::8552 eibiswald": {
+    "lat": 46.685447,
+    "lon": 15.2434859,
+    "display_name": "8552, Katastralgemeinde Eibiswald, Hörmsdorf, Eibiswald, Bezirk Deutschlandsberg, Steiermark, Österreich"
+  },
+  "at::8564 krottendorf-gaisfeld": {
+    "lat": 47.0157345,
+    "lon": 15.2086937,
+    "display_name": "8564, Krottendorf-Gaisfeld, Bezirk Voitsberg, Steiermark, Österreich"
+  },
+  "at::8570 voitsberg": {
+    "lat": 47.0465217,
+    "lon": 15.1593192,
+    "display_name": "8570, Voitsberg, Bezirk Voitsberg, Steiermark, Österreich"
+  },
+  "at::8580 köflach": {
+    "lat": 47.0406236,
+    "lon": 15.0958687,
+    "display_name": "8580, Köflach, Bezirk Voitsberg, Steiermark, Österreich"
+  },
+  "at::8580 köflach, xx": {
+    "lat": 47.0406236,
+    "lon": 15.0958687,
+    "display_name": "8580, Köflach, Bezirk Voitsberg, Steiermark, Österreich"
+  },
+  "at::8600 bruck an der mur": {
+    "lat": 47.4109366,
+    "lon": 15.2542721,
+    "display_name": "8600, Katastralgemeinde Bruck an der Mur, Bruck an der Mur, Bezirk Bruck-Mürzzuschlag, Steiermark, Österreich"
+  },
+  "at::8605 kapfenberg": {
+    "lat": 47.4585595,
+    "lon": 15.304577,
+    "display_name": "8605, Katastralgemeinde Hafendorf, Hafendorf, Kapfenberg, Bezirk Bruck-Mürzzuschlag, Steiermark, Österreich"
+  },
+  "at::8605 kapfenberg, xx": {
+    "lat": 47.4585595,
+    "lon": 15.304577,
+    "display_name": "8605, Katastralgemeinde Hafendorf, Hafendorf, Kapfenberg, Bezirk Bruck-Mürzzuschlag, Steiermark, Österreich"
+  },
+  "at::8616 gasen": {
+    "lat": 47.3842869,
+    "lon": 15.5757474,
+    "display_name": "8616, Gasen, Bezirk Weiz, Steiermark, Österreich"
+  },
+  "at::8624 au bei turnau": {
+    "lat": 47.5715748,
+    "lon": 15.3145494,
+    "display_name": "Au bei Turnau, Turnau, Bezirk Bruck-Mürzzuschlag, Steiermark, 8625, Österreich"
+  },
+  "at::8624 graßnitz": {
+    "lat": 47.5505392,
+    "lon": 15.3027725,
+    "display_name": "8624, Katastralgemeinde Grassnitz, Aflenz, Bezirk Bruck-Mürzzuschlag, Steiermark, Österreich"
+  },
+  "at::8642 sankt lorenzen im mürztal": {
+    "lat": 47.4805076,
+    "lon": 15.3615527,
+    "display_name": "8642, Katastralgemeinde St. Lorenzen im Mürztal, Sankt Lorenzen im Mürztal, Bezirk Bruck-Mürzzuschlag, Steiermark, Österreich"
+  },
+  "at::8662 mitterdorf im mürztal": {
+    "lat": 47.5375159,
+    "lon": 15.5119953,
+    "display_name": "8662, Katastralgemeinde Mitterdorf, St. Barbara im Mürztal, Bezirk Bruck-Mürzzuschlag, Steiermark, Österreich"
+  },
+  "at::8673 ratten": {
+    "lat": 47.483903,
+    "lon": 15.7209538,
+    "display_name": "Ratten, Bezirk Weiz, Steiermark, 8673, Österreich"
+  },
+  "at::8674 rettenegg": {
+    "lat": 47.5239404,
+    "lon": 15.7770904,
+    "display_name": "8674 Rettenegg, Ortsdurchfahrtstraße, Sticklberg, Rettenegg, Bezirk Weiz, Steiermark, 8674, Österreich"
+  },
+  "at::8680 mürzzuschlag, xx": {
+    "lat": 47.6043925,
+    "lon": 15.6777172,
+    "display_name": "8680, Katastralgemeinde Mürzzuschlag, Mürzzuschlag, Bezirk Bruck-Mürzzuschlag, Steiermark, Österreich"
+  },
+  "at::8682 hönigsberg": {
+    "lat": 47.5820132,
+    "lon": 15.653007,
+    "display_name": "Hönigsberg, Katastralgemeinde Mürzzuschlag, Mürzzuschlag, Bezirk Bruck-Mürzzuschlag, Steiermark, 8680, Österreich"
+  },
+  "at::8700 leoben": {
+    "lat": 47.3523105,
+    "lon": 15.1248797,
+    "display_name": "8700, Leoben, Bezirk Leoben, Steiermark, Österreich"
+  },
+  "at::8720 apfelberg, stubalpenstraße 42": {
+    "lat": 47.1870795,
+    "lon": 14.8231639,
+    "display_name": "Apfelberg, Knittelfeld, Bezirk Murtal, Steiermark, 8720, Österreich"
+  },
+  "at::8720 knittelfeld, xx": {
+    "lat": 47.2136966,
+    "lon": 14.8336629,
+    "display_name": "8720, Knittelfeld, Bezirk Murtal, Steiermark, Österreich"
+  },
+  "at::8723 kobenz": {
+    "lat": 47.238904,
+    "lon": 14.8329178,
+    "display_name": "8723, Kobenz, Bezirk Murtal, Steiermark, Österreich"
+  },
+  "at::8724 spielberg": {
+    "lat": 47.2098456,
+    "lon": 14.7933693,
+    "display_name": "8724, Spielberg, Bezirk Murtal, Steiermark, Österreich"
+  },
+  "at::8740 zeltweg": {
+    "lat": 47.1905212,
+    "lon": 14.7504544,
+    "display_name": "8740, Zeltweg, Bezirk Murtal, Steiermark, Österreich"
+  },
+  "at::8741 eppenstein": {
+    "lat": 47.1319251,
+    "lon": 14.737625,
+    "display_name": "Eppenstein, Weißkirchen in Steiermark, Bezirk Murtal, Steiermark, 8741, Österreich"
+  },
+  "at::8750 judenburg": {
+    "lat": 47.1695324,
+    "lon": 14.6594555,
+    "display_name": "8750, Judenburg, Bezirk Murtal, Steiermark, Österreich"
+  },
+  "at::8753 fohnsdorf, hauptstrasse 69": {
+    "lat": 47.2027488,
+    "lon": 14.6779382,
+    "display_name": "8753, Fohnsdorf, Bezirk Murtal, Steiermark, Österreich"
+  },
+  "at::8755 sankt peter ob judenburg": {
+    "lat": 47.1862661,
+    "lon": 14.5879462,
+    "display_name": "Sankt Peter ob Judenburg, St. Peter ob Judenburg, Bezirk Murtal, Steiermark, 8755, Österreich"
+  },
+  "at::8772 traboch": {
+    "lat": 47.3778995,
+    "lon": 14.972692,
+    "display_name": "8772, Traboch, Bezirk Leoben, Steiermark, Österreich"
+  },
+  "at::8786 rottenmann": {
+    "lat": 47.5191354,
+    "lon": 14.3642188,
+    "display_name": "8786, Rottenmann, Bezirk Liezen, Steiermark, Österreich"
+  },
+  "at::8793 trofaiach": {
+    "lat": 47.4249398,
+    "lon": 15.0005029,
+    "display_name": "8793, Trofaiach, Bezirk Leoben, Steiermark, Österreich"
+  },
+  "at::8850 murau": {
+    "lat": 47.1066611,
+    "lon": 14.1785586,
+    "display_name": "8850, Murau, Bezirk Murau, Steiermark, Österreich"
+  },
+  "at::8940 döllach": {
+    "lat": 47.5477656,
+    "lon": 14.2077849,
+    "display_name": "Döllach, Lassing, Bezirk Liezen, Steiermark, 8903, Österreich"
+  },
+  "at::8940 liezen": {
+    "lat": 47.5688983,
+    "lon": 14.237199,
+    "display_name": "8940, Liezen, Bezirk Liezen, Steiermark, Österreich"
+  },
+  "at::8940 liezen, xx": {
+    "lat": 47.5688983,
+    "lon": 14.237199,
+    "display_name": "8940, Liezen, Bezirk Liezen, Steiermark, Österreich"
+  },
+  "at::8962 gröbming": {
+    "lat": 47.44743,
+    "lon": 13.9047234,
+    "display_name": "8962, Gröbming, Politische Expositur Gröbming, Bezirk Liezen, Steiermark, Österreich"
+  },
+  "at::9020 klagenfurt am wörthersee": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,01.bez.:innere stadt, adolf-kolping-gasse 4": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,01.bez.:innere stadt, bahnhofstraße 44": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,01.bez.:innere stadt, karfreitstrasse 8": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,01.bez.:innere stadt, karfreitstraße 8/2": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,01.bez.:innere stadt, kolpinggasse 18": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,01.bez.:innere stadt, lastenstraße 26": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,01.bez.:innere stadt, mießtaler straße 1": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,01.bez.:innere stadt, sandwirtgasse 2": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,01.bez.:innere stadt, xx": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,02.bez.:innere stadt": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,04.bez.:innere stadt, neckheimgasse 6": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,05.bez.:st.veiter vorstadt, feschnigstraße 78": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,05.bez.:st.veiter vorstadt, morogasse 20/1": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,06.bez.:völkermarkt.vorst., rudolfsbahngürtel 2": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,06.bez.:völkermarkt.vorst., siriusstraße 3": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,07.bez.:viktringer vorstadt, fromillerstraße 31/2": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,10.bez.:st. peter, rosenbergstraße 6": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,11.bez.:st. ruprecht": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,12.bez.:st. martin": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9020 klagenfurt,12.bez.:st. martin, neckheimgasse 6": {
+    "lat": 46.6333352,
+    "lon": 14.3253566,
+    "display_name": "9020, St. Peter, Klagenfurt am Wörthersee, Kärnten, Österreich"
+  },
+  "at::9062 moosburg": {
+    "lat": 46.6675163,
+    "lon": 14.1802269,
+    "display_name": "9062, Sankt Peter, Moosburg, Bezirk Klagenfurt-Land, Kärnten, Österreich"
+  },
+  "at::9072 ludmannsdorf": {
+    "lat": 46.5487827,
+    "lon": 14.1462769,
+    "display_name": "9072, Bach/Potok, Pugrad/Podgrad, Ludmannsdorf, Bezirk Klagenfurt-Land, Kärnten, Österreich"
+  },
+  "at::9100 völkermarkt, fmz umfahrungsstraße 6": {
+    "lat": 46.6615618,
+    "lon": 14.6389474,
+    "display_name": "9100, Völkermarkt, Bezirk Völkermarkt, Kärnten, Österreich"
+  },
+  "at::9100 völkermarkt, xx": {
+    "lat": 46.6615618,
+    "lon": 14.6389474,
+    "display_name": "9100, Völkermarkt, Bezirk Völkermarkt, Kärnten, Österreich"
+  },
+  "at::9125 kühnsdorf": {
+    "lat": 46.6195786,
+    "lon": 14.6345634,
+    "display_name": "9125 Kühnsdorf, 5, Mitte, Kühnsdorf, Eberndorf, Bezirk Völkermarkt, Kärnten, 9125, Österreich"
+  },
+  "at::9131 grafenstein": {
+    "lat": 46.6170473,
+    "lon": 14.4648749,
+    "display_name": "9131, Grafenstein, Bezirk Klagenfurt-Land, Kärnten, Österreich"
+  },
+  "at::9300 sankt veit an der glan": {
+    "lat": 46.7661769,
+    "lon": 14.359861,
+    "display_name": "9300, St. Veit an der Glan, Bezirk St. Veit an der Glan, Kärnten, Österreich"
+  },
+  "at::9300 st. veit an der glan": {
+    "lat": 46.7661769,
+    "lon": 14.359861,
+    "display_name": "9300, St. Veit an der Glan, Bezirk St. Veit an der Glan, Kärnten, Österreich"
+  },
+  "at::9300 st. veit an der glan, hauptplatz 27a": {
+    "lat": 46.7661769,
+    "lon": 14.359861,
+    "display_name": "9300, St. Veit an der Glan, Bezirk St. Veit an der Glan, Kärnten, Österreich"
+  },
+  "at::9314 launsdorf": {
+    "lat": 46.7683161,
+    "lon": 14.4517409,
+    "display_name": "Launsdorf, Sankt Georgen am Längsee, Bezirk St. Veit an der Glan, Kärnten, 9314, Österreich"
+  },
+  "at::9330 althofen": {
+    "lat": 46.87052,
+    "lon": 14.4659682,
+    "display_name": "9330, Althofen, Bezirk St. Veit an der Glan, Kärnten, Österreich"
+  },
+  "at::9400 wolfsberg, offnerplatzl 1": {
+    "lat": 46.8356951,
+    "lon": 14.8393612,
+    "display_name": "9400, Wolfsberg, Bezirk Wolfsberg, Kärnten, Österreich"
+  },
+  "at::9413 frantschach": {
+    "lat": 46.8649942,
+    "lon": 14.8907491,
+    "display_name": "9413, Frantschach-Sankt Gertraud, Bezirk Wolfsberg, Kärnten, Österreich"
+  },
+  "at::9431 kleinedling": {
+    "lat": 46.8035713,
+    "lon": 14.8244265,
+    "display_name": "Brau Union Österreich AG, 13, Am Industriepark, Kleinedling, St. Marein, Wolfsberg, Bezirk Wolfsberg, Kärnten, 9431, Österreich"
+  },
+  "at::9431 st. stefan": {
+    "lat": 46.5717443,
+    "lon": 14.7088963,
+    "display_name": "St. Stefan/Šteben, Globasnitz, Bezirk Völkermarkt, Kärnten, 9142, Österreich"
+  },
+  "at::9431 st. stefan, weiherhofstraße 1": {
+    "lat": 46.5717443,
+    "lon": 14.7088963,
+    "display_name": "St. Stefan/Šteben, Globasnitz, Bezirk Völkermarkt, Kärnten, 9142, Österreich"
+  },
+  "at::9433 st. andrä": {
+    "lat": 46.7654918,
+    "lon": 14.8198276,
+    "display_name": "9433, Sankt Andrä, Bezirk Wolfsberg, Kärnten, Österreich"
+  },
+  "at::9451 preitenegg": {
+    "lat": 46.9414142,
+    "lon": 14.9369907,
+    "display_name": "9451, Preitenegg, Bezirk Wolfsberg, Kärnten, Österreich"
+  },
+  "at::9463 reichenfels": {
+    "lat": 47.0047009,
+    "lon": 14.737563,
+    "display_name": "9463, Katastralgemeinde Weitenbach, Reichenfels, Bezirk Wolfsberg, Kärnten, Österreich"
+  },
+  "at::9472 ettendorf": {
+    "lat": 46.6716425,
+    "lon": 14.9485244,
+    "display_name": "9472 Ettendorf, 3, Ettendorf, Lavamünd, Bezirk Wolfsberg, Kärnten, 9472, Österreich"
+  },
+  "at::9500 untere fellach, mahrhöflweg 30": {
+    "lat": 46.6259557,
+    "lon": 13.8288231,
+    "display_name": "Untere Fellach, Villach, Kärnten, 9500, Österreich"
+  },
+  "at::9500 villach": {
+    "lat": 46.6214205,
+    "lon": 13.8279396,
+    "display_name": "9500, Villach, Kärnten, Österreich"
+  },
+  "at::9500 villach-innere stadt, klagenfurterstraße 38": {
+    "lat": 46.6129721,
+    "lon": 13.8575405,
+    "display_name": "9500, 52a, Ossiacher Zeile, Seebach-Wasenboden, Prossowitsch, Villach, Kärnten, 9500, Österreich"
+  },
+  "at::9500 villach-innere stadt, xx": {
+    "lat": 46.6129721,
+    "lon": 13.8575405,
+    "display_name": "9500, 52a, Ossiacher Zeile, Seebach-Wasenboden, Prossowitsch, Villach, Kärnten, 9500, Österreich"
+  },
+  "at::9500 villach-lind": {
+    "lat": 46.6129721,
+    "lon": 13.8575405,
+    "display_name": "9500, 52a, Ossiacher Zeile, Seebach-Wasenboden, Prossowitsch, Villach, Kärnten, 9500, Österreich"
+  },
+  "at::9524 st. magdalen": {
+    "lat": 46.6167,
+    "lon": 13.8833333,
+    "display_name": "St. Magdalen, Villach, Kärnten, 9524, Österreich"
+  },
+  "at::9524 villach": {
+    "lat": 46.6143238,
+    "lon": 13.9037598,
+    "display_name": "9524, Villach, Kärnten, Österreich"
+  },
+  "at::9545 radenthein, hauptstraße 4/2": {
+    "lat": 46.8034797,
+    "lon": 13.7088097,
+    "display_name": "9545, Radenthein, Bezirk Spittal an der Drau, Kärnten, Österreich"
+  },
+  "at::9560 feldkirchen in kärnten": {
+    "lat": 46.7244265,
+    "lon": 14.1026118,
+    "display_name": "9560, Feldkirchen in Kärnten, Bezirk Feldkirchen, Kärnten, Österreich"
+  },
+  "at::9560 feldkirchen in kärnten, xxx": {
+    "lat": 46.7244265,
+    "lon": 14.1026118,
+    "display_name": "9560, Feldkirchen in Kärnten, Bezirk Feldkirchen, Kärnten, Österreich"
+  },
+  "at::9580 st. niklas an der drau": {
+    "lat": 46.5960654,
+    "lon": 13.9405874,
+    "display_name": "Brandschutz Österreich - Brandschutzkonzepte & Beratung, 4, Ribnigstraße, Türkei, Bogenfeld, Villach, Kärnten, 9580, Österreich"
+  },
+  "at::9800 spittal an der drau, xxx": {
+    "lat": 46.7926394,
+    "lon": 13.5020825,
+    "display_name": "9800, Spittal an der Drau, Bezirk Spittal an der Drau, Kärnten, Österreich"
+  },
+  "at::9911 thal-wilfern": {
+    "lat": 46.7810623,
+    "lon": 12.6448784,
+    "display_name": "Thal-Wilfern, Oberthal, Thal, Assling, Bezirk Lienz, Tirol, 9911, Österreich"
+  },
+  "at::9971 matrei in osttirol": {
+    "lat": 47.0586193,
+    "lon": 12.5058422,
+    "display_name": "9971, Matrei in Osttirol, Bezirk Lienz, Tirol, Österreich"
   }
 }
