@@ -1164,6 +1164,14 @@ _PROPER_NOUN_STOPLIST = {
     "Fördermittel", "Foerderungen", "Förderungen", "Zuschuss", "Zuschüsse",
     "Bekommen", "Bekommt", "Erhalten", "Erhält", "Werden", "Wird", "Sind",
     "Hat", "Haben", "Diese", "Dieser", "Dieses", "Diesen",
+    # Domaen-Begriffe rund um die Foerdersystematik (sind keine Eigennamen!)
+    "Projekt", "Projekte", "Projekten", "Vorhaben",
+    "Anzahl", "Summe", "Betrag", "Beträge", "Betraege",
+    "Volumen", "Gesamtvolumen", "Foerderung", "Foerdervolumen",
+    "Fördervolumen", "Euro", "Tausend", "Million", "Millionen",
+    "Milliarde", "Milliarden", "Periode", "Foerderperiode", "Förderperiode",
+    "Liste", "Verzeichnis", "Verzeichnisse", "Daten", "Datensatz",
+    "Datensaetze", "Datensätze",
     # Begueunstigten-Typen (sind schon ueber _BENEFICIARY_TYPE_FILTERS abgedeckt)
     "Universität", "Universitaet", "Universitäten", "Universitaeten",
     "Uni", "Hochschule", "Hochschulen", "Fachhochschule", "Fachhochschulen",

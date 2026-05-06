@@ -229,6 +229,119 @@ def _load_cache():
         _cache = {}
 
 
+# ── Offline PLZ-Datenbank (DE/AT) ────────────────────────────────────────────
+# Quelle: GeoNames postal codes (CC-BY 4.0). Pro PLZ Hauptort + Koordinaten.
+_PLZ_DB: dict[str, dict[str, dict]] = {}
+
+
+def _load_plz_db() -> None:
+    if _PLZ_DB:
+        return
+    import os
+    base = Path(os.environ.get("PLZ_DB_DIR", "/app/data"))
+    for cc, fname in (("de", "plz_de.json"), ("at", "plz_at.json")):
+        path = base / fname
+        try:
+            if path.exists():
+                _PLZ_DB[cc] = json.loads(path.read_text(encoding="utf-8"))
+                log.info("PLZ-DB %s geladen: %d Eintraege", cc.upper(), len(_PLZ_DB[cc]))
+        except Exception as e:
+            log.warning("PLZ-DB %s nicht ladbar: %s", cc, e)
+            _PLZ_DB[cc] = {}
+
+
+def lookup_plz(plz: str, country_code: str | None = None) -> dict | None:
+    """Sucht PLZ in der offline GeoNames-DB. Gibt {ort, bundesland, lat, lon}
+    zurueck oder None.
+
+    Akzeptiert auch zusaetzliche Schreibweisen: "01067 Dresden" → 01067,
+    "1010" (AT, 4-stellig).
+    """
+    if not plz:
+        return None
+    _load_plz_db()
+    cc = (country_code or "DE").lower()
+    db = _PLZ_DB.get(cc, {})
+    plz_str = str(plz).strip()
+    if plz_str in db:
+        return db[plz_str]
+    # AT-PLZ haben fuehrende Null nicht — z. B. "1010" → key "1010"
+    plz_str_no_pad = plz_str.lstrip("0")
+    if plz_str_no_pad in db:
+        return db[plz_str_no_pad]
+    return None
+
+
+# Invertierter Index: Stadt-Name → erste passende PLZ-Eintrag (lazy)
+_CITY_INDEX: dict[str, dict[str, dict]] = {}
+
+
+def _build_city_index(country_code: str) -> dict[str, dict]:
+    cc = country_code.lower()
+    if cc in _CITY_INDEX:
+        return _CITY_INDEX[cc]
+    _load_plz_db()
+    db = _PLZ_DB.get(cc, {})
+    idx: dict[str, dict] = {}
+    for plz, entry in db.items():
+        ort = (entry.get("ort") or "").strip()
+        if not ort:
+            continue
+        key = ort.casefold()
+        if key not in idx:
+            idx[key] = {**entry, "plz": plz}
+    _CITY_INDEX[cc] = idx
+    return idx
+
+
+def lookup_city(name: str, country_code: str | None = None) -> dict | None:
+    """Sucht einen Stadt-/Ortsnamen in der PLZ-DB."""
+    if not name:
+        return None
+    cc = (country_code or "DE").lower()
+    idx = _build_city_index(cc)
+    key = name.strip().casefold()
+    if key in idx:
+        return idx[key]
+    # Heuristik: laeufige Suffixe entfernen ("am Main", ", Kreisfreie Stadt", ...)
+    cleaned = re.sub(r",.*$", "", key).strip()
+    cleaned = re.sub(r"\s+(am main|am rhein|kreisfreie stadt|stadt|landkreis)\s*$", "", cleaned).strip()
+    if cleaned in idx:
+        return idx[cleaned]
+    return None
+
+
+def _extract_plz(standort: str) -> str | None:
+    """Extrahiert die erste 4-5-stellige PLZ aus dem Standort-String."""
+    if not standort:
+        return None
+    m = re.search(r"\b(\d{4,5})\b", standort)
+    return m.group(1) if m else None
+
+
+def _extract_city_candidates(standort: str) -> list[str]:
+    """Extrahiert potenzielle Stadt-Namen aus dem Standort-String.
+
+    Heuristisch: alle Wort-Sequenzen mit Großbuchstabe-Anfang, getrennt
+    durch Komma/Leerzeichen. Funktioniert für "Legienstraße 40, Kiel"
+    sowie "DEB11 : DE - Rheinland-Pfalz - Koblenz - Koblenz, Kreisfreie Stadt".
+    """
+    if not standort:
+        return []
+    # Sammle alle ", X" und "- X" Komponenten plus letzte Komponente
+    parts = re.split(r"[,;\-/|]", standort)
+    candidates: list[str] = []
+    for part in parts:
+        token = part.strip()
+        if not token or len(token) < 3:
+            continue
+        # Erste Großbuchstaben-Sequenz herausnehmen
+        m = re.search(r"\b([A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ\-]{2,})\b", token)
+        if m:
+            candidates.append(m.group(1))
+    return candidates
+
+
 def _save_cache():
     try:
         Path(GEOCODE_CACHE).write_text(
@@ -348,6 +461,40 @@ def geocode_single(standort: str, country_code: str | None = None) -> dict | Non
         _cache[cache_key] = _cache[ort_key]
         return _cache[cache_key]
 
+    # Offline PLZ-Lookup als Fallback (greift auch ohne Internet)
+    plz = _extract_plz(standort)
+    if plz:
+        plz_hit = lookup_plz(plz, country_code=cc)
+        if plz_hit:
+            geo = {
+                "lat": plz_hit["lat"],
+                "lon": plz_hit["lon"],
+                "display_name": (
+                    f"{plz} {plz_hit['ort']}, {plz_hit['bundesland']}, "
+                    f"{get_country_name(cc) or country}"
+                ),
+                "source": "plz-db",
+            }
+            _cache[cache_key] = geo
+            return geo
+
+    # Stadt-/Ortsname-Lookup als zweiter Fallback (z. B. "..., Kiel" oder
+    # "DEB11 : DE - Rheinland-Pfalz - Koblenz - Koblenz, Kreisfreie Stadt")
+    for candidate in _extract_city_candidates(standort):
+        city_hit = lookup_city(candidate, country_code=cc)
+        if city_hit:
+            geo = {
+                "lat": city_hit["lat"],
+                "lon": city_hit["lon"],
+                "display_name": (
+                    f"{city_hit.get('plz', '')} {city_hit['ort']}, "
+                    f"{city_hit['bundesland']}, {get_country_name(cc) or country}"
+                ).strip(),
+                "source": "city-db",
+            }
+            _cache[cache_key] = geo
+            return geo
+
     if not ALLOW_REMOTE_GEOCODING:
         return None
 
@@ -433,6 +580,26 @@ def get_beneficiary_map_data(source: str, country_code: str | None = None) -> di
     # wir lieber den kombinierten "PLZ Ort"-Pfad — Nominatim braucht den Ort.
     if standort_col and standort_col == plz_col and ort_col:
         standort_col = None
+
+    # Wenn die Standort-Spalte nur NUTS-Codes enthält (z.B. "DE300", "DEB11")
+    # ODER nur sehr wenige unterschiedliche Werte hat (= ganzes Bundesland
+    # statt konkretem Standort), ignorieren wenn PLZ verfuegbar ist.
+    if standort_col and (plz_col or ort_col):
+        try:
+            with engine.connect() as conn:
+                samples = conn.execute(
+                    text(f'SELECT DISTINCT "{standort_col}" FROM "{table_name}" '
+                         f'WHERE "{standort_col}" IS NOT NULL LIMIT 20')
+                ).fetchall()
+            sample_values = [str(r[0]).strip() for r in samples if r[0]]
+            unique_count = len(set(v.casefold() for v in sample_values))
+            looks_like_nuts = bool(sample_values) and all(
+                re.fullmatch(r"[A-Z]{2}[A-Z0-9]{1,3}", v) for v in sample_values
+            )
+            if unique_count <= 2 or looks_like_nuts:
+                standort_col = None  # PLZ-Pfad bevorzugen
+        except Exception:
+            pass
 
     # Standort-Spalte: direkt, oder PLZ+Ort kombiniert, oder nur Ort/Landkreis
     has_location = standort_col or ort_col or plz_col or landkreis_col or has_coordinates
