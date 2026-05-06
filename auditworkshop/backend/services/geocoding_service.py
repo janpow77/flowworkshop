@@ -133,15 +133,20 @@ COLUMN_PATTERNS = {
         r"standortindikator", r"standort.*plz", r"standort.*ort",  # Spezifischste zuerst
         r"investitionsort",
         r"ort.*begünstig", r"ort.*vorhaben",
-        r"location.*indicator", r"geolocation", r"geolokalisierung",
+        r"location.*indicator", r"geolocation",
         r"standort", r"location", r"adresse", r"plz.*ort", r"anschrift", r"sitz",
         r"address", r"city", r"municipality",
         r"einsatzort", r"betriebsst", r"verwaltungssitz", r"firmensitz",
         r"hauptsitz", r"werk.*ort", r"street|straße|strasse", r"postanschrift",
+        r"^coordinates?$",  # Bremen ESF: text-Adresse statt Lat/Lon
+        r"oper_loc_geo",
         r"nuts",  # NUTS-Spalte als letzter Fallback
     ],
     # Separate PLZ- und Ort-Spalten (werden bei Bedarf kombiniert)
-    "plz": [r"^plz\b", r"postleitzahl", r"postal.*code", r"zip", r"postcode", r"_plz_|_plz$"],
+    "plz": [
+        r"^plz\b", r"postleitzahl", r"postal.*code", r"zip", r"postcode",
+        r"_plz_|_plz$", r"^geolokalisierung$",  # MV ESF: 5-stellige PLZ
+    ],
     "ort": [
         r"^ort$", r"^stadt$", r"^gemeinde$", r"^kommune$",
         r"_ort_|_ort$", r"projekt.*ort", r"projektstandort_ort",
@@ -197,6 +202,10 @@ def detect_columns(source: str) -> dict[str, str | None]:
     """
     Erkennt automatisch welche Spalten Name, Standort, Kosten etc. enthalten.
     Returns: {"name": "spaltenname", "standort": "spaltenname", ...}
+
+    Wenn Spaltennamen-Patterns versagen (z. B. Brandenburg ESF mit
+    verstümmelten Headern), wird zusätzlich der INHALT der Spalten
+    auf NUTS-3-Codes, PLZ und Stadtnamen geprüft.
     """
     from services.dataframe_service import _safe_table_name
     table_name = _safe_table_name(source)
@@ -212,7 +221,67 @@ def detect_columns(source: str) -> dict[str, str | None]:
     for role in COLUMN_PATTERNS:
         mapping[role] = _find_column(columns, role)
 
+    # Inhalts-basierter Fallback: wenn KEINE Standort-Information per
+    # Spaltennamen erkannt wurde (Brandenburg ESF, NRW ESF mit verstümmelten
+    # Spalten-Headern), scanne ALLE Text-Spalten und versuche, die Rolle
+    # aus dem Inhalt zu erschliessen. Bestehende Zuordnungen zu schwachen
+    # Rollen (projekt, beschreibung) duerfen ueberschrieben werden, wenn
+    # die Inhaltsanalyse eindeutig Standort-Pattern findet.
+    has_location = any(mapping.get(k) for k in ("standort", "ort", "plz", "landkreis", "latitude"))
+    if not has_location:
+        critical_used = {
+            mapping.get(k) for k in ("name", "kosten", "latitude", "longitude")
+            if mapping.get(k)
+        }
+        candidates = [c for c in columns if c not in critical_used]
+        if candidates:
+            inferred = _infer_location_columns_by_content(table_name, candidates)
+            for role, col in inferred.items():
+                if not mapping.get(role):
+                    mapping[role] = col
+                # Overwrite weak roles, falls dieselbe Spalte dort steht
+                for weak in ("projekt", "beschreibung", "sz", "aktenzeichen"):
+                    if mapping.get(weak) == col:
+                        mapping[weak] = None
+
     return mapping
+
+
+def _infer_location_columns_by_content(
+    table_name: str, candidates: list[str],
+) -> dict[str, str]:
+    """Prüft den Inhalt der Spalten und ordnet sie heuristisch
+    Standort-Rollen zu (nuts→standort, plz, ort)."""
+    result: dict[str, str] = {}
+    nuts_re = re.compile(r"^DE[A-Z0-9]{1,3}$")
+    plz_re = re.compile(r"^\d{4,5}$")
+    _build_city_index("de")  # lazy load
+    cities = _CITY_INDEX.get("de", {})
+    try:
+        with engine.connect() as conn:
+            for col in candidates:
+                rows = conn.execute(
+                    text(f'SELECT DISTINCT "{col}" FROM "{table_name}" '
+                         f'WHERE "{col}" IS NOT NULL LIMIT 30')
+                ).fetchall()
+                values = [str(r[0]).strip() for r in rows if r[0]]
+                values = [v for v in values if v and len(v) < 80]
+                if not values:
+                    continue
+                nuts_hits = sum(1 for v in values if nuts_re.match(v.upper()))
+                plz_hits = sum(1 for v in values if plz_re.match(v))
+                city_hits = sum(1 for v in values if v.casefold() in cities)
+                total = len(values)
+                # Mehrheits-Schwelle: ≥ 50 % der Werte passen
+                if nuts_hits / total >= 0.5 and "standort" not in result:
+                    result["standort"] = col
+                elif plz_hits / total >= 0.5 and "plz" not in result:
+                    result["plz"] = col
+                elif city_hits / total >= 0.3 and "ort" not in result:
+                    result["ort"] = col
+    except Exception:
+        log.exception("Inhalts-basierte Spaltenerkennung fehlgeschlagen")
+    return result
 
 
 # ── Cache ─────────────────────────────────────────────────────────────────────
@@ -316,6 +385,69 @@ def _extract_plz(standort: str) -> str | None:
     if not standort:
         return None
     m = re.search(r"\b(\d{4,5})\b", standort)
+    return m.group(1) if m else None
+
+
+# ── NUTS-3-Lookup (DE) ───────────────────────────────────────────────────────
+# nuts_de.json ist eine vorhandene Datei mit NUTS-3-Codes (z. B. DE40B,
+# DE803) → {name, type, bundesland, lat, lon}.
+def _load_nuts_db() -> dict:
+    global _nuts_data
+    if _nuts_data is not None:
+        return _nuts_data
+    import os
+    base = Path(os.environ.get("NUTS_DB_DIR", "/app/data"))
+    path = base / "nuts_de.json"
+    try:
+        if path.exists():
+            _nuts_data = json.loads(path.read_text(encoding="utf-8"))
+            log.info("NUTS-DB geladen: %d Eintraege", len(_nuts_data))
+        else:
+            _nuts_data = {}
+    except Exception as e:
+        log.warning("NUTS-DB nicht ladbar: %s", e)
+        _nuts_data = {}
+    return _nuts_data
+
+
+def lookup_nuts_code(code: str) -> dict | None:
+    """Sucht einen NUTS-3-Code in nuts_de.json. Akzeptiert auch NUTS-2 mit
+    Fallback auf den ersten passenden NUTS-3-Eintrag (Bundesland-Mitte).
+    """
+    if not code:
+        return None
+    db = _load_nuts_db()
+    code = code.strip().upper()
+    # Direkter Treffer
+    if code in db:
+        e = db[code]
+        return {"lat": e["lat"], "lon": e["lon"], "ort": e.get("name") or code,
+                "bundesland": e.get("bundesland", "")}
+    # NUTS-2-Code (z. B. DE40 = Brandenburg) → ersten Sub-Eintrag nehmen
+    if len(code) == 4:
+        children = [v for k, v in db.items() if k.startswith(code) and len(k) > 4]
+        if children:
+            # Mittelwert aus allen Sub-Regionen
+            lat = sum(c["lat"] for c in children) / len(children)
+            lon = sum(c["lon"] for c in children) / len(children)
+            bl = children[0].get("bundesland", "")
+            return {"lat": round(lat, 4), "lon": round(lon, 4),
+                    "ort": f"{bl} (NUTS-2 {code})", "bundesland": bl}
+    return None
+
+
+_NUTS_PATTERN = re.compile(r"^DE[A-Z0-9]{1,3}$")
+
+
+def _extract_nuts(standort: str) -> str | None:
+    """Erkennt NUTS-3-Codes (DE-Präfix + 1-3 alphanumerische Zeichen)."""
+    if not standort:
+        return None
+    s = standort.strip().upper()
+    if _NUTS_PATTERN.match(s):
+        return s
+    # Auch in Klartext-Listen wie "DEB11 : DE - Rheinland-Pfalz - Koblenz - ..."
+    m = re.match(r"^(DE[A-Z0-9]{1,3})\b", s)
     return m.group(1) if m else None
 
 
@@ -460,6 +592,25 @@ def geocode_single(standort: str, country_code: str | None = None) -> dict | Non
     if ort_key and ort_key in _cache:
         _cache[cache_key] = _cache[ort_key]
         return _cache[cache_key]
+
+    # NUTS-3-Lookup (DE-spezifisch) — fuer Quellen, die nur den NUTS-Code
+    # statt PLZ liefern (z. B. Brandenburg ESF "DE40B", Thueringen ESF "DEG0F").
+    if cc == "DE":
+        nuts_code = _extract_nuts(standort)
+        if nuts_code:
+            nuts_hit = lookup_nuts_code(nuts_code)
+            if nuts_hit:
+                geo = {
+                    "lat": nuts_hit["lat"],
+                    "lon": nuts_hit["lon"],
+                    "display_name": (
+                        f"{nuts_hit['ort']}, {nuts_hit['bundesland']}, "
+                        f"{get_country_name('DE') or 'Deutschland'}"
+                    ),
+                    "source": "nuts-db",
+                }
+                _cache[cache_key] = geo
+                return geo
 
     # Offline PLZ-Lookup als Fallback (greift auch ohne Internet)
     plz = _extract_plz(standort)
