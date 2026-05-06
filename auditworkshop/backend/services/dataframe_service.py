@@ -1205,6 +1205,92 @@ _PROPER_NOUN_STOPLIST = {
 }
 
 
+# Header-Artefakte: erste-Zeile-Werte aus XLSX, die fälschlich als Begünstigten-
+# namen interpretiert werden (Bremen ESF, Brandenburg ESF, Schleswig-Holstein
+# ESF u. a. legen die Spaltennamen erst in Zeile 2-4 ab).
+_HEADER_ARTEFACT_VALUES = {
+    # Englisch
+    "beneficiary", "beneficiary name", "beneficiarys name", "beneficiary's name",
+    "benef name", "benef_name", "name of beneficiary", "operation beneficiary",
+    "recipient", "recipient name", "company", "company name",
+    # Deutsch
+    "begunstigter", "begunstigte", "begunstigten",
+    "name des begunstigten", "name des begunstigten auftragnehmers",
+    "name des auftragnehmers", "name des auftragnehmers des begunstigten",
+    "zuwendungsempfanger", "zuwendungsempfanger name des begunstigten",
+    "name des zuwendungsempfangers",
+    # Programmatische Reste / Platzhalter
+    "name", "names", "name1", "operation_id", "oper_id", "nan", "none",
+    "n/a", "na", "k.a.", "ka", "unknown", "unbekannt", "test", "?", "-",
+}
+
+
+def _is_header_artefact(name: str) -> bool:
+    """Erkennt Begünstigtennamen, die in Wahrheit Header-/Platzhalter-Werte
+    sind und nicht in die Aggregation einfließen sollen.
+    """
+    if not name:
+        return True
+    raw = name.strip()
+    if not raw:
+        return True
+    # Lower + Diakritika-Approximation für robuste Stoppliste
+    key = raw.casefold()
+    key = (key.replace("ä", "a").replace("ö", "o").replace("ü", "u")
+              .replace("ß", "ss").replace("'", "").replace("`", "")
+              .replace("/", " ").replace(",", " "))
+    key = re.sub(r"\s+", " ", key).strip()
+    if key in _HEADER_ARTEFACT_VALUES:
+        return True
+    # "Beneficiary's Name" mit Sonderzeichen
+    if "beneficiary" in key and ("name" in key or len(key.split()) <= 2):
+        return True
+    return False
+
+
+# Rechtsform-Suffixe / -Synonyme, die für die Begünstigten-Konsolidierung
+# entfernt werden, sodass z. B. drei Fraunhofer-Schreibweisen
+# ("eingetragener Verein", "e.V.", "e. V.") in einen Bucket fallen.
+_LEGAL_SUFFIX_PATTERNS = [
+    r"\beingetragener\s+verein\b",
+    r"\bgemein?nutziger\s+(?:eingetragener\s+)?verein\b",
+    r"\be\.\s*v\.?\b",
+    r"\b(?:gemein?nutzige|gemein?nutzig)\s+(?:gmbh|ag|aktiengesellschaft)\b",
+    r"\bgemein?nutzige?\s*\b",
+    r"\bggmbh\b", r"\bgmbh\s*&\s*co\.\s*kg\b", r"\bgmbh\b",
+    r"\bag\b", r"\bkg\b", r"\bohg\b", r"\bse\b", r"\bug\b",
+    r"\bmbh\b", r"\baor\b", r"\baoer\b", r"\bgesellschaft\s+mbh\b",
+    r"\baktiengesellschaft\b",
+    r"\bder\s+prasident(?:in)?\b", r"\bdie\s+prasident(?:in)?\b",
+    r"\bder\s+rektor\b", r"\bdie\s+rektorin\b",
+]
+
+
+def _canonical_company_key(name: str) -> str:
+    """Erzeugt einen kanonischen Vergleichsschluessel fuer Begueunstigten-
+    Namen: Diakritika weg, Rechtsformsuffixe weg, Mehrfach-Whitespace weg.
+
+    Zielsetzung: identische Einrichtungen mit unterschiedlicher Schreibweise
+    fallen in denselben Bucket — z. B.
+      "Fraunhofer-Gesellschaft zur Förderung der angewandten Forschung e.V."
+      "Fraunhofer-Gesellschaft zur Förderung der angewandten Forschung e. V."
+      "Fraunhofer-Gesellschaft zur Förderung der angewandten Forschung
+       eingetragener Verein"
+    werden zu demselben Key.
+    """
+    if not name:
+        return ""
+    s = name.casefold()
+    s = (s.replace("ä", "a").replace("ö", "o").replace("ü", "u")
+           .replace("ß", "ss"))
+    s = re.sub(r"[^\w\s\-&\.]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    for pat in _LEGAL_SUFFIX_PATTERNS:
+        s = re.sub(pat, " ", s)
+    s = re.sub(r"[\s\-]+", " ", s).strip(" -.,&")
+    return s
+
+
 def _extract_prompt_proper_nouns(prompt: str | None) -> list[str]:
     """Extrahiert konkrete Eigennamen aus einem deutschen Prompt.
 
@@ -2201,6 +2287,9 @@ def analyze_beneficiary_records(
             if min_cost is not None and (cost_value is None or cost_value < min_cost):
                 continue
             company_name_raw = str(entry.get("name") or "").strip()
+            # Header-Artefakte aus XLSX-Erste-Zeilen rausfiltern
+            if _is_header_artefact(company_name_raw):
+                continue
             if name_substrings:
                 lc = company_name_raw.casefold()
                 # Eine Liste von Tupeln ⇒ AND zwischen Tupeln, OR innerhalb.
@@ -2236,7 +2325,14 @@ def analyze_beneficiary_records(
     if mode in {"top_beneficiaries", "repeat_beneficiaries", "multi_state_beneficiaries"}:
         companies: dict[str, dict[str, Any]] = {}
         for item in flat_results:
-            company_key = _normalize_search_text(item["company_name"]) or f"{item['source']}::{len(companies)}"
+            # Kanonischer Schluessel: Rechtsformsuffixe weg, Diakritika weg.
+            # So fallen "Fraunhofer ... e.V.", "Fraunhofer ... e. V." und
+            # "Fraunhofer ... eingetragener Verein" in denselben Bucket.
+            company_key = (
+                _canonical_company_key(item["company_name"])
+                or _normalize_search_text(item["company_name"])
+                or f"{item['source']}::{len(companies)}"
+            )
             company = companies.setdefault(company_key, {
                 "label": item["company_name"],
                 "value": 0.0,
