@@ -1649,11 +1649,20 @@ def build_beneficiary_analysis_answer(
     if proper_nouns:
         name_filter_parts.append(" ".join(proper_nouns))
     name_filter_label_combined = " · ".join(name_filter_parts) if name_filter_parts else None
+
+    # multi_state_beneficiaries: deutlich groesseres Limit, weil das eine
+    # ueberschaubare Auswertung ist (typ. < 100 Einrichtungen) und der User
+    # die volle Liste sehen will, nicht nur Top-X.
+    if matched_mode == "multi_state_beneficiaries":
+        effective_limit = max(limit, 200)
+    else:
+        effective_limit = max(3, min(limit, 8))
+
     analysis = analyze_beneficiary_records(
         mode=matched_mode,
         bundesland=bundesland,
         fonds=fonds,
-        limit=max(3, min(limit, 8)),
+        limit=effective_limit,
         country_code=country_code,
         name_substrings=name_substrings or None,
     )
@@ -1701,7 +1710,7 @@ def build_beneficiary_analysis_answer(
     if matched_mode == "top_beneficiaries" and name_filter_label_combined:
         intro = f"Die größten Begünstigten mit „{name_filter_label_combined}“ sind:"
     lines = [intro]
-    for item in items[:limit]:
+    for item in items[:effective_limit]:
         line = f"{item['rank']}. {item['label']}: {item.get('value_label') or _format_eur(item.get('value'))}"
         if item.get("project_count"):
             line += f" bei {item['project_count']} Vorhaben"
@@ -2142,7 +2151,10 @@ def analyze_beneficiary_records(
     if mode not in supported_modes:
         raise ValueError(f"Unbekannter Analysemodus '{mode}'.")
 
-    limit = max(1, min(limit, 20))
+    # Bei multi_state_beneficiaries weicheres Cap (alle Einrichtungen mit
+    # ≥2 Bundesländern sollen aufgelistet werden — typ. < 100 Einträge).
+    max_limit = 500 if mode == "multi_state_beneficiaries" else 20
+    limit = max(1, min(limit, max_limit))
     beneficiary_sources = [
         item for item in get_beneficiary_sources(country_code=country_code)
         if (not bundesland or (item.get("bundesland") or "") == bundesland)
