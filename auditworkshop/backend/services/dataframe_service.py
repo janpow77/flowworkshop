@@ -1080,36 +1080,37 @@ def _extract_beneficiary_prompt_filters(
 
 
 # Schluesselwoerter, die einen Begueunstigten-Typ-Filter triggern.
-# Pro Eintrag: Liste von normalisierten Prompt-Schluesseln und die zugehoerigen
-# Substrings, die in `company_name` (case-insensitive) vorkommen muessen.
+# Pro Eintrag: (Prompt-Trigger-Tupel, Such-Substring-Tupel, Klartext-Label).
+# Trigger werden in normalisiertem Prompt-Text (lowercase) gesucht — daher
+# Stamm-basiert ohne Endungen, damit Umlaut-Varianten und Plural matchen.
 _BENEFICIARY_TYPE_FILTERS: list[tuple[tuple[str, ...], tuple[str, ...], str]] = [
     (
-        ("universitaet", "universitäten", "universitaeten", "uni "),
-        ("universit", "tu ", "th ", "rwth"),
+        ("universit", " uni ", " tu ", " th ", "rwth"),
+        ("universit", " tu ", " th ", "rwth"),
         "Universitäten",
     ),
     (
-        ("hochschule", "hochschulen", "fachhochschule", "fh "),
+        ("hochschul", "fachhochschul", " fh "),
         ("hochschule", "fachhochschule"),
         "Hochschulen",
     ),
     (
-        ("forschungseinrichtung", "forschungsinstitut", "fraunhofer", "max-planck", "max planck", "leibniz", "helmholtz", "dlr"),
+        ("forschungseinrichtung", "forschungsinstitut", "fraunhofer", "max-planck", "max planck", "leibniz", "helmholtz", " dlr "),
         ("forschung", "institut", "fraunhofer", "max-planck", "max planck", "leibniz", "helmholtz", "dlr"),
         "Forschungseinrichtungen",
     ),
     (
-        ("klinik", "kliniken", "krankenhaus", "kliniken", "uniklinik", "universitaetsklinik", "universitätsklinik"),
+        ("klinik", "krankenhaus", "spital", "uniklinik", "universitätsklinik", "universitaetsklinik"),
         ("klinik", "krankenhaus", "spital"),
         "Kliniken / Krankenhäuser",
     ),
     (
-        ("kommune", "kommunen", "stadt", "städte", "staedte", "gemeinde", "gemeinden", "landkreis", "landkreise"),
+        ("kommune", "stadt ", "städt", "staedt", "gemeind", "landkreis", " kreis "),
         ("stadt ", "gemeinde ", "landkreis", "kreis "),
         "Kommunen / Gebietskörperschaften",
     ),
     (
-        ("verein", "vereine", "e.v.", " ev ", " e v "),
+        ("verein", "e.v.", " ev "),
         ("e.v.", "verein", " ev"),
         "Vereine",
     ),
@@ -1119,17 +1120,17 @@ _BENEFICIARY_TYPE_FILTERS: list[tuple[tuple[str, ...], tuple[str, ...], str]] = 
         "GmbHs",
     ),
     (
-        ("ag ",),
+        (" ag ",),
         (" ag",),
         "Aktiengesellschaften",
     ),
     (
-        ("stiftung", "stiftungen"),
+        ("stiftung",),
         ("stiftung",),
         "Stiftungen",
     ),
     (
-        ("kmu", "mittelstand", "mittelständisch", "mittelstaendisch"),
+        ("kmu", "mittelstand", "mittelständ", "mittelstaend"),
         ("kmu",),
         "KMU",
     ),
@@ -1197,6 +1198,80 @@ def _extract_prompt_proper_nouns(prompt: str | None) -> list[str]:
     # wie "Justus-Liebig-Universität" sollen erhalten bleiben).
     candidates = re.findall(r"[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ\-]{3,}", prompt)
     return [c for c in candidates if c not in _PROPER_NOUN_STOPLIST]
+
+
+# Heuristisches Mapping Stadt → Bundesland fuer den Fallback-Pfad.
+# Wenn der Prompt eine dieser Staedte enthaelt, kann der LLM-Kontext auf
+# Begueunstigte aus diesem Bundesland eingeschraenkt werden — auch wenn der
+# Begueunstigte selbst die Stadt nicht im Namen fuehrt (z. B. THM = FH
+# Gießen, Sitz Gießen, aber Name "Mittelhessen").
+_CITY_TO_STATE: dict[str, str] = {
+    # Hessen
+    "frankfurt am main": "Hessen",
+    "frankfurt": "Hessen",  # weicher default; bei "Frankfurt Oder" siehe Brandenburg
+    "wiesbaden": "Hessen", "kassel": "Hessen", "darmstadt": "Hessen",
+    "marburg": "Hessen", "gießen": "Hessen", "giessen": "Hessen",
+    "fulda": "Hessen", "hanau": "Hessen", "offenbach": "Hessen",
+    # Baden-Württemberg
+    "stuttgart": "Baden-Württemberg", "karlsruhe": "Baden-Württemberg",
+    "freiburg": "Baden-Württemberg", "mannheim": "Baden-Württemberg",
+    "heidelberg": "Baden-Württemberg", "tübingen": "Baden-Württemberg",
+    "tuebingen": "Baden-Württemberg", "ulm": "Baden-Württemberg",
+    "konstanz": "Baden-Württemberg",
+    # Bayern
+    "münchen": "Bayern", "muenchen": "Bayern", "nürnberg": "Bayern",
+    "nuernberg": "Bayern", "augsburg": "Bayern", "regensburg": "Bayern",
+    "würzburg": "Bayern", "wuerzburg": "Bayern", "erlangen": "Bayern",
+    "bayreuth": "Bayern", "passau": "Bayern", "bamberg": "Bayern",
+    # Nordrhein-Westfalen
+    "köln": "Nordrhein-Westfalen", "koeln": "Nordrhein-Westfalen",
+    "düsseldorf": "Nordrhein-Westfalen", "duesseldorf": "Nordrhein-Westfalen",
+    "dortmund": "Nordrhein-Westfalen", "essen": "Nordrhein-Westfalen",
+    "bochum": "Nordrhein-Westfalen", "aachen": "Nordrhein-Westfalen",
+    "münster": "Nordrhein-Westfalen", "muenster": "Nordrhein-Westfalen",
+    "bonn": "Nordrhein-Westfalen", "siegen": "Nordrhein-Westfalen",
+    "paderborn": "Nordrhein-Westfalen", "wuppertal": "Nordrhein-Westfalen",
+    "bielefeld": "Nordrhein-Westfalen",
+    # Niedersachsen
+    "hannover": "Niedersachsen", "göttingen": "Niedersachsen",
+    "goettingen": "Niedersachsen", "braunschweig": "Niedersachsen",
+    "oldenburg": "Niedersachsen", "osnabrück": "Niedersachsen",
+    "osnabrueck": "Niedersachsen", "lüneburg": "Niedersachsen",
+    "lueneburg": "Niedersachsen",
+    # Sachsen
+    "dresden": "Sachsen", "leipzig": "Sachsen", "chemnitz": "Sachsen",
+    "freiberg": "Sachsen",
+    # Sachsen-Anhalt
+    "magdeburg": "Sachsen-Anhalt", "halle": "Sachsen-Anhalt",
+    # Thüringen
+    "jena": "Thüringen", "erfurt": "Thüringen", "weimar": "Thüringen",
+    "ilmenau": "Thüringen",
+    # Brandenburg
+    "potsdam": "Brandenburg", "cottbus": "Brandenburg",
+    "frankfurt (oder)": "Brandenburg", "frankfurt oder": "Brandenburg",
+    # Mecklenburg-Vorpommern
+    "rostock": "Mecklenburg-Vorpommern", "greifswald": "Mecklenburg-Vorpommern",
+    "wismar": "Mecklenburg-Vorpommern",
+    # Schleswig-Holstein
+    "kiel": "Schleswig-Holstein", "lübeck": "Schleswig-Holstein",
+    "luebeck": "Schleswig-Holstein", "flensburg": "Schleswig-Holstein",
+    # Stadtstaaten
+    "berlin": "Berlin", "hamburg": "Hamburg", "bremen": "Bremen",
+    # Rheinland-Pfalz
+    "mainz": "Rheinland-Pfalz", "trier": "Rheinland-Pfalz",
+    "kaiserslautern": "Rheinland-Pfalz", "koblenz": "Rheinland-Pfalz",
+    "landau": "Rheinland-Pfalz",
+    # Saarland
+    "saarbrücken": "Saarland", "saarbruecken": "Saarland",
+}
+
+
+def _state_from_proper_nouns(proper_nouns: list[str]) -> str | None:
+    for noun in proper_nouns:
+        key = noun.casefold().replace("ß", "ß")
+        if key in _CITY_TO_STATE:
+            return _CITY_TO_STATE[key]
+    return None
 
 
 def _select_beneficiary_analysis_mode(prompt: str | None) -> str:
@@ -1344,6 +1419,87 @@ def get_beneficiary_llm_context(
         name_substrings=name_substrings or None,
     )
 
+    # Wenn die strenge Filterung leer ist, dem LLM zusaetzlich die
+    # *naechstgelegenen* Kandidaten liefern. So kann das Modell
+    # historische Namen aufloesen (FH Gießen → Technische Hochschule
+    # Mittelhessen), Eigenschreibweisen und Mehrfach-Ortsnamen klaeren.
+    fallback_items: list[dict[str, Any]] = []
+    fallback_state = bundesland or _state_from_proper_nouns(proper_nouns)
+    if not analysis["items"] and (proper_nouns or type_substrings):
+        # Zuerst nur mit Typ-Filter (ohne Eigenname) erneut analysieren —
+        # bevorzugt im heuristisch erkannten Bundesland (z. B. "Gießen" → Hessen)
+        if type_substrings:
+            broad = analyze_beneficiary_records(
+                mode="top_beneficiaries",
+                bundesland=fallback_state,
+                fonds=fonds,
+                limit=limit,
+                country_code=country_code,
+                name_substrings=[type_substrings],
+            )
+            fallback_items.extend(broad.get("items") or [])
+            # Wenn der bundeslandgefilterte Pass leer war, ohne Bundesland-Filter
+            if not fallback_items and fallback_state:
+                broad2 = analyze_beneficiary_records(
+                    mode="top_beneficiaries",
+                    bundesland=None,
+                    fonds=fonds,
+                    limit=limit,
+                    country_code=country_code,
+                    name_substrings=[type_substrings],
+                )
+                fallback_items.extend(broad2.get("items") or [])
+        # Plus rapidfuzz-Topmatches gegen den Original-Prompt
+        try:
+            from rapidfuzz import fuzz, process
+            with engine.connect() as conn:
+                # Alle Begueunstigtennamen einsammeln (nur die paar tausend
+                # eindeutigen Namen, nicht die volle Tabelle pro Vorhaben)
+                names: list[tuple[str, str]] = []
+                for source_info in (
+                    [s for s in sources if (not bundesland or (s.get("bundesland") or "") == bundesland)]
+                ):
+                    info = get_table_info(source_info["source"])
+                    if not info.get("exists"):
+                        continue
+                    name_col = next(
+                        (c["name"] for c in info["columns"]
+                         if any(p in c["name"].lower() for p in ("auftragnehmer", "beguenstig", "begünstig"))),
+                        None,
+                    )
+                    if not name_col:
+                        continue
+                    rows = conn.execute(
+                        text(f'SELECT DISTINCT {_quote_ident(name_col)} FROM "{_safe_table_name(source_info["source"])}" LIMIT 2000')
+                    ).fetchall()
+                    for row in rows:
+                        if row[0]:
+                            names.append((str(row[0]).strip(), source_info.get("bundesland") or ""))
+            query_text = " ".join(proper_nouns) or " ".join(type_substrings or [])
+            if names and query_text:
+                top_matches = process.extract(
+                    query_text,
+                    [n[0] for n in names],
+                    scorer=fuzz.token_set_ratio,
+                    limit=8,
+                    score_cutoff=55,
+                )
+                seen = {item.get("label") for item in fallback_items}
+                for matched_name, score, idx in top_matches:
+                    if matched_name in seen:
+                        continue
+                    seen.add(matched_name)
+                    fallback_items.append({
+                        "label": matched_name,
+                        "value_label": "",
+                        "value": None,
+                        "project_count": None,
+                        "sublabel": f"ähnlicher Name (Score {int(score)}) · {names[idx][1]}",
+                        "rank": len(fallback_items) + 1,
+                    })
+        except Exception:
+            log.exception("rapidfuzz-Fallback fuer Begueunstigte fehlgeschlagen.")
+
     summary = analysis["summary"]
     filters = analysis["filters"]
     items = analysis["items"]
@@ -1368,6 +1524,29 @@ def get_beneficiary_llm_context(
         parts.append("Filter: " + ", ".join(active_filters))
 
     if not items:
+        if fallback_items:
+            parts.append(
+                "Direkter Substring-Treffer schlaegt fehl. Wahrscheinliche Kandidaten "
+                "aus den Daten (zur semantischen Aufloesung — z. B. historische Namen "
+                "wie 'FH Gießen' = heute 'Technische Hochschule Mittelhessen'):"
+            )
+            for item in fallback_items[:10]:
+                detail_parts = [
+                    f"{item['rank']}. {item['label']}",
+                    item.get("value_label") or "",
+                ]
+                if item.get("project_count"):
+                    detail_parts.append(f"{item['project_count']} Vorhaben")
+                if item.get("sublabel"):
+                    detail_parts.append(str(item["sublabel"]))
+                parts.append("- " + " | ".join(str(p) for p in detail_parts if p))
+            parts.append(
+                "Pruefe, ob einer dieser Eintraege die gemeinte Einrichtung ist "
+                "(z. B. nach Standort, Rechtsform oder historischem Namen). "
+                "Wenn ja, beantworte die Frage anhand des passenden Eintrags. "
+                "Wenn keiner passt, sage das ehrlich."
+            )
+            return "\n".join(parts)
         parts.append("Keine passenden Auswertungsdaten fuer diese Fragestellung vorhanden.")
         parts.append("Wenn die Frage darueber hinausgeht, weise auf die fehlende Datengrundlage hin.")
         return "\n".join(parts)
@@ -1430,6 +1609,12 @@ def build_beneficiary_analysis_answer(
         country_code=country_code,
         name_substrings=name_substrings or None,
     )
+
+    # 0-Treffer mit konkreten Eigennamen → LLM-Fallback erlauben
+    # (z. B. „FH Gießen" → keine direkten Treffer, KI soll erkennen,
+    # dass das die heutige Technische Hochschule Mittelhessen ist).
+    if not analysis["items"] and (proper_nouns or name_filter_label):
+        return None
     items = analysis["items"]
     summary = analysis["summary"]
     filters = analysis["filters"]

@@ -16,9 +16,13 @@ MODEL_NAME    = os.getenv("MODEL_NAME",    "qwen3:14b")
 # Installieren: ollama pull mistral:7b
 
 # Szenario-spezifischer Modell-Override (kommagetrennt, je "scenario:model")
-# Default: Szenario 6 nutzt das groessere qwen3.5:35b auf der Evo-X2
-# (besseres Reasoning bei Begueunstigtenauswertungen).
-_SCENARIO_MODEL_RAW = os.getenv("SCENARIO_MODELS", "6:qwen3.5:35b")
+# Default: keine Override — alle Szenarien nutzen MODEL_NAME (qwen3:14b).
+# qwen3.5:35b auf der Evo-X2 ist ein Reasoning-Modell mit endlosen <think>-
+# Bloecken (60-80s pro Antwort, oft Token-Limit erreicht ohne Content) und
+# damit fuer Live-Demos unbrauchbar. qwen3:14b auf der eGPU liefert in
+# 20-30s mit /no_think am User-Turn-Ende.
+# Per ENV ueberschreibbar, z. B. SCENARIO_MODELS=6:qwen3.5:35b
+_SCENARIO_MODEL_RAW = os.getenv("SCENARIO_MODELS", "")
 SCENARIO_MODELS: dict[int, str] = {}
 for _entry in _SCENARIO_MODEL_RAW.split(","):
     _entry = _entry.strip()
@@ -165,5 +169,17 @@ Regeln:
 - Weise explizit darauf hin, wenn eine Frage nicht auf Basis der vorliegenden Daten beantwortet werden kann.
 - Zahlen immer mit Tausendertrennzeichen (1.234.567 €).
 - Antworte in kurzen deutschen Sätzen.
-- Nutze maximal 8 Aufzählungspunkte.""",
+- Nutze maximal 8 Aufzählungspunkte.
+
+Sonderfall — Block "Wahrscheinliche Kandidaten":
+Erscheint im Kontext eine Liste mit "Wahrscheinliche Kandidaten" (kein
+direkter Substring-Treffer für die Nutzerfrage), darfst du dein
+Allgemeinwissen einsetzen, um historische oder veränderte Namen
+aufzulösen — z. B. "FH Gießen" entspricht heute der "Technischen
+Hochschule Mittelhessen (THM)", "TH Karlsruhe" entspricht dem heutigen
+"KIT", "Goethe-Universität" steht für die "Universität Frankfurt am
+Main". Wähle aus der Kandidatenliste den passenden Eintrag, nenne den
+dort angegebenen Betrag und die Vorhabenzahl und erkläre die
+Namensauflösung in einem Halbsatz. Findest du keinen passenden
+Kandidaten, sage das ehrlich.""",
 }
