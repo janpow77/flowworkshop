@@ -1153,6 +1153,52 @@ def _detect_beneficiary_name_filter(
     return None, None
 
 
+# Wörter, die zwar grossgeschrieben sind, aber keine konkreten Eigennamen
+# darstellen (Bundeslaender werden separat als Filter behandelt).
+_PROPER_NOUN_STOPLIST = {
+    # Frage-/Funktionswoerter
+    "Welche", "Welcher", "Welches", "Wieviel", "Wieviele", "Viel", "Viele",
+    "Wie", "Was", "Wer", "Wo", "Wofuer", "Wofür", "Warum",
+    "Geld", "Gelder", "Mittel", "Foerderung", "Förderung", "Foerdermittel",
+    "Fördermittel", "Foerderungen", "Förderungen", "Zuschuss", "Zuschüsse",
+    "Bekommen", "Bekommt", "Erhalten", "Erhält", "Werden", "Wird", "Sind",
+    "Hat", "Haben", "Diese", "Dieser", "Dieses", "Diesen",
+    # Begueunstigten-Typen (sind schon ueber _BENEFICIARY_TYPE_FILTERS abgedeckt)
+    "Universität", "Universitaet", "Universitäten", "Universitaeten",
+    "Uni", "Hochschule", "Hochschulen", "Fachhochschule", "Fachhochschulen",
+    "Klinik", "Kliniken", "Krankenhaus", "Krankenhäuser", "Krankenhaeuser",
+    "Stiftung", "Stiftungen", "Verein", "Vereine", "Forschung",
+    "Forschungseinrichtung", "Forschungseinrichtungen",
+    "Stadt", "Gemeinde", "Landkreis", "Kommune", "Kommunen", "Land",
+    "Bundesland", "Bundeslaender", "Bundesländer",
+    # Laender / EU-Begriffe
+    "Deutschland", "Österreich", "Oesterreich", "Schweiz", "Europa", "EU",
+    "EFRE", "ESF", "JTF",
+    # Bundeslaender (Ein-Wort-Versionen)
+    "Bayern", "Sachsen", "Berlin", "Brandenburg", "Thüringen", "Thueringen",
+    "Niedersachsen", "Hamburg", "Bremen", "Saarland", "Hessen",
+    "Mecklenburg-Vorpommern", "Mecklenburg", "Vorpommern",
+    "Nordrhein-Westfalen", "Schleswig-Holstein",
+    "Rheinland-Pfalz", "Sachsen-Anhalt", "Baden-Württemberg",
+    "Baden-Wuerttemberg",
+}
+
+
+def _extract_prompt_proper_nouns(prompt: str | None) -> list[str]:
+    """Extrahiert konkrete Eigennamen aus einem deutschen Prompt.
+
+    Findet Wörter mit Großbuchstabe-Anfang und >= 4 Zeichen, abzüglich der
+    Stoppliste. Das fängt z. B. Stadt- und Personennamen wie "Gießen",
+    "Frankfurt", "Halle", "Justus-Liebig" auf.
+    """
+    if not prompt:
+        return []
+    # Trennzeichen: Whitespace, Satzzeichen außer Bindestrich (Eigennamen
+    # wie "Justus-Liebig-Universität" sollen erhalten bleiben).
+    candidates = re.findall(r"[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ\-]{3,}", prompt)
+    return [c for c in candidates if c not in _PROPER_NOUN_STOPLIST]
+
+
 def _select_beneficiary_analysis_mode(prompt: str | None) -> str:
     matched_mode = _match_beneficiary_analysis_mode(prompt)
     return matched_mode or "top_beneficiaries"
@@ -1164,8 +1210,11 @@ def _match_beneficiary_analysis_mode(prompt: str | None) -> str | None:
         return None
 
     # Begueunstigten-Typ-Filter (Universitaet, Hochschule, Klinik, GmbH, ...)
-    # ergeben eine gefilterte Top-Liste der groessten Begueunstigten.
+    # ODER konkrete Eigennamen (Stadtname, Personenname) ergeben eine
+    # gefilterte Top-Liste der groessten Begueunstigten.
     if _detect_beneficiary_name_filter(prompt)[0] is not None:
+        return "top_beneficiaries"
+    if _extract_prompt_proper_nouns(prompt):
         return "top_beneficiaries"
 
     if any(
@@ -1278,7 +1327,13 @@ def get_beneficiary_llm_context(
 
     bundesland, fonds = _extract_beneficiary_prompt_filters(prompt, sources)
     mode = _select_beneficiary_analysis_mode(prompt)
-    name_substrings, _name_filter_label = _detect_beneficiary_name_filter(prompt)
+    type_substrings, _name_filter_label = _detect_beneficiary_name_filter(prompt)
+    proper_nouns = _extract_prompt_proper_nouns(prompt)
+    name_substrings: list[tuple[str, ...]] = []
+    if type_substrings:
+        name_substrings.append(type_substrings)
+    for noun in proper_nouns:
+        name_substrings.append((noun,))
     limit = max(4, min(max_entries_per_source * 3, 12))
     analysis = analyze_beneficiary_records(
         mode=mode,
@@ -1286,7 +1341,7 @@ def get_beneficiary_llm_context(
         fonds=fonds,
         limit=limit,
         country_code=country_code,
-        name_substrings=name_substrings,
+        name_substrings=name_substrings or None,
     )
 
     summary = analysis["summary"]
@@ -1354,14 +1409,26 @@ def build_beneficiary_analysis_answer(
         return None
 
     bundesland, fonds = _extract_beneficiary_prompt_filters(prompt, sources)
-    name_substrings, name_filter_label = _detect_beneficiary_name_filter(prompt)
+    type_substrings, name_filter_label = _detect_beneficiary_name_filter(prompt)
+    proper_nouns = _extract_prompt_proper_nouns(prompt)
+    name_substrings: list[tuple[str, ...]] = []
+    if type_substrings:
+        name_substrings.append(type_substrings)
+    for noun in proper_nouns:
+        name_substrings.append((noun,))
+    name_filter_parts: list[str] = []
+    if name_filter_label:
+        name_filter_parts.append(name_filter_label)
+    if proper_nouns:
+        name_filter_parts.append(" ".join(proper_nouns))
+    name_filter_label_combined = " · ".join(name_filter_parts) if name_filter_parts else None
     analysis = analyze_beneficiary_records(
         mode=matched_mode,
         bundesland=bundesland,
         fonds=fonds,
         limit=max(3, min(limit, 8)),
         country_code=country_code,
-        name_substrings=name_substrings,
+        name_substrings=name_substrings or None,
     )
     items = analysis["items"]
     summary = analysis["summary"]
@@ -1373,7 +1440,7 @@ def build_beneficiary_analysis_answer(
             for part in (
                 f"Bundesland {filters['bundesland']}" if filters.get("bundesland") else None,
                 f"Fonds {filters['fonds']}" if filters.get("fonds") else None,
-                f"Begünstigte vom Typ „{name_filter_label}“" if name_filter_label else None,
+                f"Begünstigte mit „{name_filter_label_combined}“" if name_filter_label_combined else None,
             )
             if part
         ]
@@ -1394,8 +1461,8 @@ def build_beneficiary_analysis_answer(
         ),
     }
     intro = intro_map.get(matched_mode, analysis["title"] + ":")
-    if name_filter_label and matched_mode == "top_beneficiaries":
-        intro = f"Die größten Begünstigten vom Typ „{name_filter_label}“ sind:"
+    if matched_mode == "top_beneficiaries" and name_filter_label_combined:
+        intro = f"Die größten Begünstigten mit „{name_filter_label_combined}“ sind:"
     lines = [intro]
     for item in items[:limit]:
         line = f"{item['rank']}. {item['label']}: {item.get('value_label') or _format_eur(item.get('value'))}"
@@ -1411,13 +1478,13 @@ def build_beneficiary_analysis_answer(
         f"{summary['total_volume_label']} Gesamtvolumen."
     )
     lines.append(coverage)
-    if filters.get("bundesland") or filters.get("fonds") or name_filter_label:
+    if filters.get("bundesland") or filters.get("fonds") or name_filter_label_combined:
         active_filters = ", ".join(
             part
             for part in (
                 f"Bundesland={filters['bundesland']}" if filters.get("bundesland") else None,
                 f"Fonds={filters['fonds']}" if filters.get("fonds") else None,
-                f"Typ={name_filter_label}" if name_filter_label else None,
+                f"Filter={name_filter_label_combined}" if name_filter_label_combined else None,
             )
             if part
         )
@@ -1823,7 +1890,7 @@ def analyze_beneficiary_records(
     min_cost: float | None = None,
     limit: int = 10,
     country_code: str | None = None,
-    name_substrings: tuple[str, ...] | None = None,
+    name_substrings: tuple[str, ...] | list[tuple[str, ...]] | None = None,
 ) -> dict:
     from services.geocoding_service import detect_columns
 
@@ -1886,7 +1953,15 @@ def analyze_beneficiary_records(
             company_name_raw = str(entry.get("name") or "").strip()
             if name_substrings:
                 lc = company_name_raw.casefold()
-                if not any(sub.casefold() in lc for sub in name_substrings):
+                # Eine Liste von Tupeln ⇒ AND zwischen Tupeln, OR innerhalb.
+                # Ein einzelnes Tupel ⇒ nur OR (Backward-Compatibility).
+                if name_substrings and isinstance(name_substrings[0], tuple):
+                    if not all(
+                        any(sub.casefold() in lc for sub in group)
+                        for group in name_substrings
+                    ):
+                        continue
+                elif not any(sub.casefold() in lc for sub in name_substrings):
                     continue
 
             flat_results.append({
