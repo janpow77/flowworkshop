@@ -57,6 +57,8 @@ const BL_COLORS: Record<string, string> = {
   'Mecklenburg-Vorpommern': '#84cc16', 'Schleswig-Holstein': '#a855f7',
   'Rheinland-Pfalz': '#e11d48', 'Saarland': '#0ea5e9',
   'Hamburg': '#d946ef', 'Bremen': '#fbbf24',
+  // Bundesebene (für Bundesfonds wie ISF und AMIF)
+  'Bund': '#1e40af',
   // Österreich
   'Burgenland': '#dc2626', 'Kärnten': '#0891b2', 'Niederösterreich': '#2563eb',
   'Oberösterreich': '#7c3aed', 'Salzburg': '#db2777', 'Steiermark': '#16a34a',

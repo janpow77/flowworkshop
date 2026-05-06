@@ -21,6 +21,9 @@ COUNTRY_PROFILES: dict[str, dict] = {
             "Hamburg", "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen",
             "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen",
             "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen",
+            # Bundesebene (für Bundesfonds wie ISF und AMIF — keine Region,
+            # aber als logische Klammer in der UI)
+            "Bund",
         ],
         "aliases": ["deutschland", "germany", "de"],
     },

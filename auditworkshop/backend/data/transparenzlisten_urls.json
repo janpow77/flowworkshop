@@ -1,6 +1,6 @@
 {
   "_info": "Oeffentliche Transparenzlisten gemaess Art. 49 VO (EU) 2021/1060. Bundesweite Quellenbasis fuer EFRE, ESF+ und JTF im Workshop.",
-  "_updated": "2026-03-29",
+  "_updated": "2026-05-06T16:36:59.844393",
   "sources": [
     {
       "bundesland": "Baden-Wuerttemberg",
@@ -331,6 +331,26 @@
       "status": "ok",
       "rows": null,
       "notes": "Offizielle Liste der Vorhaben, Stand 31.12.2025"
+    },
+    {
+      "bundesland": "Bund",
+      "fonds": "ISF",
+      "periode": "2021-2027",
+      "url": "https://innerersicherheitsfonds.de/fileadmin/user_upload/Downloads/List_of_Operation/260301_List_Of_Operations.xlsx",
+      "portal": "https://innerersicherheitsfonds.de/foerderperiode-2021-2027/liste-der-vorhaben-list-of-operations",
+      "status": "ok",
+      "rows": null,
+      "notes": "Innerer Sicherheitsfonds (BMI), Stand 01.03.2026"
+    },
+    {
+      "bundesland": "Bund",
+      "fonds": "AMIF",
+      "periode": "2021-2027",
+      "url": "https://www.eu-migrationsfonds.de/SharedDocs/Anlagen/DE/Projekte/vorhabenliste.xlsx?__blob=publicationFile&v=39",
+      "portal": "https://www.eu-migrationsfonds.de/SharedDocs/Anlagen/DE/Projekte/vorhabenliste.html",
+      "status": "ok",
+      "rows": null,
+      "notes": "Asyl-, Migrations- und Integrationsfonds (BAMF), v39"
     }
   ]
 }

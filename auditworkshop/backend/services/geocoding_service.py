@@ -130,15 +130,19 @@ COLUMN_PATTERNS = {
         r"^benef_?name$",
         r"name.*begünstig", r"name.*auftrag",
         r"(?:name|bezeichnung).*begünstig",  # Erfordert "name"/"bezeichnung" vor "begünstig"
-        r"beneficiary",
+        # ISF/AMIF: "Org_Rechtliche Bezeichnung" ist die echte Begünstigten-Spalte
+        r"^org_rechtliche", r"rechtliche.*bezeichnung", r"^leistungsempf",
+        # "beneficiary" als Wort, NICHT "beneficiary_type" (= Typ-Spalte)
+        r"^beneficiary$", r"beneficiary_name", r"beneficiar.*name",
         r"contractor", r"zuwendungsempf", r"antragsteller", r"beguenstig",
         r"unternehmen", r"company", r"entity", r"organisation", r"organization",
-        r"recipient", r"beneficiar", r"undertaking", r"subject.*name",
-        r"entity.*name", r"beneficiary.*name", r"company.*name", r"name$",
-        r"förderempf", r"empf.*name", r"leistungsempf", r"firma", r"name.*firma",
+        r"recipient", r"undertaking", r"subject.*name",
+        r"entity.*name", r"company.*name", r"name$",
+        r"förderempf", r"empf.*name", r"firma", r"name.*firma",
     ],
     "projekt": [
         r"^op_?name$",
+        r"^projektname$",  # ISF/AMIF
         r"bezeichnung$", r"bezeichnung.*vorhaben", r"operation.*name",
         r"projekt", r"vorhaben", r"massnahme", r"maßnahme", r"title",
         r"subject", r"measure", r"operation", r"project", r"scheme",
@@ -213,12 +217,14 @@ COLUMN_PATTERNS = {
         r"datum.*beginn", r"datum.*beginns", r"beginn.*vorhabens",
         r"^beginn$", r"start.*date", r"^start$", r"datum.*start",
         r"projekt.*beginn", r"vorhaben.*beginn",
+        r"^projekt_?von$",  # ISF/AMIF
     ],
     "ende": [
         r"datum.*abschluss", r"datum.*endes", r"datum.*ende",
         r"abschluss.*vorhabens", r"ende.*vorhabens",
         r"end.*date.*operation", r"completion.*date",
         r"^ende$", r"^abschluss$", r"^end_date$", r"^end$",
+        r"^projekt_?bis$",  # ISF/AMIF
         r"end_date", r"end.*date",
         r"voraussichtlich.*abschluss", r"voraussichtlich.*ende",
         r"projekt.*ende", r"projekt.*abschluss",

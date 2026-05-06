@@ -1071,7 +1071,7 @@ def _extract_beneficiary_prompt_filters(
             break
 
     fonds = None
-    for candidate in ("EFRE", "ESF", "JTF"):
+    for candidate in ("EFRE", "ESF", "JTF", "ISF", "AMIF"):
         if candidate.lower() in normalized_prompt:
             fonds = candidate
             break
