@@ -192,8 +192,9 @@ test.describe('E: Szenarien 1-6 (LLM-Streaming)', () => {
     await expect(page.getByText('Strukturierte Schnellauswertung', { exact: false })).toBeVisible();
 
     // Links zu Unternehmenssuche und Datenraum
-    await expect(page.getByRole('link', { name: 'Unternehmenssuche' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Datenraum' })).toBeVisible();
+    const main = page.getByRole('main');
+    await expect(main.getByRole('link', { name: 'Unternehmenssuche' })).toBeVisible();
+    await expect(main.getByRole('link', { name: 'Datenraum' })).toBeVisible();
 
     // Prompt-Textarea
     await expect(page.getByLabel('Prompt für Begünstigtenauswertung')).toBeVisible();

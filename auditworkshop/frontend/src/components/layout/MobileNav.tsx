@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   Home, FileSearch, CheckSquare, AlertTriangle, FileText, Upload, MapPin,
   Database, FolderOpen, Building2, Scale, FileSpreadsheet,
-  CalendarDays, UserPlus, Settings, User,
+  CalendarDays, UserPlus, Settings, User, ShieldAlert,
 } from 'lucide-react';
 
 const NAV_GROUPS = [
@@ -24,6 +24,7 @@ const NAV_GROUPS = [
       { to: '/projects', label: 'Projekte', icon: FolderOpen },
       { to: '/knowledge', label: 'Wissen', icon: Database },
       { to: '/company-search', label: 'Firmen', icon: Building2 },
+      { to: '/sanktionslisten', label: 'Sanktionen', icon: ShieldAlert },
       { to: '/ai-act', label: 'AI Act', icon: Scale },
       { to: '/dataframes', label: 'Daten', icon: FileSpreadsheet },
       { to: '/account', label: 'Konto', icon: User },

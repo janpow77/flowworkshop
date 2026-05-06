@@ -232,8 +232,9 @@ def _seed_default_agenda(db: Session) -> None:
         # ── Tag 2 — Workshop 5 Detail (09:00–17:00) ─────────────────────
         {"day": 2, "time": "09:00", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 4: Berichtsentwurf", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 200, "scenario_id": 4},
         {"day": 2, "time": "09:20", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 5: Vorab-Upload & RAG", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 201, "scenario_id": 5},
-        {"day": 2, "time": "09:40", "duration_minutes": 25, "item_type": "workshop", "title": "Szenario 6: Begünstigtenverzeichnis", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 202, "scenario_id": 6},
-        {"day": 2, "time": "10:05", "duration_minutes": 25, "item_type": "diskussion", "title": "Eingereichte Themen aus dem Voting", "category": "workshop5", "sort_order": 203},
+        {"day": 2, "time": "09:40", "duration_minutes": 20, "item_type": "workshop", "title": "Szenario 6: Begünstigtenverzeichnis", "speaker": "Jan Riener", "category": "workshop5", "sort_order": 202, "scenario_id": 6},
+        {"day": 2, "time": "10:00", "duration_minutes": 60, "item_type": "vortrag", "title": "Sanktionslisten – Übersicht & lokale FSF-Abfrage", "speaker": "Jan Riener", "note": "Vorstellung der gesammelten Sanktionslisten (EU FSF, UN, OFAC, BAFA, OFSI, SECO …) und Live-Demo der lokalen Fuzzy-Suche gegen die EU-Konsolidierte FSF.", "category": "workshop5", "sort_order": 203, "page_url": "/sanktionslisten"},
+        {"day": 2, "time": "11:00", "duration_minutes": 25, "item_type": "diskussion", "title": "Eingereichte Themen aus dem Voting", "category": "workshop5", "sort_order": 204},
     ]
     for item_data in defaults:
         db.add(AgendaItem(**item_data))

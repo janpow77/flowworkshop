@@ -22,6 +22,7 @@ const KnowledgePage = lazy(() => import('./pages/KnowledgePage'));
 const DataFramePage = lazy(() => import('./pages/DataFramePage'));
 const CompanySearchPage = lazy(() => import('./pages/CompanySearchPage'));
 const AiActPage = lazy(() => import('./pages/AiActPage'));
+const SanktionslistenPage = lazy(() => import('./pages/SanktionslistenPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
@@ -65,6 +66,7 @@ export default function App() {
             <Route path="/dataframes" element={<LazyPage><DataFramePage /></LazyPage>} />
             <Route path="/company-search" element={<LazyPage><CompanySearchPage /></LazyPage>} />
             <Route path="/ai-act" element={<LazyPage><AiActPage /></LazyPage>} />
+            <Route path="/sanktionslisten" element={<LazyPage><SanktionslistenPage /></LazyPage>} />
             <Route path="/admin" element={<LazyPage><AdminPage /></LazyPage>} />
             <Route path="*" element={<LazyPage><NotFoundPage /></LazyPage>} />
           </Route>

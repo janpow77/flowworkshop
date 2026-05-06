@@ -31,6 +31,10 @@ Thumbs.db
 auditworkshop/backend/data/uploads/
 auditworkshop/backend/data/knowledge_raw/
 
+# Sanctions-CSV (wird beim Backend-Start aus OpenSanctions geholt)
+auditworkshop/backend/data/sanctions/
+auditworkshop/backend/data/sanctions_eu_fsf_targets.csv
+
 # Lokale Daten-Exports (Beguenstigte / RAG-Snapshots)
 export/
 

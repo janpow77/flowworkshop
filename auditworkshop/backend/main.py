@@ -12,7 +12,7 @@ from database import engine, Base
 from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
-from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth
+from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions
 
 # Modelle importieren damit Base.metadata sie kennt
 import models  # noqa: F401
@@ -62,6 +62,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         log.error("pgvector-Init fehlgeschlagen: %s", e)
 
+    # Sanctions-Index in den Speicher laden
+    try:
+        from services.sanctions_service import warmup as sanctions_warmup
+        sanctions_warmup()
+    except Exception as e:
+        log.warning("Sanctions-Warmup fehlgeschlagen: %s", e)
+
     # Ollama-Verbindung prüfen
     status = await check_ollama()
     if status["ok"]:
@@ -110,6 +117,7 @@ app.include_router(reference_data.router)
 app.include_router(event.router)
 app.include_router(documents.router)
 app.include_router(auth.router)
+app.include_router(sanctions.router)
 
 
 @app.get("/health")
