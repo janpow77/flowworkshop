@@ -1164,6 +1164,18 @@ _PROPER_NOUN_STOPLIST = {
     "Fördermittel", "Foerderungen", "Förderungen", "Zuschuss", "Zuschüsse",
     "Bekommen", "Bekommt", "Erhalten", "Erhält", "Werden", "Wird", "Sind",
     "Hat", "Haben", "Diese", "Dieser", "Dieses", "Diesen",
+    # Begueunstigten-/Foerder-Begriffe (sind keine Eigennamen!)
+    "Begünstigte", "Begünstigten", "Begünstigter", "Begünstigtem",
+    "Beguenstigte", "Beguenstigten", "Beguenstigter", "Beguenstigtem",
+    "Träger", "Traeger", "Empfänger", "Empfaenger",
+    "Vorhabens", "Vorhabentraeger", "Vorhabenträger",
+    "Bundesländer", "Bundesländern", "Bundeslaender", "Bundeslaendern",
+    # Mehrere/Verschiedene
+    "Mehrere", "Mehreren", "Mehrerer", "Mehreres",
+    "Verschiedene", "Verschiedenen", "Diverse",
+    "Mehrfach", "Mehrfache", "Mehrfachen",
+    # Listen-/Quellen-Begriffe
+    "Listen", "Verzeichnissen", "Quellen",
     # Domaen-Begriffe rund um die Foerdersystematik (sind keine Eigennamen!)
     "Projekt", "Projekte", "Projekten", "Vorhaben",
     "Anzahl", "Summe", "Betrag", "Beträge", "Betraege",
@@ -1291,6 +1303,34 @@ def _match_beneficiary_analysis_mode(prompt: str | None) -> str | None:
     normalized_prompt = _normalize_search_text(prompt)
     if not normalized_prompt:
         return None
+
+    # Begünstigte, die in MEHREREN Bundesländern/Listen auftauchen.
+    # WICHTIG: vor allen anderen Triggern, sonst greift z. B. "Bundesländern"
+    # als Eigenname und faellt auf top_beneficiaries.
+    if any(
+        phrase in normalized_prompt
+        for phrase in (
+            "mehrere bundeslaender",
+            "mehreren bundeslaendern",
+            "mehrere bundesländer",
+            "mehreren bundesländern",
+            "verschiedene bundeslaender",
+            "verschiedenen bundeslaendern",
+            "verschiedene bundesländer",
+            "verschiedenen bundesländern",
+            "mehrere listen",
+            "in mehreren listen",
+            "mehrere verzeichnisse",
+            "in mehreren verzeichnissen",
+            "mehreren quellen",
+            "verschiedenen quellen",
+            "bundeslandübergreifend",
+            "bundeslanduebergreifend",
+            "länderübergreifend",
+            "laenderuebergreifend",
+        )
+    ):
+        return "multi_state_beneficiaries"
 
     # Begueunstigten-Typ-Filter (Universitaet, Hochschule, Klinik, GmbH, ...)
     # ODER konkrete Eigennamen (Stadtname, Personenname) ergeben eine
@@ -1645,6 +1685,10 @@ def build_beneficiary_analysis_answer(
 
     intro_map = {
         "repeat_beneficiaries": "Die wichtigsten Begünstigten mit mehreren Vorhaben sind:",
+        "multi_state_beneficiaries": (
+            "Begünstigte, die in mehreren Bundesländer-Listen auftauchen "
+            "(sortiert nach Anzahl der Bundesländer, dann nach Volumen):"
+        ),
         "state_fund_totals": "Die höchsten Fördervolumina nach Bundesland und Fonds sind:",
         "top_locations": "Die Standorte mit dem höchsten Fördervolumen sind:",
         "top_beneficiaries": "Die größten Begünstigten sind:",
@@ -2090,6 +2134,7 @@ def analyze_beneficiary_records(
     supported_modes = {
         "top_beneficiaries",
         "repeat_beneficiaries",
+        "multi_state_beneficiaries",
         "state_fund_totals",
         "top_locations",
         "top_sectors",
@@ -2176,7 +2221,7 @@ def analyze_beneficiary_records(
     title = ""
     metric_label = "Fördervolumen"
 
-    if mode in {"top_beneficiaries", "repeat_beneficiaries"}:
+    if mode in {"top_beneficiaries", "repeat_beneficiaries", "multi_state_beneficiaries"}:
         companies: dict[str, dict[str, Any]] = {}
         for item in flat_results:
             company_key = _normalize_search_text(item["company_name"]) or f"{item['source']}::{len(companies)}"
@@ -2205,11 +2250,13 @@ def analyze_beneficiary_records(
         for company in companies.values():
             if mode == "repeat_beneficiaries" and company["project_count"] < 2:
                 continue
+            if mode == "multi_state_beneficiaries" and len(company["bundeslaender"]) < 2:
+                continue
             aggregated.append({
                 "label": company["label"],
                 "sublabel": " · ".join(part for part in [
-                    f"{company['project_count']} Vorhaben",
-                    ", ".join(sorted(company["bundeslaender"])[:3]),
+                    f"{len(company['bundeslaender'])} Bundesländer" if mode == "multi_state_beneficiaries" else f"{company['project_count']} Vorhaben",
+                    ", ".join(sorted(company["bundeslaender"])[:5]),
                     ", ".join(sorted(company["fonds"])[:2]),
                 ] if part),
                 "value": company["value"],
@@ -2218,13 +2265,31 @@ def analyze_beneficiary_records(
                 "source_count": len(company["sources"]),
                 "sources": sorted(company["sources"]),
                 "bundeslaender": sorted(company["bundeslaender"]),
+                "bundeslaender_count": len(company["bundeslaender"]),
                 "fonds_list": sorted(company["fonds"]),
                 "locations": sorted(company["locations"])[:4],
             })
 
-        aggregated.sort(key=lambda item: (-float(item["value"] or 0.0), -int(item["project_count"] or 0), item["label"]))
+        if mode == "multi_state_beneficiaries":
+            # Primaer nach Anzahl Bundeslaender sortieren, dann nach Volumen
+            aggregated.sort(key=lambda item: (
+                -int(item["bundeslaender_count"]),
+                -float(item["value"] or 0.0),
+                item["label"],
+            ))
+        else:
+            aggregated.sort(key=lambda item: (
+                -float(item["value"] or 0.0),
+                -int(item["project_count"] or 0),
+                item["label"],
+            ))
         items = aggregated[:limit]
-        title = "Größte Begünstigte" if mode == "top_beneficiaries" else "Begünstigte mit mehreren Vorhaben"
+        if mode == "top_beneficiaries":
+            title = "Größte Begünstigte"
+        elif mode == "multi_state_beneficiaries":
+            title = "Begünstigte in mehreren Bundesländern"
+        else:
+            title = "Begünstigte mit mehreren Vorhaben"
 
     elif mode == "state_fund_totals":
         grouped: dict[tuple[str, str], dict[str, Any]] = {}
