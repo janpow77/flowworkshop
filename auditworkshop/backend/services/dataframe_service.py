@@ -1079,6 +1079,80 @@ def _extract_beneficiary_prompt_filters(
     return bundesland, fonds
 
 
+# Schluesselwoerter, die einen Begueunstigten-Typ-Filter triggern.
+# Pro Eintrag: Liste von normalisierten Prompt-Schluesseln und die zugehoerigen
+# Substrings, die in `company_name` (case-insensitive) vorkommen muessen.
+_BENEFICIARY_TYPE_FILTERS: list[tuple[tuple[str, ...], tuple[str, ...], str]] = [
+    (
+        ("universitaet", "universitäten", "universitaeten", "uni "),
+        ("universit", "tu ", "th ", "rwth"),
+        "Universitäten",
+    ),
+    (
+        ("hochschule", "hochschulen", "fachhochschule", "fh "),
+        ("hochschule", "fachhochschule"),
+        "Hochschulen",
+    ),
+    (
+        ("forschungseinrichtung", "forschungsinstitut", "fraunhofer", "max-planck", "max planck", "leibniz", "helmholtz", "dlr"),
+        ("forschung", "institut", "fraunhofer", "max-planck", "max planck", "leibniz", "helmholtz", "dlr"),
+        "Forschungseinrichtungen",
+    ),
+    (
+        ("klinik", "kliniken", "krankenhaus", "kliniken", "uniklinik", "universitaetsklinik", "universitätsklinik"),
+        ("klinik", "krankenhaus", "spital"),
+        "Kliniken / Krankenhäuser",
+    ),
+    (
+        ("kommune", "kommunen", "stadt", "städte", "staedte", "gemeinde", "gemeinden", "landkreis", "landkreise"),
+        ("stadt ", "gemeinde ", "landkreis", "kreis "),
+        "Kommunen / Gebietskörperschaften",
+    ),
+    (
+        ("verein", "vereine", "e.v.", " ev ", " e v "),
+        ("e.v.", "verein", " ev"),
+        "Vereine",
+    ),
+    (
+        ("gmbh",),
+        ("gmbh",),
+        "GmbHs",
+    ),
+    (
+        ("ag ",),
+        (" ag",),
+        "Aktiengesellschaften",
+    ),
+    (
+        ("stiftung", "stiftungen"),
+        ("stiftung",),
+        "Stiftungen",
+    ),
+    (
+        ("kmu", "mittelstand", "mittelständisch", "mittelstaendisch"),
+        ("kmu",),
+        "KMU",
+    ),
+]
+
+
+def _detect_beneficiary_name_filter(
+    prompt: str | None,
+) -> tuple[tuple[str, ...] | None, str | None]:
+    """Erkennt Begueunstigten-Typ-Filter im Prompt.
+
+    Gibt (Substring-Tupel, Klartext-Label) zurueck, oder (None, None).
+    """
+    normalized = _normalize_search_text(prompt)
+    if not normalized:
+        return None, None
+    padded = f" {normalized} "
+    for triggers, substrings, label in _BENEFICIARY_TYPE_FILTERS:
+        if any(t in padded for t in triggers):
+            return substrings, label
+    return None, None
+
+
 def _select_beneficiary_analysis_mode(prompt: str | None) -> str:
     matched_mode = _match_beneficiary_analysis_mode(prompt)
     return matched_mode or "top_beneficiaries"
@@ -1088,6 +1162,11 @@ def _match_beneficiary_analysis_mode(prompt: str | None) -> str | None:
     normalized_prompt = _normalize_search_text(prompt)
     if not normalized_prompt:
         return None
+
+    # Begueunstigten-Typ-Filter (Universitaet, Hochschule, Klinik, GmbH, ...)
+    # ergeben eine gefilterte Top-Liste der groessten Begueunstigten.
+    if _detect_beneficiary_name_filter(prompt)[0] is not None:
+        return "top_beneficiaries"
 
     if any(
         phrase in normalized_prompt
@@ -1199,6 +1278,7 @@ def get_beneficiary_llm_context(
 
     bundesland, fonds = _extract_beneficiary_prompt_filters(prompt, sources)
     mode = _select_beneficiary_analysis_mode(prompt)
+    name_substrings, _name_filter_label = _detect_beneficiary_name_filter(prompt)
     limit = max(4, min(max_entries_per_source * 3, 12))
     analysis = analyze_beneficiary_records(
         mode=mode,
@@ -1206,6 +1286,7 @@ def get_beneficiary_llm_context(
         fonds=fonds,
         limit=limit,
         country_code=country_code,
+        name_substrings=name_substrings,
     )
 
     summary = analysis["summary"]
@@ -1273,12 +1354,14 @@ def build_beneficiary_analysis_answer(
         return None
 
     bundesland, fonds = _extract_beneficiary_prompt_filters(prompt, sources)
+    name_substrings, name_filter_label = _detect_beneficiary_name_filter(prompt)
     analysis = analyze_beneficiary_records(
         mode=matched_mode,
         bundesland=bundesland,
         fonds=fonds,
         limit=max(3, min(limit, 8)),
         country_code=country_code,
+        name_substrings=name_substrings,
     )
     items = analysis["items"]
     summary = analysis["summary"]
@@ -1290,6 +1373,7 @@ def build_beneficiary_analysis_answer(
             for part in (
                 f"Bundesland {filters['bundesland']}" if filters.get("bundesland") else None,
                 f"Fonds {filters['fonds']}" if filters.get("fonds") else None,
+                f"Begünstigte vom Typ „{name_filter_label}“" if name_filter_label else None,
             )
             if part
         ]
@@ -1309,7 +1393,10 @@ def build_beneficiary_analysis_answer(
             "(laut Spalten der Begünstigtenverzeichnisse) sind:"
         ),
     }
-    lines = [intro_map.get(matched_mode, analysis["title"] + ":")]
+    intro = intro_map.get(matched_mode, analysis["title"] + ":")
+    if name_filter_label and matched_mode == "top_beneficiaries":
+        intro = f"Die größten Begünstigten vom Typ „{name_filter_label}“ sind:"
+    lines = [intro]
     for item in items[:limit]:
         line = f"{item['rank']}. {item['label']}: {item.get('value_label') or _format_eur(item.get('value'))}"
         if item.get("project_count"):
@@ -1324,12 +1411,13 @@ def build_beneficiary_analysis_answer(
         f"{summary['total_volume_label']} Gesamtvolumen."
     )
     lines.append(coverage)
-    if filters.get("bundesland") or filters.get("fonds"):
+    if filters.get("bundesland") or filters.get("fonds") or name_filter_label:
         active_filters = ", ".join(
             part
             for part in (
                 f"Bundesland={filters['bundesland']}" if filters.get("bundesland") else None,
                 f"Fonds={filters['fonds']}" if filters.get("fonds") else None,
+                f"Typ={name_filter_label}" if name_filter_label else None,
             )
             if part
         )
@@ -1735,6 +1823,7 @@ def analyze_beneficiary_records(
     min_cost: float | None = None,
     limit: int = 10,
     country_code: str | None = None,
+    name_substrings: tuple[str, ...] | None = None,
 ) -> dict:
     from services.geocoding_service import detect_columns
 
@@ -1794,9 +1883,14 @@ def analyze_beneficiary_records(
             cost_value = _parse_numeric(entry.get("kosten"))
             if min_cost is not None and (cost_value is None or cost_value < min_cost):
                 continue
+            company_name_raw = str(entry.get("name") or "").strip()
+            if name_substrings:
+                lc = company_name_raw.casefold()
+                if not any(sub.casefold() in lc for sub in name_substrings):
+                    continue
 
             flat_results.append({
-                "company_name": str(entry.get("name") or "").strip() or "Unbekannt",
+                "company_name": company_name_raw or "Unbekannt",
                 "project_name": str(entry.get("projekt") or "").strip() or "",
                 "location": str(entry.get("standort") or "").strip() or "",
                 "category": str(entry.get("kategorie") or "").strip() or "",
