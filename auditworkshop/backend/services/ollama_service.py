@@ -64,12 +64,25 @@ def _chunk_text(text: str) -> list[str]:
 
 
 def _prepend_no_think(system_prompt: str, model: str) -> str:
-    """Verhindert bei qwen3 unnötige Reasoning-Prefill-Zeit über den Gateway."""
-    if "qwen3" not in model.lower():
-        return system_prompt
-    if system_prompt.lstrip().startswith("/no_think"):
-        return system_prompt
-    return f"/no_think\n{system_prompt}"
+    """Reserviert — bleibt aus Kompatibilitätsgründen, modifiziert aber
+    nicht mehr den System-Prompt. Reasoning-Unterdrückung erfolgt jetzt
+    am User-Turn-Ende (siehe ``_append_no_think_to_user``)."""
+    return system_prompt
+
+
+def _model_supports_no_think(model: str) -> bool:
+    name = model.lower()
+    return name.startswith("qwen3") or name.startswith("qwen3.5")
+
+
+def _append_no_think_to_user(user_prompt: str, model: str) -> str:
+    """Hängt ``/no_think`` an den letzten User-Turn an — so respektieren
+    Qwen3/Qwen3.5 das Reasoning-Suppression-Token zuverlässig."""
+    if not _model_supports_no_think(model):
+        return user_prompt
+    if user_prompt.rstrip().endswith("/no_think"):
+        return user_prompt
+    return f"{user_prompt.rstrip()}\n\n/no_think"
 
 
 def _strip_think_tags(text: str) -> str:
@@ -210,8 +223,8 @@ async def warmup_gateway_model() -> None:
     payload = {
         "model": MODEL_NAME,
         "messages": [
-            {"role": "system", "content": _prepend_no_think("Antworte kurz auf Deutsch.", MODEL_NAME)},
-            {"role": "user", "content": "Antworte nur mit OK."},
+            {"role": "system", "content": "Antworte kurz auf Deutsch."},
+            {"role": "user", "content": _append_no_think_to_user("Antworte nur mit OK.", MODEL_NAME)},
         ],
         "stream": False,
         "max_tokens": 8,
@@ -296,12 +309,13 @@ async def _stream_via_gateway(
     """
     model = await _resolve_model(model_override, backend_override="gateway")
     full_prompt = _build_prompt(user_prompt, system_prompt, documents)
+    full_prompt = _append_no_think_to_user(full_prompt, model)
     t_start = time.monotonic()
 
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": _prepend_no_think(system_prompt, model)},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": full_prompt},
         ],
         "stream": True,

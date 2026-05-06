@@ -301,7 +301,10 @@ SCENARIO_MAX_TOKENS = {
     3: 180,
     4: 240,
     5: 220,
-    6: 180,
+    # Szenario 6 nutzt das groessere qwen3.5:35b auf der Evo-X2.
+    # Reasoning-Modelle brauchen ~300-700 Tokens Reasoning vor der eigentlichen
+    # Antwort — zu kleines Limit fuehrt zu leerer Antwort (User sah nur Loading).
+    6: 1500,
 }
 
 
@@ -393,12 +396,17 @@ async def workshop_stream(req: StreamRequest, request: Request):
     # Disclaimer ans Ende des Prompts
     full_prompt = f"{req.prompt}\n\n---\n{DISCLAIMER}"
 
+    # Szenario-spezifisches Modell (z. B. qwen3.5:35b fuer Szenario 6)
+    from config import SCENARIO_MODELS
+    model_override = SCENARIO_MODELS.get(req.scenario)
+
     async def event_generator():
         async for chunk in stream(
             full_prompt,
             system_prompt,
             docs,
             max_tokens=SCENARIO_MAX_TOKENS.get(req.scenario),
+            model_override=model_override,
         ):
             yield chunk
 

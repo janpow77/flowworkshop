@@ -1139,6 +1139,37 @@ def _match_beneficiary_analysis_mode(prompt: str | None) -> str | None:
     if any(
         phrase in normalized_prompt
         for phrase in (
+            "wirtschaftszweig",
+            "wirtschaftszweige",
+            "wirtschaftstaetigkeit",
+            "wirtschaftstätigkeit",
+            "wirtschaftsbereich",
+            "branche",
+            "branchen",
+            "sektor",
+            "sektoren",
+            "nace",
+            "interventionsbereich",
+            "interventionsbereiche",
+            "interventionskategorie",
+            "art der intervention",
+            "intervention field",
+            "intervention",
+            "foerderbereich",
+            "förderbereich",
+            "foerderbereiche",
+            "förderbereiche",
+            "themenfeld",
+            "themenfelder",
+            "themengebiet",
+            "themengebiete",
+        )
+    ):
+        return "top_sectors"
+
+    if any(
+        phrase in normalized_prompt
+        for phrase in (
             "groesste beguenstigte",
             "größte begünstigte",
             "groessten beguenstigten",
@@ -1273,6 +1304,10 @@ def build_beneficiary_analysis_answer(
         "state_fund_totals": "Die höchsten Fördervolumina nach Bundesland und Fonds sind:",
         "top_locations": "Die Standorte mit dem höchsten Fördervolumen sind:",
         "top_beneficiaries": "Die größten Begünstigten sind:",
+        "top_sectors": (
+            "Die geförderten Wirtschaftszweige bzw. Interventionsbereiche "
+            "(laut Spalten der Begünstigtenverzeichnisse) sind:"
+        ),
     }
     lines = [intro_map.get(matched_mode, analysis["title"] + ":")]
     for item in items[:limit]:
@@ -1708,6 +1743,7 @@ def analyze_beneficiary_records(
         "repeat_beneficiaries",
         "state_fund_totals",
         "top_locations",
+        "top_sectors",
     }
     if mode not in supported_modes:
         raise ValueError(f"Unbekannter Analysemodus '{mode}'.")
@@ -1862,6 +1898,56 @@ def analyze_beneficiary_records(
             for bucket in grouped.values()
         ], key=lambda item: (-float(item["value"] or 0.0), item["label"]))[:limit]
         title = "Fördervolumen nach Bundesland und Fonds"
+
+    elif mode == "top_sectors":
+        # Wirtschaftszweig-/Interventionsbereich-Auswertung. Die `kategorie`-
+        # Spalte stammt aus geocoding_service.detect_columns(...).get("sz")
+        # und faengt Wirtschaftstaetigkeit, Art der Intervention,
+        # Interventionsbereich/-kategorie sowie Spezifisches Ziel ab.
+        grouped_sectors: dict[str, dict[str, Any]] = {}
+        records_with_category = 0
+        for item in flat_results:
+            category = (item.get("category") or "").strip()
+            if not category:
+                continue
+            records_with_category += 1
+            # Fuer lange Klartext-Kategorien auf eine handhabbare Laenge kuerzen
+            label = category if len(category) <= 110 else category[:107].rstrip() + "…"
+            bucket = grouped_sectors.setdefault(label, {
+                "label": label,
+                "value": 0.0,
+                "project_count": 0,
+                "bundeslaender": set(),
+                "fonds": set(),
+            })
+            if item.get("kosten") is not None:
+                bucket["value"] += float(item["kosten"])
+            bucket["project_count"] += 1
+            if item.get("bundesland"):
+                bucket["bundeslaender"].add(item["bundesland"])
+            if item.get("fonds"):
+                bucket["fonds"].add(item["fonds"])
+
+        items = sorted([
+            {
+                "label": bucket["label"],
+                "sublabel": " · ".join(part for part in [
+                    f"{bucket['project_count']} Vorhaben",
+                    ", ".join(sorted(bucket["bundeslaender"])[:3]),
+                    ", ".join(sorted(bucket["fonds"])[:2]),
+                ] if part),
+                "value": bucket["value"],
+                "value_label": _format_eur(bucket["value"] or None),
+                "project_count": bucket["project_count"],
+                "bundeslaender": sorted(bucket["bundeslaender"]),
+                "fonds_list": sorted(bucket["fonds"]),
+            }
+            for bucket in grouped_sectors.values()
+        ], key=lambda item: (-float(item["value"] or 0.0), -int(item["project_count"]), item["label"]))[:limit]
+        title = (
+            f"Wirtschaftszweige / Interventionsbereiche "
+            f"({records_with_category} von {scanned_records} Vorhaben mit Angabe)"
+        )
 
     elif mode == "top_locations":
         grouped_locations: dict[str, dict[str, Any]] = {}

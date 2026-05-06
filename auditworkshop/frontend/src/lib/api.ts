@@ -487,6 +487,7 @@ export function streamSSE(
   onToken: (token: string) => void,
   onDone: (info: { token_count?: number; model?: string; tok_per_s?: number }) => void,
   onError: (err: string) => void,
+  onStatus?: (state: string) => void,
 ): AbortController {
   const controller = new AbortController();
   fetch(`${BASE}${url}`, {
@@ -525,6 +526,8 @@ export function streamSSE(
               onDone(data);
             } else if (data.token) {
               onToken(data.token);
+            } else if (data.type === 'status' && data.state) {
+              onStatus?.(data.state);
             } else if (data.type === 'progress') {
               onToken(`\n[${data.current}/${data.total}] ${data.question_key}...\n`);
             }

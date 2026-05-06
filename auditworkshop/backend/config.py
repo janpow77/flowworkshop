@@ -14,6 +14,21 @@ EGPU_WORKLOAD_TYPE = os.getenv("EGPU_WORKLOAD_TYPE", "llm")
 MODEL_NAME    = os.getenv("MODEL_NAME",    "qwen3:14b")
 # Europaeische Alternative: MODEL_NAME = "mistral:7b" (Mistral AI, Paris)
 # Installieren: ollama pull mistral:7b
+
+# Szenario-spezifischer Modell-Override (kommagetrennt, je "scenario:model")
+# Default: Szenario 6 nutzt das groessere qwen3.5:35b auf der Evo-X2
+# (besseres Reasoning bei Begueunstigtenauswertungen).
+_SCENARIO_MODEL_RAW = os.getenv("SCENARIO_MODELS", "6:qwen3.5:35b")
+SCENARIO_MODELS: dict[int, str] = {}
+for _entry in _SCENARIO_MODEL_RAW.split(","):
+    _entry = _entry.strip()
+    if not _entry or ":" not in _entry:
+        continue
+    _scn, _model = _entry.split(":", 1)
+    try:
+        SCENARIO_MODELS[int(_scn.strip())] = _model.strip()
+    except ValueError:
+        continue
 WORKSHOP_ADMIN = os.getenv("WORKSHOP_ADMIN", "false").lower() == "true"
 ALLOW_REMOTE_GEOCODING = os.getenv("ALLOW_REMOTE_GEOCODING", "false").lower() == "true"
 ALLOW_REMOTE_TILES = os.getenv("ALLOW_REMOTE_TILES", "true").lower() == "true"

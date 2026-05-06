@@ -154,8 +154,11 @@ COLUMN_PATTERNS = {
         r"kreis.*frei", r"regierungsbezirk", r"gebiet",
     ],
     "sz": [
-        r"spezifisches.*ziel", r"specific.*objective", r"priorit",
+        r"wirtschaftst", r"wirtschaftszweig", r"wirtschaftsbereich",
+        r"branche", r"sektor", r"nace",
+        r"art.*der.*intervention", r"interventionskategorie",
         r"interventions.*bereich", r"intervention.*field",
+        r"spezifisches.*ziel", r"specific.*objective", r"priorit",
     ],
     "beschreibung": [
         r"^op_?purp_?achi$",

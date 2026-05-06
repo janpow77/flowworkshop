@@ -109,6 +109,8 @@ export default function ScenarioPage() {
   const [bootstrappingDemo, setBootstrappingDemo] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [splitResponses, setSplitResponses] = useState<{without?: string; with?: string}>({});
+  const [streamStatus, setStreamStatus] = useState<string | null>(null);
+  const [streamStartedAt, setStreamStartedAt] = useState<number | null>(null);
   // Szenario 6: Land-Filter (default Deutschland, "" = alle Länder zusammen)
   const [countryCode, setCountryCode] = useState<CountryCode | ''>('DE');
   const controllerRef = useRef<AbortController | null>(null);
@@ -135,6 +137,8 @@ export default function ScenarioPage() {
     setStreaming(true);
     setError(undefined);
     setTokenCount(undefined);
+    setStreamStatus(null);
+    setStreamStartedAt(Date.now());
 
     let accumulated = '';
     controllerRef.current = streamSSE(
@@ -142,10 +146,12 @@ export default function ScenarioPage() {
       { scenario: num, prompt, documents, with_context: withContext },
       (token) => {
         accumulated += token;
+        setStreamStatus(null);
         setResponse((prev) => prev + token);
       },
       (doneInfo) => {
         setStreaming(false);
+        setStreamStatus(null);
         setTokenCount(doneInfo.token_count);
         setModel(doneInfo.model);
         setTokPerS(doneInfo.tok_per_s);
@@ -159,8 +165,10 @@ export default function ScenarioPage() {
       },
       (err) => {
         setStreaming(false);
+        setStreamStatus(null);
         setError(err);
       },
+      (state) => setStreamStatus(state),
     );
   }, [prompt, num, documents, withContext, streaming]);
 
@@ -466,6 +474,8 @@ export default function ScenarioPage() {
               error={error}
               onStop={handleStop}
               onRetry={handleSubmit}
+              status={streamStatus}
+              startedAt={streamStartedAt}
             />
           </div>
         </div>
@@ -515,6 +525,8 @@ export default function ScenarioPage() {
             error={error}
             onStop={handleStop}
             onRetry={handleSubmit}
+            status={streamStatus}
+            startedAt={streamStartedAt}
           />
 
           {/* Szenario 3: Split-View Vergleich ohne/mit RAG */}

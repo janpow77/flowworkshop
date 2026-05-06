@@ -10,17 +10,28 @@ interface Props {
   error?: string;
   onStop?: () => void;
   onRetry?: () => void;
+  status?: string | null;
+  startedAt?: number | null;
 }
 
 export default function LlmResponsePanel({
   response, streaming, tokenCount, model, tokPerS, error, onStop, onRetry,
+  status, startedAt,
 }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
+  const [, setNow] = useState(0);
 
   useEffect(() => {
     if (streaming) endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [response, streaming]);
+
+  // Sekundenzähler nur während des Wartens auf erste Tokens
+  useEffect(() => {
+    if (!streaming || response || !startedAt) return;
+    const id = window.setInterval(() => setNow((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [streaming, response, startedAt]);
 
   const handleCopy = async () => {
     if (!response) return;
@@ -75,7 +86,10 @@ export default function LlmResponsePanel({
               <div className="h-2 w-2 rounded-full bg-indigo-400 animate-bounce glow-cyan [animation-delay:150ms]" />
               <div className="h-2 w-2 rounded-full bg-indigo-400 animate-bounce glow-cyan [animation-delay:300ms]" />
             </div>
-            <span className="text-sm text-slate-500">KI verarbeitet die Anfrage...</span>
+            <span className="text-sm text-slate-500">
+              {status === 'thinking' ? 'Modell denkt nach' : 'KI verarbeitet die Anfrage'}
+              {startedAt ? ` … ${Math.max(0, Math.floor((Date.now() - startedAt) / 1000))}s` : '…'}
+            </span>
           </div>
         ) : response ? (
           <pre className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300 font-sans leading-relaxed">{response}{streaming && <span className="inline-block w-2 h-4 ml-0.5 bg-indigo-500 dark:bg-indigo-400 animate-cursor rounded-sm" />}</pre>
