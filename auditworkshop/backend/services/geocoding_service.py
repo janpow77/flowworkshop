@@ -33,6 +33,35 @@ _last_request_time = 0.0
 _nuts_data: dict | None = None
 
 
+def _format_date_string(value: object) -> str:
+    """Normalisiert Datumswerte aus XLSX/CSV auf 'YYYY-MM-DD' (oder Original
+    bei nicht-parsbarem Format). Leere/None-Werte werden zu ''.
+    """
+    if value is None:
+        return ""
+    s = str(value).strip()
+    if not s or s.lower() in ("nan", "none", "null", "n/a"):
+        return ""
+    # Bereits ISO-Datum: nur den Datumsteil
+    iso_match = re.match(r"^(\d{4}-\d{2}-\d{2})", s)
+    if iso_match:
+        return iso_match.group(1)
+    # Deutsches Datum DD.MM.YYYY
+    de_match = re.match(r"^(\d{1,2})\.(\d{1,2})\.(\d{4})", s)
+    if de_match:
+        d, m, y = de_match.groups()
+        return f"{y}-{m.zfill(2)}-{d.zfill(2)}"
+    # YYYY-MM (ohne Tag)
+    ym_match = re.match(r"^(\d{4})-(\d{2})$", s)
+    if ym_match:
+        return f"{s}-01"
+    # YYYY (nur Jahr)
+    if re.match(r"^\d{4}$", s):
+        return f"{s}-01-01"
+    # Sonst: Roh-String, max 30 Zeichen
+    return s[:30]
+
+
 def _parse_cost_value(value: object) -> float:
     """Normalisiert Kostenwerte aus XLSX/CSV fuer Kartenantworten."""
     if value is None:
@@ -180,6 +209,20 @@ COLUMN_PATTERNS = {
     ],
     "country": [r"country", r"land$", r"staat", r"member.*state", r"nationality", r"citizenship"],
     "status": [r"status", r"listing.*status", r"decision", r"phase", r"late", r"active"],
+    "beginn": [
+        r"datum.*beginn", r"datum.*beginns", r"beginn.*vorhabens",
+        r"^beginn$", r"start.*date", r"^start$", r"datum.*start",
+        r"projekt.*beginn", r"vorhaben.*beginn",
+    ],
+    "ende": [
+        r"datum.*abschluss", r"datum.*endes", r"datum.*ende",
+        r"abschluss.*vorhabens", r"ende.*vorhabens",
+        r"end.*date.*operation", r"completion.*date",
+        r"^ende$", r"^abschluss$", r"^end_date$", r"^end$",
+        r"end_date", r"end.*date",
+        r"voraussichtlich.*abschluss", r"voraussichtlich.*ende",
+        r"projekt.*ende", r"projekt.*abschluss",
+    ],
     "latitude": [r"^lat$", r"^latitude$", r"^breitengrad$", r"breitengrad", r"^y_?coord", r"y_?wgs"],
     "longitude": [r"^lon$", r"^lng$", r"^longitude$", r"^laengengrad$", r"^längengrad$", r"laengengrad", r"längengrad", r"^x_?coord", r"x_?wgs"],
 }
@@ -730,6 +773,8 @@ def get_beneficiary_map_data(source: str, country_code: str | None = None) -> di
     landkreis_col = col_map.get("landkreis")
     lat_col = col_map.get("latitude")
     lon_col = col_map.get("longitude")
+    beginn_col = col_map.get("beginn")
+    ende_col = col_map.get("ende")
     has_coordinates = bool(lat_col and lon_col)
 
     # Wenn die Standort-Spalte effektiv nur die PLZ ist (z.B. AT-EFRE
@@ -803,6 +848,10 @@ def get_beneficiary_map_data(source: str, country_code: str | None = None) -> di
         select_parts.append(f'"{kosten_col}" AS kosten')
     if sz_col:
         select_parts.append(f'"{sz_col}" AS kategorie')
+    if beginn_col:
+        select_parts.append(f'"{beginn_col}"::text AS beginn')
+    if ende_col:
+        select_parts.append(f'"{ende_col}"::text AS ende')
 
     where_sql = " AND ".join(where_clauses) if where_clauses else "TRUE"
     sql = f'SELECT {", ".join(select_parts)} FROM "{table_name}" WHERE {where_sql}'
@@ -836,6 +885,8 @@ def get_beneficiary_map_data(source: str, country_code: str | None = None) -> di
             geo = geocode_single(standort, country_code=cc)
 
         if geo:
+            beginn_raw = row_dict.get("beginn")
+            ende_raw = row_dict.get("ende")
             entry = {
                 "standort": standort,
                 "lat": geo["lat"],
@@ -844,6 +895,8 @@ def get_beneficiary_map_data(source: str, country_code: str | None = None) -> di
                 "projekt": str(row_dict.get("projekt", ""))[:300],
                 "kosten": _parse_cost_value(row_dict.get("kosten")),
                 "kategorie": str(row_dict.get("kategorie", ""))[:50],
+                "beginn": _format_date_string(beginn_raw),
+                "ende": _format_date_string(ende_raw),
             }
             # NUTS-3 Zuordnung nur fuer Deutschland (Datei nuts_de.json)
             if cc == "DE":

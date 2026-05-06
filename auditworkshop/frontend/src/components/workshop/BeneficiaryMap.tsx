@@ -16,6 +16,22 @@ interface Beneficiary {
   country_name?: string | null;
   lat: number;
   lon: number;
+  beginn?: string;
+  ende?: string;
+}
+
+// Gruppe von Vorhaben am gleichen Standort (lat/lon).
+// Mehrere Vorhaben desselben Begünstigten oder verschiedener Begünstigter
+// teilen sich denselben Marker und werden im Popup zusammen angezeigt.
+interface MapPin {
+  lat: number;
+  lon: number;
+  standort: string;
+  bundesland: string;
+  fonds: string;
+  country_name?: string | null;
+  total_kosten: number;
+  beneficiaries: Beneficiary[];
 }
 
 interface SourceInfo {
@@ -53,6 +69,48 @@ const COUNTRY_CENTER: Record<string, { center: [number, number]; zoom: number }>
 };
 function getBlColor(bl: string): string { return BL_COLORS[bl] || '#6b7280'; }
 function formatEur(val: number): string { return val.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' €'; }
+
+// "2024-06-28" → "28.06.2024"; "2024-06-28T..." → "28.06.2024"; sonst Roh
+function formatDateDe(iso: string | undefined | null): string {
+  if (!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : String(iso);
+}
+function formatPeriod(beginn?: string, ende?: string): string {
+  const b = formatDateDe(beginn);
+  const e = formatDateDe(ende);
+  if (b && e) return `${b} – ${e}`;
+  if (b) return `seit ${b}`;
+  if (e) return `bis ${e}`;
+  return '';
+}
+
+// Gruppiert eine flache Beneficiary-Liste nach Standort (lat/lon).
+// Verwendet einen 4-Nachkommastellen-Schlüssel — geocodierte Koordinaten
+// gleicher Adressen kollidieren in der Regel ohnehin.
+function groupByLocation(items: Beneficiary[]): MapPin[] {
+  const map = new Map<string, MapPin>();
+  for (const b of items) {
+    const key = `${b.lat.toFixed(4)},${b.lon.toFixed(4)}`;
+    let pin = map.get(key);
+    if (!pin) {
+      pin = {
+        lat: b.lat, lon: b.lon, standort: b.standort,
+        bundesland: b.bundesland, fonds: b.fonds,
+        country_name: b.country_name,
+        total_kosten: 0, beneficiaries: [],
+      };
+      map.set(key, pin);
+    }
+    pin.beneficiaries.push(b);
+    pin.total_kosten += b.kosten || 0;
+    // Bundesland-Mehrfachnennung im Pin: vermerken wenn unterschiedlich
+    if (b.bundesland && b.bundesland !== pin.bundesland) {
+      pin.bundesland = `${pin.bundesland}/${b.bundesland}`;
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.total_kosten - a.total_kosten);
+}
 
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap();
@@ -170,7 +228,8 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
     if (minKosten > 0 && b.kosten < minKosten) return false;
     return true;
   });
-  const points: [number, number][] = filtered.map((b) => [b.lat, b.lon]);
+  const pins = useMemo(() => groupByLocation(filtered), [filtered]);
+  const points: [number, number][] = pins.map((p) => [p.lat, p.lon]);
   const totalKosten = filtered.reduce((s, b) => s + b.kosten, 0);
   const allowRemoteTiles = profile?.allow_remote_tiles ?? false;
   const mapView = useMemo(() => {
@@ -310,6 +369,9 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
               <span className="font-semibold text-slate-700 dark:text-slate-300">
                 {filtered.length.toLocaleString('de-DE')} Vorhaben
               </span>
+              <span className="text-slate-400">
+                an {pins.length.toLocaleString('de-DE')} Standort{pins.length === 1 ? '' : 'en'}
+              </span>
               {totalKosten > 0 && (
                 <span className="text-slate-400">· {formatEur(totalKosten)}</span>
               )}
@@ -345,23 +407,69 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
                   />
                 )}
                 {points.length > 0 && <FitBounds points={points} />}
-                {filtered.map((b, i) => (
-                  <CircleMarker key={`${b.lat}-${b.lon}-${i}`} center={[b.lat, b.lon]}
-                    radius={getRadius(b.kosten)}
-                    pathOptions={{ color: getBlColor(b.bundesland), fillColor: getBlColor(b.bundesland), fillOpacity: 0.5, weight: 1 }}>
-                    <Popup>
-                      <div className="text-xs leading-relaxed min-w-[220px]">
-                        <p className="font-bold text-sm mb-1">{b.name}</p>
-                        {b.projekt && <p className="text-slate-600 mb-1 line-clamp-2">{b.projekt}</p>}
-                        {b.kosten > 0 && <p><strong>Gesamtkosten:</strong> {formatEur(b.kosten)}</p>}
-                        <p><strong>Standort:</strong> {b.standort}</p>
-                        <p><strong>{regionLabel}:</strong> {b.bundesland}{b.fonds && ` · ${b.fonds}`}</p>
-                        {b.country_name && <p><strong>Land:</strong> {b.country_name}</p>}
-                        {b.kategorie && <p><strong>Ziel:</strong> {b.kategorie}</p>}
-                      </div>
-                    </Popup>
-                  </CircleMarker>
-                ))}
+                {pins.map((pin, i) => {
+                  // Begünstigte am gleichen Standort nochmal nach Name gruppieren —
+                  // ein Begünstigter mit mehreren Vorhaben am selben Ort soll
+                  // einen Block mit allen Vorhaben darunter bekommen.
+                  const byBeneficiary = new Map<string, Beneficiary[]>();
+                  for (const b of pin.beneficiaries) {
+                    const arr = byBeneficiary.get(b.name) || [];
+                    arr.push(b);
+                    byBeneficiary.set(b.name, arr);
+                  }
+                  const groups = Array.from(byBeneficiary.entries())
+                    .map(([name, vorhaben]) => ({
+                      name,
+                      vorhaben: vorhaben.sort((a, b) =>
+                        (a.beginn || '').localeCompare(b.beginn || '')),
+                      total: vorhaben.reduce((s, v) => s + (v.kosten || 0), 0),
+                    }))
+                    .sort((a, b) => b.total - a.total);
+                  return (
+                    <CircleMarker key={`${pin.lat}-${pin.lon}-${i}`} center={[pin.lat, pin.lon]}
+                      radius={getRadius(pin.total_kosten)}
+                      pathOptions={{ color: getBlColor(pin.bundesland), fillColor: getBlColor(pin.bundesland), fillOpacity: 0.5, weight: 1 }}>
+                      <Popup maxWidth={420}>
+                        <div className="text-xs leading-relaxed min-w-[260px] max-w-[400px]">
+                          <p className="font-bold text-sm mb-1">{pin.standort}</p>
+                          <p className="text-slate-500 mb-2">
+                            {pin.beneficiaries.length} Vorhaben · {formatEur(pin.total_kosten)}
+                            {pin.country_name && ` · ${pin.country_name}`}
+                          </p>
+                          <div className="max-h-[280px] overflow-y-auto pr-1 space-y-2">
+                            {groups.map((g, gi) => (
+                              <div key={gi} className="border-l-2 pl-2"
+                                   style={{ borderColor: getBlColor(g.vorhaben[0].bundesland) }}>
+                                <p className="font-semibold text-slate-800 dark:text-slate-200">{g.name}</p>
+                                <p className="text-[10px] text-slate-500 mb-1">
+                                  {g.vorhaben.length} Vorhaben · {formatEur(g.total)}
+                                  {g.vorhaben[0].fonds && ` · ${g.vorhaben[0].fonds}`}
+                                </p>
+                                <ul className="space-y-1">
+                                  {g.vorhaben.map((v, vi) => {
+                                    const period = formatPeriod(v.beginn, v.ende);
+                                    return (
+                                      <li key={vi} className="text-slate-600 dark:text-slate-400">
+                                        {v.projekt && (
+                                          <span className="block line-clamp-2">{v.projekt}</span>
+                                        )}
+                                        <span className="text-[10px] text-slate-500 flex flex-wrap gap-x-2">
+                                          {v.kosten > 0 && <span>{formatEur(v.kosten)}</span>}
+                                          {period && <span>📅 {period}</span>}
+                                          {v.kategorie && <span className="line-clamp-1">{v.kategorie}</span>}
+                                        </span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </Popup>
+                    </CircleMarker>
+                  );
+                })}
               </MapContainer>
               {!allowRemoteTiles && (
                 <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-md bg-white/90 dark:bg-slate-900/90 px-2 py-1 text-[10px] text-slate-500 shadow">
