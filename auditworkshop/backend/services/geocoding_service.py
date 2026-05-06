@@ -324,7 +324,7 @@ def lookup_plz(plz: str, country_code: str | None = None) -> dict | None:
     zurueck oder None.
 
     Akzeptiert auch zusaetzliche Schreibweisen: "01067 Dresden" → 01067,
-    "1010" (AT, 4-stellig).
+    "1010" (AT, 4-stellig), "7310" (DE, fuehrende Null in Excel verloren) → 07310.
     """
     if not plz:
         return None
@@ -334,6 +334,12 @@ def lookup_plz(plz: str, country_code: str | None = None) -> dict | None:
     plz_str = str(plz).strip()
     if plz_str in db:
         return db[plz_str]
+    # DE-PLZ sind 5-stellig. Excel/CSV schneidet fuehrende Nullen oft ab
+    # ("07310" → "7310"). Pad auf 5 Stellen wenn nur 4 Stellen vorliegen.
+    if cc == "de" and plz_str.isdigit() and len(plz_str) == 4:
+        padded = "0" + plz_str
+        if padded in db:
+            return db[padded]
     # AT-PLZ haben fuehrende Null nicht — z. B. "1010" → key "1010"
     plz_str_no_pad = plz_str.lstrip("0")
     if plz_str_no_pad in db:
