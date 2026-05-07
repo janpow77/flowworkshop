@@ -1,6 +1,6 @@
 # Plan: Workshop-Plattform nach der Veranstaltung
 
-> **Status:** v3.1 (final, freigabebereit)
+> **Status:** v3.2 (final, freigabebereit)
 > **Stand:** 2026-05-07
 > **Autor:** Jan Riener · Konzept gemeinsam mit Claude Opus 4.7
 > **Nicht implementiert.** Dieses Dokument beschreibt nur, *was* gebaut werden soll.
@@ -68,24 +68,38 @@ Dieses Dokument beschreibt die Architektur, die Phasen und die offenen Punkte.
 
 ---
 
-## 3. Auth-System (Phase 0)
+## 3. Auth-System (Phase 0) — **OHNE Mail-Schicht**
+
+> **Entscheidung 2026-05-07:** Kein SMTP, kein Mail-Versand aus der App.
+> Begründung: zu viel Setup-Aufwand (DNS/DKIM/Reputation) für 22 Teilnehmer.
+>
+> **Konsequenzen:**
+> - Keine E-Mail-Verifikation beim Signup (E-Mail wird trotzdem als
+>   Pflichtfeld gespeichert; Admin prüft sie beim Approval)
+> - Passwort-Reset läuft über Admin-Generated-Token, nicht per Mail
+> - Migration der bestehenden Nutzer ohne automatische Setup-Mail
+> - Notifications nur intern (Bell-Icon), keine Mailbenachrichtigung
 
 ### 3.1 Flows
 
-#### Selbstregistrierung
+#### Selbstregistrierung (ohne Mail-Verify)
 ```
 1. /register → Formular:
-     E-Mail (Pflicht, validiert) · Passwort (≥10 Z., ≥1 Sonderz., ≥1 Ziffer)
-     Vor-/Nachname · Behörde · Bundesland (Dropdown DE+AT+Bund)
-     Funktion · Begründung der Anmeldung (optional)
+     E-Mail (Pflicht, validiert)
+     Passwort (≥10 Z., ≥1 Sonderz., ≥1 Ziffer)
+     Vor-/Nachname · Behörde · Bundesland · Funktion
+     Begründung der Anmeldung (Pflichtfeld bei externer Domain, sonst optional)
      Einwilligung Datenschutz (Checkbox, Pflicht)
 2. POST /api/auth/signup
-     Backend: User-Eintrag mit status='email_unverified'
-     Versand „Magic Link" via SMTP
-3. /verify-email?token=… → status='pending_approval'
-4. Admin sieht in /admin/users die Pending-Queue
-5. Admin klickt Genehmigen → status='active', Mail an User
-6. User loggt sich unter /login mit E-Mail + Passwort ein → Session-Cookie
+     Backend: User-Eintrag mit status='pending_approval'
+     KEIN Mail-Versand — Antwort: „Anmeldung eingegangen, wird vom
+     Admin geprüft. Nach Freischaltung können Sie sich einloggen."
+3. Admin sieht in /admin/users die Pending-Queue mit allen Daten,
+   inkl. Cross-Check der E-Mail-Domain
+4. Admin klickt „Genehmigen" → status='active'
+   (Optional: Admin kann Magic-Login-Link generieren + manuell per
+    Outlook/Slack an den User schicken — One-Click-Variante)
+5. User loggt sich unter /login mit E-Mail + Passwort ein → Session-Cookie
 ```
 
 #### Login
@@ -93,10 +107,16 @@ Dieses Dokument beschreibt die Architektur, die Phasen und die offenen Punkte.
 - Rate-Limit: 5 Versuche / 15 Min pro IP, 10 / Stunde pro E-Mail
 - Lockout nach 10 fehlgeschlagenen Versuchen für 30 Min, mit Reset-Mail-Hinweis
 
-#### Passwort-Reset
-- POST `/api/auth/request-reset` → Mail mit Token (24 h gültig)
-- GET `/reset-password?token=…` → Form, POST mit neuem Passwort
-- Alle bestehenden Sessions werden invalidiert
+#### Passwort-Reset (ohne Mail)
+- User klickt auf `/login` „Passwort vergessen?" → Modal:
+  „Bitte den Admin (jan.riener@…) kontaktieren. Sie erhalten dann
+  einen einmaligen Reset-Link."
+- Admin sieht in `/admin/users` Spalten-Aktion „Passwort-Reset-Link
+  generieren" → Link mit 24-h-Token wird **nicht versendet**, sondern
+  in einem Modal angezeigt zum Kopieren
+- Admin schickt Link manuell per Outlook/Slack/persönlich
+- User öffnet Link → setzt neues Passwort → alle Sessions werden invalidiert
+- Aufwand für Admin: ~30 Sek pro Reset, bei 22 Teilnehmern handhabbar
 
 #### Sessions
 - DB-backed (Tabelle `user_session`), Cookie `auditworkshop_sid` HttpOnly + Secure + SameSite=Lax
@@ -193,21 +213,16 @@ sowohl der Begünstigtenkarten-Filter (`BL_COLORS`), die Geocoding-Heuristik
 - Brute-Force: stets 200 ms Delay bei Login-Antwort
 - DSGVO: Audit-Log enthält gehashte IP (SHA256+Salt)
 
-### 3.6 Mail-Provider
+### 3.6 Mail-Schicht — **ENTFÄLLT**
 
-Ohne Mail kein Login. Drei realistische Optionen:
+Bewusste Entscheidung: kein Mail-Versand aus der App. Stattdessen:
+- Approval-Hinweis erscheint im Web-UI nach Signup
+- Magic-Login-Link / Reset-Link werden im Admin-UI generiert und
+  manuell an den User weitergeleitet (Outlook/Slack/persönlich)
+- Notifications laufen über Bell-Icon im UI (siehe §6 / Phase 6)
 
-| Option | Kosten | Empfehlung |
-|---|---|---|
-| Brevo | 300 Mails/Tag gratis, danach 9 €/M | ⭐ einfach, gut für Workshop-Größe |
-| Mailgun | 1.000 Mails/Tag gratis 30 d, danach $35/M | bei stark wachsender Nutzerzahl |
-| Hetzner-Mailbox-SMTP | inkl. wenn Hosting dort | ⭐⭐ am pragmatischsten wenn die Domain bei Hetzner liegt |
-
-**Setup-Checkliste:**
-- DNS-Einträge: SPF, DKIM, DMARC für `workshop.flowaudit.de`
-- Sender-Adresse fest, z. B. `noreply@workshop.flowaudit.de`
-- Reply-To-Adresse: vermutlich `workshop@wirtschaft.hessen.de` oder eigenes Postfach
-- SMTP-Credentials in `.env` (außerhalb Repo)
+Spart: SMTP-Provider, DNS-DKIM-Setup, Reputation-Aufbau, Mail-Queue,
+Bounce-Handling — insgesamt geschätzt ~6 h Plan-/Setup-Aufwand.
 
 ---
 
@@ -287,20 +302,30 @@ Bestehende Nutzer haben kein `bundesland` und kein `function_role`. Lösung:
 - Bestehende `department`-Werte wandern als Vorschlag automatisch ins
   Funktion-Feld
 
-### 4.4 Optionale Komfort-Mail (sobald SMTP läuft)
+### 4.4 Setup-Link-Verteilung an die 23 Bestandsnutzer
 
-> **Betreff:** Workshop-Plattform: einmalige Passwort-Vergabe
->
-> Hallo {first_name},
->
-> die Workshop-Plattform bekommt einen neuen Login-Bereich. Dein Account ist
-> bereits eingerichtet, du musst nur einmalig ein Passwort vergeben:
->
-> → https://workshop.flowaudit.de/account/setup-password?token=<unique>
->
-> Dein bisheriger Einladungslink funktioniert noch 30 Tage parallel.
+Ohne Mail bleiben drei Optionen:
 
-Opt-out — wer nichts tut, kann weiter mit dem alten Token.
+**A) Banner beim alten Login**
+- Bestandsnutzer loggt sich mit altem Token ein
+- Banner: „Bitte einmalig Passwort vergeben (5 Min)"
+- Klick → `/account/setup-password` → Passwort setzen → fertig
+- Funktioniert organisch, keine Admin-Aktion
+
+**B) Admin generiert Setup-Links + verschickt manuell**
+- `/admin/users` → Bulk-Aktion „Setup-Links generieren"
+- Liste mit 23 Links erscheint (Klartext, nicht gehasht)
+- Admin kopiert die Liste → in Outlook-Serien-Mail einpflegen → versenden
+- Aufwand: ~10 Min einmalig
+
+**C) Übergangs-Modus über die volle 30-Tage-Frist**
+- Alter Token bleibt 30 Tage parallel gültig
+- Wer es schafft, das Passwort in der Zeit zu setzen — gut
+- Wer nicht: nach 30 Tagen erscheint beim Login Aufforderung „Passwort
+  vergeben" → User setzt es da, ohne Admin-Hilfe
+
+**Empfehlung:** A + C kombinieren. B nur wenn Admin proaktiv informieren
+will. Kein zwingender Mailrun, alles asynchron + freundlich.
 
 ---
 
@@ -771,18 +796,21 @@ Frontend-Komponente `<Avatar user={…} size="sm|md|lg" />`.
 
 | Sprint | Inhalt | h | DoD |
 |---|---|---:|---|
-| **A1** | Mail-Setup-Klärung + DNS-Einträge | 1–2 | SPF/DKIM/DMARC sichtbar in `dig` |
-| **A2** | **Phase 0 Auth-System** (User, Sessions, Approval, Migration alter Tokens) | 8–10 | Login End-to-End, alter Token migriert |
+| ~~A1~~ | ~~Mail-Setup-Klärung~~ | — | **entfällt** (kein Mail) |
+| **A2** | **Phase 0 Auth-System** (User, Sessions, Approval, Magic-Link via Admin-UI, Migration alter Tokens) | 7–9 | Login End-to-End, Admin generiert Setup-Links, alter Token migriert |
 | **A3** | **Phase 5 Export-Lib** (parallel) — `html-to-image` + `useExport` | 2–3 | Karten-Export erzeugt PNG + PDF |
-| **B1** | **Phase 1 Hub-Kacheln** + `event.phase`-Toggle + Admin-UI | 3–4 | Phase-Wechsel sichtbar, Hub live |
+| **B1** | **Phase 1 Hub-Kacheln** + `event.phase`-Toggle + Admin-UI + Landing-Page | 5–6 | Phase-Wechsel sichtbar, Hub live, Public-Tools auf Landing |
 | **B2** | **Phase 2 Forum-Redesign** | 6–7 | Diskurs-Stil, Migration alter Posts |
-| **C** | **Phase 3 Dokumente** | 7–8 | Upload, Versionen, Download, Quota |
+| **C1** | **Phase 3 Dokumente** | 7–8 | Upload, Versionen, Download, Quota |
+| **C2** | **Phase 3.5 Auto-Harvest** (Beneficiaries monatlich + Sanktionen täglich + LLM-Frage-Log) | 5–6 | Cron läuft, Admin-Dashboard zeigt Verlauf |
 | **D1** | **Phase 4 Archiv-Tagesordnung** mit Material-Verknüpfung | 3–4 | Klick auf Programm-Punkt zeigt Material |
 | **D2** | **Phase 6 Notification-Center** (Bell, intern) | 2 | Ungelesen-Indikator in Hub-Kacheln |
 | ~~E~~ | Phase 7 RAG (später) | 4–6 | semantische Suche |
 | ~~E~~ | Phase 8 Optional 2FA für Admin | 2 | TOTP+Recovery |
 
-**Total bis Phase 6:** ~32–40 h Entwicklung über 5–7 Werktage.
+**Total bis Phase 6:** ~37–45 h Entwicklung über 6–8 Werktage. Mail-Wegfall
+spart ~2 h direkten Setup-Aufwand, Auto-Harvest und LLM-Logging kommen
+zusätzlich rein.
 
 ---
 
@@ -1017,21 +1045,223 @@ POST  /api/admin/harvest/schedule           Cron ändern
 - **Manueller Override**: Admin kann eine Quelle „pausieren" (kein
   Harvest mehr für diese URL) — nützlich wenn die Quelle länger umzieht
 
+### 16.3 Sanktionslisten — täglicher Auto-Refresh
+
+**Heutige Lage:** Backend-Endpoint `POST /api/sanctions/refresh` ist da, lädt
+die EU-FSF-CSV von OpenSanctions und baut den In-Memory-Index neu auf. Wird
+**nur manuell** aufgerufen. Aktueller CSV-Stand: 5. Mai 2026, 2,5 MB,
+~3.000 Einträge.
+
+**OpenSanctions-Quelle**:
+`https://data.opensanctions.org/datasets/latest/eu_fsf/targets.simple.csv`
+→ wird **täglich** aktualisiert (laut OpenSanctions-Crawl-Plan).
+
+**Plan: täglich automatisch refreshen.**
+
+#### Zeitsteuerung
+- **Täglich 04:00 UTC** (kurz vor 03:00 Workshop-Harvest-Slot, wenn
+  monatlicher Begünstigten-Harvest läuft, bleibt Zeit-Konflikt-frei)
+- Konfigurierbar: `SANCTIONS_REFRESH_CRON="0 4 * * *"`
+- Manuell triggerbar via Admin-Dashboard
+
+#### Implementierung
+- Identische Celery-Beat-Schicht wie für Begünstigten-Harvest (siehe §16.2)
+- Task: `sanctions_refresh_task()` ruft `get_index().refresh_from_source()`
+- Bei Fehler (HTTP 503, Netzwerk, kaputtes CSV): alter Index bleibt geladen,
+  Fehler wird im Audit geloggt, Admin-Notification
+
+#### Datenmodell
+```python
+class SanctionsRefreshRun(Base):
+    id: int
+    started_at, finished_at: datetime
+    triggered_by: str   # 'cron' | 'admin:user_id'
+    status: enum('running'|'success'|'failed')
+    source_url: str
+    file_size_bytes: int
+    sha256_old, sha256_new: str
+    rows_before, rows_after: int
+    persons_before, persons_after: int
+    organizations_before, organizations_after: int
+    error: str | None
+```
+
+#### Admin-Dashboard (eigener Tab)
+```
+┌─────────────────────────────────────────────────────────┐
+│ Sanktionslisten (EU FSF) — Aktualisierung               │
+├─────────────────────────────────────────────────────────┤
+│ Letzter Lauf: 07.05.2026, 04:00 (cron) · ✓ erfolgreich  │
+│   3.177 → 3.181 Einträge (+4 Personen, +0 Orgs)         │
+│   CSV: 2,52 MB · Quelle: OpenSanctions                  │
+│                                                         │
+│ Nächster Lauf (cron): 08.05.2026, 04:00                 │
+│         [ Jetzt manuell ausführen ]                     │
+├─────────────────────────────────────────────────────────┤
+│ Verlauf der letzten 30 Tage  (Heatmap-Streifen)         │
+│   ✓✓✓✓✓✓⚠✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓                          │
+│ Letzte Δ:                                               │
+│   06.05  +0 / -0 (unverändert)                          │
+│   05.05  +12 / -0 (Iran-Listenupdate)                   │
+│   04.05  +3 / -1                                        │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### API
+```
+GET   /api/admin/sanctions/runs               (admin)
+GET   /api/admin/sanctions/runs/:id           Detail
+POST  /api/admin/sanctions/refresh            Trigger sofort (admin)
+```
+
+#### Schutz
+- ETag/Last-Modified im HTTP-Request → bei 304 als `unchanged` markieren
+- SHA256-Vergleich → wenn identisch, kein Index-Rebuild nötig
+- HTTP-Timeout 30 s, 3 Retries mit Backoff
+- Lock-Mechanismus verhindert parallele Läufe
+- Bei Fehler: alter Index bleibt — Suche bleibt verfügbar
+
+### 16.4 LLM-Frage-Logging (für spätere Optimierung)
+
+**Anforderung:** Bei der Begünstigten-Auswertung (Szenario 6) sollen alle
+Fragen geloggt werden — sowohl die deterministisch beantworteten als auch
+die LLM-Pfade. Ziel: Datengrundlage für die Verbesserung der
+Mode-Erkennung, der Trigger und der LLM-Prompts.
+
+**Umfang:** Logging gilt für **alle Workshop-LLM-Streams** (`/api/workshop/
+stream`, alle Szenarien 1–6), nicht nur Szenario 6 — so bekommt man auch
+die Halluzinations-Demo, die Berichts-Entwürfe etc. zur Auswertung.
+
+#### Datenmodell
+
+```python
+class LlmQuestionLog(Base):
+    id: int  PK
+    created_at: datetime
+    user_id: UUID | None        # NULL bei Public-Pfad
+    session_id: str | None      # Anonymes Tracking-Cookie
+    ip_hash: str                # SHA256+Salt
+    scenario: int               # 1..6
+    prompt: str                 # Originaltext, max 2000 Z.
+    prompt_normalized: str      # für Frequenz-Analyse (lower, ohne Stoppwörter)
+    documents_count: int        # wie viele Demo-Docs angehängt
+    with_context: bool          # Szenario 3-Flag
+
+    # Ergebnis-Kategorisierung
+    answer_path: enum('deterministic_top_beneficiaries' |
+                      'deterministic_top_sectors' |
+                      'deterministic_top_locations' |
+                      'deterministic_state_fund_totals' |
+                      'deterministic_repeat_beneficiaries' |
+                      'deterministic_multi_state_beneficiaries' |
+                      'llm_with_context' | 'llm_without_context' |
+                      'llm_fallback' | 'static_response' | 'error')
+    matched_mode: str | None    # bei deterministisch: welcher Mode
+    name_filter_label: str | None  # bei Eigenname/Typ-Filter
+    items_returned: int         # wie viele Treffer
+    fallback_used: bool         # ob LLM-Fallback bei 0 Treffern lief
+
+    # Performance
+    elapsed_ms: int
+    model_name: str | None      # qwen3:14b, qwen3.5:35b, beneficiary-analytics
+    token_count: int | None
+    tok_per_s: float | None
+    ttfb_ms: int | None         # time-to-first-byte (LLM-Latenz)
+
+    # Antwort (für spätere Review, gekürzt)
+    response_excerpt: str       # erste 500 Zeichen
+    response_total_chars: int
+    error_message: str | None
+
+    # Feedback (optional, später)
+    user_feedback: enum('helpful'|'unhelpful'|'wrong'|null)
+    user_feedback_at: datetime | None
+```
+
+#### Admin-Dashboard
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ LLM-Auswertung — Szenario 6 (letzte 30 Tage)            │
+├─────────────────────────────────────────────────────────┤
+│ Anfragen total: 247 · Eindeutige Nutzer: 18             │
+│                                                         │
+│ Pfad-Verteilung:                                        │
+│   deterministic_top_beneficiaries     ████████ 41%      │
+│   deterministic_top_sectors           █████ 23%         │
+│   deterministic_multi_state           ███ 12%           │
+│   deterministic_state_fund_totals     ██ 8%             │
+│   llm_with_context                    ███ 11% ⏱ 65 s   │
+│   llm_fallback (kein Treffer)         █ 3%   ⏱ 84 s    │
+│   error                               · 2%              │
+│                                                         │
+│ Top-10 häufigste Fragen (normalisiert):                 │
+│  1. "wer sind die größten begünstigten" (28×)           │
+│  2. "welche universitäten in bayern" (12×)              │
+│  3. "kreis düren" (9×)                                  │
+│  4. "wirtschaftszweige niedersachsen" (7×)              │
+│  …                                                       │
+│                                                         │
+│ Slow Queries (>30 s):                                   │
+│  • "fh gießen" → llm_fallback, 87 s, ✓ erfolgreich      │
+│  • "polizei it-projekte" → llm_with_context, 64 s       │
+│                                                         │
+│ Failed Queries (no items):                              │
+│  • "ehemalige PH Heidelberg" → 0 Treffer                │
+│  • "Behörden im Saarland" → 0 Treffer                   │
+│                                                         │
+│         [ CSV-Export für Detail-Analyse ]               │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### API
+
+```
+GET   /api/admin/llm/logs?scenario=6&since=…       (admin)
+GET   /api/admin/llm/stats?scenario=6&since=…      Aggregated
+GET   /api/admin/llm/top-questions?n=20            Frequency
+GET   /api/admin/llm/slow-queries?gt_ms=30000      Performance-Outlier
+GET   /api/admin/llm/failed-queries                items_returned=0
+GET   /api/admin/llm/export.csv                    CSV-Download
+```
+
+#### Privacy
+
+- Fragen können personenbezogen sein („wieviel bekommt Müller?") — daher
+  `user_id` + IP-Hash, kein Klartext-IP
+- Anzeige nur an Admins
+- Nutzer-Recht auf Auskunft: eigene Logs in `/account/data-export` mit drin
+- Nutzer-Recht auf Löschung: bei Account-Löschung wird `user_id`
+  pseudonymisiert (`prompt` bleibt für Optimierung erhalten)
+
+#### Wo wird geloggt
+
+In `routers/workshop.py` `workshop_stream()`:
+- Vor dem Stream-Start: `LlmQuestionLog`-Eintrag mit `prompt`, `scenario`, etc.
+- Während des Streams: `answer_path` setzen sobald klar
+  (deterministisch vs. LLM-Pfad)
+- Nach Stream-Ende: `elapsed_ms`, `token_count`, `response_excerpt`
+- Bei Error: `error_message`
+
+Implementierung als **non-blocking**: Schreibt async, blockiert die LLM-
+Antwort nicht. Falls DB-Schreiben fehlschlägt, wird der Stream nicht
+abgebrochen.
+
 #### Phase im Plan
 
-Eingegliedert als **Phase 3.5** zwischen Dokumente und Archiv:
+Eingegliedert als Teil von **Phase 3.5** (Auto-Harvest), gemeinsamer Sprint:
 
 | Sprint | Inhalt | h |
 |---|---|---:|
-| **C2** | **Phase 3.5 Auto-Harvest** (Celery-Beat, HarvestRun-Model, Admin-UI, Δ-Statistik) | 4–5 |
-
-Das verschiebt **Phase 4 Archiv** und **Phase 6 Notifications** nach hinten,
-ändert aber nichts am Gesamtaufwand wesentlich (~36–45 h statt 32–40 h).
+| **C2** | Auto-Harvest Begünstigte (monatlich) + Sanktionen (täglich) + LLM-Frage-Log + Admin-Dashboards | 5–6 |
 
 ---
 
 ## 17. Änderungs-Historie
 
+- **2026-05-07 v3.2** — Mail-Schicht entfällt (zu viel Setup-Aufwand);
+  Sanktionslisten täglicher Auto-Refresh; LLM-Frage-Logging für alle
+  Workshop-Streams mit Admin-Dashboard
 - **2026-05-07 v3.1** — Landing-Page mit Public-Tools (Begünstigte + Sanktionen);
   Upload-Schutz nur für Mods; automatischer monatlicher Harvest mit
   Admin-Dashboard
