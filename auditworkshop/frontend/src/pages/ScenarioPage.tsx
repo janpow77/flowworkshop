@@ -94,7 +94,16 @@ const DEMO_QUESTIONS: Record<number, string[]> = {
 export default function ScenarioPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const num = parseInt(id || '1', 10);
+  // Hardcoded-Pfade /scenario/6 und /begünstigte: useParams liefert kein :id,
+  // also aus location.pathname ableiten.
+  let resolvedId = id;
+  if (!resolvedId) {
+    const path = window.location.pathname;
+    if (path.includes('/scenario/6') || path.includes('/begünstigte') || path.includes('/begunstigte')) {
+      resolvedId = '6';
+    }
+  }
+  const num = parseInt(resolvedId || '1', 10);
   const info = SCENARIO_INFO[num] || SCENARIO_INFO[1];
 
   const [prompt, setPrompt] = useState('');

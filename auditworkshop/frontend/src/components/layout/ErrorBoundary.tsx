@@ -23,6 +23,16 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[ErrorBoundary]', error, info.componentStack);
+    // Stale-Chunk-Recovery: nach Frontend-Deploy referenziert das alte
+    // index.html nicht mehr existierende Hash-Chunks. Einmalig hart neu laden.
+    const msg = error?.message || '';
+    if (
+      /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError/i.test(msg) &&
+      !sessionStorage.getItem('chunk-reload-attempted')
+    ) {
+      sessionStorage.setItem('chunk-reload-attempted', '1');
+      window.location.reload();
+    }
   }
 
   handleReload = () => {

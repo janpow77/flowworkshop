@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
+import PublicShell from './components/layout/PublicShell';
 import EuLoader from './components/layout/EuLoader';
 import ErrorBoundary from './components/layout/ErrorBoundary';
 
@@ -62,7 +63,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Oeffentliche Routen ohne Login */}
+        {/* Oeffentliche Routen mit Workshop-Sidebar (Forum/Agenda) */}
         <Route element={<AppShell />}>
           <Route path="/agenda" element={
             phase === 'post'
@@ -76,15 +77,23 @@ export default function App() {
           <Route path="/forum/t/:threadId" element={<LazyPage><ThreadPage /></LazyPage>} />
           <Route path="/forum/new" element={<LazyPage><NewThreadPage /></LazyPage>} />
           <Route path="/agenda/forum/:itemId" element={<LazyPage><AgendaForumPage /></LazyPage>} />
-          {/* Plan v3.2 §5.5: Begünstigtenkarte + Sanktionslisten sind nach
-              Art. 49 VO (EU) 2021/1060 öffentlich. */}
-          <Route path="/scenario/6" element={<LazyPage><ScenarioPage /></LazyPage>} />
-          <Route path="/sanktionslisten" element={<LazyPage><SanktionslistenPage /></LazyPage>} />
         </Route>
 
         {/* Auth-Pages außerhalb AppShell (kein Sidebar) */}
         <Route path="/signup" element={<LazyPage><SignUpPage /></LazyPage>} />
         <Route path="/account/setup-password" element={<LazyPage><SetupPasswordPage /></LazyPage>} />
+
+        {/* Plan v3.2 §5.5: Public-Tools nach Art. 49 / 73 VO (EU) 2021/1060
+            mit eigener PublicShell ohne Workshop-Sidebar.
+            Nur fuer nicht-eingeloggte Nutzer; eingeloggte sehen die Routes
+            in der AppShell weiter unten. */}
+        {!authToken && (
+          <Route element={<PublicShell />}>
+            <Route path="/scenario/6" element={<LazyPage><ScenarioPage /></LazyPage>} />
+            <Route path="/begünstigte" element={<LazyPage><ScenarioPage /></LazyPage>} />
+            <Route path="/sanktionslisten" element={<LazyPage><SanktionslistenPage /></LazyPage>} />
+          </Route>
+        )}
 
         {authToken ? (
           <Route element={<AppShell />}>
