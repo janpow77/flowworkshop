@@ -142,6 +142,36 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
           <p className="text-sm text-blue-200/70 mt-2">Workshop 5 &mdash; KI und Digitalisierung in der Pr&uuml;ft&auml;tigkeit</p>
         </div>
 
+        {/* Public-Tools (Art. 49 VO (EU) 2021/1060) — vor dem Login */}
+        <div className="space-y-4 mb-4">
+          <button
+            onClick={() => navigate('/scenario/6')}
+            className="glass-card group w-full rounded-2xl p-8 text-left transition hover:bg-emerald-500/10"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">🗺</span>
+              <h2 className="text-lg font-semibold text-white">Begünstigtenkarte</h2>
+            </div>
+            <p className="text-sm text-blue-200/60">
+              Interaktive Karte aller Begünstigten von EFRE, ESF+, JTF, ISF und AMIF.
+              Öffentlich zugänglich nach Art. 49 VO (EU) 2021/1060.
+            </p>
+          </button>
+          <button
+            onClick={() => navigate('/sanktionslisten')}
+            className="glass-card group w-full rounded-2xl p-8 text-left transition hover:bg-rose-500/10"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">🛡</span>
+              <h2 className="text-lg font-semibold text-white">Sanktionslisten</h2>
+            </div>
+            <p className="text-sm text-blue-200/60">
+              EU FSF, OFAC, OFSI und weitere konsolidierte Sanktionslisten.
+              Lokale Fuzzy-Suche, täglich aktualisiert.
+            </p>
+          </button>
+        </div>
+
         <div className="glass-card rounded-2xl p-8">
           <div className="flex items-center gap-2 mb-6">
             {qrToken ? <QrCode size={20} className="text-blue-300" /> : <LogIn size={20} className="text-blue-300" />}
@@ -205,29 +235,6 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
             </button>
           </div>
         </div>
-
-        {/* Public-Tools-Kacheln (Plan v3.2 §5.4) */}
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <button
-            onClick={() => navigate('/scenario/6')}
-            className="group rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-left backdrop-blur-sm hover:bg-emerald-500/20 transition"
-          >
-            <div className="text-emerald-200 text-2xl mb-1">🗺</div>
-            <div className="text-sm font-semibold text-white">Begünstigtenkarte</div>
-            <div className="text-[10px] text-blue-200/60 mt-0.5">EFRE/ESF/JTF/ISF/AMIF · öffentlich</div>
-          </button>
-          <button
-            onClick={() => navigate('/sanktionslisten')}
-            className="group rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-left backdrop-blur-sm hover:bg-rose-500/20 transition"
-          >
-            <div className="text-rose-200 text-2xl mb-1">🛡</div>
-            <div className="text-sm font-semibold text-white">Sanktionslisten</div>
-            <div className="text-[10px] text-blue-200/60 mt-0.5">EU FSF · OFAC · OFSI</div>
-          </button>
-        </div>
-        <p className="mt-2 text-center text-[10px] text-blue-200/40">
-          Frei zugänglich nach Art. 49 VO (EU) 2021/1060
-        </p>
 
         <p className="mt-6 text-center text-xs text-blue-200/50">
           Kontakt: <a href="mailto:jan.riener@wirtschaft.hessen.de" className="text-blue-300/70 hover:text-blue-200 underline transition-colors">jan.riener@wirtschaft.hessen.de</a>
