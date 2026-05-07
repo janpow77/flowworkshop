@@ -158,6 +158,7 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', readOnly
   // Vollbild + Export
   const [fullscreen, setFullscreen] = useState(false);
   const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null);
+  const [showSources, setShowSources] = useState(false);
   const mapShellRef = useRef<HTMLDivElement>(null);
 
   const countryQuery = countryCode ? `?country_code=${countryCode}` : '';
@@ -363,32 +364,6 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', readOnly
         </div>
       )}
 
-      {/* Eingelesene Verzeichnisse */}
-      {sources.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          {sources.map((s) => (
-            <div key={s.source} className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group">
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getBlColor(s.bundesland || '') }} />
-              <FileSpreadsheet size={12} className="text-slate-400" />
-              <span className="font-medium text-slate-700 dark:text-slate-300">{s.bundesland || s.source}</span>
-              {s.fonds && <span className="text-slate-400">{s.fonds}</span>}
-              {s.periode && <span className="text-slate-400">{s.periode}</span>}
-              <span className="text-slate-400">·</span>
-              <span className="text-slate-500">{s.count.toLocaleString('de-DE')}/{s.total_rows.toLocaleString('de-DE')}</span>
-              {!readOnly && (
-                <button
-                  onClick={() => handleDeleteSource(s.source)}
-                  className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 ml-0.5"
-                  aria-label={`${s.bundesland} entfernen`}
-                >
-                  <Trash2 size={11} />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
       {profile && profile.privacy_mode && (
         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-1">
           <ShieldCheck size={12} />
@@ -479,7 +454,7 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', readOnly
 
           <div
             ref={mapShellRef}
-            className={`beneficiary-map-shell ${fullscreen ? 'flex-1' : 'h-[680px]'}`}
+            className={`beneficiary-map-shell ${fullscreen ? 'flex-1' : 'h-[820px]'}`}
           >
             <div className="relative h-full w-full">
               <MapContainer key={countryCode || 'all'} center={mapView.center} zoom={mapView.zoom} className="h-full w-full" scrollWheelZoom={true}>
@@ -562,8 +537,55 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', readOnly
             </div>
           </div>
 
+          {/* Sources-Popover (über der Legende) */}
+          {sources.length > 0 && showSources && (
+            <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 max-h-48 overflow-y-auto">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">
+                  {sources.length} Begünstigtenverzeichnis{sources.length === 1 ? '' : 'se'} geladen
+                </span>
+                <button onClick={() => setShowSources(false)} className="text-slate-400 hover:text-slate-600">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {sources.map((s) => (
+                  <div key={s.source} className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getBlColor(s.bundesland || '') }} />
+                    <FileSpreadsheet size={12} className="text-slate-400" />
+                    <span className="font-medium text-slate-700 dark:text-slate-300">{s.bundesland || s.source}</span>
+                    {s.fonds && <span className="text-slate-400">{s.fonds}</span>}
+                    {s.periode && <span className="text-slate-400">{s.periode}</span>}
+                    <span className="text-slate-400">·</span>
+                    <span className="text-slate-500">{s.count.toLocaleString('de-DE')}/{s.total_rows.toLocaleString('de-DE')}</span>
+                    {!readOnly && (
+                      <button
+                        onClick={() => handleDeleteSource(s.source)}
+                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 ml-0.5"
+                        aria-label={`${s.bundesland} entfernen`}
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Legende */}
           <div className="px-4 py-2 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex flex-wrap gap-3 items-center">
+            {sources.length > 0 && (
+              <button
+                onClick={() => setShowSources(!showSources)}
+                className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Geladene Begünstigtenverzeichnisse anzeigen"
+              >
+                <FileSpreadsheet size={12} />
+                <span className="font-medium">{sources.length}</span>
+                <span className="text-slate-400">{sources.length === 1 ? 'Quelle' : 'Quellen'}</span>
+              </button>
+            )}
             {bundeslaender.map((bl) => (
               <button key={bl} onClick={() => setFilterBl(filterBl === bl ? '' : bl)}
                 className={`flex items-center gap-1.5 text-xs transition-opacity ${filterBl && filterBl !== bl ? 'opacity-30' : ''}`}>
