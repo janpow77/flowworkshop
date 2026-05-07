@@ -12,7 +12,7 @@ from database import engine, Base
 from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
-from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions
+from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum
 
 # Modelle importieren damit Base.metadata sie kennt
 import models  # noqa: F401
@@ -75,6 +75,100 @@ async def lifespan(app: FastAPI):
                     conn.execute(text(ddl))
                     conn.commit()
                     log.info("Spalte %s zu workshop_registrations hinzugefuegt.", col)
+
+            # Spalte edit_count: Default-Backfill, falls Migration aus
+            # früherem Run schon lief, aber server_default fehlte
+            try:
+                conn.execute(text("ALTER TABLE workshop_forum_posts ALTER COLUMN edit_count SET DEFAULT 0"))
+                conn.execute(text("UPDATE workshop_forum_posts SET edit_count = 0 WHERE edit_count IS NULL"))
+                conn.commit()
+            except Exception:
+                pass
+
+            # Forum-Kategorien initial befüllen, wenn leer (Plan v3.2 §6)
+            cat_count = conn.execute(text("SELECT COUNT(*) FROM workshop_forum_categories")).scalar()
+            thread_count = conn.execute(text("SELECT COUNT(*) FROM workshop_forum_threads")).scalar()
+            legacy_count = conn.execute(text("SELECT COUNT(*) FROM workshop_agenda_forum_posts")).scalar()
+            need_migration = (thread_count == 0 and legacy_count > 0)
+            if cat_count == 0:
+                default_categories = [
+                    ("allgemein", "Allgemein", "Themen ohne festen Programmpunkt", "MessagesSquare", "slate", 0),
+                    ("workshop-2026", "Workshop 2026 (Live-Diskussionen)", "Beiträge der Veranstaltung im Mai 2026", "Calendar", "cyan", 10),
+                    ("ki-pruefung", "KI in der Prüfung", "Erfahrungen, Use-Cases, offene Fragen", "Sparkles", "violet", 20),
+                    ("methodik", "Methodik & Stichprobenprüfung", "MUS, SRS, Differenzenschätzung", "Calculator", "emerald", 30),
+                    ("rechtsfragen", "Rechtsfragen", "VO, Förderrichtlinien, Auslegung", "Scale", "amber", 40),
+                    ("plattform", "Plattform-Feedback", "Was funktioniert, was fehlt", "Wrench", "indigo", 50),
+                ]
+                for slug, name, desc, icon, color, sort in default_categories:
+                    conn.execute(text(
+                        "INSERT INTO workshop_forum_categories (id, slug, name, description, icon, color, sort_order, archived) "
+                        "VALUES (gen_random_uuid()::text, :s, :n, :d, :i, :c, :o, false)"
+                    ), {"s": slug, "n": name, "d": desc, "i": icon, "c": color, "o": sort})
+                conn.commit()
+                log.info("Forum: %d Default-Kategorien angelegt.", len(default_categories))
+                need_migration = True
+
+            if need_migration:
+                # Migration: bestehende AgendaForumPost → forum_threads/forum_posts
+                # in Kategorie 'workshop-2026', gruppiert nach agenda_item_id
+                workshop_cat = conn.execute(text(
+                    "SELECT id FROM workshop_forum_categories WHERE slug = 'workshop-2026'"
+                )).scalar()
+                if workshop_cat:
+                    legacy_posts = conn.execute(text(
+                        "SELECT p.id, p.agenda_item_id, p.title, p.body, "
+                        "p.author_registration_id, p.author_name, p.author_organization, "
+                        "p.created_at, a.title AS item_title "
+                        "FROM workshop_agenda_forum_posts p "
+                        "LEFT JOIN workshop_agenda_items a ON a.id = p.agenda_item_id "
+                        "ORDER BY p.created_at ASC"
+                    )).fetchall()
+                    threads_by_item: dict = {}
+                    for row in legacy_posts:
+                        agenda_id = row.agenda_item_id
+                        if agenda_id not in threads_by_item:
+                            t_slug = "tag-" + agenda_id[:8]
+                            t_title = row.item_title or "Workshop-Diskussion"
+                            new_thread_id = conn.execute(text(
+                                "INSERT INTO workshop_forum_threads "
+                                "(id, slug, category_id, title, body_md, author_user_id, "
+                                "author_name, author_organization, created_at, last_post_at, "
+                                "post_count, view_count, pinned, locked, agenda_item_id) "
+                                "VALUES (gen_random_uuid()::text, :s, :c, :t, :b, :u, :n, :o, :ts, :ts, 0, 0, false, false, :a) "
+                                "RETURNING id"
+                            ), {
+                                "s": t_slug, "c": workshop_cat, "t": t_title,
+                                "b": row.body or "", "u": row.author_registration_id,
+                                "n": row.author_name, "o": row.author_organization,
+                                "ts": row.created_at, "a": agenda_id,
+                            }).scalar()
+                            threads_by_item[agenda_id] = new_thread_id
+                        thread_id = threads_by_item[agenda_id]
+                        conn.execute(text(
+                            "INSERT INTO workshop_forum_posts "
+                            "(id, thread_id, author_user_id, author_name, author_organization, "
+                            "body_md, created_at) "
+                            "VALUES (gen_random_uuid()::text, :tid, :u, :n, :o, :b, :ts)"
+                        ), {
+                            "tid": thread_id, "u": row.author_registration_id,
+                            "n": row.author_name, "o": row.author_organization,
+                            "b": (row.title + "\n\n" + (row.body or "")) if row.title else (row.body or ""),
+                            "ts": row.created_at,
+                        })
+                    # post_count + last_post_at je Thread aktualisieren
+                    conn.execute(text("""
+                        UPDATE workshop_forum_threads t
+                           SET post_count = (SELECT COUNT(*) FROM workshop_forum_posts p WHERE p.thread_id = t.id),
+                               last_post_at = COALESCE(
+                                   (SELECT MAX(created_at) FROM workshop_forum_posts p WHERE p.thread_id = t.id),
+                                   t.created_at
+                               )
+                    """))
+                    conn.commit()
+                    log.info(
+                        "Forum-Migration: %d Threads aus %d AgendaForumPost erzeugt.",
+                        len(threads_by_item), len(legacy_posts),
+                    )
 
             # Initial-Admin: jan.riener@wirtschaft.hessen.de wird role=admin,
             # alle bestehenden mit Login werden status=active (= idempotent)
@@ -158,6 +252,7 @@ app.include_router(event.router)
 app.include_router(documents.router)
 app.include_router(auth.router)
 app.include_router(sanctions.router)
+app.include_router(forum.router)
 
 
 @app.get("/health")

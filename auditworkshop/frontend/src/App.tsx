@@ -25,6 +25,8 @@ const CompanySearchPage = lazy(() => import('./pages/CompanySearchPage'));
 const AiActPage = lazy(() => import('./pages/AiActPage'));
 const SanktionslistenPage = lazy(() => import('./pages/SanktionslistenPage'));
 const ForumPage = lazy(() => import('./pages/ForumPage'));
+const ThreadPage = lazy(() => import('./pages/ThreadPage'));
+const NewThreadPage = lazy(() => import('./pages/NewThreadPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const SignUpPage = lazy(() => import('./pages/SignUpPage'));
@@ -64,6 +66,8 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/vorstellungsrunde" element={<VorstellungsrundePage />} />
           <Route path="/forum" element={<LazyPage><ForumPage /></LazyPage>} />
+          <Route path="/forum/t/:threadId" element={<LazyPage><ThreadPage /></LazyPage>} />
+          <Route path="/forum/new" element={<LazyPage><NewThreadPage /></LazyPage>} />
           <Route path="/agenda/forum/:itemId" element={<LazyPage><AgendaForumPage /></LazyPage>} />
           {/* Plan v3.2 §5.5: Begünstigtenkarte + Sanktionslisten sind nach
               Art. 49 VO (EU) 2021/1060 öffentlich. */}
