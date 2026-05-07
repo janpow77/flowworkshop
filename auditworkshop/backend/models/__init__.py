@@ -29,3 +29,6 @@ from models.forum import (  # noqa: F401
     ForumCategory, ForumThread, ForumPost, ForumReaction,
     ForumTag, ForumThreadTag, ForumReadState,
 )
+from models.automation import (  # noqa: F401
+    HarvestRun, HarvestSourceUpdate, SanctionsRefreshRun, LlmQuestionLog,
+)

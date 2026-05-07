@@ -12,7 +12,7 @@ from database import engine, Base
 from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
-from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum
+from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum, automation
 
 # Modelle importieren damit Base.metadata sie kennt
 import models  # noqa: F401
@@ -211,8 +211,18 @@ async def lifespan(app: FastAPI):
     else:
         log.warning("Ollama nicht erreichbar: %s", status.get("error"))
 
+    # Background-Scheduler für Auto-Harvest + Sanctions-Refresh (Plan v3.2 §16)
+    import asyncio
+    from services.scheduler import scheduler_loop
+    scheduler_task = asyncio.create_task(scheduler_loop())
+
     yield
     # ── Shutdown ───────────────────────────────────────────
+    scheduler_task.cancel()
+    try:
+        await scheduler_task
+    except asyncio.CancelledError:
+        pass
     log.info("flowworkshop beendet.")
 
 
@@ -253,6 +263,7 @@ app.include_router(documents.router)
 app.include_router(auth.router)
 app.include_router(sanctions.router)
 app.include_router(forum.router)
+app.include_router(automation.router)
 
 
 @app.get("/health")

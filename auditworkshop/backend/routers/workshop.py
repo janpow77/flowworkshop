@@ -308,6 +308,48 @@ SCENARIO_MAX_TOKENS = {
 }
 
 
+def _log_llm_question(
+    request: Request, scenario: int, prompt: str,
+    answer_path: str, model_name: str | None = None,
+    matched_mode: str | None = None, items_returned: int | None = None,
+    elapsed_ms: int | None = None, response_excerpt: str | None = None,
+    error: str | None = None,
+):
+    """Plan v3.2 §16.4: schreibt non-blocking einen LLM-Frage-Log-Eintrag."""
+    try:
+        import hashlib
+        from database import SessionLocal
+        from models.automation import LlmQuestionLog
+        from routers.auth import _session_from_request
+
+        sess = _session_from_request(request)
+        ip = request.client.host if request.client else ""
+        ip_h = hashlib.sha256((ip + ":auditworkshop").encode()).hexdigest()[:32] if ip else None
+        normalized = " ".join((prompt or "").lower().split())[:480]
+        db = SessionLocal()
+        try:
+            db.add(LlmQuestionLog(
+                user_id=sess.get("user_id") if sess else None,
+                ip_hash=ip_h,
+                scenario=scenario,
+                prompt=(prompt or "")[:4000],
+                prompt_normalized=normalized,
+                answer_path=answer_path,
+                matched_mode=matched_mode,
+                items_returned=items_returned,
+                model_name=model_name,
+                elapsed_ms=elapsed_ms,
+                response_excerpt=(response_excerpt or "")[:500] if response_excerpt else None,
+                response_total_chars=len(response_excerpt) if response_excerpt else None,
+                error_message=error,
+            ))
+            db.commit()
+        finally:
+            db.close()
+    except Exception:
+        log.exception("LLM-Logging fehlgeschlagen (non-blocking)")
+
+
 @router.post("/stream")
 async def workshop_stream(req: StreamRequest, request: Request):
     """
@@ -318,6 +360,8 @@ async def workshop_stream(req: StreamRequest, request: Request):
       data: {"done": true, "token_count": N, "model": "...", "tok_per_s": N}
       data: {"error": "...", "done": true}
     """
+    import time as _time
+    _t0 = _time.monotonic()
     _check_rate_limit(request.client.host if request.client else "unknown")
 
     # System-Prompt auswählen
@@ -373,6 +417,19 @@ async def workshop_stream(req: StreamRequest, request: Request):
     if req.scenario == 6:
         direct_answer = build_beneficiary_analysis_answer(req.prompt, limit=5)
         if direct_answer:
+            from services.dataframe_service import (
+                _match_beneficiary_analysis_mode, _detect_beneficiary_name_filter,
+            )
+            mode = _match_beneficiary_analysis_mode(req.prompt) or "top_beneficiaries"
+            _, label = _detect_beneficiary_name_filter(req.prompt)
+            _log_llm_question(
+                request, scenario=6, prompt=req.prompt,
+                answer_path=f"deterministic_{mode}", matched_mode=mode,
+                model_name="beneficiary-analytics",
+                response_excerpt=direct_answer,
+                items_returned=direct_answer.count("\n") if direct_answer else 0,
+                elapsed_ms=int((_time.monotonic() - _t0) * 1000),
+            )
             return await _stream_static_response(direct_answer, "beneficiary-analytics")
         beneficiary_context = get_beneficiary_llm_context(req.prompt, max_entries_per_source=4)
         if beneficiary_context:
@@ -399,6 +456,18 @@ async def workshop_stream(req: StreamRequest, request: Request):
     # Szenario-spezifisches Modell (z. B. qwen3.5:35b fuer Szenario 6)
     from config import SCENARIO_MODELS
     model_override = SCENARIO_MODELS.get(req.scenario)
+
+    # LLM-Pfad geht an — vorab loggen (elapsed_ms wird im finally aktualisiert).
+    answer_path = (
+        "llm_with_context" if req.with_context and req.scenario == 3
+        else "llm_fallback" if req.scenario == 6
+        else "llm_default"
+    )
+    _log_llm_question(
+        request, scenario=req.scenario, prompt=req.prompt,
+        answer_path=answer_path, model_name=model_override or "qwen3:14b",
+        elapsed_ms=int((_time.monotonic() - _t0) * 1000),
+    )
 
     async def event_generator():
         async for chunk in stream(
