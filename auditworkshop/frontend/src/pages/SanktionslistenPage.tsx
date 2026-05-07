@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import {
   AlertTriangle, ArrowUpRight, Banknote, BookOpenCheck, Building2,
   CheckCircle2, Crown, Database, ExternalLink, Globe, Globe2, Landmark,
-  Loader2, Mountain, RefreshCw, Search, ShieldAlert, ShieldCheck,
+  Loader2, Mountain, RefreshCw, Search, ShieldAlert,
   Sparkles, Target,
 } from 'lucide-react';
 
@@ -236,9 +236,9 @@ export default function SanktionslistenPage() {
             <h1 className="mt-4 text-3xl font-semibold tracking-tight lg:text-4xl">Sanktionslisten</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/85 lg:text-base">
               Eine kuratierte Übersicht der wichtigsten Sanktions- und Embargo-Verzeichnisse mit
-              Kurzcharakteristik, Empfehlung für den Prüfalltag und Direktlink in das jeweilige
-              offizielle Tool. Zusätzlich: lokale Fuzzy-Suche gegen die EU Konsolidierte
-              Finanzsanktionsliste (FSF) — voll offline, ohne Daten an Dritte.
+              Kurzcharakteristik und Direktlink in das jeweilige offizielle Tool. Zusätzlich:
+              lokale Fuzzy-Suche gegen die EU Konsolidierte Finanzsanktionsliste (FSF) — voll
+              offline, ohne Daten an Dritte.
             </p>
             <div className="mt-6 flex flex-wrap gap-3 text-xs">
               <a href="#suche" className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-medium text-rose-700 transition hover:bg-rose-50">
@@ -469,7 +469,7 @@ export default function SanktionslistenPage() {
           <div>
             <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Die wichtigsten Sanktionslisten</h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Direkter Zugriff auf die offiziellen Quellen — pro Liste mit Empfehlung für den Prüfalltag.
+              Direkter Zugriff auf die offiziellen Quellen.
             </p>
           </div>
           <div className="hidden text-xs text-slate-500 dark:text-slate-400 sm:flex sm:items-center sm:gap-2">
@@ -482,23 +482,6 @@ export default function SanktionslistenPage() {
         </div>
       </section>
 
-      {/* ── Pruef-Empfehlung ───────────────────────────────────────── */}
-      <section className="rounded-[28px] border border-emerald-200/60 bg-gradient-to-br from-emerald-50 via-white to-white p-6 dark:border-emerald-500/20 dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/30">
-            <ShieldCheck size={22} />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Empfohlener Workflow im Prüfalltag</h3>
-            <ol className="mt-3 space-y-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-              <li className="flex gap-3"><span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-semibold text-white">1</span>Begünstigte und wirtschaftlich Berechtigte gegen die EU FSF prüfen — hier per lokaler Suche oben möglich.</li>
-              <li className="flex gap-3"><span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-semibold text-white">2</span>Bei Treffer oder Verdacht: Geburtsdatum, Land und Identifier (USt-ID, Registernummer) abgleichen — Namensgleichheiten sind häufig.</li>
-              <li className="flex gap-3"><span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-semibold text-white">3</span>Bei Auslandsbezug (UK, CH, USA) ergänzend OFSI / SECO / OFAC prüfen — die EU FSF ist nicht deckungsgleich.</li>
-              <li className="flex gap-3"><span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-semibold text-white">4</span>Prüfergebnis dokumentieren: geprüfte Liste, Suchbegriff, Datum, Ergebnis. Bei Treffer das offizielle EU-Verzeichnis als Beleg ziehen — die FSF ist die verbindliche Quelle.</li>
-            </ol>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

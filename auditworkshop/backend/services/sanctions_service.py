@@ -427,10 +427,8 @@ def method_explanation() -> dict:
         },
         "limits": [
             "Prüfung erfolgt nur gegen die EU-Konsolidierte Finanzsanktionsliste (FSF). "
-            "OFAC, UN, BAFA, OFSI, SECO sind hierüber NICHT abgedeckt — dafür separate "
+            "OFAC, UN, BAFA, OFSI, SECO sind hierüber nicht abgedeckt — dafür separate "
             "Recherche über die jeweiligen offiziellen Tools (siehe Karten unten).",
-            "Treffer ersetzen keine offizielle Prüfung. Die Listeneinsicht beim "
-            "konsolidierten EU-Verzeichnis ist verbindlich.",
             "Namensgleichheit ist häufig — vor allem bei Russisch-Transliterationen. "
             "Geburtsdatum und Land im Treffer immer mit dem Vorgang abgleichen.",
         ],

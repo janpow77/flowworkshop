@@ -28,9 +28,8 @@ _SANCTIONS_LISTS = [
         "scope": "Personen, Organisationen, Schiffe — alle EU-Finanzsanktionen",
         "description": (
             "Konsolidierte Liste aller von der EU verhängten Finanzsanktionen. "
-            "Maßgeblich für Prüfungen nach Art. 215 AEUV und die EU-Sanktions­"
-            "verordnungen. Wird von der Kommission gepflegt und ist die "
-            "verbindliche Quelle für EU-Mitgliedstaaten."
+            "Von der Europäischen Kommission gepflegt; deckt sämtliche "
+            "EU-Sanktionsregime nach Art. 215 AEUV ab."
         ),
         "url": "https://webgate.ec.europa.eu/fsd/fsf",
         "search_url": "https://webgate.ec.europa.eu/fsd/fsf/public/searchFSF",
@@ -39,7 +38,7 @@ _SANCTIONS_LISTS = [
         "language": "DE / EN / alle Amtssprachen",
         "color": "rose",
         "icon": "ShieldAlert",
-        "tag": "verbindlich",
+        "tag": "EU-Konsolidiert",
         "use_in_audit": (
             "Zentrale Quelle bei Bezug zu sanktionsrelevanten Personen oder "
             "Organisationen — etwa bei der Plausibilisierung von Begünstigten "
