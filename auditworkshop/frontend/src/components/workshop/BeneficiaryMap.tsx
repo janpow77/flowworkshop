@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import { getSystemProfile, getWorkshopAuthHeaders, type SystemProfile, type CountryCode } from '../../lib/api';
+import { useExport } from '../../lib/useExport';
 
 interface Beneficiary {
   name: string;
@@ -166,59 +167,31 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
     return () => window.removeEventListener('keydown', onKey);
   }, [fullscreen]);
 
+  const exportApi = useExport();
   const exportMap = useCallback(async (format: 'png' | 'pdf') => {
     const target = mapShellRef.current;
     if (!target) return;
     setExporting(format);
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      // Leaflet-Tiles benötigen useCORS; foreignObject hilft bei einigen Popups
-      const canvas = await html2canvas(target, {
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        scale: 2,
-        logging: false,
-      });
       const ts = new Date().toISOString().slice(0, 10);
       const fileBase = `beguenstigtenkarte_${countryCode || 'all'}_${ts}`;
       if (format === 'png') {
-        const dataUrl = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = `${fileBase}.png`;
-        a.click();
+        await exportApi.toPng(target, { filename: fileBase });
       } else {
-        const { jsPDF } = await import('jspdf');
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-        const orientation = canvas.width >= canvas.height ? 'l' : 'p';
-        const pdf = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
-        const pageW = pdf.internal.pageSize.getWidth();
-        const pageH = pdf.internal.pageSize.getHeight();
-        const ratio = Math.min(
-          (pageW - 40) / canvas.width,
-          (pageH - 80) / canvas.height,
-        );
-        const w = canvas.width * ratio;
-        const h = canvas.height * ratio;
-        pdf.setFontSize(11);
-        pdf.text(
-          `Begünstigtenkarte · ${filtered.length} Vorhaben · ${formatEur(totalKosten)} · Stand ${ts}`,
-          20,
-          28,
-        );
-        pdf.addImage(dataUrl, 'JPEG', 20, 40, w, h);
-        pdf.save(`${fileBase}.pdf`);
+        await exportApi.toPdf(target, {
+          filename: fileBase,
+          title: 'Begünstigtenkarte',
+          subtitle: `${filtered.length} Vorhaben · ${formatEur(totalKosten)} · Stand ${ts}`,
+        });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Export fehlgeschlagen.');
     } finally {
       setExporting(null);
     }
-  // filtered/totalKosten existieren weiter unten — useCallback umfasst den
-  // Closure-State bei Aufruf, deshalb hier bewusst keine Dependency-Erfassung
-  // (würde Render-Loop auslösen).
+  // filtered/totalKosten existieren weiter unten — Closure-State bei Aufruf
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countryCode]);
+  }, [countryCode, exportApi]);
 
   const loadMap = useCallback(async () => {
     setLoading(true);
