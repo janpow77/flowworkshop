@@ -524,6 +524,21 @@ def signup(body: SignupRequest, request: Request, db: Session = Depends(get_db))
     db.add(new)
     db.commit()
     log.info("Signup: %s wartet auf Admin-Approval (id=%s)", email, new.id)
+
+    # Notification an alle Admins (Plan v3.2 §6 — internes Bell-Icon)
+    try:
+        from routers.notifications import push_notification
+        admins = db.query(Registration).filter(Registration.role == "admin").all()
+        for adm in admins:
+            push_notification(
+                user_id=adm.id,
+                kind="admin_pending",
+                title=f"Neue Anmeldung wartet: {new.first_name} {new.last_name}",
+                body=f"{new.organization} · {new.email}",
+                link="/admin",
+            )
+    except Exception:
+        log.exception("Admin-Pending-Notification fehlgeschlagen")
     return SignupResponse(
         status="pending_approval",
         message=(

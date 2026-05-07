@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Moon, Sun, Cpu, Wifi, WifiOff, ShieldCheck, AlertTriangle, LogOut, User } from 'lucide-react';
 import { getOllamaStatus, getSystemProfile, type SystemProfile } from '../../lib/api';
+import NotificationBell from './NotificationBell';
 
 interface Props {
   dark: boolean;
@@ -96,6 +97,7 @@ export default function TopBar({ dark, onToggleDark }: Props) {
           >
             {dark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
+          <NotificationBell />
           {localStorage.getItem('workshop_token') && (
             <Link
               to="/account"

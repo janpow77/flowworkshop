@@ -330,6 +330,32 @@ def create_post(thread_id: str, body: CreatePost, request: Request, db: Session 
     thread.last_post_at = func.now()
     db.commit()
     db.refresh(post)
+
+    # Notification: Threadstarter benachrichtigen, wenn nicht der Antwortende
+    try:
+        from routers.notifications import push_notification
+        if thread.author_user_id and thread.author_user_id != user.id:
+            push_notification(
+                user_id=thread.author_user_id,
+                kind="forum_reply",
+                title=f'{post.author_name} hat in „{thread.title[:80]}“ geantwortet',
+                body=post.body_md[:200],
+                link=f"/forum/t/{thread_id}",
+            )
+        # Wenn parent_post: auch dem Verfasser des zitierten Posts
+        if body.parent_post_id:
+            parent = db.query(ForumPost).filter(ForumPost.id == body.parent_post_id).first()
+            if parent and parent.author_user_id and parent.author_user_id != user.id and parent.author_user_id != thread.author_user_id:
+                push_notification(
+                    user_id=parent.author_user_id,
+                    kind="forum_reply",
+                    title=f"{post.author_name} hat auf Ihren Beitrag geantwortet",
+                    body=post.body_md[:200],
+                    link=f"/forum/t/{thread_id}",
+                )
+    except Exception:
+        log.exception("Notification-Push fehlgeschlagen (non-blocking)")
+
     return PostOut(
         id=post.id, thread_id=post.thread_id, parent_post_id=post.parent_post_id,
         author_name=post.author_name, author_organization=post.author_organization,

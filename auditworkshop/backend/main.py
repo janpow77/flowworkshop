@@ -13,7 +13,7 @@ from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
 from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum, automation
-from routers import docs as docs_router
+from routers import docs as docs_router, notifications
 
 # Modelle importieren damit Base.metadata sie kennt
 import models  # noqa: F401
@@ -40,6 +40,17 @@ async def lifespan(app: FastAPI):
                 conn.execute(text("ALTER TABLE workshop_agenda_items ADD COLUMN page_url VARCHAR(500)"))
                 conn.commit()
                 log.info("Spalte page_url zu workshop_agenda_items hinzugefuegt.")
+            # Phase 4: Material-Verknüpfung
+            agenda_extra = {
+                "related_thread_ids": "ALTER TABLE workshop_agenda_items ADD COLUMN related_thread_ids JSON",
+                "related_file_ids": "ALTER TABLE workshop_agenda_items ADD COLUMN related_file_ids JSON",
+                "notes_md": "ALTER TABLE workshop_agenda_items ADD COLUMN notes_md TEXT",
+            }
+            for col, ddl in agenda_extra.items():
+                if col not in cols:
+                    conn.execute(text(ddl))
+                    conn.commit()
+                    log.info("Spalte %s zu workshop_agenda_items hinzugefuegt.", col)
             meta_cols = [c["name"] for c in inspector.get_columns("workshop_meta")]
             meta_migrations = {
                 "phase": "ALTER TABLE workshop_meta ADD COLUMN phase VARCHAR(8) NOT NULL DEFAULT 'live'",
@@ -289,6 +300,7 @@ app.include_router(sanctions.router)
 app.include_router(forum.router)
 app.include_router(automation.router)
 app.include_router(docs_router.router)
+app.include_router(notifications.router)
 
 
 @app.get("/health")

@@ -76,6 +76,10 @@ class AgendaItem(Base):
     visible = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
     page_url = Column(String(500), nullable=True)  # Interne Seite (z.B. /vorstellungsrunde)
+    # Phase 4 — Material-Verknüpfung
+    related_thread_ids = Column(JSON, nullable=True)
+    related_file_ids = Column(JSON, nullable=True)
+    notes_md = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     forum_posts = relationship(
         "AgendaForumPost",

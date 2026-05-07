@@ -580,6 +580,99 @@ def get_agenda_forum(item_id: str, db: Session = Depends(get_db)):
     )
 
 
+# ── Phase 4: Material-Verknüpfung pro Agenda-Item ─────────────────────────
+
+@router.get("/agenda/{item_id}/material")
+def get_agenda_material(item_id: str, db: Session = Depends(get_db)):
+    """Liefert verknüpfte Forum-Threads + Dokumente für einen Programmpunkt.
+
+    Quellen:
+    - explizit verknüpft via item.related_thread_ids / .related_file_ids
+    - implizit: forum_threads.agenda_item_id == item.id
+    """
+    from models.forum import ForumThread
+    from models.docs import DocumentFile, DocumentFolder
+
+    item = _get_agenda_item_or_404(item_id, db)
+
+    explicit_thread_ids = list(item.related_thread_ids or [])
+    explicit_file_ids = list(item.related_file_ids or [])
+
+    # Implizite Threads (aus Migration / direktem Bezug)
+    implicit_threads = (
+        db.query(ForumThread)
+        .filter(ForumThread.agenda_item_id == item_id)
+        .all()
+    )
+    explicit_threads = (
+        db.query(ForumThread).filter(ForumThread.id.in_(explicit_thread_ids)).all()
+        if explicit_thread_ids else []
+    )
+    seen_ids: set[str] = set()
+    threads_out = []
+    for t in list(explicit_threads) + list(implicit_threads):
+        if t.id in seen_ids:
+            continue
+        seen_ids.add(t.id)
+        threads_out.append({
+            "id": t.id, "slug": t.slug, "title": t.title,
+            "post_count": t.post_count or 0,
+            "view_count": t.view_count or 0,
+            "last_post_at": t.last_post_at.isoformat() if t.last_post_at else None,
+            "pinned": t.pinned, "locked": t.locked,
+            "solved": bool(t.solved_post_id),
+        })
+
+    files_out = []
+    if explicit_file_ids:
+        files = (
+            db.query(DocumentFile, DocumentFolder)
+            .join(DocumentFolder, DocumentFolder.id == DocumentFile.folder_id)
+            .filter(DocumentFile.id.in_(explicit_file_ids), DocumentFile.deleted_at.is_(None))
+            .all()
+        )
+        for f, folder in files:
+            files_out.append({
+                "id": f.id, "name": f.name,
+                "mime_type": f.mime_type, "size_bytes": f.size_bytes,
+                "uploaded_at": f.uploaded_at.isoformat() if f.uploaded_at else None,
+                "uploader_name": f.uploader_name,
+                "folder_name": folder.name, "folder_slug": folder.slug,
+            })
+
+    return {
+        "item_id": item.id,
+        "title": item.title,
+        "threads": threads_out,
+        "files": files_out,
+        "notes_md": item.notes_md or "",
+    }
+
+
+class AgendaMaterialUpdate(BaseModel):
+    related_thread_ids: list[str] | None = None
+    related_file_ids: list[str] | None = None
+    notes_md: str | None = None
+
+
+@router.patch("/admin/agenda/{item_id}/material")
+def update_agenda_material(
+    item_id: str, data: AgendaMaterialUpdate, request: Request, db: Session = Depends(get_db),
+):
+    """Mod kann Threads + Files mit einem Programmpunkt verknüpfen."""
+    from routers.auth import require_moderator
+    require_moderator(request)
+    item = _get_agenda_item_or_404(item_id, db)
+    if data.related_thread_ids is not None:
+        item.related_thread_ids = data.related_thread_ids
+    if data.related_file_ids is not None:
+        item.related_file_ids = data.related_file_ids
+    if data.notes_md is not None:
+        item.notes_md = data.notes_md.strip() or None
+    db.commit()
+    return {"status": "ok"}
+
+
 @router.post("/agenda/{item_id}/forum/posts", response_model=AgendaForumPostOut, status_code=201)
 def create_agenda_forum_post(
     item_id: str,

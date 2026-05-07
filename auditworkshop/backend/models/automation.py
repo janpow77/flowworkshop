@@ -68,6 +68,28 @@ class SanctionsRefreshRun(Base):
     error = Column(Text, nullable=True)
 
 
+class Notification(Base):
+    """Internes Notification-Center (Plan v3.2 Phase 6) — kein Mail-Versand.
+    Bell-Icon im Frontend zeigt unread-Count.
+    """
+    __tablename__ = "workshop_notifications"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(String(36), nullable=False, index=True)
+    kind = Column(String(40), nullable=False)
+    # 'forum_reply' | 'forum_mention' | 'admin_pending' |
+    # 'admin_harvest_failed' | 'admin_sanctions_failed' | 'doc_uploaded'
+    title = Column(String(200), nullable=False)
+    body = Column(Text, nullable=True)
+    link = Column(String(500), nullable=True)
+    read_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now(), index=True)
+
+    __table_args__ = (
+        Index("ix_notif_user_unread", "user_id", "read_at"),
+    )
+
+
 class LlmQuestionLog(Base):
     """Plan v3.2 §16.4 — Logging aller Workshop-LLM-Streams für spätere
     Optimierung (Mode-Erkennung, Trigger, Prompt-Tuning).

@@ -28,6 +28,7 @@ const ForumPage = lazy(() => import('./pages/ForumPage'));
 const ThreadPage = lazy(() => import('./pages/ThreadPage'));
 const NewThreadPage = lazy(() => import('./pages/NewThreadPage'));
 const DocumentsPage = lazy(() => import('./pages/DocumentsPage'));
+const AgendaArchivePage = lazy(() => import('./pages/AgendaArchivePage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const SignUpPage = lazy(() => import('./pages/SignUpPage'));
@@ -63,7 +64,12 @@ export default function App() {
       <Routes>
         {/* Oeffentliche Routen ohne Login */}
         <Route element={<AppShell />}>
-          <Route path="/agenda" element={<AgendaPage />} />
+          <Route path="/agenda" element={
+            phase === 'post'
+              ? <LazyPage><AgendaArchivePage /></LazyPage>
+              : <AgendaPage />
+          } />
+          <Route path="/agenda/archiv" element={<LazyPage><AgendaArchivePage /></LazyPage>} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/vorstellungsrunde" element={<VorstellungsrundePage />} />
           <Route path="/forum" element={<LazyPage><ForumPage /></LazyPage>} />
