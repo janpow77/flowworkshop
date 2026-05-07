@@ -1,6 +1,9 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
-import { Loader2, MapPin, AlertTriangle, Upload, X, CheckCircle, FileSpreadsheet, Trash2, ShieldCheck } from 'lucide-react';
+import {
+  Loader2, MapPin, AlertTriangle, Upload, X, CheckCircle, FileSpreadsheet,
+  Trash2, ShieldCheck, FileImage, FileText, Maximize2, Minimize2,
+} from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import { getSystemProfile, getWorkshopAuthHeaders, type SystemProfile, type CountryCode } from '../../lib/api';
 
@@ -148,7 +151,74 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
   const [filterBl, setFilterBl] = useState('');
   const [minKosten, setMinKosten] = useState(0);
 
+  // Vollbild + Export
+  const [fullscreen, setFullscreen] = useState(false);
+  const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null);
+  const mapShellRef = useRef<HTMLDivElement>(null);
+
   const countryQuery = countryCode ? `?country_code=${countryCode}` : '';
+
+  // ESC schließt Vollbild
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullscreen]);
+
+  const exportMap = useCallback(async (format: 'png' | 'pdf') => {
+    const target = mapShellRef.current;
+    if (!target) return;
+    setExporting(format);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      // Leaflet-Tiles benötigen useCORS; foreignObject hilft bei einigen Popups
+      const canvas = await html2canvas(target, {
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        scale: 2,
+        logging: false,
+      });
+      const ts = new Date().toISOString().slice(0, 10);
+      const fileBase = `beguenstigtenkarte_${countryCode || 'all'}_${ts}`;
+      if (format === 'png') {
+        const dataUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = `${fileBase}.png`;
+        a.click();
+      } else {
+        const { jsPDF } = await import('jspdf');
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const orientation = canvas.width >= canvas.height ? 'l' : 'p';
+        const pdf = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
+        const pageW = pdf.internal.pageSize.getWidth();
+        const pageH = pdf.internal.pageSize.getHeight();
+        const ratio = Math.min(
+          (pageW - 40) / canvas.width,
+          (pageH - 80) / canvas.height,
+        );
+        const w = canvas.width * ratio;
+        const h = canvas.height * ratio;
+        pdf.setFontSize(11);
+        pdf.text(
+          `Begünstigtenkarte · ${filtered.length} Vorhaben · ${formatEur(totalKosten)} · Stand ${ts}`,
+          20,
+          28,
+        );
+        pdf.addImage(dataUrl, 'JPEG', 20, 40, w, h);
+        pdf.save(`${fileBase}.pdf`);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Export fehlgeschlagen.');
+    } finally {
+      setExporting(null);
+    }
+  // filtered/totalKosten existieren weiter unten — useCallback umfasst den
+  // Closure-State bei Aufruf, deshalb hier bewusst keine Dependency-Erfassung
+  // (würde Render-Loop auslösen).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countryCode]);
 
   const loadMap = useCallback(async () => {
     setLoading(true);
@@ -363,7 +433,7 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+        <div className={`rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden ${fullscreen ? 'fixed inset-2 z-[1000] flex flex-col shadow-2xl' : ''}`}>
           {/* Karten-Header */}
           <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2 text-sm">
@@ -396,10 +466,41 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
                 <option value={1000000}>&gt; 1 Mio €</option>
                 <option value={5000000}>&gt; 5 Mio €</option>
               </select>
+              <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-600 pl-2 ml-1">
+                <button
+                  onClick={() => exportMap('png')}
+                  disabled={!!exporting}
+                  className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-50"
+                  title="Karte als PNG-Bild exportieren"
+                >
+                  {exporting === 'png' ? <Loader2 size={12} className="animate-spin" /> : <FileImage size={12} />}
+                  PNG
+                </button>
+                <button
+                  onClick={() => exportMap('pdf')}
+                  disabled={!!exporting}
+                  className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-50"
+                  title="Karte als PDF exportieren"
+                >
+                  {exporting === 'pdf' ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+                  PDF
+                </button>
+                <button
+                  onClick={() => setFullscreen((v) => !v)}
+                  className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600"
+                  title={fullscreen ? 'Vollbild beenden (Esc)' : 'Vollbild öffnen'}
+                  aria-label={fullscreen ? 'Vollbild beenden' : 'Vollbild öffnen'}
+                >
+                  {fullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="beneficiary-map-shell h-[500px]">
+          <div
+            ref={mapShellRef}
+            className={`beneficiary-map-shell ${fullscreen ? 'flex-1' : 'h-[680px]'}`}
+          >
             <div className="relative h-full w-full">
               <MapContainer key={countryCode || 'all'} center={mapView.center} zoom={mapView.zoom} className="h-full w-full" scrollWheelZoom={true}>
                 {allowRemoteTiles && (

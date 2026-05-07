@@ -37,6 +37,7 @@ const NAV = [
       { to: '/scenario/4', label: '4 \u00b7 Berichtsentwurf', icon: FolderOpen },
       { to: '/scenario/5', label: '5 \u00b7 Vorab-Upload & RAG', icon: Upload },
       { to: '/scenario/6', label: '6 \u00b7 Beg\u00fcnstigtenverzeichnis', icon: Building2 },
+      { to: '/sanktionslisten', label: '7 \u00b7 Sanktionslisten', icon: ShieldAlert },
     ],
     locked: true, // wird dynamisch ueberschrieben
   },
@@ -47,7 +48,6 @@ const NAV = [
       { to: '/knowledge', label: 'Wissensbasis', icon: Database },
       { to: '/dataframes', label: 'Datenanalyse', icon: FileSpreadsheet },
       { to: '/company-search', label: 'Unternehmenssuche', icon: Building2 },
-      { to: '/sanktionslisten', label: 'Sanktionslisten', icon: ShieldAlert },
       { to: '/ai-act', label: 'AI Act', icon: Scale },
       { to: '/account', label: 'Benutzerkonto', icon: User },
       { to: '/admin', label: 'Verwaltung', icon: Settings },
