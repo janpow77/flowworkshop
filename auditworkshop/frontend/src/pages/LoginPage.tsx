@@ -135,127 +135,135 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
         </div>
       </div>
 
-      {/* Login Card */}
-      <div className="relative z-10 w-full max-w-md px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white tracking-tight">Pr&uuml;ferworkshop 2026</h1>
-          <p className="text-sm text-blue-200/70 mt-2">Workshop 5 &mdash; KI und Digitalisierung in der Pr&uuml;ft&auml;tigkeit</p>
+      {/* Login + Public-Tools */}
+      <div className="relative z-10 w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-10">
+          <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight">Pr&uuml;ferworkshop 2026</h1>
+          <p className="text-base text-blue-200/70 mt-3">Workshop 5 &mdash; KI und Digitalisierung in der Pr&uuml;ft&auml;tigkeit</p>
         </div>
 
-        {/* Public-Tools (Art. 49 VO (EU) 2021/1060) — vor dem Login */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        {/* Drei Kacheln: Begünstigtenkarte · Sanktionslisten · Anmelden */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+          {/* Kachel 1: Begünstigtenkarte */}
           <button
             onClick={() => navigate('/scenario/6')}
-            className="glass-card group flex flex-col rounded-2xl p-6 text-left transition hover:bg-emerald-500/10"
+            className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-emerald-500/10 hover:scale-[1.01] hover:shadow-xl"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">🗺</span>
-              <h2 className="text-base font-semibold text-white">Begünstigten&shy;karte</h2>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-2xl backdrop-blur-sm">🗺</span>
+              <h2 className="text-lg font-semibold text-white">Begünstigtenkarte</h2>
             </div>
-            <p className="text-xs leading-relaxed text-blue-200/70">
+            <p className="text-sm leading-relaxed text-blue-200/80">
               Konsolidiertes Begünstigtenverzeichnis aus EFRE, ESF+, JTF, ISF und AMIF
               für Deutschland und Österreich.
             </p>
-            <ul className="mt-2 space-y-1 text-[11px] text-blue-200/60">
-              <li>· Interaktive Karte mit Geocoding aller Standorte</li>
-              <li>· Volltextsuche, Filter nach Land, Fonds, Förderhöhe</li>
-              <li>· LLM-Auswertung von Auffälligkeiten und Häufungen</li>
-              <li>· Export als XLSX, CSV oder PNG</li>
+            <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
+              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> Interaktive Karte mit Geocoding aller Standorte</li>
+              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> Volltextsuche, Filter nach Land, Fonds, Förderhöhe</li>
+              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> LLM-Auswertung von Auffälligkeiten</li>
+              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> Export als XLSX, CSV oder PNG</li>
             </ul>
-            <p className="mt-3 text-[10px] text-emerald-300/70">
+            <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-emerald-300/80">
               Öffentlich nach Art. 49 VO (EU) 2021/1060
             </p>
           </button>
+
+          {/* Kachel 2: Sanktionslisten */}
           <button
             onClick={() => navigate('/sanktionslisten')}
-            className="glass-card group flex flex-col rounded-2xl p-6 text-left transition hover:bg-rose-500/10"
+            className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-rose-500/10 hover:scale-[1.01] hover:shadow-xl"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">🛡</span>
-              <h2 className="text-base font-semibold text-white">Sanktions&shy;listen</h2>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/20 text-2xl backdrop-blur-sm">🛡</span>
+              <h2 className="text-lg font-semibold text-white">Sanktionslisten</h2>
             </div>
-            <p className="text-xs leading-relaxed text-blue-200/70">
+            <p className="text-sm leading-relaxed text-blue-200/80">
               Konsolidierte Personen- und Organisations-Sanktionslisten der EU,
               USA, UK und Schweiz.
             </p>
-            <ul className="mt-2 space-y-1 text-[11px] text-blue-200/60">
-              <li>· EU FSF, OFAC, OFSI, SECO, BAFA, UN</li>
-              <li>· Lokale Fuzzy-Suche (kein Datenabfluss)</li>
-              <li>· 5.900+ Einträge, 29.600 Vergleichsstrings</li>
-              <li>· Täglich automatisch aktualisiert</li>
+            <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
+              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> EU FSF, OFAC, OFSI, SECO, BAFA, UN</li>
+              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> Lokale Fuzzy-Suche (kein Datenabfluss)</li>
+              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> 5.900+ Einträge, 29.600 Vergleichsstrings</li>
+              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> Täglich automatisch aktualisiert</li>
             </ul>
-            <p className="mt-3 text-[10px] text-rose-300/70">
+            <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-rose-300/80">
               Für Begünstigten-Screening nach Art. 73 VO 2021/1060
             </p>
           </button>
-        </div>
 
-        <div className="glass-card rounded-2xl p-8">
-          <div className="flex items-center gap-2 mb-6">
-            {qrToken ? <QrCode size={20} className="text-blue-300" /> : <LogIn size={20} className="text-blue-300" />}
-            <h2 className="text-lg font-semibold text-white">{qrToken ? 'QR-Login' : 'Anmelden'}</h2>
-          </div>
-          <p className="text-sm text-blue-200/60 mb-4">
-            {qrToken
-              ? 'Der QR-Code wird geprüft. Falls der Link abgelaufen ist, können Sie sich unten normal anmelden.'
-              : 'Melden Sie sich mit Ihrer registrierten E-Mail-Adresse an. Falls gesetzt, können Sie zusätzlich Ihr Passwort eingeben.'}
-          </p>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
-            placeholder="dienstliche E-Mail-Adresse"
-            aria-label="E-Mail-Adresse"
-            className="login-input w-full rounded-xl px-4 py-3 text-sm"
-            autoFocus
-          />
-          <div className="relative mt-3">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
-              placeholder="Passwort (optional, falls gesetzt)"
-              aria-label="Passwort"
-              className="login-input w-full rounded-xl px-4 py-3 pr-11 text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute inset-y-0 right-0 flex items-center px-3 text-blue-200/70 hover:text-blue-100"
-              aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          {error && (
-            <div className="mt-2 rounded-lg border border-red-400/30 bg-red-500/20 px-3 py-2 text-xs text-red-200">
-              {error}
+          {/* Kachel 3: Login */}
+          <div className="glass-card flex flex-col rounded-3xl p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/20 text-cyan-300 backdrop-blur-sm">
+                {qrToken ? <QrCode size={22} /> : <LogIn size={22} />}
+              </span>
+              <h2 className="text-lg font-semibold text-white">{qrToken ? 'QR-Login' : 'Anmelden'}</h2>
             </div>
-          )}
-          <button
-            onClick={handleLogin}
-            disabled={loading || !email}
-            className="login-button mt-4 w-full flex items-center justify-center gap-2 rounded-full py-3 text-sm font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
-            Anmelden
-          </button>
-          <div className="mt-4 flex items-center justify-between text-xs">
-            <button onClick={() => navigate('/signup')} className="text-blue-300/70 hover:text-blue-200 flex items-center gap-1 transition-colors">
-              <UserPlus size={12} /> Konto erstellen
-            </button>
-            <button
-              onClick={() => alert('Bitte Admin (jan.riener@wirtschaft.hessen.de) kontaktieren — Sie erhalten einen einmaligen Setup-Link.')}
-              className="text-blue-300/70 hover:text-blue-200 transition-colors">
-              Passwort vergessen?
-            </button>
+            <p className="text-sm leading-relaxed text-blue-200/70 mb-5">
+              {qrToken
+                ? 'Der QR-Code wird geprüft. Falls der Link abgelaufen ist, können Sie sich unten normal anmelden.'
+                : 'Melden Sie sich mit Ihrer registrierten E-Mail-Adresse an. Falls gesetzt, geben Sie zusätzlich Ihr Passwort ein.'}
+            </p>
+            <div className="flex flex-col gap-3 flex-1">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
+                placeholder="dienstliche E-Mail-Adresse"
+                aria-label="E-Mail-Adresse"
+                className="login-input w-full rounded-xl px-4 py-3 text-sm"
+                autoFocus
+              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
+                  placeholder="Passwort (optional, falls gesetzt)"
+                  aria-label="Passwort"
+                  className="login-input w-full rounded-xl px-4 py-3 pr-11 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-blue-200/70 hover:text-blue-100"
+                  aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              {error && (
+                <div className="rounded-lg border border-red-400/30 bg-red-500/20 px-3 py-2 text-xs text-red-200">
+                  {error}
+                </div>
+              )}
+              <button
+                onClick={handleLogin}
+                disabled={loading || !email}
+                className="login-button mt-1 w-full flex items-center justify-center gap-2 rounded-full py-3 text-sm font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {loading ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
+                Anmelden
+              </button>
+            </div>
+            <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
+              <button onClick={() => navigate('/signup')} className="text-blue-300/70 hover:text-blue-200 flex items-center gap-1 transition-colors">
+                <UserPlus size={12} /> Konto erstellen
+              </button>
+              <button
+                onClick={() => alert('Bitte Admin (jan.riener@vwvg.de) kontaktieren — Sie erhalten einen einmaligen Setup-Link.')}
+                className="text-blue-300/70 hover:text-blue-200 transition-colors">
+                Passwort vergessen?
+              </button>
+            </div>
           </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-blue-200/50">
-          Kontakt: <a href="mailto:jan.riener@wirtschaft.hessen.de" className="text-blue-300/70 hover:text-blue-200 underline transition-colors">jan.riener@wirtschaft.hessen.de</a>
+        <p className="mt-8 text-center text-xs text-blue-200/50">
+          Kontakt: <a href="mailto:jan.riener@vwvg.de" className="text-blue-300/70 hover:text-blue-200 underline transition-colors">jan.riener@vwvg.de</a>
         </p>
       </div>
     </div>
