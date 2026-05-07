@@ -46,12 +46,42 @@ async def lifespan(app: FastAPI):
                 "last_login_at": "ALTER TABLE workshop_registrations ADD COLUMN last_login_at TIMESTAMP",
                 "qr_login_secret": "ALTER TABLE workshop_registrations ADD COLUMN qr_login_secret VARCHAR(128)",
                 "qr_secret_rotated_at": "ALTER TABLE workshop_registrations ADD COLUMN qr_secret_rotated_at TIMESTAMP",
+                # Phase-0-Erweiterung (Plan v3.2)
+                "role": "ALTER TABLE workshop_registrations ADD COLUMN role VARCHAR(16) NOT NULL DEFAULT 'attendee'",
+                "status": "ALTER TABLE workshop_registrations ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'",
+                "bundesland": "ALTER TABLE workshop_registrations ADD COLUMN bundesland VARCHAR(64)",
+                "function_role": "ALTER TABLE workshop_registrations ADD COLUMN function_role VARCHAR(80)",
+                "signup_reason": "ALTER TABLE workshop_registrations ADD COLUMN signup_reason TEXT",
+                "avatar_path": "ALTER TABLE workshop_registrations ADD COLUMN avatar_path VARCHAR(255)",
+                "quota_bytes": "ALTER TABLE workshop_registrations ADD COLUMN quota_bytes BIGINT NOT NULL DEFAULT 209715200",
+                "used_bytes": "ALTER TABLE workshop_registrations ADD COLUMN used_bytes BIGINT NOT NULL DEFAULT 0",
+                "rejection_reason": "ALTER TABLE workshop_registrations ADD COLUMN rejection_reason TEXT",
+                "approved_at": "ALTER TABLE workshop_registrations ADD COLUMN approved_at TIMESTAMP",
+                "approved_by_id": "ALTER TABLE workshop_registrations ADD COLUMN approved_by_id VARCHAR(36)",
+                "deleted_at": "ALTER TABLE workshop_registrations ADD COLUMN deleted_at TIMESTAMP",
             }
             for col, ddl in registration_migrations.items():
                 if col not in reg_cols:
                     conn.execute(text(ddl))
                     conn.commit()
                     log.info("Spalte %s zu workshop_registrations hinzugefuegt.", col)
+
+            # Initial-Admin: jan.riener@wirtschaft.hessen.de wird role=admin,
+            # alle bestehenden mit Login werden status=active (= idempotent)
+            conn.execute(text("""
+                UPDATE workshop_registrations
+                   SET role = 'admin', quota_bytes = 9223372036854775807
+                 WHERE LOWER(email) = 'jan.riener@wirtschaft.hessen.de'
+                   AND role <> 'admin'
+            """))
+            conn.commit()
+            # bestehende Nutzer: status auf 'active' setzen wenn noch nicht
+            conn.execute(text("""
+                UPDATE workshop_registrations
+                   SET approved_at = COALESCE(approved_at, created_at, now())
+                 WHERE status = 'active' AND approved_at IS NULL
+            """))
+            conn.commit()
     except Exception as e:
         log.error("SQLAlchemy-Init fehlgeschlagen: %s", e)
 

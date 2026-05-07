@@ -6,7 +6,8 @@ import enum
 import uuid
 
 from sqlalchemy import (
-    Column, String, Text, Integer, Boolean, DateTime, Enum, ForeignKey, func,
+    Column, String, Text, Integer, Boolean, DateTime, Enum, ForeignKey,
+    BigInteger, JSON, func,
 )
 from sqlalchemy.orm import relationship
 
@@ -79,6 +80,12 @@ class AgendaItem(Base):
 
 
 class Registration(Base):
+    """User-Modell (Tabelle heißt aus historischen Gründen workshop_registrations).
+
+    Nach Plan v3.2 erweitert um Rolle/Status/Bundesland/Funktion/Quota — die
+    bisherige Token-only-Auth (qr_login_secret, invite_token) bleibt für die
+    30-Tage-Übergangszeit gültig.
+    """
     __tablename__ = "workshop_registrations"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -98,6 +105,60 @@ class Registration(Base):
     anthropic_consent = Column(Boolean, default=False)
     filename = Column(String(255), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
+
+    # Phase-0-Erweiterung (Plan v3.2 §3+§4)
+    # role:    'attendee' | 'moderator' | 'admin'
+    # status:  'pending_approval' | 'active' | 'rejected' | 'suspended'
+    role = Column(String(16), nullable=False, server_default="attendee", index=True)
+    status = Column(String(20), nullable=False, server_default="active", index=True)
+    bundesland = Column(String(64), nullable=True)
+    function_role = Column(String(80), nullable=True)
+    signup_reason = Column(Text, nullable=True)
+    avatar_path = Column(String(255), nullable=True)
+    quota_bytes = Column(BigInteger, nullable=False, server_default="209715200")  # 200 MB
+    used_bytes = Column(BigInteger, nullable=False, server_default="0")
+    rejection_reason = Column(Text, nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    approved_by_id = Column(String(36), nullable=True)  # admin user id
+    deleted_at = Column(DateTime, nullable=True)
+
+
+class PasswordResetToken(Base):
+    """Vom Admin generierter Einmal-Token für Passwort-Reset (kein Mail-Versand).
+    Admin kopiert den Klartext aus der Antwort, schickt ihn manuell an den User.
+    """
+    __tablename__ = "workshop_password_reset_tokens"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(
+        String(36),
+        ForeignKey("workshop_registrations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    token_hash = Column(String(128), nullable=False, unique=True, index=True)
+    purpose = Column(String(20), nullable=False, server_default="reset")  # 'reset' | 'setup'
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    created_by_id = Column(String(36), nullable=True)  # admin user id
+
+
+class SecurityAuditLog(Base):
+    """Audit-Trail für Auth-/Admin-Aktionen (Plan v3.2 §3.5).
+
+    Separat von models.audit_log.AuditLog (das ist Workshop-Aktivitäts-Log).
+    """
+    __tablename__ = "workshop_security_audit"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    actor_user_id = Column(String(36), nullable=True, index=True)
+    action = Column(String(64), nullable=False, index=True)
+    target_type = Column(String(40), nullable=True)
+    target_id = Column(String(64), nullable=True)
+    metadata_json = Column(JSON, nullable=True)
+    ip_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, server_default=func.now(), index=True)
 
 
 class AgendaForumPost(Base):

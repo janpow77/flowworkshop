@@ -18,20 +18,27 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import SessionLocal, get_db
-from models.registration import Registration
+from models.registration import Registration, PasswordResetToken, SecurityAuditLog
 from models.audit_log import AuditLog
 from models.session import WorkshopSession
 from config import AUTH_TOKEN_SECRET
+from services.country_profiles import REGIONS_FLAT
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 log = logging.getLogger(__name__)
 
-# Moderatoren-E-Mails (case-insensitive geprueft)
+# Moderatoren-E-Mails (case-insensitive geprueft) — Legacy-Fallback,
+# wenn DB-Spalte role noch nicht gesetzt ist (vor Migration).
 MODERATOR_EMAILS = {
     "jan.riener@wirtschaft.hessen.de",
     "alexander.lohse@wirtschaft.hessen.de",
     "alexander.lohse@smf.sachsen.de",
 }
+ADMIN_EMAILS = {"jan.riener@wirtschaft.hessen.de"}
+
+# Erlaubte Werte für die Bundesland-Whitelist (DE+AT+Bund je); werden
+# zentral aus country_profiles abgefragt.
+ALLOWED_BUNDESLAENDER = REGIONS_FLAT
 
 
 class LoginRequest(BaseModel):
@@ -121,6 +128,20 @@ def _make_qr_login_token(reg: Registration, expires_at: datetime) -> str:
 
 
 def _resolve_role(reg: Registration) -> str:
+    """Bestimmt die Rolle für die Session.
+    Priorität: DB-Feld `role` (neu, Plan v3.2) → MODERATOR_EMAILS-Fallback.
+    Mapping 'attendee' → 'participant' für Backwards-Compat im Frontend.
+    """
+    db_role = (getattr(reg, "role", None) or "").strip().lower()
+    if db_role == "admin":
+        return "admin"
+    if db_role == "moderator":
+        return "moderator"
+    if db_role == "attendee":
+        return "participant"
+    # Fallback: Hardcoded-Liste für nicht-migrierte Zeilen
+    if reg.email.lower() in ADMIN_EMAILS:
+        return "admin"
     return "moderator" if reg.email.lower() in MODERATOR_EMAILS else "participant"
 
 
@@ -164,12 +185,22 @@ def require_session(request: Request) -> dict:
 
 
 def require_moderator(request: Request) -> dict:
-    """FastAPI dependency: verlangt einen Moderator-Login."""
+    """FastAPI dependency: verlangt mindestens Moderator-Rolle (auch admin)."""
     session = require_session(request)
     email = str(session.get("email", "")).lower()
-    if session.get("role") == "moderator" or email in MODERATOR_EMAILS:
+    role = session.get("role", "")
+    if role in ("moderator", "admin") or email in MODERATOR_EMAILS or email in ADMIN_EMAILS:
         return session
     raise HTTPException(403, "Moderator-Login erforderlich.")
+
+
+def require_admin(request: Request) -> dict:
+    """FastAPI dependency: verlangt Admin-Rolle."""
+    session = require_session(request)
+    email = str(session.get("email", "")).lower()
+    if session.get("role") == "admin" or email in ADMIN_EMAILS:
+        return session
+    raise HTTPException(403, "Admin-Login erforderlich.")
 
 
 def _create_session(reg: Registration, role: str, db: Session) -> LoginResponse:
@@ -230,6 +261,18 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     ).first()
     if not reg:
         raise HTTPException(401, "E-Mail nicht registriert. Bitte zuerst anmelden.")
+
+    # Status-Check (Plan v3.2 §3): pending_approval / rejected / suspended blocken
+    user_status = (getattr(reg, "status", None) or "active").lower()
+    if user_status == "pending_approval":
+        raise HTTPException(
+            403,
+            "Ihre Anmeldung wartet noch auf die Freischaltung durch den Admin.",
+        )
+    if user_status == "rejected":
+        raise HTTPException(403, "Anmeldung wurde abgelehnt.")
+    if user_status == "suspended":
+        raise HTTPException(403, "Konto ist suspendiert.")
 
     if reg.password_hash:
         if not body.password:
@@ -401,3 +444,304 @@ def get_audit_log(pin: str = "", limit: int = 50, db: Session = Depends(get_db))
             for e in entries
         ],
     }
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Phase 0 — Selbstanmeldung + Admin-Approval (Plan v3.2 §3)
+# ─────────────────────────────────────────────────────────────────────
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+    first_name: str
+    last_name: str
+    organization: str
+    bundesland: str
+    function_role: str
+    signup_reason: str | None = None
+    privacy_accepted: bool
+
+
+class SignupResponse(BaseModel):
+    status: str  # "pending_approval"
+    message: str
+
+
+def _validate_password_strength(pw: str) -> str | None:
+    if len(pw) < 10:
+        return "Passwort muss mindestens 10 Zeichen lang sein."
+    if not any(c.isdigit() for c in pw):
+        return "Passwort muss mindestens eine Ziffer enthalten."
+    if not any(not c.isalnum() for c in pw):
+        return "Passwort muss mindestens ein Sonderzeichen enthalten."
+    return None
+
+
+@router.post("/signup", response_model=SignupResponse, status_code=201)
+def signup(body: SignupRequest, request: Request, db: Session = Depends(get_db)):
+    """Selbstregistrierung — kein Mail-Verify, Account ist `pending_approval`,
+    Admin schaltet später frei. Pflichtfelder gemäß Plan v3.2 §3.4.
+    """
+    email = body.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(422, "Bitte gültige E-Mail-Adresse angeben.")
+    if not body.privacy_accepted:
+        raise HTTPException(422, "Datenschutz-Einwilligung erforderlich.")
+    pw_err = _validate_password_strength(body.password)
+    if pw_err:
+        raise HTTPException(422, pw_err)
+    if len(body.first_name.strip()) < 2 or len(body.last_name.strip()) < 2:
+        raise HTTPException(422, "Bitte Vor- und Nachname angeben.")
+    if len(body.organization.strip()) < 3:
+        raise HTTPException(422, "Bitte vollständigen Behörden-/Organisationsnamen angeben.")
+    if body.bundesland not in ALLOWED_BUNDESLAENDER:
+        raise HTTPException(422, "Bundesland nicht in Liste enthalten.")
+    if len(body.function_role.strip()) < 2:
+        raise HTTPException(422, "Bitte Funktion angeben.")
+
+    existing = db.query(Registration).filter(func.lower(Registration.email) == email).first()
+    if existing:
+        # Generische Antwort, um keine User-Enumeration zu erlauben
+        return SignupResponse(
+            status="pending_approval",
+            message="Anmeldung eingegangen. Sie werden vom Admin geprüft.",
+        )
+
+    new = Registration(
+        first_name=body.first_name.strip(),
+        last_name=body.last_name.strip(),
+        organization=body.organization.strip(),
+        email=email,
+        bundesland=body.bundesland,
+        function_role=body.function_role.strip(),
+        signup_reason=(body.signup_reason or "").strip()[:2000] or None,
+        password_hash=_hash_password(body.password),
+        password_updated_at=_utcnow().replace(tzinfo=None),
+        role="attendee",
+        status="pending_approval",
+        privacy_accepted=True,
+    )
+    db.add(new)
+    db.commit()
+    log.info("Signup: %s wartet auf Admin-Approval (id=%s)", email, new.id)
+    return SignupResponse(
+        status="pending_approval",
+        message=(
+            "Anmeldung eingegangen. Nach Freischaltung durch den Admin "
+            "können Sie sich mit Ihrer E-Mail-Adresse und dem von Ihnen "
+            "vergebenen Passwort einloggen."
+        ),
+    )
+
+
+# ── Admin-User-Verwaltung ───────────────────────────────────────────
+
+class UserListEntry(BaseModel):
+    id: str
+    email: str
+    first_name: str
+    last_name: str
+    organization: str
+    bundesland: str | None = None
+    function_role: str | None = None
+    signup_reason: str | None = None
+    role: str
+    status: str
+    created_at: str | None = None
+    approved_at: str | None = None
+    last_login_at: str | None = None
+
+
+class UserListResponse(BaseModel):
+    count: int
+    users: list[UserListEntry]
+
+
+def _user_to_entry(u: Registration) -> UserListEntry:
+    return UserListEntry(
+        id=u.id, email=u.email,
+        first_name=u.first_name, last_name=u.last_name,
+        organization=u.organization or "",
+        bundesland=u.bundesland,
+        function_role=u.function_role,
+        signup_reason=u.signup_reason,
+        role=u.role or "attendee",
+        status=u.status or "active",
+        created_at=u.created_at.isoformat() if u.created_at else None,
+        approved_at=u.approved_at.isoformat() if u.approved_at else None,
+        last_login_at=u.last_login_at.isoformat() if u.last_login_at else None,
+    )
+
+
+@router.get("/users", response_model=UserListResponse)
+def admin_list_users(
+    request: Request,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Admin: Alle Nutzer auflisten, optional gefiltert nach status."""
+    require_admin(request)
+    q = db.query(Registration).filter(Registration.deleted_at.is_(None))
+    if status:
+        q = q.filter(Registration.status == status)
+    rows = q.order_by(Registration.created_at.desc().nullslast()).all()
+    return UserListResponse(count=len(rows), users=[_user_to_entry(u) for u in rows])
+
+
+class UserActionResponse(BaseModel):
+    status: str
+    user: UserListEntry
+
+
+@router.post("/users/{user_id}/approve", response_model=UserActionResponse)
+def admin_approve_user(user_id: str, request: Request, db: Session = Depends(get_db)):
+    """Admin: User freischalten — Status pending_approval → active."""
+    actor = require_admin(request)
+    u = db.query(Registration).filter(Registration.id == user_id).first()
+    if not u:
+        raise HTTPException(404, "User nicht gefunden.")
+    if u.status == "active":
+        return UserActionResponse(status="already_active", user=_user_to_entry(u))
+    u.status = "active"
+    u.approved_at = _utcnow().replace(tzinfo=None)
+    u.approved_by_id = actor.get("user_id")
+    db.commit()
+    log.info("admin_approve_user: %s durch %s", u.email, actor.get("email"))
+    return UserActionResponse(status="approved", user=_user_to_entry(u))
+
+
+class UserRejectRequest(BaseModel):
+    reason: str | None = None
+
+
+@router.post("/users/{user_id}/reject", response_model=UserActionResponse)
+def admin_reject_user(
+    user_id: str, body: UserRejectRequest, request: Request, db: Session = Depends(get_db),
+):
+    actor = require_admin(request)
+    u = db.query(Registration).filter(Registration.id == user_id).first()
+    if not u:
+        raise HTTPException(404, "User nicht gefunden.")
+    u.status = "rejected"
+    u.rejection_reason = (body.reason or "").strip()[:1000] or None
+    db.commit()
+    log.info("admin_reject_user: %s durch %s", u.email, actor.get("email"))
+    return UserActionResponse(status="rejected", user=_user_to_entry(u))
+
+
+@router.post("/users/{user_id}/suspend", response_model=UserActionResponse)
+def admin_suspend_user(user_id: str, request: Request, db: Session = Depends(get_db)):
+    actor = require_admin(request)
+    u = db.query(Registration).filter(Registration.id == user_id).first()
+    if not u:
+        raise HTTPException(404, "User nicht gefunden.")
+    u.status = "suspended"
+    db.commit()
+    # alle Sessions des Users invalidieren
+    db.query(WorkshopSession).filter(WorkshopSession.user_id == u.id).delete()
+    db.commit()
+    log.info("admin_suspend_user: %s durch %s", u.email, actor.get("email"))
+    return UserActionResponse(status="suspended", user=_user_to_entry(u))
+
+
+class RoleChangeRequest(BaseModel):
+    role: str  # 'attendee' | 'moderator' | 'admin'
+
+
+@router.patch("/users/{user_id}/role", response_model=UserActionResponse)
+def admin_change_role(
+    user_id: str, body: RoleChangeRequest, request: Request, db: Session = Depends(get_db),
+):
+    actor = require_admin(request)
+    if body.role not in ("attendee", "moderator", "admin"):
+        raise HTTPException(422, "Ungültige Rolle.")
+    u = db.query(Registration).filter(Registration.id == user_id).first()
+    if not u:
+        raise HTTPException(404, "User nicht gefunden.")
+    u.role = body.role
+    if body.role == "moderator" and (u.quota_bytes or 0) < 1024 * 1024 * 1024:
+        u.quota_bytes = 1024 * 1024 * 1024  # 1 GB
+    if body.role == "admin":
+        u.quota_bytes = 9223372036854775807
+    db.commit()
+    log.info("admin_change_role: %s → %s durch %s", u.email, body.role, actor.get("email"))
+    return UserActionResponse(status="ok", user=_user_to_entry(u))
+
+
+class ResetTokenResponse(BaseModel):
+    token: str
+    expires_at: str
+    setup_url: str
+    user_email: str
+
+
+@router.post("/users/{user_id}/reset-token", response_model=ResetTokenResponse)
+def admin_create_reset_token(
+    user_id: str, request: Request, db: Session = Depends(get_db),
+):
+    """Admin: einmaligen Setup-/Reset-Token generieren. Klartext im Response —
+    Admin kopiert + verschickt manuell (kein Mail).
+    """
+    actor = require_admin(request)
+    u = db.query(Registration).filter(Registration.id == user_id).first()
+    if not u:
+        raise HTTPException(404, "User nicht gefunden.")
+    raw = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    expires = _utcnow().replace(tzinfo=None) + timedelta(hours=24)
+    rt = PasswordResetToken(
+        user_id=u.id,
+        token_hash=token_hash,
+        purpose="setup" if not u.password_hash else "reset",
+        expires_at=expires,
+        created_by_id=actor.get("user_id"),
+    )
+    db.add(rt)
+    db.commit()
+    log.info("reset-token erstellt für %s durch %s", u.email, actor.get("email"))
+    return ResetTokenResponse(
+        token=raw,
+        expires_at=expires.isoformat(),
+        setup_url=f"/account/setup-password?token={raw}",
+        user_email=u.email,
+    )
+
+
+class SetupPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/setup-password")
+def setup_password(body: SetupPasswordRequest, db: Session = Depends(get_db)):
+    """User klickt Admin-Link → setzt Passwort über einmaligen Token.
+
+    Funktioniert sowohl für initial-setup als auch für Reset.
+    """
+    token_hash = hashlib.sha256(body.token.encode()).hexdigest()
+    rt = (
+        db.query(PasswordResetToken)
+        .filter(PasswordResetToken.token_hash == token_hash)
+        .first()
+    )
+    if not rt:
+        raise HTTPException(400, "Link ungültig.")
+    if rt.used_at:
+        raise HTTPException(400, "Link wurde bereits verwendet.")
+    if rt.expires_at < _utcnow().replace(tzinfo=None):
+        raise HTTPException(400, "Link ist abgelaufen.")
+    pw_err = _validate_password_strength(body.new_password)
+    if pw_err:
+        raise HTTPException(422, pw_err)
+    u = db.query(Registration).filter(Registration.id == rt.user_id).first()
+    if not u:
+        raise HTTPException(404, "Nutzer nicht gefunden.")
+    u.password_hash = _hash_password(body.new_password)
+    u.password_updated_at = _utcnow().replace(tzinfo=None)
+    rt.used_at = _utcnow().replace(tzinfo=None)
+    # Bei reset: alle bestehenden Sessions invalidieren
+    if rt.purpose == "reset":
+        db.query(WorkshopSession).filter(WorkshopSession.user_id == u.id).delete()
+    db.commit()
+    log.info("setup-password angewendet für %s (purpose=%s)", u.email, rt.purpose)
+    return {"status": "ok", "purpose": rt.purpose}

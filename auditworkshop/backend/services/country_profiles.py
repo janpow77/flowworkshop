@@ -64,6 +64,18 @@ AUSTRIA_BENEFICIARY_SOURCES = [
 ]
 
 
+# Flache Liste aller erlaubten Bundeslaender / Regionen ueber alle Laender.
+# Wird vom Auth-Signup als Whitelist genutzt + ergaenzt um "Bund (Österreich)"
+# fuer AT-Bundesfonds.
+REGIONS_FLAT: tuple[str, ...] = tuple(
+    sorted({
+        *COUNTRY_PROFILES["DE"]["regions"],
+        *COUNTRY_PROFILES["AT"]["regions"],
+        "Bund (Österreich)",
+    })
+)
+
+
 def _normalize(value: str | None) -> str:
     text_value = str(value or "").lower()
     text_value = (
