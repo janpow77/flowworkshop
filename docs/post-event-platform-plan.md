@@ -1,6 +1,6 @@
 # Plan: Workshop-Plattform nach der Veranstaltung
 
-> **Status:** v3 (final, freigabebereit)
+> **Status:** v3.1 (final, freigabebereit)
 > **Stand:** 2026-05-07
 > **Autor:** Jan Riener · Konzept gemeinsam mit Claude Opus 4.7
 > **Nicht implementiert.** Dieses Dokument beschreibt nur, *was* gebaut werden soll.
@@ -326,6 +326,75 @@ Kachel-Grid 3×3 Desktop, 1-spaltig mobil:
 
 Im **Live-Modus** bleibt die jetzige HomePage; im **Archiv-Modus** wird sie
 durch die Hub-Kacheln ersetzt. Schalter: `event.phase` (`live` | `post`).
+
+### 5.4 Landing-Page (öffentliche Startseite)
+
+Die heutige Login-Seite ist nur ein E-Mail-Eingabefeld. Sie wird zur
+**öffentlichen Landing-Page** umgebaut mit drei Bereichen:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│        [EU-Logo]   Prüferworkshop 2026 · Plattform          │
+│                                                             │
+│  ┌──────────────────────┐    ┌───────────────────────────┐ │
+│  │ ANMELDEN             │    │ ÖFFENTLICHE AUSWERTUNGEN  │ │
+│  │ E-Mail   [______]    │    │ ─────────────────────────  │ │
+│  │ Passwort [______]    │    │  ┌──────────┐ ┌─────────┐│ │
+│  │       [ Anmelden ]   │    │  │  🗺      │ │  🛡    ││ │
+│  │ ─ oder ─             │    │  │BEGÜNST.  │ │SANKTION.││ │
+│  │ Noch kein Konto?     │    │  │ Karte    │ │ Suche   ││ │
+│  │  → Registrieren      │    │  │ 72k VH   │ │ EU FSF  ││ │
+│  │ Passwort vergessen?  │    │  └──────────┘ └─────────┘│ │
+│  │  → Reset             │    │  Frei zugänglich nach     │ │
+│  └──────────────────────┘    │  Art. 49 VO (EU) 2021/1060 │ │
+│                              └───────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Verhalten:**
+- Nicht-eingeloggte Nutzer landen auf `/` → sehen Landing
+- Klick auf Begünstigten-Kachel → öffentliches `/scenario/6` (read-only)
+- Klick auf Sanktionslisten-Kachel → öffentliches `/sanktionslisten`
+- Eingeloggte Nutzer: sofort zum Hub (Live oder Archiv, je nach Phase)
+
+### 5.5 Public vs. Member: klare Trennung
+
+| Pfad | Public | Member |
+|---|:-:|:-:|
+| `/` (Landing) | ✓ | ✓ → Hub-Redirect |
+| `/scenario/6` (Begünstigte) | ✓ | ✓ |
+| `/sanktionslisten` (Sanktionen) | ✓ | ✓ |
+| `/agenda` | ✓ | ✓ |
+| `/forum` (lesen) | ✓ | ✓ |
+| `/forum/new`, Posten/Reagieren | – | ✓ |
+| `/scenario/1–5` (LLM-Compute) | – | ✓ |
+| `/docs` | – | ✓ |
+| `/account/*`, `/admin/*` | – | ✓ |
+
+**Banner auf Public-Pages** (wenn nicht eingeloggt):
+> ℹ Sie sehen die öffentliche Ansicht. Mit Workshop-Konto: Forum-
+> Diskussion, Dokumente, Demo-Szenarien, eigene Auswertungen
+> speichern. [Anmelden] [Registrieren]
+
+### 5.6 Drosseln im Public-Modus
+
+| Funktion | Drossel |
+|---|---|
+| Begünstigtenkarte | keine — Daten sind öffentlich nach Art. 49 |
+| Sanktions-Suche | 30 Anfragen pro IP / Stunde (gegen Bot-Scraping) |
+| LLM-Endpoints (`/api/workshop/stream`) | bleibt member-only — Compute-Kosten |
+
+### 5.7 Backend-Auth-Anpassungen
+
+| Endpoint | heute | Plan |
+|---|---|---|
+| `GET /api/beneficiaries/map` | requires Token | **public öffnen** |
+| `GET /api/beneficiaries/sources` | requires Token | **public öffnen** |
+| `GET /api/sanctions/lists` | public ✓ | bleibt |
+| `GET /api/sanctions/search` | public ✓ + Rate-Limit | bleibt |
+| `POST /api/workshop/stream` | requires Token | bleibt member |
+| `GET /api/forum/threads` | requires Token | **public öffnen** (read-only) |
+| `POST /api/forum/threads` | requires Token | bleibt member |
 
 **Admin-UI für den Phase-Wechsel:**
 
@@ -752,8 +821,220 @@ Frontend-Komponente `<Avatar user={…} size="sm|md|lg" />`.
 
 ---
 
-## 16. Änderungs-Historie
+## 16. Begünstigtenverzeichnisse — Schutz & automatische Aktualisierung
 
+### 16.1 Upload-Schutz (Status & Plan)
+
+**Status heute:**
+- Backend: `POST /api/beneficiaries/upload` schon mit `Depends(require_moderator)` gesichert → User ohne Mod-Rolle bekommen 403
+- Frontend: das Upload-Widget (Drag-and-Drop-Zone) wird **allen Nutzern** angezeigt — auch wenn der Upload dann scheitert, ist das verwirrend
+
+**Plan:**
+- Upload-Widget in `BeneficiaryMap.tsx` nur sichtbar bei `role IN ('moderator','admin')`
+- Public-User (nicht eingeloggt) sehen die Karte und Auswertungen, aber **keine Upload-Zone**, **keine Quellen-Lösch-Buttons**
+- Eingeloggte attendees sehen die Quellen-Pillen, aber ohne Lösch-Aktionen
+- Moderatoren/Admins sehen die volle UI inkl. Upload + Löschen
+
+**Berechtigungs-Matrix (ergänzt):**
+
+| Aktion | public | attendee | moderator | admin |
+|---|:-:|:-:|:-:|:-:|
+| Karte ansehen | ✓ | ✓ | ✓ | ✓ |
+| Karte filtern, exportieren (PNG/PDF) | ✓ | ✓ | ✓ | ✓ |
+| Begünstigten-Auswertungen abrufen | ✓ | ✓ | ✓ | ✓ |
+| Eigenes Verzeichnis hochladen | – | – | – | – |
+| Begünstigtenverzeichnis hochladen | – | – | ✓ | ✓ |
+| Quelle löschen | – | – | ✓ | ✓ |
+| Manuellen Refresh aller Quellen triggern | – | – | – | ✓ |
+
+> ⚠ **Bewusste Entscheidung:** auch normale Mitglieder (`attendee`) dürfen
+> **kein** Begünstigtenverzeichnis hochladen. Die Datenqualität (richtige
+> Bundesland-Zuordnung, korrekte Spalten-Erkennung, Schema-Konsistenz) ist
+> für die Karten-/Auswertungs-Integrität kritisch — das bleibt bei Mods/
+> Admins. Wer Daten beisteuern möchte, kann die XLSX über den Dokumente-
+> Bereich hochladen, ein Mod migriert sie dann offiziell.
+
+### 16.2 Automatischer monatlicher Harvest
+
+Heute existiert das Skript `scripts/harvest_transparenzlisten.py`, das die
+URL-Registry `data/transparenzlisten_urls.json` liest, alle 35 Quellen
+herunterlädt und über die Backend-API einliest. Es wird aktuell **manuell**
+auf Bedarf aufgerufen.
+
+**Plan: monatlich automatisch ausführen.**
+
+#### Zeitsteuerung
+
+- Standardzeitpunkt: **erster Sonntag des Monats, 03:00 UTC** (geringe Last)
+- Konfigurierbar in `.env`: `HARVEST_CRON="0 3 1-7 * 0"` (Cron-Notation)
+- Manuell triggerbar via Admin-UI-Button
+
+#### Implementierung
+
+**Option A — Celery-Beat (mittelschwer):**
+- `flowinvoice` nutzt bereits Celery; im Workshop-Stack analog
+- Beat-Schedule in `tasks.py`:
+  ```python
+  @celery_app.task
+  def harvest_beneficiaries_task():
+      from scripts.harvest_transparenzlisten import run_full_harvest
+      return run_full_harvest()
+
+  beat_schedule = {
+      "monthly-harvest": {
+          "task": "tasks.harvest_beneficiaries_task",
+          "schedule": crontab(minute=0, hour=3, day_of_week=0,
+                              day_of_month="1-7"),
+      },
+  }
+  ```
+- Vorteil: integriert, retry-fähig, sichtbar im Admin-Dashboard
+- Nachteil: Celery-Worker zusätzlich nötig (in docker-compose)
+
+**Option B — System-Cron im Container (leichtgewichtig):**
+- Cron-Job im Backend-Container:
+  ```cron
+  0 3 1-7 * 0 cd /app && python scripts/harvest_transparenzlisten.py >> /data/logs/harvest.log 2>&1
+  ```
+- Vorteil: keine Zusatz-Infrastruktur
+- Nachteil: Backend-Container muss `cron` mitbringen (Dockerfile-Update)
+
+**Option C — Externer GitHub-Action / Hetzner-Cronjob (entkoppelt):**
+- Cron auf dem Host oder via GitHub Actions Schedule
+- Ruft `POST /api/admin/harvest` auf der Plattform auf
+- Vorteil: voll entkoppelt, kein Worker im Container nötig
+- Nachteil: API-Token-Pflege, weniger transparent für Admin
+
+**Empfehlung: Option A (Celery-Beat)** — wir haben das Pattern aus
+flowinvoice schon stabil und wollen ohnehin später Async-Tasks für
+RAG-Reindex, Notification-Versand, Mail-Queue.
+
+#### Datenmodell
+
+```python
+class HarvestRun(Base):
+    id: int
+    started_at, finished_at: datetime
+    triggered_by: str   # 'cron' | 'admin:user_id'
+    status: enum('running'|'success'|'partial'|'failed')
+    sources_total: int
+    sources_ok: int
+    sources_skipped: int   # 304 Not Modified
+    sources_failed: int
+    errors: jsonb         # {url: error_message}
+    log_excerpt: text     # letzte ~100 Log-Zeilen
+
+class HarvestSourceUpdate(Base):
+    id: int
+    run_id: int  FK
+    source: str   # z. B. 'sachsen_efre_2021_2027'
+    bundesland: str
+    fonds: str
+    url: str
+    status: enum('updated'|'unchanged'|'failed'|'new')
+    rows_before, rows_after: int  # Δ-Tracking
+    file_size_bytes: int
+    sha256_old, sha256_new: str   # Audit
+    error: str | None
+    updated_at: datetime
+```
+
+#### Admin-UI: Harvest-Übersicht
+
+Neuer Tab in `/admin`:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Begünstigtenverzeichnisse — Aktualisierung                  │
+├─────────────────────────────────────────────────────────────┤
+│ Letzter Lauf: 02.05.2026, 03:00 (cron) · ✓ erfolgreich     │
+│   33 von 35 Quellen aktualisiert · 2 unverändert · 0 Fehler │
+│   Dauer: 4 Min 12 Sek                                       │
+│                                                             │
+│ Nächster Lauf (cron): 07.06.2026, 03:00                    │
+│                                                             │
+│         [ Jetzt manuell ausführen ]                         │
+├─────────────────────────────────────────────────────────────┤
+│ Verlauf der letzten 12 Monate                               │
+│   Jun 26  Mai 26  Apr 26  Mär 26  Feb 26  Jan 26 …         │
+│    ✓       ✓       ✓       ⚠       ✓       ✓                │
+│                                                             │
+│ Δ-Statistik je Quelle (letzter Lauf)                        │
+│   Sachsen EFRE         5763 → 5891   (+128 Vorhaben)        │
+│   Bayern ESF           2862 → 2862   (unverändert)          │
+│   Thüringen EFRE       2153 → 2249   (+96)                  │
+│   …                                                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Klick auf einen Monatseintrag → Detail-Modal mit:
+- Allen Quellen, deren Status (updated/unchanged/failed)
+- Bei Failed: Fehlermeldung + Retry-Button
+- SHA256 vor/nach (Audit)
+- Volltext-Log
+
+#### API
+
+```
+GET   /api/admin/harvest/runs               (admin)
+GET   /api/admin/harvest/runs/:id           Detail mit allen Source-Updates
+POST  /api/admin/harvest/run                Trigger sofort (admin)
+GET   /api/admin/harvest/schedule           Cron-Konfiguration anzeigen
+POST  /api/admin/harvest/schedule           Cron ändern
+```
+
+#### Verhalten beim Lauf
+
+1. Lock erstellen (`flag in redis or DB lock` — verhindert parallele Runs)
+2. URL-Registry laden (35 Quellen)
+3. Pro Quelle:
+   a. **HEAD-Request** mit `If-Modified-Since` → bei 304 als `unchanged` markieren
+   b. **GET** + Größen-Limit (max 50 MB)
+   c. SHA256 berechnen, mit Vorgänger vergleichen → `unchanged`
+      bei gleichem Hash trotz 200
+   d. **Upload** über interne Funktion (`ingest_dataframe`, gleiche Logik
+      wie der Manual-Upload) — überschreibt die alte Tabelle
+   e. **Geocoding** läuft automatisch nach (`get_beneficiary_map_data`)
+   f. Δ-Statistik (rows_before/rows_after) speichern
+4. **Geocode-Cache** wird inkrementell aktualisiert — nur neue PLZ/Standorte
+   neu über Nominatim aufgelöst (Rate-Limit 1 Req/s, Cache persistent)
+5. Bei Fehler je Quelle: weiter mit der nächsten, Lauf endet als `partial`
+6. Nach Lauf: Notification an Admin (interne Bell oder Mail)
+7. **Veröffentlichung der neuen Daten** ist sofort wirksam — die `/api/
+   beneficiaries/map`-Antwort liefert die neuen Records
+
+#### Schutz vor unerwartetem Verhalten
+
+- **Quell-Plausibilität**: wenn neue Datei < 50 % der Vorgänger-Größe,
+  Warnstatus + Admin-Verifikation, **kein automatisches Überschreiben**
+- **Schema-Drift**: wenn die Spalten-Erkennung plötzlich keine `name`/
+  `kosten`-Spalte findet, Quelle als `failed` markieren, alte Tabelle
+  bleibt
+- **Quota auf Storage**: jede heruntergeladene XLSX wird **nicht** dauerhaft
+  gespeichert — nur Hash + Δ → kein Storage-Wachstum
+- **Audit-Spur**: HarvestRun + HarvestSourceUpdate sind unveränderlich;
+  Recall der Daten (welche Datei wurde wann eingelesen) ist möglich
+- **Manueller Override**: Admin kann eine Quelle „pausieren" (kein
+  Harvest mehr für diese URL) — nützlich wenn die Quelle länger umzieht
+
+#### Phase im Plan
+
+Eingegliedert als **Phase 3.5** zwischen Dokumente und Archiv:
+
+| Sprint | Inhalt | h |
+|---|---|---:|
+| **C2** | **Phase 3.5 Auto-Harvest** (Celery-Beat, HarvestRun-Model, Admin-UI, Δ-Statistik) | 4–5 |
+
+Das verschiebt **Phase 4 Archiv** und **Phase 6 Notifications** nach hinten,
+ändert aber nichts am Gesamtaufwand wesentlich (~36–45 h statt 32–40 h).
+
+---
+
+## 17. Änderungs-Historie
+
+- **2026-05-07 v3.1** — Landing-Page mit Public-Tools (Begünstigte + Sanktionen);
+  Upload-Schutz nur für Mods; automatischer monatlicher Harvest mit
+  Admin-Dashboard
 - **2026-05-07 v3** — Final, alle Anwender-Antworten konsolidiert, Migration der bestehenden Nutzer beschrieben
 - **2026-05-07 v2** — Login-System detailliert, Phase 0 hinzugefügt
 - **2026-05-07 v1** — Erstentwurf nach Anwender-Auftrag „GUI für Post-Event-Modus planen"
