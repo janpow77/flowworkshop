@@ -13,6 +13,7 @@ from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
 from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum, automation
+from routers import docs as docs_router
 
 # Modelle importieren damit Base.metadata sie kennt
 import models  # noqa: F401
@@ -170,6 +171,29 @@ async def lifespan(app: FastAPI):
                         len(threads_by_item), len(legacy_posts),
                     )
 
+            # Default-Ordner für Dokumente-Bereich (Plan v3.2 §7)
+            doc_count = conn.execute(text("SELECT COUNT(*) FROM workshop_doc_folders")).scalar()
+            if doc_count == 0:
+                default_folders = [
+                    # name, slug, description, visibility, upload_policy, is_shared_pool, icon, sort
+                    ("Workshop-Material 2026", "workshop-material-2026", "Folien, Templates, Aufzeichnungen", "public_read", "moderators", False, "FolderArchive", 0),
+                    ("Templates & Vorlagen", "templates", "CL, Berichte, Anschreiben", "members_read", "moderators", False, "FileText", 10),
+                    ("Auswertungen", "auswertungen", "Berichte, Statistiken, Stichproben-Auswertungen", "members_read", "moderators", False, "BarChart", 20),
+                    ("Rechtsgrundlagen", "rechtsgrundlagen", "Verordnungen, Richtlinien, Erlasse", "public_read", "moderators", False, "Scale", 30),
+                    ("Geteilt von Teilnehmern", "geteilt", "Eigene Dateien aller Mitglieder mit Bundesland-Filter", "members_read", "members", True, "Users", 100),
+                ]
+                for name, slug, desc, vis, pol, shared, icon, sort in default_folders:
+                    conn.execute(text(
+                        "INSERT INTO workshop_doc_folders (id, name, slug, description, visibility, upload_policy, is_shared_pool, icon, sort_order) "
+                        "VALUES (gen_random_uuid()::text, :n, :s, :d, :v, :p, :sh, :i, :o)"
+                    ), {"n": name, "s": slug, "d": desc, "v": vis, "p": pol, "sh": shared, "i": icon, "o": sort})
+                conn.commit()
+                log.info("Documents: %d Default-Ordner angelegt.", len(default_folders))
+            # Storage-Verzeichnis sicherstellen
+            from pathlib import Path as _P
+            _P("/app/data/documents").mkdir(parents=True, exist_ok=True)
+            _P("/app/data/documents/_trash").mkdir(parents=True, exist_ok=True)
+
             # Initial-Admin: jan.riener@wirtschaft.hessen.de wird role=admin,
             # alle bestehenden mit Login werden status=active (= idempotent)
             conn.execute(text("""
@@ -264,6 +288,7 @@ app.include_router(auth.router)
 app.include_router(sanctions.router)
 app.include_router(forum.router)
 app.include_router(automation.router)
+app.include_router(docs_router.router)
 
 
 @app.get("/health")

@@ -27,6 +27,7 @@ const SanktionslistenPage = lazy(() => import('./pages/SanktionslistenPage'));
 const ForumPage = lazy(() => import('./pages/ForumPage'));
 const ThreadPage = lazy(() => import('./pages/ThreadPage'));
 const NewThreadPage = lazy(() => import('./pages/NewThreadPage'));
+const DocumentsPage = lazy(() => import('./pages/DocumentsPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const SignUpPage = lazy(() => import('./pages/SignUpPage'));
@@ -97,6 +98,7 @@ export default function App() {
             <Route path="/company-search" element={<LazyPage><CompanySearchPage /></LazyPage>} />
             <Route path="/ai-act" element={<LazyPage><AiActPage /></LazyPage>} />
             <Route path="/sanktionslisten" element={<LazyPage><SanktionslistenPage /></LazyPage>} />
+            <Route path="/docs" element={<LazyPage><DocumentsPage /></LazyPage>} />
             <Route path="/admin" element={<LazyPage><AdminPage /></LazyPage>} />
             <Route path="*" element={<LazyPage><NotFoundPage /></LazyPage>} />
           </Route>

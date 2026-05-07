@@ -3,6 +3,7 @@ import {
   Home, FileSearch, CheckSquare, AlertTriangle, FileText, Upload, MapPin,
   Database, FolderOpen, Building2, Scale, FileSpreadsheet,
   CalendarDays, UserPlus, Settings, User, ShieldAlert, MessagesSquare,
+  FolderArchive,
 } from 'lucide-react';
 
 const NAV_GROUPS = [
@@ -35,6 +36,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/agenda', label: 'Agenda', icon: CalendarDays },
       { to: '/forum', label: 'Forum', icon: MessagesSquare },
+      { to: '/docs', label: 'Docs', icon: FolderArchive },
       { to: '/register', label: 'Anmeldung', icon: UserPlus },
       { to: '/admin', label: 'Admin', icon: Settings },
     ],

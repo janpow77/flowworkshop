@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   Home, FolderOpen, Database, FileSpreadsheet, Building2, Scale,
   CalendarDays, UserPlus, Settings, Upload, User, ShieldAlert,
-  MessagesSquare,
+  MessagesSquare, FolderArchive,
 } from 'lucide-react';
 
 function isModerator(): boolean {
@@ -25,6 +25,7 @@ const NAV = [
       { to: '/', label: 'Startseite', icon: Home },
       { to: '/agenda', label: 'Tagesordnung', icon: CalendarDays },
       { to: '/forum', label: 'Forum', icon: MessagesSquare },
+      { to: '/docs', label: 'Dokumente', icon: FolderArchive },
       { to: '/register', label: 'Anmeldung', icon: UserPlus },
     ],
   },

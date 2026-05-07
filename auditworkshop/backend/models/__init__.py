@@ -32,3 +32,6 @@ from models.forum import (  # noqa: F401
 from models.automation import (  # noqa: F401
     HarvestRun, HarvestSourceUpdate, SanctionsRefreshRun, LlmQuestionLog,
 )
+from models.docs import (  # noqa: F401
+    DocumentFolder, DocumentFile, DocumentVersion, DocumentDownloadLog,
+)
