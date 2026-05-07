@@ -105,6 +105,8 @@ export default function ScenarioPage() {
   }
   const num = parseInt(resolvedId || '1', 10);
   const info = SCENARIO_INFO[num] || SCENARIO_INFO[1];
+  // Public-Modus: nicht eingeloggt + Begünstigtenkarte → Upload + Workshop-Branding ausblenden
+  const isPublicMode = num === 6 && !localStorage.getItem('workshop_token');
 
   const [prompt, setPrompt] = useState('');
   const [documents, setDocuments] = useState<string[]>([]);
@@ -265,24 +267,30 @@ export default function ScenarioPage() {
       <section className={`relative overflow-hidden rounded-[32px] border border-white/70 bg-gradient-to-br ${info.accent} px-7 py-8 text-white shadow-[0_34px_100px_-52px_rgba(15,23,42,0.95)]`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),rgba(255,255,255,0)_40%)]" />
         <div className="relative flex items-start gap-5">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold backdrop-blur-sm">
-            {num}
-          </span>
+          {!isPublicMode && (
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold backdrop-blur-sm">
+              {num}
+            </span>
+          )}
           <div>
             <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-white/60">
-              Workshop-Szenario {num} &middot; {info.eyebrow}
+              {isPublicMode
+                ? 'Öffentliches Begünstigtenverzeichnis · Art. 49 VO (EU) 2021/1060'
+                : <>Workshop-Szenario {num} &middot; {info.eyebrow}</>}
             </div>
             <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
               {info.title}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-white/84 lg:text-base">
-              {info.description}
+              {isPublicMode
+                ? 'Konsolidierte EFRE-, ESF+-, JTF-, ISF- und AMIF-Begünstigtenverzeichnisse für Deutschland und Österreich. Filtern Sie nach Land und Bundesland, durchsuchen Sie die Karte und stellen Sie freie Fragen an die KI-Auswertung.'
+                : info.description}
             </p>
           </div>
         </div>
       </section>
 
-      {info.hint && (
+      {info.hint && !isPublicMode && (
         <div className="rounded-xl border border-sky-200 bg-sky-50/50 px-4 py-3 text-sm text-sky-700 dark:border-sky-800 dark:bg-sky-950/20 dark:text-sky-400 flex items-start gap-2">
           <Info size={16} className="shrink-0 mt-0.5" />
           <span>{info.hint}</span>
@@ -390,7 +398,7 @@ export default function ScenarioPage() {
           </div>
         </div>
       )}
-      {num === 6 && <BeneficiaryMap className="mb-2" countryCode={countryCode} />}
+      {num === 6 && <BeneficiaryMap className="mb-2" countryCode={countryCode} readOnly={isPublicMode} />}
       {num === 6 && <BeneficiaryAnalyticsPanel className="mb-2" onSelectPrompt={setPrompt} countryCode={countryCode} />}
 
       {num === 3 && (
@@ -424,10 +432,12 @@ export default function ScenarioPage() {
         <div className="rounded-[26px] border border-slate-200/80 bg-white/85 p-5 shadow-[0_20px_70px_-46px_rgba(15,23,42,0.58)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-white">
             <Database size={16} className="text-rose-500" />
-            KI-Auswertung für die geladenen Begünstigtenverzeichnisse
+            KI-Auswertung der Begünstigtenverzeichnisse
           </div>
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Laden Sie oben ein Verzeichnis hoch und stellen Sie hier direkt freie Fragen. Die Auswertung läuft gegen die aktuell eingelesenen Begünstigtenlisten und bleibt damit an die reale Datenlage gekoppelt.
+            {isPublicMode
+              ? 'Stellen Sie freie Fragen zur konsolidierten Datenlage. Die Auswertung läuft lokal gegen die geladenen Begünstigtenverzeichnisse aus EFRE, ESF+, JTF, ISF und AMIF.'
+              : 'Laden Sie oben ein Verzeichnis hoch und stellen Sie hier direkt freie Fragen. Die Auswertung läuft gegen die aktuell eingelesenen Begünstigtenlisten und bleibt damit an die reale Datenlage gekoppelt.'}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {DEMO_QUESTIONS[6].map((q, i) => (
