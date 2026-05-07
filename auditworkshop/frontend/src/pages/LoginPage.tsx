@@ -152,9 +152,18 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
               <span className="text-2xl">🗺</span>
               <h2 className="text-base font-semibold text-white">Begünstigten&shy;karte</h2>
             </div>
-            <p className="text-xs text-blue-200/60">
-              Interaktive Karte aller Begünstigten von EFRE, ESF+, JTF, ISF und AMIF.
-              Öffentlich nach Art. 49 VO (EU) 2021/1060.
+            <p className="text-xs leading-relaxed text-blue-200/70">
+              Konsolidiertes Begünstigtenverzeichnis aus EFRE, ESF+, JTF, ISF und AMIF
+              für Deutschland und Österreich.
+            </p>
+            <ul className="mt-2 space-y-1 text-[11px] text-blue-200/60">
+              <li>· Interaktive Karte mit Geocoding aller Standorte</li>
+              <li>· Volltextsuche, Filter nach Land, Fonds, Förderhöhe</li>
+              <li>· LLM-Auswertung von Auffälligkeiten und Häufungen</li>
+              <li>· Export als XLSX, CSV oder PNG</li>
+            </ul>
+            <p className="mt-3 text-[10px] text-emerald-300/70">
+              Öffentlich nach Art. 49 VO (EU) 2021/1060
             </p>
           </button>
           <button
@@ -165,9 +174,18 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
               <span className="text-2xl">🛡</span>
               <h2 className="text-base font-semibold text-white">Sanktions&shy;listen</h2>
             </div>
-            <p className="text-xs text-blue-200/60">
-              EU FSF, OFAC, OFSI und weitere konsolidierte Sanktionslisten.
-              Lokale Fuzzy-Suche, täglich aktualisiert.
+            <p className="text-xs leading-relaxed text-blue-200/70">
+              Konsolidierte Personen- und Organisations-Sanktionslisten der EU,
+              USA, UK und Schweiz.
+            </p>
+            <ul className="mt-2 space-y-1 text-[11px] text-blue-200/60">
+              <li>· EU FSF, OFAC, OFSI, SECO, BAFA, UN</li>
+              <li>· Lokale Fuzzy-Suche (kein Datenabfluss)</li>
+              <li>· 5.900+ Einträge, 29.600 Vergleichsstrings</li>
+              <li>· Täglich automatisch aktualisiert</li>
+            </ul>
+            <p className="mt-3 text-[10px] text-rose-300/70">
+              Für Begünstigten-Screening nach Art. 73 VO 2021/1060
             </p>
           </button>
         </div>
