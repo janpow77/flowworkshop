@@ -41,7 +41,13 @@ class MetaOut(BaseModel):
     registration_deadline: str
     qr_url: str
     workshop_mode: bool = False
+    phase: str = "live"
+    archive_started_at: datetime | None = None
     model_config = {"from_attributes": True}
+
+
+class PhaseChange(BaseModel):
+    phase: str  # 'live' | 'post'
 
 class MetaUpdate(BaseModel):
     title: str | None = None
@@ -653,6 +659,22 @@ def update_meta(data: MetaUpdate, request: Request, pin: str = "", db: Session =
     meta = _get_meta(db)
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(meta, key, val)
+    db.commit()
+    db.refresh(meta)
+    return meta
+
+
+@router.post("/admin/phase", response_model=MetaOut)
+def update_phase(data: PhaseChange, request: Request, db: Session = Depends(get_db)):
+    """Schaltet zwischen Live- und Archiv-Modus um (Plan v3.2 §5)."""
+    from routers.auth import require_admin
+    require_admin(request)
+    if data.phase not in ("live", "post"):
+        raise HTTPException(422, "Phase muss 'live' oder 'post' sein.")
+    meta = _get_meta(db)
+    meta.phase = data.phase
+    if data.phase == "post" and not meta.archive_started_at:
+        meta.archive_started_at = datetime.utcnow()
     db.commit()
     db.refresh(meta)
     return meta

@@ -3,8 +3,10 @@ import { QRCodeSVG } from 'qrcode.react';
 import {
   Lock, Settings, ListOrdered, QrCode, Users, MessageSquare,
   Plus, Trash2, ArrowUp, ArrowDown, Save, Loader2, Download, Pencil, X, Check,
-  Calendar, Clock, MapPin, Building2, Image, CheckCircle,
+  Calendar, Clock, MapPin, Building2, Image, CheckCircle, Shield, Archive,
 } from 'lucide-react';
+import AdminUsersPanel from '../components/admin/AdminUsersPanel';
+import PhaseTogglePanel from '../components/admin/PhaseTogglePanel';
 
 interface Meta {
   title: string; subtitle: string; date: string; time: string;
@@ -17,7 +19,7 @@ interface AgendaItem {
   title: string; speaker: string | null; note: string | null; page_url: string | null; sort_order: number;
 }
 
-type Tab = 'agenda' | 'meta' | 'qr' | 'registrations' | 'topics';
+type Tab = 'agenda' | 'meta' | 'qr' | 'registrations' | 'topics' | 'users' | 'phase';
 
 export default function AdminPage() {
   const [pin, setPin] = useState('');
@@ -191,6 +193,8 @@ export default function AdminPage() {
     { key: 'qr', label: 'QR-Code', icon: QrCode },
     { key: 'registrations', label: `Anmeldungen (${registrations.length})`, icon: Users },
     { key: 'topics', label: `Themen (${topics.length})`, icon: MessageSquare },
+    { key: 'users', label: 'Benutzer', icon: Shield },
+    { key: 'phase', label: 'Modus', icon: Archive },
   ];
 
   return (
@@ -446,6 +450,9 @@ export default function AdminPage() {
           )}
         </div>
       )}
+
+      {tab === 'users' && <AdminUsersPanel />}
+      {tab === 'phase' && <PhaseTogglePanel />}
     </div>
   );
 }

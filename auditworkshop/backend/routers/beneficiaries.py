@@ -21,10 +21,12 @@ from services.country_profiles import (
 )
 from routers.auth import require_moderator, require_session
 
+# Plan v3.2 §5.5: Karten- und Quellen-Daten sind nach Art. 49 VO (EU)
+# 2021/1060 öffentlich. Daher kein require_session auf Router-Ebene —
+# Schreib-/Admin-Endpoints unten setzen require_moderator selbst.
 router = APIRouter(
     prefix="/api/beneficiaries",
     tags=["beneficiaries"],
-    dependencies=[Depends(require_session)],
 )
 log = logging.getLogger(__name__)
 

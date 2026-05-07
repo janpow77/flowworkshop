@@ -50,6 +50,11 @@ class WorkshopMeta(Base):
     qr_url = Column(String(500), default="")
     admin_pin = Column(String(20), default="1234")
     workshop_mode = Column(Boolean, default=False)  # False=Vorfeld, True=Workshop-Tag
+    # Phase nach Veranstaltung — Plan v3.2 §5
+    # 'live'    : Sidebar mit Szenarien, Anmeldung offen, HomePage aktiv
+    # 'post'    : Hub-Kacheln werden Startseite, Tagesordnung read-only
+    phase = Column(String(8), nullable=False, server_default="live")
+    archive_started_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 

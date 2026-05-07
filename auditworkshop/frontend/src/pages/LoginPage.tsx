@@ -194,12 +194,40 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
             {loading ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
             Anmelden
           </button>
-          <div className="mt-4 text-center">
-            <button onClick={() => navigate('/register')} className="text-xs text-blue-300/70 hover:text-blue-200 flex items-center gap-1 mx-auto transition-colors">
-              <UserPlus size={12} /> Noch nicht registriert?
+          <div className="mt-4 flex items-center justify-between text-xs">
+            <button onClick={() => navigate('/signup')} className="text-blue-300/70 hover:text-blue-200 flex items-center gap-1 transition-colors">
+              <UserPlus size={12} /> Konto erstellen
+            </button>
+            <button
+              onClick={() => alert('Bitte Admin (jan.riener@wirtschaft.hessen.de) kontaktieren — Sie erhalten einen einmaligen Setup-Link.')}
+              className="text-blue-300/70 hover:text-blue-200 transition-colors">
+              Passwort vergessen?
             </button>
           </div>
         </div>
+
+        {/* Public-Tools-Kacheln (Plan v3.2 §5.4) */}
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            onClick={() => navigate('/scenario/6')}
+            className="group rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-left backdrop-blur-sm hover:bg-emerald-500/20 transition"
+          >
+            <div className="text-emerald-200 text-2xl mb-1">🗺</div>
+            <div className="text-sm font-semibold text-white">Begünstigtenkarte</div>
+            <div className="text-[10px] text-blue-200/60 mt-0.5">EFRE/ESF/JTF/ISF/AMIF · öffentlich</div>
+          </button>
+          <button
+            onClick={() => navigate('/sanktionslisten')}
+            className="group rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-left backdrop-blur-sm hover:bg-rose-500/20 transition"
+          >
+            <div className="text-rose-200 text-2xl mb-1">🛡</div>
+            <div className="text-sm font-semibold text-white">Sanktionslisten</div>
+            <div className="text-[10px] text-blue-200/60 mt-0.5">EU FSF · OFAC · OFSI</div>
+          </button>
+        </div>
+        <p className="mt-2 text-center text-[10px] text-blue-200/40">
+          Frei zugänglich nach Art. 49 VO (EU) 2021/1060
+        </p>
 
         <p className="mt-6 text-center text-xs text-blue-200/50">
           Kontakt: <a href="mailto:jan.riener@wirtschaft.hessen.de" className="text-blue-300/70 hover:text-blue-200 underline transition-colors">jan.riener@wirtschaft.hessen.de</a>

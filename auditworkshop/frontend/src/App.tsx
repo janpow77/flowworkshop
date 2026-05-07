@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
 import EuLoader from './components/layout/EuLoader';
@@ -14,6 +14,7 @@ import VorstellungsrundePage from './pages/VorstellungsrundePage';
 const AgendaForumPage = lazy(() => import('./pages/AgendaForumPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
+const HubPage = lazy(() => import('./pages/HubPage'));
 const ScenarioPage = lazy(() => import('./pages/ScenarioPage'));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
@@ -26,6 +27,8 @@ const SanktionslistenPage = lazy(() => import('./pages/SanktionslistenPage'));
 const ForumPage = lazy(() => import('./pages/ForumPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const SetupPasswordPage = lazy(() => import('./pages/SetupPasswordPage'));
 
 function LazyPage({ children }: { children: React.ReactNode }) {
   return (
@@ -37,6 +40,14 @@ function LazyPage({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('workshop_token'));
+  const [phase, setPhase] = useState<'live' | 'post'>('live');
+
+  useEffect(() => {
+    fetch('/api/event/meta')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.phase) setPhase(d.phase); })
+      .catch(() => {});
+  }, []);
 
   const handleLogin = (token: string, user: { name: string; organization: string; role: string }) => {
     localStorage.setItem('workshop_token', token);
@@ -54,11 +65,24 @@ export default function App() {
           <Route path="/vorstellungsrunde" element={<VorstellungsrundePage />} />
           <Route path="/forum" element={<LazyPage><ForumPage /></LazyPage>} />
           <Route path="/agenda/forum/:itemId" element={<LazyPage><AgendaForumPage /></LazyPage>} />
+          {/* Plan v3.2 §5.5: Begünstigtenkarte + Sanktionslisten sind nach
+              Art. 49 VO (EU) 2021/1060 öffentlich. */}
+          <Route path="/scenario/6" element={<LazyPage><ScenarioPage /></LazyPage>} />
+          <Route path="/sanktionslisten" element={<LazyPage><SanktionslistenPage /></LazyPage>} />
         </Route>
+
+        {/* Auth-Pages außerhalb AppShell (kein Sidebar) */}
+        <Route path="/signup" element={<LazyPage><SignUpPage /></LazyPage>} />
+        <Route path="/account/setup-password" element={<LazyPage><SetupPasswordPage /></LazyPage>} />
 
         {authToken ? (
           <Route element={<AppShell />}>
-            <Route index element={<LazyPage><HomePage /></LazyPage>} />
+            {/* Startseite je nach Phase */}
+            <Route index element={
+              phase === 'post'
+                ? <LazyPage><HubPage /></LazyPage>
+                : <LazyPage><HomePage /></LazyPage>
+            } />
             <Route path="/account" element={<LazyPage><AccountPage /></LazyPage>} />
             <Route path="/scenario/:id" element={<LazyPage><ScenarioPage /></LazyPage>} />
             <Route path="/projects" element={<LazyPage><ProjectsPage /></LazyPage>} />

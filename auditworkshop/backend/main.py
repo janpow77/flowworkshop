@@ -39,6 +39,16 @@ async def lifespan(app: FastAPI):
                 conn.execute(text("ALTER TABLE workshop_agenda_items ADD COLUMN page_url VARCHAR(500)"))
                 conn.commit()
                 log.info("Spalte page_url zu workshop_agenda_items hinzugefuegt.")
+            meta_cols = [c["name"] for c in inspector.get_columns("workshop_meta")]
+            meta_migrations = {
+                "phase": "ALTER TABLE workshop_meta ADD COLUMN phase VARCHAR(8) NOT NULL DEFAULT 'live'",
+                "archive_started_at": "ALTER TABLE workshop_meta ADD COLUMN archive_started_at TIMESTAMP",
+            }
+            for col, ddl in meta_migrations.items():
+                if col not in meta_cols:
+                    conn.execute(text(ddl))
+                    conn.commit()
+                    log.info("Spalte %s zu workshop_meta hinzugefuegt.", col)
             reg_cols = [c["name"] for c in inspector.get_columns("workshop_registrations")]
             registration_migrations = {
                 "password_hash": "ALTER TABLE workshop_registrations ADD COLUMN password_hash VARCHAR(255)",
