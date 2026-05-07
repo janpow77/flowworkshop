@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   Home, FileSearch, CheckSquare, AlertTriangle, FileText, Upload, MapPin,
   Database, FolderOpen, Building2, Scale, FileSpreadsheet,
-  CalendarDays, UserPlus, Settings, User, ShieldAlert,
+  CalendarDays, UserPlus, Settings, User, ShieldAlert, MessagesSquare,
 } from 'lucide-react';
 
 const NAV_GROUPS = [
@@ -34,6 +34,7 @@ const NAV_GROUPS = [
     label: 'Event',
     items: [
       { to: '/agenda', label: 'Agenda', icon: CalendarDays },
+      { to: '/forum', label: 'Forum', icon: MessagesSquare },
       { to: '/register', label: 'Anmeldung', icon: UserPlus },
       { to: '/admin', label: 'Admin', icon: Settings },
     ],

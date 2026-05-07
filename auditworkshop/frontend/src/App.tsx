@@ -23,6 +23,7 @@ const DataFramePage = lazy(() => import('./pages/DataFramePage'));
 const CompanySearchPage = lazy(() => import('./pages/CompanySearchPage'));
 const AiActPage = lazy(() => import('./pages/AiActPage'));
 const SanktionslistenPage = lazy(() => import('./pages/SanktionslistenPage'));
+const ForumPage = lazy(() => import('./pages/ForumPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/vorstellungsrunde" element={<VorstellungsrundePage />} />
+          <Route path="/forum" element={<LazyPage><ForumPage /></LazyPage>} />
           <Route path="/agenda/forum/:itemId" element={<LazyPage><AgendaForumPage /></LazyPage>} />
         </Route>
 
