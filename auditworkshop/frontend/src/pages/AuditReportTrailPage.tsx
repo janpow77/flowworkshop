@@ -1,8 +1,8 @@
 /**
- * AuditReportTrailPage — Pruefbericht-Verlauf (Item 4, Admin-only).
+ * AuditReportTrailPage — Auswertungs-Verlauf (Item 4, Admin-only).
  *
  * Liest den Audit-Trail aus `/api/state-aid/audit-report/log` und zeigt
- * eine filterbare Tabelle mit allen erzeugten Pruefberichten. Pro Eintrag
+ * eine filterbare Tabelle mit allen erzeugten Auswertungen. Pro Eintrag
  * stehen Aktionen bereit:
  *  - „Erneut erzeugen" — springt zu /audit-report mit q + auftraggeber
  *  - „PDF herunterladen" — triggert /audit-report/pdf neu (Backend cached
@@ -240,7 +240,7 @@ export default function AuditReportTrailPage() {
       try {
         const a = document.createElement('a');
         a.href = url;
-        a.download = `pruefbericht_${item.id}.pdf`;
+        a.download = `auswertung_${item.id}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -260,7 +260,7 @@ export default function AuditReportTrailPage() {
         <div className="rounded-2xl border border-amber-300 bg-amber-50 px-6 py-5 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
           <h2 className="font-semibold mb-2">Nur für Admins.</h2>
           <p className="text-sm">
-            Diese Seite zeigt den Pruefbericht-Verlauf und ist ausschliesslich für
+            Diese Seite zeigt den Auswertungs-Verlauf und ist ausschließlich für
             Administratoren zugänglich.
           </p>
         </div>
@@ -281,10 +281,10 @@ export default function AuditReportTrailPage() {
               </span>
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight lg:text-4xl">
-              Prüfbericht-Verlauf
+              Auswertungs-Verlauf
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-indigo-50/90 lg:text-base">
-              Wer hat wann welchen Bericht erzeugt — vollständige Historie aus dem
+              Wer hat wann welche Auswertung erzeugt — vollständige Historie aus dem
               Audit-Log.
             </p>
           </div>
@@ -569,10 +569,10 @@ export default function AuditReportTrailPage() {
       {/* ── Hinweis ──────────────────────────────────────────────────── */}
       <p className="text-[11px] leading-5 text-slate-500 dark:text-slate-400">
         Backend liefert nur Metadaten — keine PDFs werden gespeichert. Beim Klick auf
-        „PDF herunterladen" wird der Bericht aus den aktuellen Quellen neu aggregiert.
+        „PDF herunterladen" wird die Auswertung aus den aktuellen Quellen neu aggregiert.
         {' '}
         <Link to="/audit-report" className="text-indigo-700 underline hover:text-indigo-900 dark:text-indigo-300 dark:hover:text-indigo-100">
-          Neuen Bericht erstellen
+          Neue Auswertung erstellen
         </Link>
       </p>
 
@@ -680,4 +680,3 @@ function DetailRow({
     </>
   );
 }
-

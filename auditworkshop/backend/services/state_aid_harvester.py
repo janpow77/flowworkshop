@@ -7,6 +7,7 @@ keine Browser-Automation. Wird vom CLI-Skript und vom Admin-Endpoint genutzt.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
@@ -42,6 +43,7 @@ DEFAULT_USER_AGENT = (
     "https://workshop.flowaudit.de)"
 )
 RATE_LIMIT_SECONDS = 0.6
+DETAIL_RATE_LIMIT_SECONDS = 0.15
 HARVEST_TIMEOUT = 60.0
 
 # Smart-Mode-Konstanten (Plan §11): TAM publiziert Awards nachtraeglich,
@@ -75,6 +77,9 @@ class HarvestParams:
     source_key: str | None = None   # Default-Mapping aus country_iso3
     # Drei Modi: smart (Default, idempotent), full-refresh, force.
     mode: HarvestMode = "smart"
+    # TAM-Suchergebnisse liefern bei deutschen Datensaetzen oft nur die Art
+    # der nationalen Kennung. Die Detailseite enthaelt die echte Nummer.
+    enrich_details: bool = True
 
 
 @dataclass
@@ -152,6 +157,44 @@ def _attr_title_else_text(td) -> str:
     if title:
         return title
     return _text(td)
+
+
+def _detail_url_with_lang(url: str, lang: str = "de") -> str:
+    """TAM-Detail-URL so normalisieren, dass sie nicht im Sprach-Picker endet."""
+    clean = (url or "").strip()
+    if not clean:
+        return ""
+    if clean.startswith("/"):
+        clean = f"https://webgate.ec.europa.eu{clean}"
+    if re.search(r"([?&])lang=", clean):
+        return clean
+    sep = "&" if "?" in clean else "?"
+    return f"{clean}{sep}lang={lang}"
+
+
+def _property_value_by_label_id(soup: BeautifulSoup, label_id: str) -> str:
+    label = soup.find(id=label_id)
+    if not label:
+        return ""
+    container = label.find_parent("li", class_="fieldcontain")
+    if not container:
+        return ""
+    value = container.find("span", class_="property-value")
+    return _text(value)
+
+
+def parse_award_detail(html: str) -> dict:
+    """Extrahiert Felder, die in der TAM-Suchergebnisliste fehlen.
+
+    Relevant fuer deutsche Datensaetze:
+      - `national_id`: konkrete nationale Kennung, z.B. "HRB 8407"
+      - `national_id_type`: Art der Kennung, z.B. "Handelsregisternummer"
+    """
+    soup = BeautifulSoup(html, "lxml")
+    return {
+        "national_id": _property_value_by_label_id(soup, "nationalId-label"),
+        "national_id_type": _property_value_by_label_id(soup, "nationalId-label2"),
+    }
 
 
 # ── HTTP-Session ──────────────────────────────────────────────────────────────
@@ -249,6 +292,14 @@ class TamSession:
         resp.raise_for_status()
         return resp.text
 
+    def get_award_detail(self, detail_url: str) -> dict:
+        url = _detail_url_with_lang(detail_url)
+        if not url:
+            return {}
+        resp = self.client.get(url)
+        resp.raise_for_status()
+        return parse_award_detail(resp.text)
+
 
 # ── HTML-Parser ───────────────────────────────────────────────────────────────
 
@@ -282,7 +333,10 @@ def parse_results(html: str) -> tuple[list[dict], int | None]:
         ref_text = _text(cells[3])
         ref_href = ref_link.get("href") if ref_link and ref_link.has_attr("href") else None
 
-        national_id = _attr_title_else_text(cells[4])
+        # In der Suchliste steht bei deutschen Datensaetzen hier oft nur die
+        # Art der nationalen Kennung. Die echte Nummer wird aus der Detailseite
+        # nachgeladen und ueberschreibt dann `national_id`.
+        national_id_type = _attr_title_else_text(cells[4])
         beneficiary_name = _attr_title_else_text(cells[5])
         beneficiary_type = _text(cells[6])
         region = _text(cells[7])
@@ -307,7 +361,8 @@ def parse_results(html: str) -> tuple[list[dict], int | None]:
             "sa_href": sa_href,
             "ref_text": ref_text,
             "ref_href": ref_href,
-            "national_id": national_id,
+            "national_id": "",
+            "national_id_type": national_id_type,
             "beneficiary_name": beneficiary_name,
             "beneficiary_type": beneficiary_type,
             "region": region,
@@ -353,9 +408,7 @@ def map_row_to_award(row: dict, *, source_key: str, run_id: str) -> dict:
     elif not case_url and sa_norm:
         case_url = build_competition_search_url(sa_norm)
 
-    detail_url = row.get("ref_href") or ""
-    if detail_url and detail_url.startswith("/"):
-        detail_url = f"https://webgate.ec.europa.eu{detail_url}"
+    detail_url = _detail_url_with_lang(row.get("ref_href") or "")
 
     aid_amount = parse_amount(row.get("granted_amount_raw") or "")
     nominal_amount = parse_amount(row.get("nominal_amount_raw") or "")
@@ -371,7 +424,11 @@ def map_row_to_award(row: dict, *, source_key: str, run_id: str) -> dict:
         "harvest_run_id": run_id,
         "beneficiary_name": name,
         "beneficiary_name_normalized": normalize_company_name(name),
-        "beneficiary_identifier": (row.get("national_id") or "").strip() or None,
+        "beneficiary_identifier": (
+            (row.get("national_id") or "").strip()
+            or (row.get("national_id_type") or "").strip()
+            or None
+        ),
         "beneficiary_type": (row.get("beneficiary_type") or "").strip() or None,
         "country_code": iso2,
         "country_name": country_name or row.get("country") or None,
@@ -469,6 +526,7 @@ def run_harvest(db: Session, params: HarvestParams, *, check_only: bool = False)
             "until": params.until.isoformat() if params.until else None,
             "effective_since": effective_since.isoformat() if effective_since else None,
             "auto_since_used": auto_since_used,
+            "enrich_details": params.enrich_details,
             "limit": params.limit,
             "page_size": params.page_size,
             "check_only": check_only,
@@ -535,6 +593,20 @@ def run_harvest(db: Session, params: HarvestParams, *, check_only: bool = False)
                         break
                     seen += 1
                     try:
+                        if params.enrich_details and row.get("ref_href"):
+                            try:
+                                detail = tam.get_award_detail(row["ref_href"])
+                                for key in ("national_id", "national_id_type"):
+                                    value = (detail.get(key) or "").strip()
+                                    if value:
+                                        row[key] = value
+                                time.sleep(DETAIL_RATE_LIMIT_SECONDS)
+                            except httpx.HTTPError as exc:
+                                log.info(
+                                    "TAM-Detailanreicherung fehlgeschlagen (%s): %s",
+                                    row.get("ref_text") or row.get("ref_href"),
+                                    exc,
+                                )
                         award = map_row_to_award(row, source_key=source_key, run_id=run.id)
                         if not award["beneficiary_name"]:
                             failed += 1

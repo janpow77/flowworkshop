@@ -12,6 +12,7 @@ import csv
 import io
 import json
 import logging
+import re
 import time
 from collections import deque
 from datetime import date, datetime
@@ -137,8 +138,82 @@ def _to_float(value: Any) -> float | None:
         return None
 
 
+_IDENTIFIER_ONLY_LABELS = {
+    "ust-idnr": "USt-ID / Steuernummer",
+    "ustidnr": "USt-ID / Steuernummer",
+    "ust-id": "USt-ID / Steuernummer",
+    "vat": "USt-ID / Steuernummer",
+    "uid-nummer": "USt-ID / Steuernummer",
+    "national-vat-number": "USt-ID / Steuernummer",
+    "other-ms-vat-number": "USt-ID / Steuernummer",
+    "dk-vat-number": "USt-ID / Steuernummer",
+    "st-nr": "Steuernummer",
+    "steuer-nr": "Steuernummer",
+    "steuernummer": "Steuernummer",
+    "handelsregisternummer": "Handelsregister",
+    "firmenbuchnummer": "Firmenbuchnummer",
+    "vereinsregisternummer": "Vereinsregister",
+    "lfbis-betriebsnummer": "LFBIS-Betriebsnummer",
+    "abgabenkontonummer": "Abgabenkontonummer",
+    "business-identity-code": "Business Identity Code",
+    "organisationsnummer": "Organisationsnummer",
+    "registrikood": "Registrikood",
+    "legal-person's-code": "Legal Person's Code",
+    "aber": "ABER",
+    "kur": "KUR",
+    "fiber": "FIBER",
+    "sonstige": "Sonstige",
+}
+
+
+def _split_beneficiary_identifier(raw: str | None) -> tuple[str | None, str | None]:
+    """Trennt das TAM-Identifikatorfeld in Art und konkrete Nummer, falls vorhanden.
+
+    Deutsche TAM-Datensätze enthalten häufig nur die Identifikationsart
+    (z.B. "USt-IdNr") und veröffentlichen die eigentliche Nummer nicht.
+    """
+    value = (raw or "").strip()
+    if not value:
+        return None, None
+
+    compact = re.sub(r"[\s_.]+", "-", value.casefold()).strip("-")
+    if compact in _IDENTIFIER_ONLY_LABELS:
+        return _IDENTIFIER_ONLY_LABELS[compact], None
+
+    labeled = re.match(
+        r"^(?P<label>USt(?:-?IdNr|-?ID)?|VAT|St-?Nr|Steuer(?:nummer|-Nr)?|Handelsregisternummer)\s*[:=\-]\s*(?P<number>.+)$",
+        value,
+        flags=re.IGNORECASE,
+    )
+    if labeled:
+        label = labeled.group("label").strip()
+        number = labeled.group("number").strip()
+        label_compact = re.sub(r"[\s_.]+", "-", label.casefold()).strip("-")
+        return _IDENTIFIER_ONLY_LABELS.get(label_compact, label), number or None
+
+    if re.fullmatch(r"DE[0-9]{9}", value, flags=re.IGNORECASE):
+        return "USt-ID / Steuernummer", value
+    if re.search(r"\b(HRB|HRA|VR|GnR)\s*[0-9]", value, flags=re.IGNORECASE):
+        return "Handelsregister", value
+
+    return "Identifikationsmerkmal", value
+
+
 def _serialize_award(award: StateAidAward) -> dict:
     """Serialisiert einen Award fuer JSON-Response."""
+    raw_payload = award.raw_payload if isinstance(award.raw_payload, dict) else {}
+    raw_national_id = (raw_payload.get("national_id") or "").strip()
+    raw_national_id_type = (raw_payload.get("national_id_type") or "").strip()
+    if raw_national_id and raw_national_id_type:
+        identifier_type, _unused = _split_beneficiary_identifier(raw_national_id_type)
+        identifier_type = identifier_type or raw_national_id_type
+        identifier_value = raw_national_id
+    else:
+        identifier_type, identifier_value = _split_beneficiary_identifier(
+            award.beneficiary_identifier,
+        )
+        if raw_national_id_type and not identifier_type:
+            identifier_type = raw_national_id_type
     return {
         "id": award.id,
         "source_key": award.source_key,
@@ -148,6 +223,8 @@ def _serialize_award(award: StateAidAward) -> dict:
         "beneficiary_name": award.beneficiary_name,
         "beneficiary_name_normalized": award.beneficiary_name_normalized,
         "beneficiary_identifier": award.beneficiary_identifier,
+        "beneficiary_identifier_type": identifier_type,
+        "beneficiary_identifier_value": identifier_value,
         "beneficiary_type": award.beneficiary_type,
         "country_code": award.country_code,
         "country_name": award.country_name,
@@ -1064,7 +1141,8 @@ def company_dossier(
 
 CSV_COLUMNS = [
     "id", "source_key", "source_record_id", "source_url",
-    "beneficiary_name", "beneficiary_identifier", "beneficiary_type",
+    "beneficiary_name", "beneficiary_identifier", "beneficiary_identifier_type",
+    "beneficiary_identifier_value", "beneficiary_type",
     "country_code", "country_name", "nuts_code", "nuts_label", "nuts_level",
     "nace_code", "nace_label",
     "aid_amount", "aid_currency", "aid_amount_eur", "aid_nominal_amount",

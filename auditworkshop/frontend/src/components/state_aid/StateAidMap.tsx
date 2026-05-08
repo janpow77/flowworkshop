@@ -83,6 +83,11 @@ function formatEur(value: number | null | undefined): string {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
 }
 
+function formatAmount(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—';
+  return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(value);
+}
+
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
@@ -707,7 +712,7 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
               </div>
               <div className="mt-0.5 flex items-center justify-between gap-3 font-mono">
                 <span>0</span>
-                <span>{mode === 'count' ? choroplethMax.toLocaleString('de-DE') : formatEur(choroplethMax)}</span>
+                <span>{mode === 'count' ? choroplethMax.toLocaleString('de-DE') : formatAmount(choroplethMax)}</span>
               </div>
             </div>
           )}

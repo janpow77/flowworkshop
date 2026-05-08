@@ -373,7 +373,7 @@ export default function StateAidAskPanel({ countryCode, onApplyFilters }: Props)
               <table className="min-w-full divide-y divide-slate-200 text-xs dark:divide-slate-800">
                 <thead className="bg-slate-50 dark:bg-slate-900/60">
                   <tr className="text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    <th className="px-3 py-2">Beguenstigter</th>
+                    <th className="px-3 py-2">Begünstigter</th>
                     <th className="px-3 py-2">Land · Region</th>
                     <th className="px-3 py-2 text-right">Betrag</th>
                     <th className="px-3 py-2">Datum</th>

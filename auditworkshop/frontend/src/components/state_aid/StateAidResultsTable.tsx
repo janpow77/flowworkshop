@@ -1,11 +1,12 @@
 /**
- * StateAidResultsTable — Trefferliste fuer das Beihilfe-Register.
+ * StateAidResultsTable — Trefferliste für das Beihilfe-Register.
  *
- * Plan §9.3: Spalten Beguenstigter, Land/Region, Betrag (EUR), Datum,
- * Beihilfeinstrument, SA-Ref, Behoerde, Score (mit Confidence-Badge).
- * Klick auf eine Zeile oeffnet den Award-Detail-Drawer.
+ * Plan §9.3: Spalten Begünstigter, Land/Region, Betrag (EUR), Datum,
+ * Beihilfeinstrument, SA-Ref, Behörde, Score (mit Confidence-Badge).
+ * Klick auf eine Zeile öffnet den Award-Detail-Drawer.
  */
-import { Brain, ExternalLink, FileSearch, Lightbulb } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Brain, ClipboardCheck, ExternalLink, FileSearch, Lightbulb, Search } from 'lucide-react';
 import { Skeleton } from '../ui/Skeleton';
 import {
   safeExternalUrl,
@@ -60,13 +61,9 @@ function StageBadge({ stage }: { stage: StateAidMatchStage }) {
   );
 }
 
-function formatEur(value: number | null | undefined): string {
+function formatAmount(value: number | null | undefined): string {
   if (value === null || value === undefined) return '—';
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0,
-  }).format(value);
+  return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(value);
 }
 
 function formatDate(iso: string | null | undefined): string {
@@ -75,9 +72,48 @@ function formatDate(iso: string | null | undefined): string {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
 }
 
+function identifierSummary(hit: StateAidSearchHit): string | null {
+  const raw = hit.beneficiary_identifier;
+  const rawType = hit.beneficiary_identifier_type;
+  const type = rawType && /ust|vat/i.test(rawType)
+    ? 'USt-ID / Steuernummer'
+    : rawType && /handelsregister/i.test(rawType)
+      ? 'Handelsregister'
+      : rawType;
+  const value = hit.beneficiary_identifier_value;
+  if (value) return `${type || 'Nationale Kennung'}: ${value}`;
+  if (type) return `${type}: keine Nummer veröffentlicht`;
+  if (raw) return `Nationale Kennung: ${raw}`;
+  return null;
+}
+
+function auditReportUrl(hit: StateAidSearchHit): string {
+  const params = new URLSearchParams();
+  params.set('q', hit.beneficiary_name);
+  if (hit.country_code === 'DE' || hit.country_code === 'AT') {
+    params.set('country_code', hit.country_code);
+  }
+  return `/audit-report?${params.toString()}`;
+}
+
 export default function StateAidResultsTable({ hits, onSelect, loading }: Props) {
+  const [beneficiaryFilter, setBeneficiaryFilter] = useState('');
+  const normalizedBeneficiaryFilter = beneficiaryFilter.trim().toLocaleLowerCase('de-DE');
+  const filteredHits = useMemo(() => {
+    if (!normalizedBeneficiaryFilter) return hits;
+    return hits.filter((hit) => {
+      const haystack = [
+        hit.beneficiary_name,
+        hit.beneficiary_identifier,
+        hit.beneficiary_identifier_type,
+        hit.beneficiary_identifier_value,
+      ].filter(Boolean).join(' ').toLocaleLowerCase('de-DE');
+      return haystack.includes(normalizedBeneficiaryFilter);
+    });
+  }, [hits, normalizedBeneficiaryFilter]);
+
   if (loading) {
-    // 5 Skeleton-Zeilen, damit das Layout-Volumen waehrend des Suchlaufs gleich bleibt.
+    // 5 Skeleton-Zeilen, damit das Layout-Volumen während des Suchlaufs gleich bleibt.
     return (
       <div className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_18px_60px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-900/75">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/60">
@@ -111,11 +147,11 @@ export default function StateAidResultsTable({ hits, onSelect, loading }: Props)
           <FileSearch size={20} />
         </div>
         <h3 className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-          Keine Treffer fuer die aktuellen Filter
+          Keine Treffer für die aktuellen Filter
         </h3>
         <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
-          Versuche eine andere Schreibweise oder lockere die Filter — z.B. Zeitraum
-          erweitern, NUTS-Filter entfernen oder ein anderes Land waehlen.
+          Versuchen Sie eine andere Schreibweise oder lockern Sie die Filter, zum Beispiel Zeitraum
+          erweitern, NUTS-Filter entfernen oder ein anderes Land wählen.
         </p>
         <div className="mx-auto mt-3 inline-flex items-start gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           <Lightbulb size={11} className="mt-0.5 shrink-0 text-amber-500" />
@@ -127,24 +163,51 @@ export default function StateAidResultsTable({ hits, onSelect, loading }: Props)
 
   return (
     <div className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_18px_60px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-900/75">
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+            Trefferliste
+          </div>
+          <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+            {filteredHits.length.toLocaleString('de-DE')} von {hits.length.toLocaleString('de-DE')} Treffern sichtbar
+          </div>
+        </div>
+        <label className="relative block w-full sm:max-w-sm">
+          <span className="sr-only">Nach Begünstigtem filtern</span>
+          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={beneficiaryFilter}
+            onChange={(event) => setBeneficiaryFilter(event.target.value)}
+            className="w-full rounded-full border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
+            placeholder="Nach Begünstigtem filtern"
+          />
+        </label>
+      </div>
       <div className="max-h-[640px] overflow-y-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-700">
           <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900/60">
             <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              <th className="px-4 py-3">Beguenstigter</th>
+              <th className="px-4 py-3">Begünstigter</th>
               <th className="px-3 py-3">Land · Region</th>
               <th className="px-3 py-3 text-right">Betrag (EUR)</th>
               <th className="px-3 py-3">Datum</th>
               <th className="px-3 py-3">Instrument</th>
               <th className="px-3 py-3">SA-Ref.</th>
-              <th className="px-3 py-3">Behoerde</th>
+              <th className="px-3 py-3">Behörde</th>
               <th className="px-3 py-3 text-right">Score</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {hits.map((hit) => {
+            {filteredHits.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                  Keine Treffer für diesen Begünstigten-Filter.
+                </td>
+              </tr>
+            ) : filteredHits.map((hit) => {
               const badge = CONFIDENCE_BADGE[hit.confidence];
               const region = [hit.country_code, hit.nuts_label || hit.nuts_code].filter(Boolean).join(' · ');
+              const identifier = identifierSummary(hit);
               return (
                 <tr
                   key={hit.award_id}
@@ -153,13 +216,23 @@ export default function StateAidResultsTable({ hits, onSelect, loading }: Props)
                 >
                   <td className="px-4 py-3">
                     <div className="font-medium text-slate-900 dark:text-slate-100">{hit.beneficiary_name}</div>
-                    {hit.beneficiary_identifier && (
-                      <div className="mt-0.5 font-mono text-[11px] text-slate-400">{hit.beneficiary_identifier}</div>
+                    {identifier && (
+                      <div className="mt-0.5 text-[11px] text-slate-400">
+                        {identifier}
+                      </div>
                     )}
+                    <a
+                      href={auditReportUrl(hit)}
+                      onClick={(event) => event.stopPropagation()}
+                      className="mt-2 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-medium text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-950/30 dark:text-indigo-200 dark:hover:bg-indigo-950/50"
+                    >
+                      <ClipboardCheck size={11} />
+                      In Auswertung übernehmen
+                    </a>
                   </td>
                   <td className="px-3 py-3 text-slate-600 dark:text-slate-300">{region || '—'}</td>
                   <td className="px-3 py-3 text-right font-mono text-slate-900 dark:text-slate-100">
-                    {formatEur(hit.aid_amount_eur ?? hit.aid_amount)}
+                    {formatAmount(hit.aid_amount_eur ?? hit.aid_amount)}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300">
                     {formatDate(hit.granting_date || hit.publication_date)}
@@ -167,7 +240,7 @@ export default function StateAidResultsTable({ hits, onSelect, loading }: Props)
                   <td className="px-3 py-3 text-slate-600 dark:text-slate-300">{hit.aid_instrument || '—'}</td>
                   <td className="px-3 py-3">
                     {hit.sa_reference ? (() => {
-                      // safeExternalUrl filtert javascript:/data:-Schemas raus —
+                      // safeExternalUrl filtert javascript:/data:-Schemas raus.
                       // Defense-in-Depth gegen vergiftete TAM-Daten.
                       const safeCase = safeExternalUrl(hit.case_url);
                       return safeCase ? (

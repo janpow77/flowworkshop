@@ -55,7 +55,7 @@ export default function PublicShell() {
                   : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
-              <ClipboardCheck size={14} /> Prüfbericht
+              <ClipboardCheck size={14} /> Auswertung
             </Link>
             <Link
               to="/sanktionslisten"

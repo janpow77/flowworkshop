@@ -231,16 +231,16 @@ export default function StateAidSearchPanel({ value, onChange, onSubmit, onReset
               className={inputClass}
             />
           </Field>
-          <Field label="Beihilfeziel">
+          <Field label="Beihilfeziel / AGVO-Artikel">
             <input
               type="text"
               value={value.aid_objective}
               onChange={(e) => setField('aid_objective', e.target.value)}
-              placeholder="Regionale Entwicklung …"
+              placeholder="Art. 25, Art. 56, regionale Entwicklung …"
               className={inputClass}
             />
           </Field>
-          <Field label="Bewilligende Behoerde">
+          <Field label="Bewilligende Behörde">
             <input
               type="text"
               value={value.granting_authority}

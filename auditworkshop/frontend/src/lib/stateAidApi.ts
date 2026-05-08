@@ -50,6 +50,8 @@ export interface StateAidAward {
   source_url: string | null;
   beneficiary_name: string;
   beneficiary_identifier: string | null;
+  beneficiary_identifier_type?: string | null;
+  beneficiary_identifier_value?: string | null;
   beneficiary_type: string | null;
   country_code: string | null;
   country_name: string | null;
@@ -412,7 +414,7 @@ export function statsExportUrl(params: StateAidSearchParams = {}): string {
 
 /**
  * Audit-Trail-Export (Admin-only). Liefert die Liste der erzeugten
- * Pruefberichte als CSV oder XLSX — KEINE PDFs, nur Metadaten.
+ * Auswertungen als CSV oder XLSX — KEINE PDFs, nur Metadaten.
  */
 export function auditTrailExportUrl(format: 'csv' | 'xlsx', limit = 500): string {
   const params = new URLSearchParams({ format, limit: String(limit) });
@@ -425,10 +427,10 @@ export function getValidationLast(): Promise<ValidationLastResponse> {
   return getJson<ValidationLastResponse>('/validation/last');
 }
 
-// ── Cross-Register-Pruefbericht ──────────────────────────────────────────────
+// ── Cross-Register-Auswertung ────────────────────────────────────────────────
 
 /**
- * Aggregierter Pruefbericht aus drei oeffentlichen Registern.
+ * Aggregierte Auswertung aus drei oeffentlichen Registern.
  *
  * Das Schema folgt dem Backend-Endpunkt `/api/state-aid/audit-report` und ist
  * bewusst neutral: keine Risiko-Scores, keine Severity-Einstufung, keine
@@ -561,7 +563,7 @@ export interface AuditReportSourceExplanation {
 // ── Personen-Sanktionscheck (Item 1) ─────────────────────────────────────────
 
 /**
- * Eingegebene Person aus dem Pruefbericht-Formular.
+ * Eingegebene Person aus dem Auswertungs-Formular.
  *
  * `role` ist optional — wenn leer (oder `null`) wird im Formular die
  * Standard-Rolle "Sonstige" beibehalten. Beide Felder sind reine
@@ -818,7 +820,7 @@ function buildAuditReportQuery(params: AuditReportParams): string {
 }
 
 /**
- * Liest den Cross-Register-Pruefbericht als JSON ein. Suchparameter werden
+ * Liest die Cross-Register-Auswertung als JSON ein. Suchparameter werden
  * URL-kodiert; leere Strings werden vom HTTP-Helper verworfen.
  *
  * Wenn `include_corporate_group: true`, kann der Lookup 5-15 Sekunden
@@ -898,7 +900,7 @@ export function runValidation(): Promise<{ run_id: number | null; report: Valida
 // ── Audit-Trail (Item 4) ─────────────────────────────────────────────────────
 
 /**
- * Ein einzelner Eintrag im Pruefbericht-Verlauf. Backend liefert die
+ * Ein einzelner Eintrag im Auswertungs-Verlauf. Backend liefert die
  * Metadaten — keine PDFs.
  */
 export interface AuditReportLogItem {
@@ -942,7 +944,7 @@ export interface AuditReportLogParams {
 }
 
 /**
- * Liest die Pruefbericht-Historie als Admin. Liefert ausschliesslich
+ * Liest die Auswertungs-Historie als Admin. Liefert ausschliesslich
  * Metadaten — keine PDFs. Das Backend pruefen die Auth via
  * `require_admin`-Dependency und gibt 403, wenn kein Admin-Token vorliegt.
  */

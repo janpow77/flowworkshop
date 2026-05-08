@@ -54,7 +54,7 @@ const NAV = [
       { to: '/dataframes', label: 'Datenanalyse', icon: FileSpreadsheet },
       { to: '/company-search', label: 'Unternehmenssuche', icon: Building2 },
       { to: '/beihilfen', label: 'Beihilfe-Register', icon: Banknote },
-      { to: '/audit-report', label: 'Prüfbericht', icon: ClipboardCheck },
+      { to: '/audit-report', label: 'Auswertung', icon: ClipboardCheck },
       { to: '/ai-act', label: 'AI Act', icon: Scale },
       { to: '/account', label: 'Benutzerkonto', icon: User },
       { to: '/admin', label: 'Verwaltung', icon: Settings },
@@ -65,7 +65,7 @@ const NAV = [
     adminOnly: true,
     items: [
       { to: '/admin/beneficiary-sources', label: 'Quellen-Verwaltung', icon: Database },
-      { to: '/audit-trail', label: 'Prüfbericht-Historie', icon: ScrollText },
+      { to: '/audit-trail', label: 'Auswertungs-Historie', icon: ScrollText },
     ],
   },
 ];

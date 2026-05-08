@@ -29,7 +29,7 @@ const NOT_SIMPLE = [
   'Keine automatisierte Freigabe oder Sperre eines Unternehmens ohne prüferische Nachsicht.',
   'Kein verdeckter KI-Einsatz bei sensiblen Bewertungen ohne interne Transparenz und Rollenklärung.',
   'Kein unkritisches Zusammenführen heterogener Registertreffer ohne Dubletten- und Qualitätsprüfung.',
-  'Keine Vermischung von bloßen Indizien mit belastbaren Feststellungen im Prüfbericht.',
+  'Keine Vermischung von bloßen Indizien mit belastbaren Feststellungen in der Auswertung.',
 ];
 
 export default function AiActPage() {

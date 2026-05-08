@@ -1,5 +1,5 @@
 /**
- * StateAidAuditReportPage — Cross-Register-Pruefbericht.
+ * StateAidAuditReportPage — Cross-Register-Auswertung.
  *
  * Pruefer geben Firma + Land + Auftraggeber + Pruefer-Namen ein, sehen eine
  * Live-Vorschau aus drei Datenbanken (State-Aid, Beguenstigtenverzeichnisse,
@@ -95,8 +95,8 @@ function safeFilenamePart(value: string): string {
 }
 
 function buildPdfFilename(query: string): string {
-  const queryPart = safeFilenamePart(query) || 'pruefbericht';
-  return `pruefbericht_${queryPart}.pdf`;
+  const queryPart = safeFilenamePart(query) || 'auswertung';
+  return `auswertung_${queryPart}.pdf`;
 }
 
 export default function StateAidAuditReportPage() {
@@ -316,11 +316,11 @@ function StateAidAuditReportPageInner() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-indigo-100/80">
-                <ClipboardCheck size={13} /> Cross-Register-Prüfbericht
+                <ClipboardCheck size={13} /> Cross-Register-Auswertung
               </span>
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight lg:text-4xl">
-              Cross-Register-Prüfbericht
+              Cross-Register-Auswertung
             </h1>
             <div className="mt-5 inline-flex max-w-2xl items-start gap-2.5 rounded-[22px] border border-white/15 bg-white/10 px-4 py-3 text-xs leading-5 text-indigo-50/90 backdrop-blur-sm">
               <Sparkles size={14} className="mt-0.5 shrink-0 text-indigo-200" />
@@ -440,7 +440,7 @@ function StateAidAuditReportPageInner() {
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-medium text-white shadow-md shadow-indigo-600/30 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <FileSearch size={14} />}
-                Bericht erstellen
+                Auswertung erstellen
               </button>
               <button
                 type="button"

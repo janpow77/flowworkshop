@@ -3,7 +3,7 @@ import {
 } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowUpRight, Banknote, Building2, ExternalLink, FileText, Filter, Globe2,
+  ArrowUpRight, Banknote, Building2, ClipboardCheck, ExternalLink, FileText, Filter, Globe2,
   Layers3, Loader2, MapPin, Scale, Search, ShieldCheck, Sparkles, Trash2, Upload,
   Wallet,
 } from 'lucide-react';
@@ -707,9 +707,17 @@ export default function CompanySearchPage() {
               </div>
             ) : (
               result.companies.map((company) => (
-                <button
+                <div
                   key={`${company.company_name}-${company.sources.join('|')}`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedCompany(company)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setSelectedCompany(company);
+                    }
+                  }}
                   className={`w-full rounded-[24px] border px-4 py-4 text-left transition ${
                     selectedCompany?.company_name === company.company_name
                       ? 'border-cyan-200 bg-cyan-50/80 shadow-[0_18px_40px_-30px_rgba(8,145,178,0.65)] dark:border-cyan-900 dark:bg-cyan-950/35'
@@ -722,6 +730,14 @@ export default function CompanySearchPage() {
                         <Building2 size={16} className="text-cyan-600 dark:text-cyan-300" />
                         <div className="truncate text-base font-semibold text-slate-900 dark:text-white">{company.company_name}</div>
                       </div>
+                      <Link
+                        to={`/audit-report?q=${encodeURIComponent(company.company_name)}`}
+                        onClick={(event) => event.stopPropagation()}
+                        className="mt-2 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-medium text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-950/30 dark:text-indigo-200"
+                      >
+                        <ClipboardCheck size={11} />
+                        In Auswertung übernehmen
+                      </Link>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {company.bundeslaender.slice(0, 3).map((item) => (
                           <span key={item} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{item}</span>
@@ -746,7 +762,7 @@ export default function CompanySearchPage() {
                       <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{formatInt(company.project_count)}</div>
                     </div>
                   </div>
-                </button>
+                </div>
               ))
             )}
           </div>

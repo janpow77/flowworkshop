@@ -168,14 +168,14 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
             </p>
           </button>
 
-          {/* Kachel B: Cross-Register-Prüfbericht (NEU) */}
+          {/* Kachel B: Cross-Register-Auswertung */}
           <button
             onClick={() => navigate('/audit-report')}
             className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-indigo-500/10 hover:scale-[1.01] hover:shadow-xl"
           >
             <div className="flex items-center gap-3 mb-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/20 text-2xl backdrop-blur-sm">📄</span>
-              <h2 className="text-lg font-semibold text-white">Cross-Register-Prüfbericht</h2>
+              <h2 className="text-lg font-semibold text-white">Cross-Register-Auswertung</h2>
             </div>
             <p className="text-sm leading-relaxed text-blue-200/80">
               Eine Eingabe (Firma + Personen) &rarr; ein PDF aus drei Registern.

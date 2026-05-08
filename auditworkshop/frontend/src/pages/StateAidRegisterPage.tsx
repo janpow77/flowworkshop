@@ -520,7 +520,7 @@ function StateAidRegisterPageInner() {
                   </li>
                   <li>
                     <strong>4. Optionale Zweitmeinung</strong> — im
-                    Cross-Register-Prüfbericht kann ein lokal laufendes Sprachmodell
+                    Cross-Register-Auswertung kann ein lokal laufendes Sprachmodell
                     unsichere Querbezüge erneut prüfen und kurz begründen, ob es
                     wahrscheinlich derselbe Akteur ist.
                   </li>
@@ -997,7 +997,7 @@ function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPi
           </form>
         </div>
 
-        {/* Cross-Register-Pruefbericht: prominenter Sprung mit aktueller Query */}
+        {/* Cross-Register-Auswertung: prominenter Sprung mit aktueller Query */}
         <Link
           to={query.trim() ? `/audit-report?q=${encodeURIComponent(query.trim())}` : '/audit-report'}
           className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-indigo-200 bg-[linear-gradient(135deg,rgba(238,242,255,0.9),rgba(224,231,255,0.7))] px-5 py-4 shadow-[0_18px_60px_-44px_rgba(67,56,202,0.45)] transition hover:border-indigo-300 hover:bg-indigo-50/90 dark:border-indigo-500/30 dark:bg-[linear-gradient(135deg,rgba(30,27,75,0.6),rgba(49,46,129,0.5))] dark:hover:bg-indigo-950/40"
@@ -1008,7 +1008,7 @@ function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPi
             </div>
             <div>
               <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
-                Ausführlichen Prüfbericht erstellen
+                Ausführliche Auswertung erstellen
               </div>
               <p className="mt-0.5 text-xs leading-5 text-indigo-800/80 dark:text-indigo-200/80">
                 Faktische Aggregation aus drei Registern als PDF — neutral, ohne Bewertung.
@@ -1016,7 +1016,7 @@ function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPi
             </div>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition group-hover:bg-indigo-700">
-            Bericht öffnen <ArrowRight size={12} />
+            Auswertung öffnen <ArrowRight size={12} />
           </span>
         </Link>
       </div>
@@ -1123,15 +1123,27 @@ function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPi
               empty="Keine Treffer im Beguenstigtenverzeichnis."
             >
               {dossier.beneficiaries.hits.slice(0, 12).map((h, i) => (
-                <DossierRow
-                  key={i}
-                  primary={String((h as { company_name?: string; project_name?: string }).company_name || (h as { project_name?: string }).project_name || '—')}
-                  secondary={[
-                    String((h as { aktenzeichen?: string }).aktenzeichen || ''),
-                    String((h as { location?: string }).location || ''),
-                    String((h as { source?: string }).source || ''),
-                  ].filter(Boolean).join(' · ')}
-                />
+                <div key={i} className="rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {String((h as { company_name?: string; project_name?: string }).company_name || (h as { project_name?: string }).project_name || '—')}
+                  </div>
+                  <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                    {[
+                      String((h as { aktenzeichen?: string }).aktenzeichen || ''),
+                      String((h as { location?: string }).location || ''),
+                      String((h as { source?: string }).source || ''),
+                    ].filter(Boolean).join(' · ')}
+                  </div>
+                  {String((h as { company_name?: string; project_name?: string }).company_name || '').trim() && (
+                    <Link
+                      to={`/audit-report?q=${encodeURIComponent(String((h as { company_name?: string }).company_name).trim())}`}
+                      className="mt-2 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-medium text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-950/30 dark:text-indigo-200"
+                    >
+                      <ClipboardCheck size={11} />
+                      In Auswertung übernehmen
+                    </Link>
+                  )}
+                </div>
               ))}
             </DossierColumn>
           </div>

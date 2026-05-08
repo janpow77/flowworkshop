@@ -1,5 +1,5 @@
 /**
- * AuditReportPreview — Live-Vorschau des Cross-Register-Pruefberichts.
+ * AuditReportPreview — Live-Vorschau der Cross-Register-Auswertung.
  *
  * Sektionen (in Reihenfolge):
  *   1. Bericht-Kopf (Query, Erstelldatum, Auftraggeber/Pruefer)
@@ -77,6 +77,11 @@ function formatEur(value: number | null | undefined): string {
     currency: 'EUR',
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function formatAmount(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return '—';
+  return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(value);
 }
 
 function formatInt(value: number | null | undefined): string {
@@ -359,7 +364,7 @@ function StateAidSection({ data }: { data: AuditReportData }) {
                             {authority || '—'}
                           </td>
                           <td className="px-4 py-2 text-right font-mono text-xs">
-                            {amount !== null ? formatEur(amount) : '—'}
+                            {amount !== null ? formatAmount(amount) : '—'}
                           </td>
                           <td className="px-4 py-2 font-mono text-xs">
                             {saRef ? (
@@ -494,7 +499,7 @@ function BeneficiariesSection({ data }: { data: AuditReportData }) {
                           </td>
                           <td className="px-4 py-2 font-mono text-xs">{aktenzeichen || '—'}</td>
                           <td className="px-4 py-2 text-right font-mono text-xs">
-                            {kosten !== null ? formatEur(kosten) : '—'}
+                            {kosten !== null ? formatAmount(kosten) : '—'}
                           </td>
                         </tr>
                       );
