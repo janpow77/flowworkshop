@@ -246,22 +246,29 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', highligh
 
   const bundeslaender = [...new Set(data.map((b) => b.bundesland).filter(Boolean))].sort();
   // Highlight-Filter: case-insensitive Substring/Match auf Beneficiary-Name.
-  // Aktiv nur wenn ein nicht-leeres Array übergeben wurde.
+  // Drei Modi je nach highlightNames-Wert:
+  //   null/undefined  → kein Filter, alle Marker
+  //   []              → "leere Karte" (Tab Unternehmenssuche vor erster Eingabe):
+  //                     OSM-Tiles laden, aber keine Marker rendern
+  //   ['Foo', ...]    → nur Treffer mit Namens-Match anzeigen
   const highlightActive = Array.isArray(highlightNames) && highlightNames.length > 0;
+  const highlightAwaiting = Array.isArray(highlightNames) && highlightNames.length === 0;
   const highlightLower = useMemo(
     () => (highlightActive ? highlightNames!.map((n) => n.toLowerCase()) : []),
     [highlightActive, highlightNames],
   );
-  const filtered = data.filter((b) => {
-    if (filterBl && b.bundesland !== filterBl) return false;
-    if (minKosten > 0 && b.kosten < minKosten) return false;
-    if (highlightActive) {
-      const name = (b.name || '').toLowerCase();
-      const hit = highlightLower.some((q) => name === q || name.includes(q));
-      if (!hit) return false;
-    }
-    return true;
-  });
+  const filtered = highlightAwaiting
+    ? []
+    : data.filter((b) => {
+        if (filterBl && b.bundesland !== filterBl) return false;
+        if (minKosten > 0 && b.kosten < minKosten) return false;
+        if (highlightActive) {
+          const name = (b.name || '').toLowerCase();
+          const hit = highlightLower.some((q) => name === q || name.includes(q));
+          if (!hit) return false;
+        }
+        return true;
+      });
   const pins = useMemo(() => groupByLocation(filtered), [filtered]);
   const points: [number, number][] = pins.map((p) => [p.lat, p.lon]);
   const totalKosten = filtered.reduce((s, b) => s + b.kosten, 0);
@@ -321,19 +328,27 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', highligh
           <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2 text-sm">
               <MapPin size={15} className="text-indigo-500" />
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                {filtered.length.toLocaleString('de-DE')} Vorhaben
-              </span>
-              <span className="text-slate-400">
-                an {pins.length.toLocaleString('de-DE')} Standort{pins.length === 1 ? '' : 'en'}
-              </span>
-              {totalKosten > 0 && (
-                <span className="text-slate-400">· {formatEur(totalKosten)}</span>
-              )}
-              {highlightActive && (
-                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
-                  Filter: {highlightNames!.length === 1 ? highlightNames![0] : `${highlightNames!.length} Treffer`}
+              {highlightAwaiting ? (
+                <span className="text-slate-500 dark:text-slate-400">
+                  Karte wartet auf Suche — Treffer erscheinen hier nach der Eingabe.
                 </span>
+              ) : (
+                <>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    {filtered.length.toLocaleString('de-DE')} Vorhaben
+                  </span>
+                  <span className="text-slate-400">
+                    an {pins.length.toLocaleString('de-DE')} Standort{pins.length === 1 ? '' : 'en'}
+                  </span>
+                  {totalKosten > 0 && (
+                    <span className="text-slate-400">· {formatEur(totalKosten)}</span>
+                  )}
+                  {highlightActive && (
+                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+                      Filter: {highlightNames!.length === 1 ? highlightNames![0] : `${highlightNames!.length} Treffer`}
+                    </span>
+                  )}
+                </>
               )}
             </div>
             <div className="flex items-center gap-2">
