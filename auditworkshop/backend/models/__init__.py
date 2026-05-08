@@ -33,6 +33,23 @@ from models.automation import (  # noqa: F401
     HarvestRun, HarvestSourceUpdate, SanctionsRefreshRun, LlmQuestionLog,
     Notification,
 )
+from models.sanctions_entries import SanctionsEntry  # noqa: F401
 from models.docs import (  # noqa: F401
     DocumentFolder, DocumentFile, DocumentVersion, DocumentDownloadLog,
 )
+from models.state_aid import (  # noqa: F401
+    StateAidAward, StateAidHarvestRun, StateAidSource,
+)
+from models.state_aid_validation import StateAidValidationRun  # noqa: F401
+from models.state_aid_audit import AuditReportLog  # noqa: F401
+from models.access_log import AccessLog  # noqa: F401
+from models.corporate_lookup_cache import CorporateLookupCache  # noqa: F401
+from models.beneficiary_records import (  # noqa: F401
+    BeneficiaryRecord, BeneficiaryHarvestRun,
+)
+from models.beneficiary_sources_config import (  # noqa: F401
+    BeneficiarySourceConfig,
+)
+from models.entities import CompanyEntity, EntityMatch  # noqa: F401
+from models.entity_embeddings import EntityEmbedding  # noqa: F401
+from models.entity_match_llm_run import EntityMatchLlmRun  # noqa: F401

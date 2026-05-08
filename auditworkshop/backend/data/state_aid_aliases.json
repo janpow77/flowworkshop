@@ -1,0 +1,66 @@
+{
+  "_meta": {
+    "description": "Bekannte Aliase und Akronyme — werden vor Fuzzy-Match expandiert. Mapping: Akronym (lowercase) -> ausgeschriebene Form. Aufrufer matcht ueber expand_alias().",
+    "version": "1",
+    "last_updated": "2026-05-08"
+  },
+
+  "bmw": "Bayerische Motoren Werke",
+  "vw": "Volkswagen",
+  "mercedes": "Mercedes-Benz Group",
+  "siemens energy": "Siemens Energy AG",
+  "deutsche bahn": "Deutsche Bahn AG",
+  "db": "Deutsche Bahn AG",
+
+  "kfw": "Kreditanstalt für Wiederaufbau",
+  "lfa": "LfA Förderbank Bayern",
+  "nrw bank": "NRW.BANK",
+  "ib sh": "Investitionsbank Schleswig-Holstein",
+  "ibb": "Investitionsbank Berlin",
+  "wibank": "Wirtschafts- und Infrastrukturbank Hessen",
+
+  "bmwk": "Bundesministerium für Wirtschaft und Klimaschutz",
+  "bmwi": "Bundesministerium für Wirtschaft und Energie",
+  "bmbf": "Bundesministerium für Bildung und Forschung",
+  "bmu": "Bundesministerium für Umwelt",
+  "bmuv": "Bundesministerium für Umwelt, Naturschutz, nukleare Sicherheit und Verbraucherschutz",
+  "bmel": "Bundesministerium für Ernährung und Landwirtschaft",
+  "bmvi": "Bundesministerium für Verkehr und digitale Infrastruktur",
+  "bmdv": "Bundesministerium für Digitales und Verkehr",
+  "bmf": "Bundesministerium der Finanzen",
+  "bmas": "Bundesministerium für Arbeit und Soziales",
+  "bafa": "Bundesamt für Wirtschaft und Ausfuhrkontrolle",
+
+  "fhg": "Fraunhofer-Gesellschaft",
+  "fraunhofer": "Fraunhofer-Gesellschaft zur Förderung der angewandten Forschung",
+  "dfg": "Deutsche Forschungsgemeinschaft",
+  "dlr": "Deutsches Zentrum für Luft- und Raumfahrt",
+  "mpg": "Max-Planck-Gesellschaft",
+  "hgf": "Helmholtz-Gemeinschaft Deutscher Forschungszentren",
+  "wgl": "Leibniz-Gemeinschaft",
+  "rwth": "Rheinisch-Westfälische Technische Hochschule Aachen",
+  "tum": "Technische Universität München",
+  "kit": "Karlsruher Institut für Technologie",
+
+  "kmu": "kleine und mittlere Unternehmen",
+  "ihk": "Industrie- und Handelskammer",
+  "hwk": "Handwerkskammer",
+
+  "obb": "Österreichische Bundesbahnen",
+  "öbb": "Österreichische Bundesbahnen",
+  "oebb": "Österreichische Bundesbahnen",
+  "öaw": "Österreichische Akademie der Wissenschaften",
+  "oeaw": "Österreichische Akademie der Wissenschaften",
+  "fwf": "Fonds zur Förderung der wissenschaftlichen Forschung",
+  "ffg": "Österreichische Forschungsförderungsgesellschaft",
+  "aws": "Austria Wirtschaftsservice",
+
+  "vag": "Verkehrs-Aktiengesellschaft",
+  "evu": "Energieversorgungsunternehmen",
+  "stw": "Stadtwerke",
+
+  "efre": "Europäischer Fonds für regionale Entwicklung",
+  "esf": "Europäischer Sozialfonds",
+  "jtf": "Just Transition Fund",
+  "elr": "Entwicklungsprogramm ländlicher Raum"
+}

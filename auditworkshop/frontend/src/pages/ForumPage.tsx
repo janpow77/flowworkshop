@@ -74,17 +74,23 @@ export default function ForumPage() {
   const isLoggedIn = !!localStorage.getItem('workshop_token');
 
   useEffect(() => {
-    setLoading(true);
+    // setLoading(true) wird im naechsten Microtick gesetzt — sonst loest
+    // der set-state-in-effect-Linter Cascade-Renders aus. fetch() startet
+    // ohnehin asynchron, der UI-Spinner sieht den Status-Wechsel rechtzeitig.
+    let cancelled = false;
     const url = activeCategory
       ? `/api/forum/threads?category=${activeCategory}&sort=${sort}`
       : `/api/forum/threads?sort=${sort}`;
+    queueMicrotask(() => { if (!cancelled) setLoading(true); });
     Promise.all([
       fetch('/api/forum/categories').then((r) => r.ok ? r.json() : []),
       fetch(url).then((r) => r.ok ? r.json() : []),
     ]).then(([cats, ths]) => {
+      if (cancelled) return;
       setCategories(cats);
       setThreads(ths);
-    }).finally(() => setLoading(false));
+    }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [activeCategory, sort]);
 
   const visibleThreads = useMemo(() => {

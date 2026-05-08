@@ -67,6 +67,11 @@ class SanctionsRefreshRun(Base):
     organizations_after = Column(Integer, nullable=True)
     error = Column(Text, nullable=True)
 
+    # Multi-Source: Komma-Liste der refreshten Source-Keys (z.B. "eu_fsf,un_sc,...")
+    sources = Column(String(255), nullable=True)
+    # Pro Source ein Subreport (status, rows_before, rows_after, sha256, error, ...)
+    parameters = Column(JSON, nullable=True)
+
 
 class Notification(Base):
     """Internes Notification-Center (Plan v3.2 Phase 6) — kein Mail-Versand.

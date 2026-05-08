@@ -1,0 +1,56 @@
+{
+  "_comment": "Eurostat NUTS 2024 — Oesterreich. Enthaelt 9 Bundeslaender (NUTS-2) und 35 Politische Bezirke (NUTS-3). Centroids fuer NUTS-3 sind ueberwiegend NUTS-2-Centroids als Fallback (Plan §6.3 — Kartendarstellung aggregiert ohnehin auf NUTS-1).",
+
+  "AT11": {"name": "Burgenland", "level": 2, "bundesland": "Burgenland", "lat": 47.1583, "lon": 16.2682},
+  "AT111": {"name": "Mittelburgenland", "level": 3, "bundesland": "Burgenland", "lat": 47.4250, "lon": 16.4660, "nuts2_parent": "AT11"},
+  "AT112": {"name": "Nordburgenland", "level": 3, "bundesland": "Burgenland", "lat": 47.8480, "lon": 16.5120, "nuts2_parent": "AT11"},
+  "AT113": {"name": "Suedburgenland", "level": 3, "bundesland": "Burgenland", "lat": 47.0230, "lon": 16.2940, "nuts2_parent": "AT11"},
+
+  "AT12": {"name": "Niederoesterreich", "level": 2, "bundesland": "Niederösterreich", "lat": 48.108, "lon": 15.805},
+  "AT121": {"name": "Mostviertel-Eisenwurzen", "level": 3, "bundesland": "Niederösterreich", "lat": 48.0500, "lon": 15.0830, "nuts2_parent": "AT12"},
+  "AT122": {"name": "Niederoesterreich-Sued", "level": 3, "bundesland": "Niederösterreich", "lat": 47.8120, "lon": 15.9690, "nuts2_parent": "AT12"},
+  "AT123": {"name": "Sankt Poelten", "level": 3, "bundesland": "Niederösterreich", "lat": 48.2058, "lon": 15.6232, "nuts2_parent": "AT12"},
+  "AT124": {"name": "Waldviertel", "level": 3, "bundesland": "Niederösterreich", "lat": 48.6870, "lon": 15.2570, "nuts2_parent": "AT12"},
+  "AT125": {"name": "Weinviertel", "level": 3, "bundesland": "Niederösterreich", "lat": 48.5550, "lon": 16.4320, "nuts2_parent": "AT12"},
+  "AT126": {"name": "Wiener Umland/Nordteil", "level": 3, "bundesland": "Niederösterreich", "lat": 48.3500, "lon": 16.4000, "nuts2_parent": "AT12"},
+  "AT127": {"name": "Wiener Umland/Suedteil", "level": 3, "bundesland": "Niederösterreich", "lat": 48.0500, "lon": 16.2500, "nuts2_parent": "AT12"},
+
+  "AT13": {"name": "Wien", "level": 2, "bundesland": "Wien", "lat": 48.2082, "lon": 16.3738},
+  "AT130": {"name": "Wien", "level": 3, "bundesland": "Wien", "lat": 48.2082, "lon": 16.3738, "nuts2_parent": "AT13"},
+
+  "AT21": {"name": "Kaernten", "level": 2, "bundesland": "Kärnten", "lat": 46.722, "lon": 14.1806},
+  "AT211": {"name": "Klagenfurt-Villach", "level": 3, "bundesland": "Kärnten", "lat": 46.6300, "lon": 14.1000, "nuts2_parent": "AT21"},
+  "AT212": {"name": "Oberkaernten", "level": 3, "bundesland": "Kärnten", "lat": 46.8120, "lon": 13.4970, "nuts2_parent": "AT21"},
+  "AT213": {"name": "Unterkaernten", "level": 3, "bundesland": "Kärnten", "lat": 46.6700, "lon": 14.7800, "nuts2_parent": "AT21"},
+
+  "AT22": {"name": "Steiermark", "level": 2, "bundesland": "Steiermark", "lat": 47.3593, "lon": 14.7867},
+  "AT221": {"name": "Graz", "level": 3, "bundesland": "Steiermark", "lat": 47.0707, "lon": 15.4395, "nuts2_parent": "AT22"},
+  "AT222": {"name": "Liezen", "level": 3, "bundesland": "Steiermark", "lat": 47.5710, "lon": 14.2410, "nuts2_parent": "AT22"},
+  "AT223": {"name": "Oestliche Obersteiermark", "level": 3, "bundesland": "Steiermark", "lat": 47.4970, "lon": 15.2790, "nuts2_parent": "AT22"},
+  "AT224": {"name": "Oststeiermark", "level": 3, "bundesland": "Steiermark", "lat": 47.0700, "lon": 15.8800, "nuts2_parent": "AT22"},
+  "AT225": {"name": "West- und Suedsteiermark", "level": 3, "bundesland": "Steiermark", "lat": 46.7480, "lon": 15.4530, "nuts2_parent": "AT22"},
+  "AT226": {"name": "Westliche Obersteiermark", "level": 3, "bundesland": "Steiermark", "lat": 47.2480, "lon": 14.6000, "nuts2_parent": "AT22"},
+
+  "AT31": {"name": "Oberoesterreich", "level": 2, "bundesland": "Oberösterreich", "lat": 48.0258, "lon": 13.9698},
+  "AT311": {"name": "Innviertel", "level": 3, "bundesland": "Oberösterreich", "lat": 48.2530, "lon": 13.4360, "nuts2_parent": "AT31"},
+  "AT312": {"name": "Linz-Wels", "level": 3, "bundesland": "Oberösterreich", "lat": 48.2580, "lon": 14.0833, "nuts2_parent": "AT31"},
+  "AT313": {"name": "Muehlviertel", "level": 3, "bundesland": "Oberösterreich", "lat": 48.5100, "lon": 14.4280, "nuts2_parent": "AT31"},
+  "AT314": {"name": "Steyr-Kirchdorf", "level": 3, "bundesland": "Oberösterreich", "lat": 47.9830, "lon": 14.4070, "nuts2_parent": "AT31"},
+  "AT315": {"name": "Traunviertel", "level": 3, "bundesland": "Oberösterreich", "lat": 47.9100, "lon": 13.8000, "nuts2_parent": "AT31"},
+
+  "AT32": {"name": "Salzburg", "level": 2, "bundesland": "Salzburg", "lat": 47.8095, "lon": 13.055},
+  "AT321": {"name": "Lungau", "level": 3, "bundesland": "Salzburg", "lat": 47.1280, "lon": 13.7600, "nuts2_parent": "AT32"},
+  "AT322": {"name": "Pinzgau-Pongau", "level": 3, "bundesland": "Salzburg", "lat": 47.3540, "lon": 12.7950, "nuts2_parent": "AT32"},
+  "AT323": {"name": "Salzburg und Umgebung", "level": 3, "bundesland": "Salzburg", "lat": 47.8095, "lon": 13.0550, "nuts2_parent": "AT32"},
+
+  "AT33": {"name": "Tirol", "level": 2, "bundesland": "Tirol", "lat": 47.2537, "lon": 11.5938},
+  "AT331": {"name": "Ausserfern", "level": 3, "bundesland": "Tirol", "lat": 47.4830, "lon": 10.7170, "nuts2_parent": "AT33"},
+  "AT332": {"name": "Innsbruck", "level": 3, "bundesland": "Tirol", "lat": 47.2692, "lon": 11.4041, "nuts2_parent": "AT33"},
+  "AT333": {"name": "Osttirol", "level": 3, "bundesland": "Tirol", "lat": 46.9290, "lon": 12.7700, "nuts2_parent": "AT33"},
+  "AT334": {"name": "Tiroler Oberland", "level": 3, "bundesland": "Tirol", "lat": 47.0860, "lon": 10.8550, "nuts2_parent": "AT33"},
+  "AT335": {"name": "Tiroler Unterland", "level": 3, "bundesland": "Tirol", "lat": 47.5000, "lon": 11.9500, "nuts2_parent": "AT33"},
+
+  "AT34": {"name": "Vorarlberg", "level": 2, "bundesland": "Vorarlberg", "lat": 47.2497, "lon": 9.9706},
+  "AT341": {"name": "Bludenz-Bregenzer Wald", "level": 3, "bundesland": "Vorarlberg", "lat": 47.1750, "lon": 9.8200, "nuts2_parent": "AT34"},
+  "AT342": {"name": "Rheintal-Bodenseegebiet", "level": 3, "bundesland": "Vorarlberg", "lat": 47.4180, "lon": 9.7300, "nuts2_parent": "AT34"}
+}

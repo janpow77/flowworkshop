@@ -55,3 +55,7 @@ auditworkshop/frontend/test-results/
 
 # Compiled
 *.pyc
+
+# Runtime-Daten (User-Uploads)
+auditworkshop/backend/data/documents/
+auditworkshop/backend/data/uploads/

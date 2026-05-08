@@ -3,11 +3,15 @@ import { NavLink } from 'react-router-dom';
 import {
   Home, FolderOpen, Database, FileSpreadsheet, Building2, Scale,
   CalendarDays, UserPlus, Settings, Upload, User, ShieldAlert,
-  MessagesSquare, FolderArchive,
+  MessagesSquare, FolderArchive, Banknote, ClipboardCheck, ScrollText,
 } from 'lucide-react';
 
 function isModerator(): boolean {
   return localStorage.getItem('workshop_role') === 'moderator';
+}
+
+function isAdmin(): boolean {
+  return localStorage.getItem('workshop_role') === 'admin';
 }
 
 function useWorkshopMode(): boolean {
@@ -49,9 +53,19 @@ const NAV = [
       { to: '/knowledge', label: 'Wissensbasis', icon: Database },
       { to: '/dataframes', label: 'Datenanalyse', icon: FileSpreadsheet },
       { to: '/company-search', label: 'Unternehmenssuche', icon: Building2 },
+      { to: '/beihilfen', label: 'Beihilfe-Register', icon: Banknote },
+      { to: '/audit-report', label: 'Prüfbericht', icon: ClipboardCheck },
       { to: '/ai-act', label: 'AI Act', icon: Scale },
       { to: '/account', label: 'Benutzerkonto', icon: User },
       { to: '/admin', label: 'Verwaltung', icon: Settings },
+    ],
+  },
+  {
+    label: 'Admin',
+    adminOnly: true,
+    items: [
+      { to: '/admin/beneficiary-sources', label: 'Quellen-Verwaltung', icon: Database },
+      { to: '/audit-trail', label: 'Prüfbericht-Historie', icon: ScrollText },
     ],
   },
 ];
@@ -59,9 +73,12 @@ const NAV = [
 export default function Sidebar() {
   const workshopMode = useWorkshopMode();
   const scenariosUnlocked = workshopMode || isModerator();
+  const adminUnlocked = isAdmin();
 
-  // Szenarien-Gruppe dynamisch (ent-)sperren
-  const nav = NAV.map(g => g.label === 'Szenarien' ? { ...g, locked: !scenariosUnlocked } : g);
+  // Szenarien-Gruppe dynamisch (ent-)sperren + Admin-Gruppe nur fuer Admins
+  const nav = NAV
+    .map(g => g.label === 'Szenarien' ? { ...g, locked: !scenariosUnlocked } : g)
+    .filter(g => !g.adminOnly || adminUnlocked);
 
   return (
     <aside className="relative z-10 hidden w-80 shrink-0 border-r border-white/60 bg-white/75 backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-950/70 lg:flex lg:flex-col" aria-label="Hauptnavigation">

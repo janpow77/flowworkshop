@@ -62,4 +62,21 @@ check 'Beneficiary search (auth)'    "$BACKEND_BASE/api/beneficiaries/search"   
 check 'Reference data (auth)'        "$BACKEND_BASE/api/reference-data/sources"      200 "$AUTH"
 
 printf '\nPassed: %d\nFailed: %d\n' "$pass" "$fail"
+
+# State-Aid-Smoke (12 zusaetzliche Checks). Eigene Datei haelt das Hauptskript
+# klein und erlaubt isoliertes Ausfuehren bei Demo-Vorbereitung.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -x "$SCRIPT_DIR/state_aid_smoke.sh" ]]; then
+  printf '\n=== Running State-Aid Smoke ===\n'
+  if BACKEND_BASE="$BACKEND_BASE" bash "$SCRIPT_DIR/state_aid_smoke.sh"; then
+    printf '\nState-Aid Smoke OK.\n'
+  else
+    printf '\nState-Aid Smoke FAIL.\n'
+    fail=$((fail + 1))
+  fi
+else
+  printf '\nWARN: %s nicht gefunden — uebersprungen.\n' "$SCRIPT_DIR/state_aid_smoke.sh"
+fi
+
+printf '\n=== Total ===\nPassed: %d\nFailed: %d\n' "$pass" "$fail"
 [[ "$fail" -eq 0 ]]

@@ -20,16 +20,27 @@ export default function LlmResponsePanel({
 }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
-  const [, setNow] = useState(0);
+  // Sekunden seit Stream-Start. Wird per Interval gesetzt — Date.now() darf
+  // laut react-hooks/purity NICHT direkt im Render-Body stehen, weil das
+  // bei jedem Re-Render eine andere Ausgabe erzeugen wuerde.
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
     if (streaming) endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [response, streaming]);
 
-  // Sekundenzähler nur während des Wartens auf erste Tokens
+  // Sekundenzähler nur während des Wartens auf erste Tokens.
+  // setElapsedSeconds wird ausschliesslich aus den Interval-/queueMicrotask-
+  // Callbacks aufgerufen, nie synchron im Effect-Body — sonst meldet
+  // react-hooks/set-state-in-effect.
   useEffect(() => {
-    if (!streaming || response || !startedAt) return;
-    const id = window.setInterval(() => setNow((n) => n + 1), 1000);
+    if (!streaming || response || !startedAt) {
+      queueMicrotask(() => setElapsedSeconds(0));
+      return;
+    }
+    const tick = () => setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    queueMicrotask(tick);
+    const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [streaming, response, startedAt]);
 
@@ -88,7 +99,7 @@ export default function LlmResponsePanel({
             </div>
             <span className="text-sm text-slate-500">
               {status === 'thinking' ? 'Modell denkt nach' : 'KI verarbeitet die Anfrage'}
-              {startedAt ? ` … ${Math.max(0, Math.floor((Date.now() - startedAt) / 1000))}s` : '…'}
+              {startedAt ? ` … ${elapsedSeconds}s` : '…'}
             </span>
           </div>
         ) : response ? (

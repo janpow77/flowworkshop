@@ -25,12 +25,16 @@ const DataFramePage = lazy(() => import('./pages/DataFramePage'));
 const CompanySearchPage = lazy(() => import('./pages/CompanySearchPage'));
 const AiActPage = lazy(() => import('./pages/AiActPage'));
 const SanktionslistenPage = lazy(() => import('./pages/SanktionslistenPage'));
+const StateAidRegisterPage = lazy(() => import('./pages/StateAidRegisterPage'));
+const StateAidAuditReportPage = lazy(() => import('./pages/StateAidAuditReportPage'));
 const ForumPage = lazy(() => import('./pages/ForumPage'));
 const ThreadPage = lazy(() => import('./pages/ThreadPage'));
 const NewThreadPage = lazy(() => import('./pages/NewThreadPage'));
 const DocumentsPage = lazy(() => import('./pages/DocumentsPage'));
 const AgendaArchivePage = lazy(() => import('./pages/AgendaArchivePage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const AdminBeneficiarySourcesPage = lazy(() => import('./pages/AdminBeneficiarySourcesPage'));
+const AuditReportTrailPage = lazy(() => import('./pages/AuditReportTrailPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const SignUpPage = lazy(() => import('./pages/SignUpPage'));
 const SetupPasswordPage = lazy(() => import('./pages/SetupPasswordPage'));
@@ -92,6 +96,8 @@ export default function App() {
             <Route path="/scenario/6" element={<LazyPage><ScenarioPage /></LazyPage>} />
             <Route path="/begünstigte" element={<LazyPage><ScenarioPage /></LazyPage>} />
             <Route path="/sanktionslisten" element={<LazyPage><SanktionslistenPage /></LazyPage>} />
+            <Route path="/beihilfen" element={<LazyPage><StateAidRegisterPage /></LazyPage>} />
+            <Route path="/audit-report" element={<LazyPage><StateAidAuditReportPage /></LazyPage>} />
           </Route>
         )}
 
@@ -113,8 +119,12 @@ export default function App() {
             <Route path="/company-search" element={<LazyPage><CompanySearchPage /></LazyPage>} />
             <Route path="/ai-act" element={<LazyPage><AiActPage /></LazyPage>} />
             <Route path="/sanktionslisten" element={<LazyPage><SanktionslistenPage /></LazyPage>} />
+            <Route path="/beihilfen" element={<LazyPage><StateAidRegisterPage /></LazyPage>} />
+            <Route path="/audit-report" element={<LazyPage><StateAidAuditReportPage /></LazyPage>} />
             <Route path="/docs" element={<LazyPage><DocumentsPage /></LazyPage>} />
             <Route path="/admin" element={<LazyPage><AdminPage /></LazyPage>} />
+            <Route path="/admin/beneficiary-sources" element={<LazyPage><AdminBeneficiarySourcesPage /></LazyPage>} />
+            <Route path="/audit-trail" element={<LazyPage><AuditReportTrailPage /></LazyPage>} />
             <Route path="*" element={<LazyPage><NotFoundPage /></LazyPage>} />
           </Route>
         ) : (

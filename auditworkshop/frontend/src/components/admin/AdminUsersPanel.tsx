@@ -50,7 +50,11 @@ export default function AdminUsersPanel() {
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filter]);
+  // load() wird absichtlich aus den Deps weggelassen — die Funktion ist im Body
+  // der Komponente definiert und ihr Verhalten ist allein durch `filter`
+  // bestimmt; ein Stale-Closure-Risiko gibt es daher nicht.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [filter]);
 
   const action = async (userId: string, op: 'approve' | 'reject' | 'suspend', reason?: string) => {
     const body = op === 'reject' ? JSON.stringify({ reason }) : undefined;

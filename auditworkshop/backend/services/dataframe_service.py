@@ -14,6 +14,7 @@ import unicodedata
 from typing import Any
 
 import pandas as pd
+from rapidfuzz import fuzz
 from sqlalchemy import text
 
 from database import engine
@@ -192,16 +193,33 @@ def _strip_legal_suffix(value: Any) -> str:
     return cleaned.rstrip(",;. ")
 
 
+def _split_word_separators(value: str) -> str:
+    """Ersetzt Bindestrich und Slash durch Leerzeichen, damit
+    'Fraunhofer-Gesellschaft' und 'Fraunhofer Gesellschaft' identisch
+    behandelt werden. Wird vor Tokenize/Substring-Matches angewendet.
+    """
+    if not value:
+        return value
+    return value.replace("-", " ").replace("/", " ")
+
+
 def _tokenize_search_text(value: Any) -> list[str]:
     normalized = _strip_legal_suffix(value) or _normalize_search_text(value)
-    tokens = re.split(r"[\s/|,;()\\-]+", normalized)
+    if not normalized:
+        return []
+    # Hyphen + Slash als Wort-Trenner behandeln, damit
+    # "Fraunhofer-Gesellschaft" zu Tokens [fraunhofer, gesellschaft] wird.
+    normalized = _split_word_separators(normalized)
+    tokens = re.split(r"[\s,;|()]+", normalized)
     return [token for token in tokens if len(token) >= 3 and token not in _SEARCH_STOP_WORDS]
 
 
 def _search_word_present(token: str, text_value: str) -> bool:
-    if re.search(r"\b" + re.escape(token) + r"\b", text_value, re.IGNORECASE):
+    # Hyphen/Slash → Space, damit \b-Match auch ueber Hyphen-Grenzen klappt
+    haystack = _split_word_separators(text_value)
+    if re.search(r"\b" + re.escape(token) + r"\b", haystack, re.IGNORECASE):
         return True
-    if len(token) >= 6 and re.search(r"\b" + re.escape(token[:6]), text_value, re.IGNORECASE):
+    if len(token) >= 6 and re.search(r"\b" + re.escape(token[:6]), haystack, re.IGNORECASE):
         return True
     return False
 
@@ -211,25 +229,38 @@ def _score_search_value(value: Any, query: str) -> int:
     if not normalized or not query:
         return 0
 
+    # Vereinheitlichte Variante (Hyphen/Slash → Space) fuer Substring-
+    # und Word-Matches. Bewahrt 'normalized' fuer reine Equality-Tests.
+    normalized_split = _split_word_separators(normalized)
+    query_split = _split_word_separators(query)
+
     stripped_normalized = _strip_legal_suffix(normalized)
     stripped_query = _strip_legal_suffix(query)
+    stripped_normalized_split = _split_word_separators(stripped_normalized)
+    stripped_query_split = _split_word_separators(stripped_query)
     query_tokens = _tokenize_search_text(query)
 
     if normalized == query:
         return 140
     if stripped_query and stripped_normalized == stripped_query:
         return 132
-    if normalized.startswith(query):
+    if normalized.startswith(query) or normalized_split.startswith(query_split):
         return 115
-    if stripped_query and stripped_normalized.startswith(stripped_query):
+    if stripped_query and (
+        stripped_normalized.startswith(stripped_query)
+        or stripped_normalized_split.startswith(stripped_query_split)
+    ):
         return 109
     if query_tokens and all(_search_word_present(token, normalized) for token in query_tokens):
         return 104
-    if all(part in normalized for part in query.split()):
+    if all(part in normalized_split for part in query_split.split()):
         return 92
-    if stripped_query and stripped_query in stripped_normalized:
+    if stripped_query and (
+        stripped_query in stripped_normalized
+        or stripped_query_split in stripped_normalized_split
+    ):
         return 88
-    if query in normalized:
+    if query in normalized or query_split in normalized_split:
         return 78
 
     compact_query = _compact_search_text(query)
@@ -237,6 +268,91 @@ def _score_search_value(value: Any, query: str) -> int:
     if compact_query and compact_query in compact_value:
         return 68
     return 0
+
+
+# ── rapidfuzz-Scoring fuer Beguenstigtenliste ────────────────────────────────
+# Ziel: gleiche Skala (0..100) wie State-Aid-Suche
+# (services/state_aid_service.fuzzy_match_company), damit Workshop-Module
+# konsistent „fuehlen" und Confidence-Klassen vergleichbar sind.
+
+_ACCENT_TABLE = str.maketrans({
+    "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss",
+    "Ä": "ae", "Ö": "oe", "Ü": "ue",
+    "á": "a", "à": "a", "â": "a", "ã": "a", "å": "a",
+    "é": "e", "è": "e", "ê": "e", "ë": "e",
+    "í": "i", "ì": "i", "î": "i", "ï": "i",
+    "ó": "o", "ò": "o", "ô": "o", "õ": "o",
+    "ú": "u", "ù": "u", "û": "u",
+    "ç": "c", "ñ": "n", "ý": "y",
+    "ł": "l", "ń": "n", "ś": "s", "ź": "z", "ż": "z",
+    "č": "c", "š": "s", "ž": "z", "đ": "d",
+})
+
+
+def _normalize_for_rapidfuzz(value: Any) -> str:
+    """Vergleichsform fuer rapidfuzz: lowercase, ohne Akzente/Umlaute,
+    Hyphen/Slash → Space, Whitespace kompakt.
+
+    Bewusst KEIN Strippen von Rechtsform-Suffixen (RapidFuzz token_set_ratio
+    blendet Tokens, die nur im einen oder anderen String vorkommen, ohnehin
+    aus). So bleibt die Funktion auch fuer Identifier-Felder (Aktenzeichen)
+    nutzbar, in denen Suffixe nicht vorkommen.
+    """
+    if not value:
+        return ""
+    text_value = str(value).translate(_ACCENT_TABLE).casefold()
+    text_value = text_value.replace("-", " ").replace("/", " ")
+    text_value = re.sub(r"\s+", " ", text_value).strip()
+    return text_value
+
+
+def _rapidfuzz_score(value: Any, query: str) -> float:
+    """Liefert max(token_set_ratio, WRatio) auf Skala 0..100.
+
+    - Akzent-/Hyphen-Normalisierung vorab (siehe _normalize_for_rapidfuzz),
+      damit 'Fraunhofer-Gesellschaft' und 'Fraunhofer Gesellschaft' identisch
+      bewertet werden.
+    - Exact-Match-Boost: Wenn die normalisierten Strings identisch sind,
+      wird sofort 100.0 zurueckgegeben (analog dem Score-140-Sonderfall im
+      Legacy-Scorer, hier auf 0..100-Skala normiert).
+    - Leere Eingaben → 0.0.
+    """
+    if not value or not query:
+        return 0.0
+    norm_value = _normalize_for_rapidfuzz(value)
+    norm_query = _normalize_for_rapidfuzz(query)
+    if not norm_value or not norm_query:
+        return 0.0
+    if norm_value == norm_query:
+        return 100.0
+    tsr = fuzz.token_set_ratio(norm_query, norm_value)
+    wr = fuzz.WRatio(norm_query, norm_value)
+    return float(max(tsr, wr))
+
+
+def _match_confidence(score: float) -> str:
+    """Konfidenz-Klasse analog services/state_aid_service._confidence:
+    >=97 exact, >=90 high, >=80 medium, sonst low.
+    """
+    if score >= 97:
+        return "exact"
+    if score >= 90:
+        return "high"
+    if score >= 80:
+        return "medium"
+    return "low"
+
+
+def _adaptive_min_score(query: str) -> float:
+    """Heuristik analog routers/state_aid._adaptive_min_score:
+    1 Token → 80, 2 Tokens → 70, ≥3 Tokens → 60.
+    """
+    n_tokens = len((query or "").split())
+    if n_tokens >= 3:
+        return 60.0
+    if n_tokens == 2:
+        return 70.0
+    return 80.0
 
 
 def ingest_dataframe(
@@ -916,6 +1032,21 @@ def query_dataframe(source: str, sql_query: str) -> list[dict]:
         "EXCEPT",
         "JOIN",
         "WITH",
+        # DoS-Vektoren in Postgres: Sleep blockiert den Worker, lo_*/pg_read_file
+        # zielen auf Filesystem, pg_terminate_backend killt fremde Sessions.
+        # Auch wenn der Endpoint hinter Admin-Auth liegt, ist Defense-in-Depth
+        # angemessen — ein admin-Account-Compromise soll nicht zum DB-Wipe fuehren.
+        "PG_SLEEP",
+        "PG_TERMINATE_BACKEND",
+        "PG_CANCEL_BACKEND",
+        "PG_READ_FILE",
+        "PG_LS_DIR",
+        "PG_RELOAD_CONF",
+        "LO_IMPORT",
+        "LO_EXPORT",
+        "LO_PUT",
+        "LO_GET",
+        "DBLINK",
     ]
     import re
 
@@ -950,7 +1081,11 @@ def query_dataframe(source: str, sql_query: str) -> list[dict]:
     if "LIMIT" not in upper:
         safe_sql += " LIMIT 1000"
 
-    with engine.connect() as conn:
+    # Statement-Timeout 30s: schuetzt vor Endlos-Queries (Cartesian Joins,
+    # absichtlich teure WHERE-Clauses) und macht den DB-Worker robuster.
+    # `SET LOCAL` benoetigt eine Transaktion -- daher engine.begin().
+    with engine.begin() as conn:
+        conn.execute(text("SET LOCAL statement_timeout = '30s'"))
         result = conn.execute(text(safe_sql))
         columns = list(result.keys())
         rows = [dict(zip(columns, row)) for row in result.fetchall()]
@@ -2030,6 +2165,55 @@ def _build_reference_description(entry: dict[str, Any], registry_type: str | Non
     return _join_unique_values(*parts, limit=320)
 
 
+def db_count_sources(
+    country_code: str | None,
+    bundesland: str | None,
+    fonds: str | None,
+    source: str | None,
+) -> int:
+    """Zaehlt distinkte source_keys in workshop_beneficiary_records, die zu
+    den uebergebenen Filtern passen. Wird als ``sources_considered`` im
+    Search-Response angezeigt.
+
+    Wenn die Tabelle noch leer ist (frischer Container, noch kein Backfill),
+    fallen wir transparent auf den Legacy-Counter aus
+    ``get_beneficiary_sources()`` zurueck — sonst zeigt die UI dauerhaft 0.
+    """
+    where: list[str] = ["1=1"]
+    params: dict[str, Any] = {}
+    if country_code:
+        where.append("country_code = :country_code")
+        params["country_code"] = country_code.upper()
+    if bundesland:
+        where.append("bundesland = :bundesland")
+        params["bundesland"] = bundesland
+    if fonds:
+        where.append("fonds = :fonds")
+        params["fonds"] = fonds
+    if source:
+        where.append("source_key = :source")
+        params["source"] = source
+    sql = (
+        "SELECT COUNT(DISTINCT source_key) FROM workshop_beneficiary_records "
+        f"WHERE {' AND '.join(where)}"
+    )
+    try:
+        with engine.connect() as conn:
+            count = conn.execute(text(sql), params).scalar() or 0
+        if count > 0:
+            return int(count)
+    except Exception as exc:  # noqa: BLE001
+        log.debug("db_count_sources: zentrale Tabelle nicht abfragbar: %s", exc)
+    # Fallback: Legacy-Quellenzaehlung auf workshop_df_metadata.
+    legacy = [
+        item for item in get_beneficiary_sources(country_code=country_code)
+        if (not bundesland or (item.get("bundesland") or "") == bundesland)
+        and (not fonds or (item.get("fonds") or "") == fonds)
+        and (not source or item.get("source") == source)
+    ]
+    return len(legacy)
+
+
 def search_beneficiary_records(
     query: str = "",
     scope: str = "all",
@@ -2040,8 +2224,24 @@ def search_beneficiary_records(
     limit: int = 60,
     company_limit: int = 14,
     country_code: str | None = None,
+    min_score: float | None = None,
 ) -> dict:
-    from services.geocoding_service import detect_columns
+    """Beguenstigtenverzeichnis-Suche mit rapidfuzz-Scoring (0..100).
+
+    Phase 6a: Liest aus der zentralen Tabelle ``workshop_beneficiary_records``
+    statt aus den 36+ per-Bundesland-Tabellen. SQL-Vorfilter via pg_trgm-GIN
+    auf ``beneficiary_name_normalized`` und Token-ILIKE auf weitere Felder,
+    danach rapidfuzz max(token_set_ratio, WRatio) auf das Kandidaten-Set.
+
+    - ``min_score``: Fuzzy-Schwellwert pro Feld. Wenn None, adaptiv aus
+      Query-Laenge (1 Token=80, 2=70, ≥3=60) — konsistent zur State-Aid-Suche.
+    - Score-Skala: 0..100 (rapidfuzz max(token_set_ratio, WRatio)).
+    - Treffer enthalten ``match_confidence`` (exact/high/medium/low). Das
+      Legacy-Feld ``match_score_legacy`` wird mit 0/1 belegt und bleibt nur
+      wegen Rueckwaertskompatibilitaet im Response — Werte sind nach dem
+      Refactor nicht mehr auf der alten 0..140-Skala.
+    """
+    from services.company_aliases import expand_alias
 
     scope_fields = {
         "all": ["name", "projekt", "aktenzeichen", "standort", "beschreibung"],
@@ -2053,101 +2253,186 @@ def search_beneficiary_records(
     if scope not in scope_fields:
         raise ValueError(f"Unbekannter Scope '{scope}'.")
 
-    normalized_query = _normalize_search_text(query)
-    beneficiary_sources = [
-        item for item in get_beneficiary_sources(country_code=country_code)
-        if (not bundesland or (item.get("bundesland") or "") == bundesland)
-        and (not fonds or (item.get("fonds") or "") == fonds)
-        and (not source or item.get("source") == source)
-    ]
+    # Alias-Expansion: 'KfW' -> 'Kreditanstalt für Wiederaufbau KfW'.
+    effective_query, alias_label = expand_alias(query) if query else (query, None)
+    normalized_query = _normalize_search_text(effective_query)
 
-    scanned_records = 0
-    flat_results: list[dict[str, Any]] = []
+    # Adaptiver Schwellwert.
+    auto_min_score = min_score is None
+    effective_min_score = (
+        float(min_score) if min_score is not None
+        else _adaptive_min_score(effective_query or query or "")
+    )
 
-    for source_info in beneficiary_sources:
-        current_source = source_info["source"]
-        table_name = _safe_table_name(current_source)
-        columns = detect_columns(current_source)
+    # ── Innerer Scan: laeuft ggf. mehrfach mit gelockerten Filtern ──────────
+    def _run_scan(
+        active_bundesland: str | None,
+        active_fonds: str | None,
+        active_min_cost: float | None,
+    ) -> tuple[list[dict[str, Any]], int, int]:
+        # Filter-Bedingungen + Parameter zusammenbauen — alles auf der
+        # zentralen Tabelle.
+        where = ["1=1"]
+        params: dict[str, Any] = {}
+        if country_code:
+            where.append("country_code = :country_code")
+            params["country_code"] = country_code.upper()
+        if active_bundesland:
+            where.append("bundesland = :bundesland")
+            params["bundesland"] = active_bundesland
+        if active_fonds:
+            where.append("fonds = :fonds")
+            params["fonds"] = active_fonds
+        if source:
+            # Source-Argument bleibt erhalten — es entspricht dem Source-Key.
+            where.append("source_key = :source")
+            params["source"] = source
+        if active_min_cost is not None:
+            where.append("cost_total IS NOT NULL AND cost_total >= :min_cost")
+            params["min_cost"] = active_min_cost
 
-        name_col = columns.get("name")
-        project_col = columns.get("projekt")
-        cost_col = columns.get("kosten")
-        location_col = columns.get("standort") or columns.get("ort") or columns.get("landkreis")
-        category_col = columns.get("sz")
-        description_col = columns.get("beschreibung")
-        aktenzeichen_col = columns.get("aktenzeichen")
+        # Token-Vorfilter: nur wenn die Query ueberhaupt Tokens hat. Sonst
+        # darf der Aufrufer eine reine Filter-Suche fahren (Top-N pro
+        # Bundesland o.ae.) — dann nehmen wir bis 5000 Records.
+        # ESCAPE-Klausel weggelassen — PostgreSQL nutzt ohne ESCAPE-Klausel
+        # standardmaessig den Backslash, was unsere ``escaped`` Strings
+        # bereits beruecksichtigen. ESCAPE '\\' loest in psycopg2-Renderung
+        # `'\\'` aus = zwei Zeichen → InvalidEscapeSequence.
+        if normalized_query:
+            tokens = [t for t in re.split(r"\s+", normalized_query) if len(t) >= 3]
+            ilike_clauses: list[str] = []
+            for i, tok in enumerate(tokens):
+                key = f"tok_{i}"
+                escaped = tok.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                ilike_clauses.append(
+                    f"(beneficiary_name_normalized ILIKE :{key} "
+                    f"OR project_name ILIKE :{key} "
+                    f"OR project_aktenzeichen ILIKE :{key} "
+                    f"OR location ILIKE :{key})"
+                )
+                params[key] = f"%{escaped}%"
+            if ilike_clauses:
+                where.append("(" + " OR ".join(ilike_clauses) + ")")
 
-        selected_cols: list[tuple[str, str]] = []
-        for alias, col in (
-            ("name", name_col),
-            ("projekt", project_col),
-            ("kosten", cost_col),
-            ("standort", location_col),
-            ("kategorie", category_col),
-            ("beschreibung", description_col),
-            ("aktenzeichen", aktenzeichen_col),
-        ):
-            if col:
-                selected_cols.append((alias, col))
+        # NUTS-Code-Prefix — analog State-Aid: country_code kann genutzt
+        # werden, um per Prefix-Match landesspezifisch zu filtern. Hier
+        # dient country_code als Hauptfilter; Prefix-Match haengt mit
+        # bundesland zusammen, dass NUTS-1 generiert wuerde — bewusst
+        # nicht im Vorfilter, weil die Daten oft NULL haben.
 
-        if not selected_cols:
-            continue
+        sql_filter = " AND ".join(where)
+        # Bei reiner Filter-Suche koennen Tausende Records zurueckkommen —
+        # wir limitieren das Kandidaten-Set hart auf 5000, damit rapidfuzz
+        # nicht aus dem Ruder laeuft. Bei sehr grossen Bestaenden waere
+        # eine `ORDER BY cost_total DESC NULLS LAST`-Heuristik denkbar,
+        # ist aber bewusst weggelassen (Stable Behavior).
+        sql_select = f"""
+            SELECT id, source_key, bundesland, fonds, periode, country_code,
+                   beneficiary_name, beneficiary_name_normalized,
+                   project_name, project_aktenzeichen, project_description,
+                   location, cost_total, source_filename, nuts_code
+            FROM workshop_beneficiary_records
+            WHERE {sql_filter}
+            LIMIT 5000
+        """
 
-        sql = ", ".join(f"{_quote_ident(col)} AS {alias}" for alias, col in selected_cols)
         with engine.connect() as conn:
-            rows = conn.execute(text(f'SELECT {sql} FROM "{table_name}"')).fetchall()
+            rows = conn.execute(text(sql_select), params).fetchall()
 
-        scanned_records += len(rows)
+        results_local: list[dict[str, Any]] = []
         for row in rows:
             entry = dict(row._mapping)
-            cost_value = _parse_numeric(entry.get("kosten"))
-            if min_cost is not None and (cost_value is None or cost_value < min_cost):
-                continue
 
             field_values = {
-                "name": entry.get("name"),
-                "projekt": entry.get("projekt"),
-                "aktenzeichen": entry.get("aktenzeichen"),
-                "standort": entry.get("standort"),
-                "beschreibung": entry.get("beschreibung"),
+                "name": entry.get("beneficiary_name"),
+                "projekt": entry.get("project_name"),
+                "aktenzeichen": entry.get("project_aktenzeichen"),
+                "standort": entry.get("location"),
+                "beschreibung": entry.get("project_description"),
             }
 
             matched_fields: list[str] = []
-            match_score = 0
+            match_score: float = 0.0
             if normalized_query:
                 for field_name in scope_fields[scope]:
-                    field_score = _score_search_value(field_values.get(field_name), normalized_query)
-                    if field_score > 0:
+                    field_value = field_values.get(field_name)
+                    rf_score = _rapidfuzz_score(field_value, effective_query or query)
+                    if rf_score >= effective_min_score:
                         matched_fields.append(field_name)
-                        match_score = max(match_score, field_score)
-                if match_score == 0:
+                        if rf_score > match_score:
+                            match_score = rf_score
+                if match_score < effective_min_score:
                     continue
             else:
-                match_score = 1
+                match_score = 1.0
 
-            flat_results.append({
-                "company_name": str(entry.get("name") or "").strip() or "Unbekannt",
-                "project_name": str(entry.get("projekt") or "").strip() or "",
-                "aktenzeichen": str(entry.get("aktenzeichen") or "").strip() or "",
-                "location": str(entry.get("standort") or "").strip() or "",
-                "category": str(entry.get("kategorie") or "").strip() or "",
-                "description": str(entry.get("beschreibung") or "").strip() or "",
+            cost_value = float(entry["cost_total"]) if entry.get("cost_total") is not None else None
+            country_name = get_country_name(entry.get("country_code"))
+
+            results_local.append({
+                "company_name": (entry.get("beneficiary_name") or "").strip() or "Unbekannt",
+                "project_name": (entry.get("project_name") or "").strip(),
+                "aktenzeichen": (entry.get("project_aktenzeichen") or "").strip(),
+                "location": (entry.get("location") or "").strip(),
+                "category": "",  # Phase 6a: kategorie nicht im zentralen Schema.
+                "description": (entry.get("project_description") or "").strip(),
                 "kosten": cost_value,
                 "kosten_label": _format_eur(cost_value),
-                "source": current_source,
-                "bundesland": source_info.get("bundesland"),
-                "fonds": source_info.get("fonds"),
-                "periode": source_info.get("periode"),
-                "country_code": source_info.get("country_code"),
-                "country_name": source_info.get("country_name"),
+                "source": entry.get("source_key"),
+                "bundesland": entry.get("bundesland"),
+                "fonds": entry.get("fonds"),
+                "periode": entry.get("periode"),
+                "country_code": entry.get("country_code"),
+                "country_name": country_name,
+                # NUTS-Code mitfuehren — wird vom Audit-Report fuer Address-Match
+                # genutzt (Polish-Runde 3, Mai 2026, Aufgabe 2).
+                "nuts_code": (entry.get("nuts_code") or "").strip() or None,
                 "matched_fields": matched_fields,
-                "match_score": match_score,
+                "match_score": round(float(match_score), 1),
+                "match_score_legacy": 0,
+                "match_confidence": _match_confidence(match_score) if normalized_query else "exact",
             })
+
+        # sources_considered = Anzahl distinkter source_keys, die nach Filter
+        # uebrig bleiben (Vergleichbarkeit zur alten Logik).
+        sources_in_scope = (
+            db_count_sources(country_code, active_bundesland, active_fonds, source)
+        )
+        return results_local, len(rows), sources_in_scope
+
+    # Empty-Result-Fallback (analog zur frueheren Logik).
+    flat_results, scanned_records, sources_considered = _run_scan(bundesland, fonds, min_cost)
+    relaxed: list[str] = []
+    active_bundesland = bundesland
+    active_fonds = fonds
+    active_min_cost = min_cost
+
+    if normalized_query and not flat_results:
+        if active_bundesland:
+            active_bundesland = None
+            relaxed.append("bundesland")
+            flat_results, scanned_records, sources_considered = _run_scan(
+                active_bundesland, active_fonds, active_min_cost,
+            )
+        if not flat_results and active_min_cost is not None:
+            active_min_cost = None
+            relaxed.append("min_cost")
+            flat_results, scanned_records, sources_considered = _run_scan(
+                active_bundesland, active_fonds, active_min_cost,
+            )
+        if not flat_results and active_fonds:
+            active_fonds = None
+            relaxed.append("fonds")
+            flat_results, scanned_records, sources_considered = _run_scan(
+                active_bundesland, active_fonds, active_min_cost,
+            )
+        if not flat_results:
+            relaxed = []
 
     def _record_sort_key(item: dict[str, Any]) -> tuple[Any, ...]:
         if normalized_query:
             return (
-                -int(item.get("match_score") or 0),
+                -float(item.get("match_score") or 0.0),
                 -float(item.get("kosten") or 0.0),
                 item.get("company_name") or "",
                 item.get("project_name") or "",
@@ -2169,7 +2454,8 @@ def search_beneficiary_records(
             "company_name": item["company_name"],
             "total_kosten": 0.0,
             "project_count": 0,
-            "match_score": 0,
+            "match_score": 0.0,
+            "match_score_legacy": 0,
             "sources": set(),
             "bundeslaender": set(),
             "fonds": set(),
@@ -2182,7 +2468,12 @@ def search_beneficiary_records(
         if item.get("kosten") is not None:
             company["total_kosten"] += float(item["kosten"])
         company["project_count"] += 1
-        company["match_score"] = max(company["match_score"], int(item.get("match_score") or 0))
+        company["match_score"] = max(
+            company["match_score"], float(item.get("match_score") or 0.0),
+        )
+        company["match_score_legacy"] = max(
+            company["match_score_legacy"], int(item.get("match_score_legacy") or 0),
+        )
         if item.get("source"):
             company["sources"].add(item["source"])
         if item.get("bundesland"):
@@ -2211,6 +2502,8 @@ def search_beneficiary_records(
                 "country_name": item.get("country_name"),
                 "matched_fields": item["matched_fields"],
                 "match_score": item["match_score"],
+                "match_score_legacy": item.get("match_score_legacy", 0),
+                "match_confidence": item.get("match_confidence", "low"),
             })
 
     company_results = []
@@ -2220,7 +2513,9 @@ def search_beneficiary_records(
             "total_kosten": company["total_kosten"],
             "total_kosten_label": _format_eur(company["total_kosten"] or None),
             "project_count": company["project_count"],
-            "match_score": company["match_score"],
+            "match_score": round(float(company["match_score"]), 1),
+            "match_score_legacy": company["match_score_legacy"],
+            "match_confidence": _match_confidence(company["match_score"]) if normalized_query else "exact",
             "sources": sorted(company["sources"]),
             "bundeslaender": sorted(company["bundeslaender"]),
             "fonds": sorted(company["fonds"]),
@@ -2233,7 +2528,7 @@ def search_beneficiary_records(
     def _company_sort_key(item: dict[str, Any]) -> tuple[Any, ...]:
         if normalized_query:
             return (
-                -int(item.get("match_score") or 0),
+                -float(item.get("match_score") or 0.0),
                 -float(item.get("total_kosten") or 0.0),
                 -int(item.get("project_count") or 0),
                 item.get("company_name") or "",
@@ -2248,16 +2543,32 @@ def search_beneficiary_records(
     limited_records = sorted_records[:max(1, min(limit, 200))]
     limited_companies = company_results[:max(1, min(company_limit, 50))]
 
+    # Paket 2/3: Meta-Block — Alias-Expansion + gelockerte Filter sind fuer
+    # den Aufrufer transparent (UI kann Hinweis-Banner anzeigen).
+    meta: dict[str, Any] = {}
+    if alias_label:
+        meta["alias_used"] = alias_label
+        meta["effective_query"] = effective_query
+    if relaxed:
+        meta["relaxed"] = relaxed
+    if normalized_query:
+        # Schwellwert + Skala transparent: 0..100 (rapidfuzz).
+        meta["min_score"] = effective_min_score
+        meta["score_scale"] = "0-100"
+        if auto_min_score:
+            meta["auto_min_score"] = True
+
     return {
         "query": query,
         "scope": scope,
         "summary": {
-            "sources_considered": len(beneficiary_sources),
+            "sources_considered": sources_considered,
             "records_scanned": scanned_records,
             "matches": len(sorted_records),
             "companies": len(company_results),
             "total_match_volume": sum(float(item["kosten"]) for item in sorted_records if item.get("kosten") is not None),
         },
+        "meta": meta,
         "companies": limited_companies,
         "records": limited_records,
     }

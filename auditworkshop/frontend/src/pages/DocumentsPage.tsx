@@ -102,11 +102,12 @@ export default function DocumentsPage() {
     }
   };
 
-  useEffect(() => { loadFolders(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
-  useEffect(() => {
-    if (activeFolder) loadFiles();
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  }, [activeFolder, search, filterBl]);
+  // Mount-Once: loadFolders ist im Body definiert, keine externen Deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadFolders(); }, []);
+  // loadFiles haengt allein von activeFolder/search/filterBl ab.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (activeFolder) loadFiles(); }, [activeFolder, search, filterBl]);
 
   const upload = async (file: File) => {
     if (!activeFolder) return;

@@ -13,7 +13,11 @@ from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
 from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum, automation
-from routers import docs as docs_router, notifications
+from routers import docs as docs_router, notifications, state_aid, admin_access
+from routers import beneficiaries_sources
+from routers import entities as entities_router
+from routers import embeddings as embeddings_router
+from services.access_log_middleware import AccessLogMiddleware
 
 # Modelle importieren damit Base.metadata sie kennt
 import models  # noqa: F401
@@ -31,6 +35,12 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         log.info("SQLAlchemy-Tabellen erstellt/geprueft.")
+        # Access-Log: Behaltedauer-Hinweis (Pruning laeuft im Scheduler)
+        from services.scheduler import WORKSHOP_ACCESS_LOG_TTL_DAYS as _ACL_TTL
+        log.info(
+            "Access-Log: Behaltedauer %d Tage; aelter wird taeglich geloescht.",
+            _ACL_TTL,
+        )
         # Uebergangsweise: fehlende Spalten fuer bestehende Workshop-DBs nachziehen.
         from sqlalchemy import text, inspect
         with engine.connect() as conn:
@@ -205,6 +215,450 @@ async def lifespan(app: FastAPI):
             _P("/app/data/documents").mkdir(parents=True, exist_ok=True)
             _P("/app/data/documents/_trash").mkdir(parents=True, exist_ok=True)
 
+            # Audit-Report-Log: aktenzeichen-Spalte entfernen (Mai 2026 —
+            # Pruefer-Aktenzeichen wurde aus dem Bericht ganz herausgenommen).
+            # Idempotent — DROP COLUMN IF EXISTS gibt es ab PG 9.x.
+            try:
+                conn.execute(text(
+                    "ALTER TABLE workshop_audit_report_log "
+                    "DROP COLUMN IF EXISTS aktenzeichen"
+                ))
+                conn.commit()
+            except Exception as e:
+                log.warning("Audit-Report-Log aktenzeichen-Drop fehlgeschlagen: %s", e)
+
+            # State-Aid-Migrations (idempotent, Plan §11 Smart-Mode)
+            try:
+                sa_run_cols = [
+                    c["name"] for c in inspector.get_columns(
+                        "workshop_state_aid_harvest_runs",
+                    )
+                ]
+                if "records_skipped" not in sa_run_cols:
+                    conn.execute(text(
+                        "ALTER TABLE workshop_state_aid_harvest_runs "
+                        "ADD COLUMN records_skipped INTEGER DEFAULT 0"
+                    ))
+                    conn.commit()
+                    log.info(
+                        "Spalte records_skipped zu "
+                        "workshop_state_aid_harvest_runs hinzugefuegt.",
+                    )
+            except Exception as e:
+                log.warning("State-Aid records_skipped-Migration fehlgeschlagen: %s", e)
+
+            # State-Aid-Sources: expected_total + expected_total_updated_at
+            # fuer Coverage-Sektion (Polish-Runde 3, Aufgabe 3).
+            try:
+                sa_src_cols = [
+                    c["name"] for c in inspector.get_columns(
+                        "workshop_state_aid_sources",
+                    )
+                ]
+                if "expected_total" not in sa_src_cols:
+                    conn.execute(text(
+                        "ALTER TABLE workshop_state_aid_sources "
+                        "ADD COLUMN expected_total INTEGER"
+                    ))
+                    conn.commit()
+                    log.info(
+                        "Spalte expected_total zu workshop_state_aid_sources "
+                        "hinzugefuegt (Coverage-Sektion).",
+                    )
+                if "expected_total_updated_at" not in sa_src_cols:
+                    conn.execute(text(
+                        "ALTER TABLE workshop_state_aid_sources "
+                        "ADD COLUMN expected_total_updated_at TIMESTAMP"
+                    ))
+                    conn.commit()
+                    log.info(
+                        "Spalte expected_total_updated_at zu "
+                        "workshop_state_aid_sources hinzugefuegt.",
+                    )
+            except Exception as e:
+                log.warning(
+                    "State-Aid expected_total-Migration fehlgeschlagen: %s", e,
+                )
+
+            # Sanctions Multi-Source: Migration der neuen Spalten
+            # (sources, parameters JSON) auf workshop_sanctions_refresh.
+            # Idempotent.
+            try:
+                sanctions_run_cols = [
+                    c["name"] for c in inspector.get_columns(
+                        "workshop_sanctions_refresh",
+                    )
+                ]
+                if "sources" not in sanctions_run_cols:
+                    conn.execute(text(
+                        "ALTER TABLE workshop_sanctions_refresh "
+                        "ADD COLUMN sources VARCHAR(255)"
+                    ))
+                    conn.commit()
+                    log.info(
+                        "Spalte sources zu workshop_sanctions_refresh "
+                        "hinzugefuegt (Multi-Source-Refresh).",
+                    )
+                if "parameters" not in sanctions_run_cols:
+                    conn.execute(text(
+                        "ALTER TABLE workshop_sanctions_refresh "
+                        "ADD COLUMN parameters JSON"
+                    ))
+                    conn.commit()
+                    log.info(
+                        "Spalte parameters zu workshop_sanctions_refresh "
+                        "hinzugefuegt (Per-Source-Subreport).",
+                    )
+            except Exception as e:
+                log.warning(
+                    "Sanctions-Refresh Multi-Source-Migration fehlgeschlagen: %s", e,
+                )
+
+            # Phase 6c: Sanctions-Schema-Normalisierung — eine Tabelle fuer alle
+            # 5 Sanctions-Listen. Wir legen Indizes auf workshop_sanctions_entries
+            # an (pg_trgm wird unten fuer State-Aid eh angelegt; CREATE EXTENSION
+            # ist idempotent):
+            #   - GIN trgm auf name_normalized (Fuzzy-ILIKE-Vorfilter)
+            #   - GIN auf aliases JSONB (Containment-Suche)
+            #
+            # Zusaetzlich: Migration fuer aelter angelegte Tabellen, in denen
+            # birth_date/first_seen/last_seen noch VARCHAR(40) sind. Bei
+            # Multi-Birth-Date-Eintraegen reicht das nicht (OpenSanctions
+            # liefert semikolongetrennte Listen mit > 40 Zeichen). Idempotent
+            # ueber ALTER COLUMN ... TYPE TEXT.
+            try:
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+                conn.commit()
+                # Vorab: eventuelle VARCHAR(40)-Spalten auf TEXT migrieren.
+                varchar_cols = {
+                    c["name"]: str(c.get("type"))
+                    for c in inspector.get_columns("workshop_sanctions_entries")
+                }
+                for col in ("birth_date", "first_seen", "last_seen"):
+                    coltype = (varchar_cols.get(col) or "").upper()
+                    if coltype.startswith("VARCHAR"):
+                        try:
+                            conn.execute(text(
+                                f"ALTER TABLE workshop_sanctions_entries "
+                                f"ALTER COLUMN {col} TYPE TEXT"
+                            ))
+                            conn.commit()
+                            log.info(
+                                "Spalte %s in workshop_sanctions_entries "
+                                "von %s auf TEXT migriert.",
+                                col, coltype,
+                            )
+                        except Exception as alter_exc:
+                            log.warning(
+                                "ALTER COLUMN %s fehlgeschlagen: %s",
+                                col, alter_exc,
+                            )
+                sanctions_entry_idx = [
+                    i["name"] for i in inspector.get_indexes(
+                        "workshop_sanctions_entries",
+                    )
+                ]
+                if "ix_sanctions_name_trgm" not in sanctions_entry_idx:
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_sanctions_name_trgm "
+                        "ON workshop_sanctions_entries "
+                        "USING GIN (name_normalized gin_trgm_ops)"
+                    ))
+                    conn.commit()
+                    log.info(
+                        "pg_trgm-Index ix_sanctions_name_trgm auf "
+                        "workshop_sanctions_entries(name_normalized) angelegt.",
+                    )
+                if "ix_sanctions_aliases_gin" not in sanctions_entry_idx:
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_sanctions_aliases_gin "
+                        "ON workshop_sanctions_entries "
+                        "USING GIN (aliases)"
+                    ))
+                    conn.commit()
+                    log.info(
+                        "GIN-Index ix_sanctions_aliases_gin auf "
+                        "workshop_sanctions_entries(aliases JSONB) angelegt.",
+                    )
+            except Exception as e:
+                log.warning(
+                    "Sanctions-Entries Index-Migration fehlgeschlagen: %s", e,
+                )
+
+            # State-Aid Phase 3: NUTS-Prefix-Indizes fuer schnelle Prefix-Suche
+            # auf wachsendem Bestand (170k+ Records). Idempotent via
+            # CREATE INDEX IF NOT EXISTS.
+            try:
+                sa_award_idx = [
+                    i["name"] for i in inspector.get_indexes(
+                        "workshop_state_aid_awards",
+                    )
+                ]
+                if "ix_state_aid_nuts_prefix" not in sa_award_idx:
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_state_aid_nuts_prefix "
+                        "ON workshop_state_aid_awards (nuts_code) "
+                        "WHERE nuts_code IS NOT NULL"
+                    ))
+                    conn.commit()
+                    log.info("Index ix_state_aid_nuts_prefix angelegt.")
+                if "ix_state_aid_country_nuts" not in sa_award_idx:
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_state_aid_country_nuts "
+                        "ON workshop_state_aid_awards (country_code, nuts_code)"
+                    ))
+                    conn.commit()
+                    log.info("Index ix_state_aid_country_nuts angelegt.")
+                # Zusatz: text_pattern_ops-Index, damit LIKE 'DE2%' den
+                # Index nutzen kann (Standard-Locale-Indizes helfen Postgres
+                # bei LIKE-Prefix-Match nicht). Idempotent via IF NOT EXISTS.
+                if "ix_state_aid_nuts_prefix_pattern" not in sa_award_idx:
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_state_aid_nuts_prefix_pattern "
+                        "ON workshop_state_aid_awards (nuts_code text_pattern_ops) "
+                        "WHERE nuts_code IS NOT NULL"
+                    ))
+                    conn.commit()
+                    log.info("Index ix_state_aid_nuts_prefix_pattern angelegt.")
+            except Exception as e:
+                log.warning("State-Aid NUTS-Index-Migration fehlgeschlagen: %s", e)
+
+            # State-Aid Search-Optimierung: pg_trgm-Extension + GIN-Indizes
+            # auf beneficiary_name_normalized + granting_authority. Damit
+            # wird das tokenweise ILIKE '%token%' im Fuzzy-Vorfilter aus
+            # dem Seq Scan herausgehoben (170k+ Records → Bitmap Index Scan).
+            # Idempotent.
+            try:
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+                conn.commit()
+                sa_award_idx = [
+                    i["name"] for i in inspector.get_indexes(
+                        "workshop_state_aid_awards",
+                    )
+                ]
+                if "ix_state_aid_name_trgm" not in sa_award_idx:
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_state_aid_name_trgm "
+                        "ON workshop_state_aid_awards "
+                        "USING GIN (beneficiary_name_normalized gin_trgm_ops)"
+                    ))
+                    conn.commit()
+                    log.info(
+                        "pg_trgm-Index ix_state_aid_name_trgm auf "
+                        "beneficiary_name_normalized angelegt."
+                    )
+                if "ix_state_aid_authority_trgm" not in sa_award_idx:
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_state_aid_authority_trgm "
+                        "ON workshop_state_aid_awards "
+                        "USING GIN (granting_authority gin_trgm_ops) "
+                        "WHERE granting_authority IS NOT NULL"
+                    ))
+                    conn.commit()
+                    log.info(
+                        "pg_trgm-Index ix_state_aid_authority_trgm auf "
+                        "granting_authority angelegt."
+                    )
+            except Exception as e:
+                log.warning("pg_trgm-Index konnte nicht angelegt werden: %s", e)
+
+            # Phase 6a: pg_trgm-Index auf workshop_beneficiary_records.
+            # Beschleunigt das ILIKE '%token%'-Vorfilter im Beneficiary-Search,
+            # analog zu State-Aid (siehe oben). Idempotent.
+            try:
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+                conn.commit()
+                # Tabelle existiert ggf. noch nicht beim ersten Start vor
+                # Base.metadata.create_all — wird per inspect geprueft.
+                if inspector.has_table("workshop_beneficiary_records"):
+                    bf_idx = [
+                        i["name"] for i in inspector.get_indexes(
+                            "workshop_beneficiary_records",
+                        )
+                    ]
+                    if "ix_beneficiary_name_trgm" not in bf_idx:
+                        conn.execute(text(
+                            "CREATE INDEX IF NOT EXISTS ix_beneficiary_name_trgm "
+                            "ON workshop_beneficiary_records "
+                            "USING GIN (beneficiary_name_normalized gin_trgm_ops)"
+                        ))
+                        conn.commit()
+                        log.info(
+                            "pg_trgm-Index ix_beneficiary_name_trgm auf "
+                            "beneficiary_name_normalized angelegt."
+                        )
+            except Exception as e:
+                log.warning(
+                    "Beneficiary pg_trgm-Index konnte nicht angelegt werden: %s",
+                    e,
+                )
+
+            # Phase 6d: pg_trgm-Index auf workshop_company_entities — Master-
+            # Tabelle der Entity-Resolution. Beschleunigt den ILIKE-Vorfilter
+            # in services/entity_resolution._find_by_name_fuzzy. Idempotent.
+            try:
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+                conn.commit()
+                if inspector.has_table("workshop_company_entities"):
+                    ce_idx = [
+                        i["name"] for i in inspector.get_indexes(
+                            "workshop_company_entities",
+                        )
+                    ]
+                    if "ix_entity_name_trgm" not in ce_idx:
+                        conn.execute(text(
+                            "CREATE INDEX IF NOT EXISTS ix_entity_name_trgm "
+                            "ON workshop_company_entities "
+                            "USING GIN (canonical_name_normalized gin_trgm_ops)"
+                        ))
+                        conn.commit()
+                        log.info(
+                            "pg_trgm-Index ix_entity_name_trgm auf "
+                            "workshop_company_entities(canonical_name_normalized) "
+                            "angelegt.",
+                        )
+            except Exception as e:
+                log.warning(
+                    "Entity pg_trgm-Index konnte nicht angelegt werden: %s", e,
+                )
+
+            # Layer A: Embedding-Index (bge-m3, 1024 Dim) ueber alle Module.
+            # Tabelle wird ueber Base.metadata.create_all angelegt. Hier nur
+            # Extension + IVFFlat-Cosine-Index sicherstellen. Idempotent.
+            # Kein automatischer Build im Lifespan — Initial-Build dauert
+            # 30 min und wird ueber scripts/rebuild_embeddings.py getriggert.
+            try:
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                conn.commit()
+                if inspector.has_table("workshop_entity_embeddings"):
+                    emb_idx = [
+                        i["name"] for i in inspector.get_indexes(
+                            "workshop_entity_embeddings",
+                        )
+                    ]
+                    if "ix_entity_embedding_cosine" not in emb_idx:
+                        conn.execute(text(
+                            "CREATE INDEX IF NOT EXISTS ix_entity_embedding_cosine "
+                            "ON workshop_entity_embeddings "
+                            "USING ivfflat (embedding vector_cosine_ops) "
+                            "WITH (lists = 100)"
+                        ))
+                        conn.commit()
+                        log.info(
+                            "IVFFlat-Cosine-Index ix_entity_embedding_cosine "
+                            "auf workshop_entity_embeddings angelegt.",
+                        )
+            except Exception as e:
+                log.warning(
+                    "Entity-Embedding-Index konnte nicht angelegt werden: %s",
+                    e,
+                )
+
+            # Phase 6b: Datengetriebene Beneficiary-Quellen-Configs.
+            # Beim ersten Start seeden wir die Tabelle mit den Quellen, die
+            # ueber `get_beneficiary_sources()` aus den Legacy-DataFrame-
+            # Tabellen bekannt sind — pro Source ein leerer Eintrag mit
+            # source_type='manual_upload', enabled=true, field_mapping=NULL.
+            # Der Admin koennte sie spaeter per UI auf source_type=xlsx_url
+            # umstellen und das Mapping pflegen.
+            try:
+                if inspector.has_table("workshop_beneficiary_sources_config"):
+                    cfg_count = conn.execute(
+                        text("SELECT COUNT(*) FROM workshop_beneficiary_sources_config")
+                    ).scalar()
+                    if cfg_count == 0:
+                        # Lazy-Import vermeidet Zyklus zur dataframe_service.
+                        from services.dataframe_service import get_beneficiary_sources
+                        try:
+                            seed_sources = get_beneficiary_sources()
+                        except Exception:  # noqa: BLE001
+                            log.warning(
+                                "Beneficiary-Config-Seed: get_beneficiary_sources fehlgeschlagen — Tabelle bleibt leer."
+                            )
+                            seed_sources = []
+                        seeded = 0
+                        for src in seed_sources:
+                            source_key = src.get("source") or ""
+                            if not source_key:
+                                continue
+                            display_name = (
+                                f"{src.get('bundesland') or 'unbekannt'} · "
+                                f"{src.get('fonds') or 'EFRE'}"
+                                + (f" · {src.get('periode')}" if src.get('periode') else "")
+                            )
+                            try:
+                                conn.execute(text(
+                                    "INSERT INTO workshop_beneficiary_sources_config "
+                                    "(source_key, display_name, bundesland, fonds, periode, "
+                                    " country_code, source_type, enabled, header_row, record_count) "
+                                    "VALUES (:k, :n, :b, :f, :p, :cc, 'manual_upload', true, 0, :rc) "
+                                    "ON CONFLICT (source_key) DO NOTHING"
+                                ), {
+                                    "k": source_key,
+                                    "n": display_name[:200],
+                                    "b": src.get("bundesland"),
+                                    "f": src.get("fonds"),
+                                    "p": src.get("periode"),
+                                    "cc": src.get("country_code"),
+                                    "rc": int(src.get("row_count") or 0),
+                                })
+                                seeded += 1
+                            except Exception:  # noqa: BLE001
+                                log.exception(
+                                    "Beneficiary-Config-Seed fehlgeschlagen fuer %s",
+                                    source_key,
+                                )
+                        if seeded:
+                            conn.commit()
+                            log.info(
+                                "Beneficiary-Config: %d Default-Quellen geseeded.",
+                                seeded,
+                            )
+            except Exception as e:
+                log.warning("Beneficiary-Config-Seed-Migration fehlgeschlagen: %s", e)
+
+            # State-Aid: Default-Quellen seeden (Plan §5.3)
+            try:
+                src_count = conn.execute(text("SELECT COUNT(*) FROM workshop_state_aid_sources")).scalar()
+                if src_count == 0:
+                    default_sources = [
+                        ("tam_eu", "TAM — EU Public Search", "tam", None,
+                         "https://webgate.ec.europa.eu/competition/transparency/public",
+                         "Primaere Quelle. Awards aus allen EU-Mitgliedstaaten via TAM-Formular.", "yellow"),
+                        ("tam_de", "TAM — Deutschland", "tam", "DEU",
+                         "https://webgate.ec.europa.eu/competition/transparency/public",
+                         "Phase-1-Slice: nur Awards mit Granting-Authority Deutschland.", "yellow"),
+                        ("tam_at", "TAM — Oesterreich", "tam", "AUT",
+                         "https://webgate.ec.europa.eu/competition/transparency/public",
+                         "Phase-1-Slice: Awards mit Granting-Authority Oesterreich (alle 9 Bundeslaender).", "yellow"),
+                        ("national_pl", "Polen — SUDOP", "national", "POL",
+                         "https://sudop.uokik.gov.pl/home",
+                         "Nationales Beihilfe-Register. Connector noch nicht implementiert.", "red"),
+                        ("national_ro", "Rumaenien — REGAS", "national", "ROU",
+                         "https://regas.consiliulconcurentei.ro/transparenta/index.html",
+                         "Nationales Beihilfe-Register. Connector noch nicht implementiert.", "red"),
+                        ("national_es", "Spanien — BDNS Trans", "national", "ESP",
+                         "http://www.infosubvenciones.es/bdnstrans/GE/es/index",
+                         "Nationales Beihilfe-Register. Connector noch nicht implementiert.", "red"),
+                        ("national_si", "Slowenien — gov.si", "national", "SVN",
+                         "https://www.gov.si/teme/objava-vecjih-prejemnikov-pomoci/",
+                         "Nationales Beihilfe-Register. Connector noch nicht implementiert.", "red"),
+                        ("cases_eu", "Competition Cases Search", "cases", None,
+                         "https://competition-cases.ec.europa.eu/search",
+                         "Verlinkte SA-Faelle der KOM. Wird nicht geharvested, nur per SA-Referenz verlinkt.", "green"),
+                    ]
+                    for sk, name, st, cc, url, note, qual in default_sources:
+                        conn.execute(text(
+                            "INSERT INTO workshop_state_aid_sources "
+                            "(source_key, display_name, source_type, country_code, base_url, "
+                            "coverage_note, quality, enabled, record_count) "
+                            "VALUES (:k, :n, :st, :cc, :url, :note, :q, true, 0)"
+                        ), {"k": sk, "n": name, "st": st, "cc": cc, "url": url, "note": note, "q": qual})
+                    conn.commit()
+                    log.info("State-Aid: %d Default-Quellen angelegt.", len(default_sources))
+            except Exception as e:
+                log.warning("State-Aid Source-Seed fehlgeschlagen: %s", e)
+
             # Initial-Admin: jan.riener@wirtschaft.hessen.de wird role=admin,
             # alle bestehenden mit Login werden status=active (= idempotent)
             conn.execute(text("""
@@ -231,11 +685,40 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         log.error("pgvector-Init fehlgeschlagen: %s", e)
 
-    # Sanctions-Index in den Speicher laden
+    # Sanctions-Index in den Speicher laden (alle Quellen: eu_fsf, un_sc,
+    # us_ofac_sdn, gb_hmt_sanctions, ch_seco). Fehlende CSV-Dateien werden
+    # nicht synchron geladen — stattdessen triggert der Lifespan einen
+    # Background-Refresh, der die fehlenden Quellen nachzieht.
     try:
-        from services.sanctions_service import warmup as sanctions_warmup
+        from services.sanctions_service import (
+            warmup as sanctions_warmup,
+            get_multi_service,
+        )
         sanctions_warmup()
-    except Exception as e:
+
+        svc = get_multi_service()
+        missing = svc.missing_source_keys()
+        if missing:
+            log.info(
+                "Sanctions: %d/%d Quelle(n) fehlen lokal (%s) — "
+                "starte Background-Refresh …",
+                len(missing), len(svc.sources), ",".join(missing),
+            )
+
+            async def _initial_refresh():
+                """Holt fehlende Sanctions-CSVs im Hintergrund."""
+                from services.scheduler import run_sanctions_refresh
+                try:
+                    # to_thread, weil refresh_from_source synchron blockt
+                    import asyncio as _asyncio
+                    await _asyncio.to_thread(run_sanctions_refresh, "lifespan")
+                    log.info("Sanctions: Background-Refresh abgeschlossen.")
+                except Exception:  # noqa: BLE001
+                    log.exception("Sanctions: Background-Refresh fehlgeschlagen")
+
+            import asyncio as _asyncio
+            _asyncio.create_task(_initial_refresh())
+    except Exception as e:  # noqa: BLE001
         log.warning("Sanctions-Warmup fehlgeschlagen: %s", e)
 
     # Ollama-Verbindung prüfen
@@ -280,6 +763,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Access-Logging fuer alle /api/*-Requests (DSGVO-konform: ip_hash, kein Body).
+# Reihenfolge: nach CORS — sonst sehen wir bei Browser-Preflights 405-Antworten
+# der Middleware-Kette und nicht das eigentliche Request-Ergebnis.
+app.add_middleware(AccessLogMiddleware)
+
 # Bestehende Router
 app.include_router(workshop.router)
 app.include_router(knowledge.router)
@@ -301,6 +789,14 @@ app.include_router(forum.router)
 app.include_router(automation.router)
 app.include_router(docs_router.router)
 app.include_router(notifications.router)
+app.include_router(state_aid.router)
+app.include_router(admin_access.router)
+app.include_router(beneficiaries_sources.router)
+# Phase 6d: Entity-Resolution (Master-Tabelle + Admin-Rebuild).
+app.include_router(entities_router.router)
+app.include_router(entities_router.admin_router)
+# Layer A: Embedding-Index (bge-m3) ueber alle Module — semantische Suche.
+app.include_router(embeddings_router.router)
 
 
 @app.get("/health")

@@ -2,11 +2,26 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   AlertTriangle, ArrowUpRight, Banknote, BookOpenCheck, Building2,
-  CheckCircle2, Crown, Database, Download, ExternalLink, FileSpreadsheet, FileText, Globe, Globe2, Landmark,
-  Loader2, Mountain, RefreshCw, Search, ShieldAlert,
+  CheckCircle2, Crown, Database, Download, ExternalLink, FileSpreadsheet, FileText, Filter, Globe, Globe2, Landmark,
+  Layers, Loader2, Mountain, RefreshCw, Search, ShieldAlert,
   Sparkles, Target,
 } from 'lucide-react';
 import { useExport } from '../lib/useExport';
+import {
+  getSanctionsSources,
+  refreshSanctionsSource,
+  searchSanctions,
+  sourceShortLabel,
+  formatRelativeTime,
+  SOURCE_BADGE_STYLES,
+  SOURCE_BADGE_FALLBACK,
+  type SanctionsHit,
+  type SanctionsSearchResponse,
+  type SanctionsSourceInfo,
+  type SanctionsSourceKey,
+  type SanctionsStatsResponse,
+} from '../lib/sanctionsApi';
+import { safeExternalUrl } from '../lib/stateAidApi';
 
 // ── Typen ────────────────────────────────────────────────────────────────────
 
@@ -28,34 +43,6 @@ type SanctionsList = {
   is_searchable_locally: boolean;
 };
 
-type SearchHit = {
-  id: string;
-  schema_type: string;
-  name: string;
-  matched_on: string;
-  matched_field: string;
-  score: number;
-  confidence: 'exact' | 'high' | 'medium' | 'low';
-  aliases: string[];
-  birth_date: string;
-  countries: string;
-  addresses: string;
-  identifiers: string;
-  sanctions: string;
-  program_ids: string;
-  first_seen: string;
-  last_seen: string;
-};
-
-type SearchResponse = {
-  query: string;
-  normalized: string;
-  total_hits: number;
-  threshold: number;
-  method: string;
-  hits: SearchHit[];
-};
-
 type MethodStep = { title: string; text: string };
 type MethodInfo = {
   title: string;
@@ -67,13 +54,20 @@ type MethodInfo = {
   limits: string[];
 };
 
-type FsfStats = {
-  total_entries: number;
-  persons: number;
-  organizations: number;
-  other: number;
-  loaded_at: string | null;
-  source_mtime: string | null;
+// ── Mapping: statischer ListCard-Key -> Backend-source_key ──────────────────
+
+/**
+ * Die statische Liste in /api/sanctions/lists nutzt eigene Slugs (z.B. "eu_fsf",
+ * "un_sc"). Wenn das Backend einen passenden source_key in /api/sanctions/sources
+ * meldet, koppeln wir die Karten daran, damit "lokal durchsuchbar"-Status,
+ * Eintragszahlen und Refresh-Buttons aus den Live-Daten kommen.
+ */
+const LIST_KEY_TO_SOURCE_KEY: Record<string, SanctionsSourceKey> = {
+  eu_fsf: 'eu_fsf',
+  un_sc: 'un_sc',
+  ofac_sdn: 'us_ofac_sdn',
+  uk_ofsi: 'gb_hmt_sanctions',
+  ch_seco: 'ch_seco',
 };
 
 // ── Icon-Mapping ────────────────────────────────────────────────────────────
@@ -144,7 +138,7 @@ const COLORS: Record<string, { ring: string; chip: string; iconBg: string; iconT
 
 // ── Konfidenz-Styling ───────────────────────────────────────────────────────
 
-const CONFIDENCE_STYLES: Record<SearchHit['confidence'], { label: string; ring: string; bg: string; text: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = {
+const CONFIDENCE_STYLES: Record<SanctionsHit['confidence'], { label: string; ring: string; bg: string; text: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = {
   exact: { label: 'Exakter Treffer', ring: 'ring-rose-300', bg: 'bg-rose-600 text-white', text: 'text-rose-700 dark:text-rose-300', icon: AlertTriangle },
   high: { label: 'Hohe Ähnlichkeit', ring: 'ring-orange-300', bg: 'bg-orange-500 text-white', text: 'text-orange-700 dark:text-orange-300', icon: ShieldAlert },
   medium: { label: 'Mittlere Ähnlichkeit', ring: 'ring-amber-300', bg: 'bg-amber-500 text-white', text: 'text-amber-700 dark:text-amber-300', icon: Search },
@@ -153,19 +147,7 @@ const CONFIDENCE_STYLES: Record<SearchHit['confidence'], { label: string; ring: 
 
 // ── Formatter ───────────────────────────────────────────────────────────────
 
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString('de-DE', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function formatInt(n: number | undefined): string {
+function formatInt(n: number | undefined | null): string {
   if (n === undefined || n === null) return '—';
   return n.toLocaleString('de-DE');
 }
@@ -179,34 +161,192 @@ function fileSafe(value: string): string {
     .slice(0, 60) || 'suche';
 }
 
+function isAdminUser(): boolean {
+  const role = localStorage.getItem('workshop_role');
+  return role === 'moderator' || role === 'admin';
+}
+
+/**
+ * Fallback-Liste fuer den Fall, dass /api/sanctions/sources noch nicht
+ * deployed ist. Nur EU FSF gilt dann als "loaded". Die statische
+ * /api/sanctions/lists liefert den Rest (Tag, Beschreibung, Icon).
+ */
+function fallbackSources(): SanctionsSourceInfo[] {
+  const now = new Date().toISOString();
+  return [
+    {
+      source_key: 'eu_fsf',
+      display_name: 'EU FSF (Konsolidierte Finanzsanktionsliste)',
+      issuer: 'Europäische Kommission',
+      loaded: true,
+      total_entries: 0,
+      persons: 0,
+      organizations: 0,
+      loaded_at: now,
+      source_url: 'https://webgate.ec.europa.eu/fsd/fsf',
+      download_url: 'https://data.opensanctions.org/datasets/latest/eu_fsf/',
+      license: 'CC-BY 4.0',
+    },
+    {
+      source_key: 'un_sc',
+      display_name: 'UN Security Council Consolidated Sanctions List',
+      issuer: 'Vereinte Nationen',
+      loaded: false,
+      total_entries: 0,
+      persons: 0,
+      organizations: 0,
+      loaded_at: null,
+      source_url: 'https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list',
+      download_url: 'https://data.opensanctions.org/datasets/latest/un_sc/',
+      license: 'public',
+    },
+    {
+      source_key: 'us_ofac_sdn',
+      display_name: 'US OFAC SDN List',
+      issuer: 'U.S. Department of the Treasury',
+      loaded: false,
+      total_entries: 0,
+      persons: 0,
+      organizations: 0,
+      loaded_at: null,
+      source_url: 'https://sanctionssearch.ofac.treas.gov/',
+      download_url: 'https://data.opensanctions.org/datasets/latest/us_ofac_sdn/',
+      license: 'public',
+    },
+    {
+      source_key: 'gb_hmt_sanctions',
+      display_name: 'UK OFSI Sanctions List',
+      issuer: 'HM Treasury (OFSI)',
+      loaded: false,
+      total_entries: 0,
+      persons: 0,
+      organizations: 0,
+      loaded_at: null,
+      source_url: 'https://www.gov.uk/government/publications/the-uk-sanctions-list',
+      download_url: 'https://data.opensanctions.org/datasets/latest/gb_hmt_sanctions/',
+      license: 'OGL v3.0',
+    },
+    {
+      source_key: 'ch_seco',
+      display_name: 'CH SECO Sanktionsliste',
+      issuer: 'Staatssekretariat für Wirtschaft (SECO)',
+      loaded: false,
+      total_entries: 0,
+      persons: 0,
+      organizations: 0,
+      loaded_at: null,
+      source_url: 'https://www.seco.admin.ch/seco/de/home/Aussenwirtschaftspolitik_Wirtschaftliche_Zusammenarbeit/Wirtschaftsbeziehungen/exportkontrollen-und-sanktionen/sanktionen-embargos.html',
+      download_url: 'https://data.opensanctions.org/datasets/latest/ch_seco/',
+      license: 'public',
+    },
+  ];
+}
+
 // ── Hauptkomponente ─────────────────────────────────────────────────────────
 
 export default function SanktionslistenPage() {
   const [lists, setLists] = useState<SanctionsList[]>([]);
   const [method, setMethod] = useState<MethodInfo | null>(null);
-  const [stats, setStats] = useState<FsfStats | null>(null);
+  const [stats, setStats] = useState<SanctionsStatsResponse | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+
+  // Multi-Source-State
+  const [sources, setSources] = useState<SanctionsSourceInfo[]>([]);
+  const [sourcesLoading, setSourcesLoading] = useState(true);
+  const [sourcesFallback, setSourcesFallback] = useState(false);
+  const [activeSources, setActiveSources] = useState<SanctionsSourceKey[]>([]);
+  const [refreshingSource, setRefreshingSource] = useState<SanctionsSourceKey | null>(null);
+  const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
 
   // Suche
   const [query, setQuery] = useState('');
   const [minScore, setMinScore] = useState(70);
   const [schemaFilter, setSchemaFilter] = useState<'' | 'Person' | 'Organization'>('');
-  const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
+  const [searchResult, setSearchResult] = useState<SanctionsSearchResponse | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null);
+
+  // Clientseitiger Source-Filter auf Treffern
+  const [resultSourceFilter, setResultSourceFilter] = useState<SanctionsSourceKey[]>([]);
+
   const resultRef = useRef<HTMLDivElement>(null);
   const exportApi = useExport();
+  const isAdmin = useMemo(() => isAdminUser(), []);
 
+  // ── Initiales Laden ──────────────────────────────────────────────────────
   useEffect(() => {
     fetch('/api/sanctions/lists').then(r => r.json()).then(d => setLists(d.lists || [])).catch(() => {});
     fetch('/api/sanctions/method').then(r => r.json()).then(setMethod).catch(() => {});
+    void loadSources();
     refreshStats();
   }, []);
 
+  async function loadSources() {
+    setSourcesLoading(true);
+    try {
+      const data = await getSanctionsSources();
+      setSources(data);
+      setSourcesFallback(false);
+      // Default-Auswahl: alle loaded=true.
+      const loadedKeys = data.filter((s) => s.loaded).map((s) => s.source_key);
+      setActiveSources(loadedKeys.length > 0 ? loadedKeys : data.slice(0, 1).map((s) => s.source_key));
+    } catch {
+      // Backend liefert 404 oder Netzwerkfehler -> Fallback.
+      const fb = fallbackSources();
+      setSources(fb);
+      setSourcesFallback(true);
+      setActiveSources(fb.filter((s) => s.loaded).map((s) => s.source_key));
+    } finally {
+      setSourcesLoading(false);
+    }
+  }
+
   function refreshStats() {
     setStatsLoading(true);
-    fetch('/api/sanctions/stats').then(r => r.json()).then(setStats).catch(() => {}).finally(() => setStatsLoading(false));
+    fetch('/api/sanctions/stats')
+      .then(r => r.json())
+      .then((data: SanctionsStatsResponse) => setStats(data))
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
+  }
+
+  function toggleSource(key: SanctionsSourceKey) {
+    setActiveSources((prev) => {
+      if (prev.includes(key)) {
+        // Mindestens eine Source muss aktiv bleiben.
+        if (prev.length <= 1) return prev;
+        return prev.filter((k) => k !== key);
+      }
+      return [...prev, key];
+    });
+  }
+
+  function toggleResultFilter(key: SanctionsSourceKey) {
+    setResultSourceFilter((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  }
+
+  async function handleRefreshSource(key: SanctionsSourceKey | null) {
+    setRefreshingSource(key ?? '__all__');
+    setRefreshMessage(null);
+    try {
+      const res = await refreshSanctionsSource(key);
+      setRefreshMessage(
+        res.message
+          ?? `Aktualisiert: ${res.refreshed?.toLocaleString?.('de-DE') ?? '—'} Eintraege${res.source_key ? ` (${sourceShortLabel(res.source_key)})` : ''}.`,
+      );
+      // Sources neu laden, damit "loaded_at" und Counts frisch sind.
+      await loadSources();
+      refreshStats();
+    } catch (err) {
+      setRefreshMessage(
+        err instanceof Error ? `Refresh fehlgeschlagen: ${err.message}` : 'Refresh fehlgeschlagen.',
+      );
+    } finally {
+      setRefreshingSource(null);
+    }
   }
 
   async function runSearch(e?: FormEvent, override?: string) {
@@ -217,14 +357,22 @@ export default function SanktionslistenPage() {
       setSearchResult(null);
       return;
     }
+    if (activeSources.length === 0) {
+      setSearchError('Mindestens eine Liste auswählen.');
+      setSearchResult(null);
+      return;
+    }
     setSearchError(null);
     setSearchLoading(true);
+    setResultSourceFilter([]);
     try {
-      const params = new URLSearchParams({ q, limit: '15', min_score: String(minScore) });
-      if (schemaFilter) params.set('schema_filter', schemaFilter);
-      const r = await fetch(`/api/sanctions/search?${params}`);
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data: SearchResponse = await r.json();
+      const data = await searchSanctions({
+        q,
+        limit: 15,
+        min_score: minScore,
+        sources: activeSources,
+        schema_filter: schemaFilter || undefined,
+      });
       setSearchResult(data);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Suche fehlgeschlagen.');
@@ -239,13 +387,36 @@ export default function SanktionslistenPage() {
     ? `sanktionspruefung_${fileSafe(searchResult.query)}_${new Date().toISOString().slice(0, 10)}`
     : 'sanktionspruefung';
 
+  // Gefilterte Treffer fuer Anzeige + Export.
+  const filteredHits = useMemo<SanctionsHit[]>(() => {
+    if (!searchResult) return [];
+    if (resultSourceFilter.length === 0) return searchResult.hits;
+    return searchResult.hits.filter((h) => resultSourceFilter.includes(h.source_key));
+  }, [searchResult, resultSourceFilter]);
+
+  // Set der Sources, die in den aktuellen Treffern vorkommen — fuer Result-Filter-Pills.
+  const hitSourceKeys = useMemo<SanctionsSourceKey[]>(() => {
+    if (!searchResult) return [];
+    const seen = new Set<SanctionsSourceKey>();
+    for (const h of searchResult.hits) seen.add(h.source_key);
+    return Array.from(seen);
+  }, [searchResult]);
+
+  // Fuer Stats-Hero: Gesamtzahl ueber alle loaded Sources.
+  const totalEntriesAllSources = useMemo(() => {
+    if (stats?.total_entries) return stats.total_entries;
+    return sources.filter((s) => s.loaded).reduce((acc, s) => acc + s.total_entries, 0);
+  }, [stats, sources]);
+
+  const loadedSourceCount = sources.filter((s) => s.loaded).length;
+
   async function exportPdf() {
     if (!searchResult) return;
     setExporting('pdf');
     try {
       await exportApi.toPdf(resultRef.current, {
         title: `Sanktionsprüfung: ${searchResult.query}`,
-        subtitle: `EU FSF · Schwelle ${searchResult.threshold} · ${searchResult.total_hits} Treffer · Listenstand ${formatDate(stats?.source_mtime || null)}`,
+        subtitle: `Multi-Source · Schwelle ${searchResult.threshold} · ${filteredHits.length} angezeigte Treffer · Listen: ${activeSources.map(sourceShortLabel).join(', ')}`,
         filename: searchFilename,
       });
     } finally {
@@ -262,14 +433,18 @@ export default function SanktionslistenPage() {
         normalisiert: searchResult.normalized,
         schwellenwert: searchResult.threshold,
         typfilter: schemaFilter || 'Alle',
-        listenquelle: 'EU FSF via OpenSanctions',
-        listenstand: stats?.source_mtime || '',
+        listen_aktiv: activeSources.map(sourceShortLabel).join(' | '),
+        listen_filter_clientseitig: resultSourceFilter.length === 0
+          ? 'kein clientseitiger Filter'
+          : resultSourceFilter.map(sourceShortLabel).join(' | '),
         exportiert_am: new Date().toISOString(),
       };
-      const rows = searchResult.hits.length > 0
-        ? searchResult.hits.map((hit) => ({
+      const rows = filteredHits.length > 0
+        ? filteredHits.map((hit) => ({
             ...meta,
             id: hit.id,
+            quelle_key: hit.source_key,
+            quelle: hit.source_display_name,
             typ: hit.schema_type,
             name: hit.name,
             score: hit.score,
@@ -289,6 +464,8 @@ export default function SanktionslistenPage() {
         : [{
             ...meta,
             id: '',
+            quelle_key: '',
+            quelle: '',
             typ: '',
             name: 'Kein Treffer oberhalb des Schwellenwerts',
             score: '',
@@ -325,7 +502,7 @@ export default function SanktionslistenPage() {
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/85 lg:text-base">
               Eine kuratierte Übersicht der wichtigsten Sanktions- und Embargo-Verzeichnisse mit
               Kurzcharakteristik und Direktlink in das jeweilige offizielle Tool. Zusätzlich:
-              lokale Fuzzy-Suche gegen die EU Konsolidierte Finanzsanktionsliste (FSF) — voll
+              lokale Fuzzy-Suche gegen mehrere Listen (EU FSF, UN, OFAC, OFSI, SECO) — voll
               offline, ohne Daten an Dritte.
             </p>
             <div className="mt-6 flex flex-wrap gap-3 text-xs">
@@ -342,30 +519,49 @@ export default function SanktionslistenPage() {
           </div>
 
           <div className="rounded-[28px] border border-white/15 bg-black/15 p-5 backdrop-blur">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-white/60">Lokaler FSF-Index</div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-white/60">Lokaler Multi-Source-Index</div>
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              <Stat label="Einträge" value={formatInt(stats?.total_entries)} />
-              <Stat label="Personen" value={formatInt(stats?.persons)} />
-              <Stat label="Orgs" value={formatInt(stats?.organizations)} />
+              <Stat label="Einträge gesamt" value={formatInt(totalEntriesAllSources)} />
+              <Stat label="Listen lokal" value={formatInt(loadedSourceCount)} />
+              <Stat label="Treffer (Suche)" value={searchResult ? formatInt(searchResult.total_hits) : '—'} />
             </div>
             <div className="mt-4 space-y-1 text-[11px] text-white/70">
-              <div className="flex items-center justify-between">
-                <span>Quelle aktualisiert</span>
-                <span className="font-mono">{formatDate(stats?.source_mtime || null)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Im Speicher seit</span>
-                <span className="font-mono">{formatDate(stats?.loaded_at || null)}</span>
-              </div>
+              {sources.filter((s) => s.loaded).slice(0, 3).map((s) => (
+                <div key={s.source_key} className="flex items-center justify-between">
+                  <span>{sourceShortLabel(s.source_key)}</span>
+                  <span className="font-mono">{formatInt(s.total_entries)}</span>
+                </div>
+              ))}
+              {loadedSourceCount > 3 && (
+                <div className="text-white/50">+{loadedSourceCount - 3} weitere Listen</div>
+              )}
             </div>
-            <button
-              onClick={refreshStats}
-              disabled={statsLoading}
-              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-2 text-xs font-medium text-white/90 transition hover:bg-white/20 disabled:opacity-50"
-            >
-              {statsLoading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-              Status aktualisieren
-            </button>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={refreshStats}
+                disabled={statsLoading}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-2 text-xs font-medium text-white/90 transition hover:bg-white/20 disabled:opacity-50"
+              >
+                {statsLoading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                Status
+              </button>
+              {isAdmin && !sourcesFallback && (
+                <button
+                  onClick={() => handleRefreshSource(null)}
+                  disabled={refreshingSource !== null}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-white/90 px-3 py-2 text-xs font-medium text-rose-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                  title="Alle Listen neu laden (Admin)"
+                >
+                  {refreshingSource === '__all__' ? <Loader2 size={13} className="animate-spin" /> : <Database size={13} />}
+                  Alle laden
+                </button>
+              )}
+            </div>
+            {refreshMessage && (
+              <div className="mt-3 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[11px] text-white/85">
+                {refreshMessage}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -379,14 +575,14 @@ export default function SanktionslistenPage() {
                 <Search size={22} />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Fuzzy-Suche · EU FSF</h2>
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Fuzzy-Suche · Multi-Source</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Lokal, ohne API-Aufruf</p>
               </div>
             </div>
             <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
               Personen oder Organisationen prüfen — die Suche toleriert abweichende Schreibung,
               andere Reihenfolge der Namensteile und Rechtsformsuffixe. Sie läuft komplett im
-              Workshop-Container.
+              Workshop-Container und durchsucht alle aktivierten Listen.
             </p>
             <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
               <span className="text-slate-500 dark:text-slate-400">Beispiele:</span>
@@ -415,12 +611,54 @@ export default function SanktionslistenPage() {
                 />
                 <button
                   type="submit"
-                  disabled={searchLoading}
+                  disabled={searchLoading || activeSources.length === 0}
                   className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-rose-600/30 transition hover:bg-rose-700 disabled:opacity-50"
                 >
                   {searchLoading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
                   Prüfen
                 </button>
+              </div>
+
+              {/* Source-Auswahl-Pills */}
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/70 bg-white/60 px-4 py-3 text-xs dark:border-slate-700/70 dark:bg-slate-900/40">
+                <span className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                  <Layers size={13} /> Listen durchsuchen:
+                </span>
+                {sourcesLoading ? (
+                  <span className="inline-flex items-center gap-1.5 text-slate-400">
+                    <Loader2 size={12} className="animate-spin" /> lädt …
+                  </span>
+                ) : sources.filter((s) => s.loaded).length === 0 ? (
+                  <span className="text-amber-600 dark:text-amber-300">
+                    Keine Liste lokal verfügbar — bitte Admin zum Refresh kontaktieren.
+                  </span>
+                ) : (
+                  sources.filter((s) => s.loaded).map((s) => {
+                    const active = activeSources.includes(s.source_key);
+                    return (
+                      <button
+                        key={s.source_key}
+                        type="button"
+                        onClick={() => toggleSource(s.source_key)}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition ${
+                          active
+                            ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
+                            : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                        }`}
+                        title={`${s.display_name} · ${s.issuer}`}
+                      >
+                        {active ? <CheckCircle2 size={12} /> : null}
+                        {sourceShortLabel(s.source_key)}
+                        <span className={`opacity-60 ${active ? '' : 'text-slate-500 dark:text-slate-400'}`}>
+                          ({s.total_entries.toLocaleString('de-DE')})
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+                {activeSources.length === 0 && !sourcesLoading && sources.filter((s) => s.loaded).length > 0 && (
+                  <span className="text-rose-600 dark:text-rose-300">Mindestens eine Liste auswählen</span>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200/70 bg-white/60 px-4 py-3 text-xs dark:border-slate-700/70 dark:bg-slate-900/40">
@@ -467,7 +705,18 @@ export default function SanktionslistenPage() {
               </div>
             )}
 
-            {searchResult && !searchError && (
+            {searchLoading && (
+              <div className="mt-4 space-y-2">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="h-20 animate-pulse rounded-2xl bg-slate-200/60 dark:bg-slate-800/60"
+                  />
+                ))}
+              </div>
+            )}
+
+            {searchResult && !searchError && !searchLoading && (
               <div className="mt-4 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/75 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/55">
                   <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -495,8 +744,49 @@ export default function SanktionslistenPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* Result-Filter (clientseitig) */}
+                {hitSourceKeys.length > 1 && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/75 px-4 py-3 text-xs dark:border-slate-700 dark:bg-slate-900/55">
+                    <span className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <Filter size={12} /> Treffer filtern:
+                    </span>
+                    {hitSourceKeys.map((key) => {
+                      const active = resultSourceFilter.includes(key);
+                      const count = searchResult.hits.filter((h) => h.source_key === key).length;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => toggleResultFilter(key)}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                            active
+                              ? `${SOURCE_BADGE_STYLES[key] ?? SOURCE_BADGE_FALLBACK} ring-1 ring-current`
+                              : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          {sourceShortLabel(key)} <span className="opacity-70">({count})</span>
+                        </button>
+                      );
+                    })}
+                    {resultSourceFilter.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setResultSourceFilter([])}
+                        className="rounded-full px-2.5 py-1 text-[11px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                      >
+                        Filter zurücksetzen
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <div ref={resultRef}>
-                  <SearchResults result={searchResult} />
+                  <SearchResults
+                    result={searchResult}
+                    visibleHits={filteredHits}
+                    activeSources={activeSources}
+                  />
                 </div>
               </div>
             )}
@@ -520,14 +810,24 @@ export default function SanktionslistenPage() {
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{method?.title || 'Methode'}</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Was die Fuzzy-Suche tut — und was nicht</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Wie die Multi-Source-Suche arbeitet</p>
               </div>
             </div>
             <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
               {method?.summary}
             </p>
+            <div className="mt-4 rounded-2xl border border-cyan-200/70 bg-cyan-50/60 p-4 text-sm leading-6 text-cyan-900 dark:border-cyan-500/30 dark:bg-cyan-950/30 dark:text-cyan-100">
+              <div className="flex items-center gap-2 font-semibold">
+                <Sparkles size={14} /> Multi-Source-Logik
+              </div>
+              <ul className="mt-2 space-y-1.5 text-[13px]">
+                <li>Eingabe wird gegen Namen und Aliase <strong>aller aktivierten Listen</strong> geprüft.</li>
+                <li>Treffer aus EU FSF, UN, OFAC, OFSI und SECO werden zusammengeführt und nach Score sortiert.</li>
+                <li>Jeder Treffer zeigt deutlich seine Herkunfts-Liste — Mehrfachnennungen sind möglich.</li>
+              </ul>
+            </div>
             {method?.library && (
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs dark:border-slate-700 dark:bg-slate-900">
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs dark:border-slate-700 dark:bg-slate-900">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Library</div>
                 <div className="mt-1 font-mono text-cyan-700 dark:text-cyan-300">{method.library}</div>
               </div>
@@ -536,9 +836,14 @@ export default function SanktionslistenPage() {
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs dark:border-slate-700 dark:bg-slate-900">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Datenquelle</div>
                 <div className="mt-1 text-slate-700 dark:text-slate-200">{method.data_source.name}</div>
-                <a href={method.data_source.url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-cyan-700 hover:underline dark:text-cyan-300">
-                  CSV öffnen <ExternalLink size={11} />
-                </a>
+                {(() => {
+                  const safe = safeExternalUrl(method.data_source.url);
+                  return safe ? (
+                    <a href={safe} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-cyan-700 hover:underline dark:text-cyan-300">
+                      CSV öffnen <ExternalLink size={11} />
+                    </a>
+                  ) : null;
+                })()}
                 <div className="mt-1 text-slate-500 dark:text-slate-400">Lizenz: {method.data_source.license} · {method.data_source.update_frequency}</div>
               </div>
             )}
@@ -587,16 +892,29 @@ export default function SanktionslistenPage() {
           <div>
             <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Die wichtigsten Sanktionslisten</h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Direkter Zugriff auf die offiziellen Quellen.
+              Direkter Zugriff auf die offiziellen Quellen — mit Live-Status zur lokalen Verfügbarkeit.
             </p>
           </div>
           <div className="hidden text-xs text-slate-500 dark:text-slate-400 sm:flex sm:items-center sm:gap-2">
-            <Database size={14} /> {lists.length} Verzeichnisse
+            <Database size={14} /> {lists.length} Verzeichnisse · {loadedSourceCount} lokal indiziert
           </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {lists.map((list) => <ListCard key={list.key} list={list} />)}
+          {lists.map((list) => {
+            const sourceKey = LIST_KEY_TO_SOURCE_KEY[list.key];
+            const sourceInfo = sourceKey ? sources.find((s) => s.source_key === sourceKey) : undefined;
+            return (
+              <ListCard
+                key={list.key}
+                list={list}
+                sourceInfo={sourceInfo}
+                isAdmin={isAdmin && !sourcesFallback}
+                onRefresh={(key) => handleRefreshSource(key)}
+                refreshing={refreshingSource}
+              />
+            );
+          })}
         </div>
       </section>
 
@@ -615,22 +933,68 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ListCard({ list }: { list: SanctionsList }) {
+interface ListCardProps {
+  list: SanctionsList;
+  sourceInfo?: SanctionsSourceInfo;
+  isAdmin: boolean;
+  onRefresh: (key: SanctionsSourceKey) => void;
+  refreshing: SanctionsSourceKey | null;
+}
+
+function ListCard({ list, sourceInfo, isAdmin, onRefresh, refreshing }: ListCardProps) {
   const Icon = ICONS[list.icon] || Globe2;
   const c = COLORS[list.color] || COLORS.indigo;
+  // Live-Status ueberschreibt das statische Flag aus /api/sanctions/lists.
+  const isLoaded = sourceInfo ? sourceInfo.loaded : list.is_searchable_locally;
+  const totalEntries = sourceInfo?.total_entries ?? 0;
+  const loadedAt = sourceInfo?.loaded_at ?? null;
+  const safeQuelle = safeExternalUrl(list.url);
+  const safeOnline = safeExternalUrl(list.search_url);
+  const isThisRefreshing = sourceInfo ? refreshing === sourceInfo.source_key : false;
+
   return (
     <div className={`group flex h-full flex-col rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm ring-1 ${c.ring} transition hover:shadow-lg dark:border-slate-800 dark:bg-slate-900`}>
       <div className="flex items-start justify-between gap-3">
         <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${c.iconBg} ${c.iconText} shadow-sm`}>
           <Icon size={22} />
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${c.tagBg}`}>
-          {list.tag}
-        </span>
+        <div className="flex flex-col items-end gap-1.5">
+          <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${c.tagBg}`}>
+            {list.tag}
+          </span>
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              isLoaded
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+            }`}
+            title={isLoaded ? 'Lokal indiziert und durchsuchbar' : 'Nur Verlinkung — keine lokale Fuzzy-Suche'}
+          >
+            {isLoaded ? <CheckCircle2 size={10} /> : <Globe size={10} />}
+            {isLoaded ? 'lokal durchsuchbar' : 'nur Verlinkung'}
+          </span>
+        </div>
       </div>
       <h3 className="mt-4 text-base font-semibold text-slate-900 dark:text-slate-100">{list.name}</h3>
       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{list.issuer}</p>
       <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{list.description}</p>
+
+      {isLoaded && sourceInfo && (
+        <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-950/50">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Einträge</div>
+            <div className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {totalEntries.toLocaleString('de-DE')}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Letzte Aktualisierung</div>
+            <div className="text-sm text-slate-700 dark:text-slate-200">
+              {formatRelativeTime(loadedAt)}
+            </div>
+          </div>
+        </div>
+      )}
 
       <dl className="mt-4 space-y-1.5 text-xs">
         <div className="flex items-start gap-2">
@@ -659,43 +1023,91 @@ function ListCard({ list }: { list: SanctionsList }) {
       </div>
 
       <div className="mt-auto pt-4 flex items-center justify-between gap-2">
-        <a
-          href={list.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-        >
-          <Globe2 size={13} /> Quelle
-        </a>
-        <a
-          href={list.search_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl ${c.tagBg} px-3 py-2 text-xs font-medium shadow-sm transition hover:opacity-90`}
-        >
-          <Search size={13} /> Online suchen <ArrowUpRight size={13} />
-        </a>
+        {safeQuelle ? (
+          <a
+            href={safeQuelle}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <Globe2 size={13} /> Quelle
+          </a>
+        ) : (
+          <span className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">
+            <Globe2 size={13} /> Quelle
+          </span>
+        )}
+        {safeOnline ? (
+          <a
+            href={safeOnline}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl ${c.tagBg} px-3 py-2 text-xs font-medium shadow-sm transition hover:opacity-90`}
+          >
+            <Search size={13} /> Online suchen <ArrowUpRight size={13} />
+          </a>
+        ) : (
+          <span className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl ${c.tagBg} px-3 py-2 text-xs font-medium opacity-60`}>
+            <Search size={13} /> Online suchen
+          </span>
+        )}
       </div>
-      {list.is_searchable_locally && (
+      {isLoaded && (
         <div className="mt-2 inline-flex items-center justify-center gap-1 rounded-full bg-slate-900/5 px-2 py-1 text-[10px] font-medium text-slate-600 dark:bg-white/5 dark:text-slate-300">
           <Sparkles size={10} /> auch lokal abfragbar (oben)
         </div>
+      )}
+      {isAdmin && sourceInfo && (
+        <button
+          type="button"
+          onClick={() => onRefresh(sourceInfo.source_key)}
+          disabled={isThisRefreshing}
+          className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        >
+          {isThisRefreshing ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+          Jetzt aktualisieren
+        </button>
       )}
     </div>
   );
 }
 
-function SearchResults({ result }: { result: SearchResponse }) {
+interface SearchResultsProps {
+  result: SanctionsSearchResponse;
+  visibleHits: SanctionsHit[];
+  activeSources: SanctionsSourceKey[];
+}
+
+function SearchResults({ result, visibleHits, activeSources }: SearchResultsProps) {
   const summary = useMemo(() => {
-    if (result.total_hits === 0) {
-      return { tone: 'green', icon: CheckCircle2, title: 'Kein Treffer', text: `Für „${result.query}" wurde in der EU FSF nichts oberhalb des Schwellenwerts gefunden.` };
+    if (visibleHits.length === 0) {
+      return {
+        tone: 'green',
+        icon: CheckCircle2,
+        title: 'Kein Treffer',
+        text: result.total_hits === 0
+          ? `Für „${result.query}" wurde in den gewählten Listen nichts oberhalb des Schwellenwerts gefunden. Score senken oder weitere Listen aktivieren.`
+          : `Für „${result.query}" gibt es zwar Treffer, aber keiner passt zum aktuellen Filter — Filter zurücksetzen oder andere Listen anzeigen.`,
+      };
     }
-    const top = result.hits[0];
+    const top = visibleHits[0];
     if (top.confidence === 'exact' || top.confidence === 'high') {
-      return { tone: 'rose', icon: AlertTriangle, title: 'Treffer — prüfen', text: `Höchster Score ${top.score} (${top.confidence}). Manuelle Abklärung erforderlich.` };
+      return {
+        tone: 'rose',
+        icon: AlertTriangle,
+        title: 'Treffer — prüfen',
+        text: `Höchster Score ${top.score} (${top.confidence}) aus ${top.source_display_name}. Manuelle Abklärung erforderlich.`,
+      };
     }
-    return { tone: 'amber', icon: ShieldAlert, title: 'Hinweise gefunden', text: `${result.total_hits} Ähnlichkeiten oberhalb ${result.threshold}. Geburtsdatum/Land im Detail abgleichen.` };
-  }, [result]);
+    return {
+      tone: 'amber',
+      icon: ShieldAlert,
+      title: 'Hinweise gefunden',
+      text: `${visibleHits.length} Ähnlichkeiten oberhalb ${result.threshold} (Quellen: ${
+        Array.from(new Set(visibleHits.map((h) => sourceShortLabel(h.source_key)))).join(', ')
+      }). Geburtsdatum/Land im Detail abgleichen.`,
+    };
+  }, [result, visibleHits]);
 
   const SummaryIcon = summary.icon;
   const toneClass: Record<string, string> = {
@@ -713,20 +1125,21 @@ function SearchResults({ result }: { result: SearchResponse }) {
             <div className="font-semibold">{summary.title}</div>
             <div className="text-sm opacity-90">{summary.text}</div>
             <div className="mt-1 text-[11px] opacity-70">
-              normalisiert: <span className="font-mono">{result.normalized}</span> · Methode: {result.method}
+              normalisiert: <span className="font-mono">{result.normalized}</span> · Methode: {result.method} · durchsucht: {activeSources.map(sourceShortLabel).join(', ')}
             </div>
           </div>
         </div>
       </div>
 
-      {result.hits.map((hit) => <HitCard key={hit.id} hit={hit} />)}
+      {visibleHits.map((hit) => <HitCard key={`${hit.source_key}:${hit.id}`} hit={hit} />)}
     </div>
   );
 }
 
-function HitCard({ hit }: { hit: SearchHit }) {
+function HitCard({ hit }: { hit: SanctionsHit }) {
   const cs = CONFIDENCE_STYLES[hit.confidence];
   const HitIcon = cs.icon;
+  const sourceBadgeClass = SOURCE_BADGE_STYLES[hit.source_key] ?? SOURCE_BADGE_FALLBACK;
   return (
     <div className={`rounded-2xl border border-slate-200 bg-white p-4 ring-1 ${cs.ring} dark:border-slate-700 dark:bg-slate-900`}>
       <div className="flex flex-wrap items-start gap-3">
@@ -736,6 +1149,9 @@ function HitCard({ hit }: { hit: SearchHit }) {
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{hit.name}</h4>
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${sourceBadgeClass}`}>
+              {sourceShortLabel(hit.source_key)}
+            </span>
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               {hit.schema_type}
             </span>
@@ -743,6 +1159,9 @@ function HitCard({ hit }: { hit: SearchHit }) {
               Score {hit.score}
             </span>
             <span className={`text-[11px] font-medium ${cs.text}`}>{cs.label}</span>
+          </div>
+          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Listenherkunft: <span className="font-medium text-slate-700 dark:text-slate-200">{hit.source_display_name}</span>
           </div>
           <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Trefferquelle: <span className="font-medium text-slate-700 dark:text-slate-200">{hit.matched_field === 'alias' ? 'Alias' : 'Hauptname'}</span>
@@ -756,7 +1175,7 @@ function HitCard({ hit }: { hit: SearchHit }) {
         {hit.birth_date && <Row label="Geburtsdatum" value={hit.birth_date} />}
         {hit.countries && <Row label="Land" value={hit.countries} />}
         {hit.identifiers && <Row label="Identifier" value={hit.identifiers} mono />}
-        {hit.program_ids && <Row label="EU-Programm" value={hit.program_ids} mono />}
+        {hit.program_ids && <Row label="Programm" value={hit.program_ids} mono />}
         {hit.addresses && <Row label="Adresse" value={hit.addresses} />}
         {hit.sanctions && <Row label="Rechtsakt" value={hit.sanctions} mono />}
         {hit.first_seen && <Row label="Erstmals gelistet" value={hit.first_seen.split('T')[0]} />}

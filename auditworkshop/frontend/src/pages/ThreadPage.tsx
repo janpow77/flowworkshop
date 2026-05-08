@@ -77,7 +77,9 @@ export default function ThreadPage() {
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [threadId]);
+  // load() haengt nur vom Pfad-Parameter threadId ab.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [threadId]);
 
   const onReply = async (e: FormEvent) => {
     e.preventDefault();

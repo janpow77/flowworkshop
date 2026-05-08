@@ -3,9 +3,11 @@ import {
 } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowUpRight, Building2, FileText, Filter, Globe2, Layers3, Loader2,
-  MapPin, Scale, Search, ShieldCheck, Sparkles, Trash2, Upload, Wallet,
+  ArrowUpRight, Banknote, Building2, ExternalLink, FileText, Filter, Globe2,
+  Layers3, Loader2, MapPin, Scale, Search, ShieldCheck, Sparkles, Trash2, Upload,
+  Wallet,
 } from 'lucide-react';
+import { search as searchStateAid, type StateAidSearchHit } from '../lib/stateAidApi';
 import { Skeleton } from '../components/ui/Skeleton';
 import {
   deleteReferenceSource,
@@ -155,6 +157,12 @@ export default function CompanySearchPage() {
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
 
+  // EU-Beihilfe-Register: parallele Top-5-Suche fuer das aktuelle Suchfeld.
+  const [stateAidHits, setStateAidHits] = useState<StateAidSearchHit[]>([]);
+  const [stateAidTotal, setStateAidTotal] = useState(0);
+  const [stateAidBusy, setStateAidBusy] = useState(false);
+  const [stateAidError, setStateAidError] = useState<string | null>(null);
+
   const hasAnyData = beneficiarySources.length > 0 || referenceSources.length > 0;
 
   async function loadWorkspaceData() {
@@ -241,6 +249,39 @@ export default function CompanySearchPage() {
     referenceSources.length,
     scope,
   ]);
+
+  // Beihilfe-Register parallel zur Hauptsuche abfragen (Top 5).
+  useEffect(() => {
+    if (loading) return undefined;
+    if (!deferredQuery || deferredQuery.length < 2) {
+      setStateAidHits([]);
+      setStateAidTotal(0);
+      setStateAidError(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setStateAidBusy(true);
+    setStateAidError(null);
+    const timer = window.setTimeout(() => {
+      searchStateAid({ q: deferredQuery, limit: 5, country_code: countryCode || undefined })
+        .then((res) => {
+          if (cancelled) return;
+          setStateAidHits(res.hits);
+          setStateAidTotal(res.total_hits);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setStateAidError(err instanceof Error ? err.message : 'Beihilfe-Register nicht erreichbar.');
+          setStateAidHits([]);
+          setStateAidTotal(0);
+        })
+        .finally(() => { if (!cancelled) setStateAidBusy(false); });
+    }, 220);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [deferredQuery, countryCode, loading]);
 
   const bundeslaender = useMemo(
     () => [...new Set(beneficiarySources.map((item) => item.bundesland).filter(Boolean))].sort() as string[],
@@ -924,6 +965,95 @@ export default function CompanySearchPage() {
               )}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* EU-Beihilfe-Register · Top-5 ueber lokale Suche */}
+      <section className="rounded-[30px] border border-emerald-200/70 bg-gradient-to-br from-white via-emerald-50/40 to-white p-5 shadow-[0_22px_76px_-52px_rgba(5,150,105,0.45)] dark:border-emerald-500/25 dark:from-slate-900 dark:via-emerald-950/20 dark:to-slate-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30">
+              <Banknote size={18} />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-white">EU-Beihilfe-Register</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {deferredQuery
+                  ? `Top-${stateAidHits.length} Treffer fuer „${deferredQuery}"${stateAidTotal > stateAidHits.length ? ` von ${formatInt(stateAidTotal)}` : ''}`
+                  : 'Suchbegriff eingeben — wird parallel im Beihilfe-Register gesucht.'}
+              </div>
+            </div>
+          </div>
+          <Link
+            to="/beihilfen"
+            className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700"
+          >
+            Mehr im Beihilfe-Register <ArrowUpRight size={12} />
+          </Link>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          {stateAidBusy && (
+            <div className="rounded-2xl border border-dashed border-emerald-200 bg-white/60 px-4 py-4 text-center text-xs text-slate-500 dark:border-emerald-500/30 dark:bg-slate-900/60 dark:text-slate-400">
+              <Loader2 size={14} className="mr-1 inline-block animate-spin" /> Beihilfe-Register wird abgefragt …
+            </div>
+          )}
+          {!stateAidBusy && stateAidError && (
+            <div className="rounded-2xl border border-amber-200/70 bg-amber-50/60 px-4 py-3 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
+              {stateAidError}
+            </div>
+          )}
+          {!stateAidBusy && !stateAidError && deferredQuery && stateAidHits.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-4 text-center text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-400">
+              Keine Beihilfe-Treffer fuer den aktuellen Suchbegriff.
+            </div>
+          )}
+          {!stateAidBusy && stateAidHits.map((hit) => (
+            <div
+              key={hit.award_id}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-slate-900 dark:text-white">{hit.beneficiary_name}</div>
+                  <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                    {[
+                      hit.country_code,
+                      hit.nuts_label || hit.nuts_code,
+                      hit.aid_instrument,
+                      hit.granting_authority,
+                    ].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1 text-right">
+                  <div className="font-mono text-sm text-emerald-700 dark:text-emerald-300">
+                    {hit.aid_amount_eur !== null && hit.aid_amount_eur !== undefined
+                      ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(hit.aid_amount_eur)
+                      : '—'}
+                  </div>
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+                    Score {hit.score}
+                  </span>
+                </div>
+              </div>
+              {hit.sa_reference && (
+                <div className="mt-2">
+                  {hit.case_url ? (
+                    <a
+                      href={hit.case_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-mono text-[12px] text-cyan-700 hover:underline dark:text-cyan-300"
+                    >
+                      {hit.sa_reference} <ExternalLink size={11} />
+                    </a>
+                  ) : (
+                    <span className="font-mono text-[12px] text-slate-600 dark:text-slate-300">{hit.sa_reference}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </section>
     </div>

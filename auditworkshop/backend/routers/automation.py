@@ -81,6 +81,9 @@ def list_sanctions_runs(request: Request, limit: int = Query(30, ge=1, le=120), 
             "organizations_after": r.organizations_after,
             "file_size_bytes": r.file_size_bytes,
             "error": r.error,
+            # Multi-Source-Felder (Multi-Sanctions-Refresh, Mai 2026)
+            "sources": r.sources,
+            "parameters": r.parameters,
         }
         for r in rows
     ]

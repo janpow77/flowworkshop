@@ -184,6 +184,20 @@ def require_session(request: Request) -> dict:
     return session
 
 
+def _resolve_session_optional(request: Request) -> dict | None:
+    """Best-effort Lookup der Session ohne 401-Fehler.
+
+    Liest den Authorization-Header und liefert das Session-Dict (falls
+    erkannt) oder ``None`` — also genau ``_session_from_request``, aber als
+    explizit benannter Pass-Through-Helfer fuer Middleware/Logging.
+    Wirft niemals Exceptions: bei DB-Problemen wird ``None`` zurueckgegeben.
+    """
+    try:
+        return _session_from_request(request)
+    except Exception:  # noqa: BLE001 — Logging darf den Request nicht stoppen
+        return None
+
+
 def require_moderator(request: Request) -> dict:
     """FastAPI dependency: verlangt mindestens Moderator-Rolle (auch admin)."""
     session = require_session(request)

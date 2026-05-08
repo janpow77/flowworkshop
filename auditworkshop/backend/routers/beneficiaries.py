@@ -2,14 +2,22 @@
 flowworkshop · routers/beneficiaries.py
 Begünstigtenverzeichnis: Upload → Auto-Erkennung → Geocoding → Karte.
 Alles in einem Flow, kein manuelles Tagging nötig.
+
+Phase 6a: Upload zusaetzlich zur per-Source-Tabelle in die zentrale Tabelle
+``workshop_beneficiary_records`` (Smart-Mode-Harvest, idempotent). Default
+mode="smart" — bestehende Records bleiben unangetastet, neue werden ergaenzt.
 """
 import logging
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Depends
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, Depends
 from services.geocoding_service import get_beneficiary_map_data, detect_columns
 from services.dataframe_service import (
     ingest_dataframe, get_beneficiary_sources, delete_dataframe_table,
     _detect_metadata, search_beneficiary_records, analyze_beneficiary_records,
 )
+from services.beneficiary_harvester import (
+    BeneficiaryHarvestParams, run_beneficiary_harvest,
+)
+from database import SessionLocal
 from services.country_profiles import (
     AUSTRIA_BENEFICIARY_SOURCES,
     COUNTRY_PROFILES,
@@ -60,16 +68,35 @@ def list_countries():
 
 
 @router.post("/upload")
-async def upload_beneficiary_list(file: UploadFile = File(...), _session: dict = Depends(require_moderator_or_worker)):
+async def upload_beneficiary_list(
+    file: UploadFile = File(...),
+    mode: str = Form(
+        "smart",
+        description=(
+            "smart|full-refresh|force — Schreibstrategie fuer die zentrale "
+            "Beneficiary-Tabelle. smart = idempotent (Default). "
+            "full-refresh = Update bei Konflikt. force = Pre-Delete der Quelle."
+        ),
+    ),
+    _session: dict = Depends(require_moderator_or_worker),
+):
     """
     Begünstigtenverzeichnis hochladen.
+
     - Erkennt automatisch Bundesland, Fonds, Förderperiode und Land (DE/AT)
     - Erstellt eindeutigen Source-Namen (z.B. 'hessen_efre_2021-2027')
-    - Ersetzt Duplikate (gleiches Bundesland+Fonds+Periode)
-    - Speichert als SQL-Tabelle + erkennt Standort-Spalten
+    - Ersetzt Duplikate (gleiches Bundesland+Fonds+Periode) in der per-Source
+      Legacy-Tabelle (workshop_df_*)
+    - Schreibt zusaetzlich Smart-Mode in die zentrale Tabelle
+      ``workshop_beneficiary_records``: bei mode='smart' bleiben bestehende
+      Records unberuehrt, neue werden ergaenzt — gewuenscht fuer Workshop-
+      betrieb (Original-Bestand bleibt stabil, Korrekturen kontrolliert).
     """
     if not file.filename:
         raise HTTPException(422, "Dateiname fehlt.")
+
+    if mode not in ("smart", "full-refresh", "force"):
+        raise HTTPException(422, "mode muss smart|full-refresh|force sein.")
 
     content = await file.read()
     if len(content) > 50 * 1024 * 1024:
@@ -95,7 +122,10 @@ async def upload_beneficiary_list(file: UploadFile = File(...), _session: dict =
     if periode:
         source += f"_{periode.replace('-', '_')}"
 
-    # 3. Prüfen ob Duplikat existiert
+    # 3. Prüfen ob Duplikat in der Legacy-Tabelle existiert.
+    # Legacy-Tabelle bleibt fuer Backward-Compat erhalten — sie liefert die
+    # Karte (Geocoding) und die alte Spalten-Erkennung. Phase 6a:
+    # zusaetzlich die zentrale Tabelle befuellen.
     existing = get_beneficiary_sources()
     replaced = False
     for ex in existing:
@@ -104,7 +134,7 @@ async def upload_beneficiary_list(file: UploadFile = File(...), _session: dict =
             continue
         if ex["bundesland"] == bundesland and ex["fonds"] == (metadata.get("fonds") or "EFRE"):
             if ex["periode"] == periode or (not ex["periode"] and not periode):
-                # Duplikat → alte Tabelle löschen
+                # Duplikat → alte Tabelle löschen (Legacy-Pfad).
                 delete_dataframe_table(ex["source"])
                 log.info("Duplikat ersetzt: %s → %s", ex["source"], source)
                 replaced = True
@@ -161,6 +191,35 @@ async def upload_beneficiary_list(file: UploadFile = File(...), _session: dict =
         or (cols.get("latitude") and cols.get("longitude"))
     )
 
+    # 6. Phase 6a: Smart-Mode-Harvest in die zentrale Tabelle.
+    # Pflicht-Mappings (bundesland, fonds, periode, country_code) kommen
+    # aus den oben erkannten Metadaten. Fehler im Harvest fuehren NICHT
+    # zum Upload-Fehler — die Legacy-Tabelle ist ja schon befuellt.
+    central_summary: dict | None = None
+    db = SessionLocal()
+    try:
+        params = BeneficiaryHarvestParams(
+            source_key=source,
+            bundesland=bundesland if bundesland != "unbekannt" else None,
+            fonds=metadata.get("fonds") or "EFRE",
+            periode=periode or None,
+            country_code=country_code,
+            file_content=content,
+            file_name=file.filename,
+            sheet_name=None,
+            header_row=0,
+            mode=mode,  # type: ignore[arg-type]
+            triggered_by=f"upload:{_session.get('user_id') or 'unknown'}",
+        )
+        central_summary = run_beneficiary_harvest(db, params)
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "Beneficiary-Harvest in zentrale Tabelle fehlgeschlagen "
+            "(Legacy-Upload bleibt aktiv): %s", exc,
+        )
+    finally:
+        db.close()
+
     return {
         "status": "replaced" if replaced else "created",
         "source": source,
@@ -176,6 +235,11 @@ async def upload_beneficiary_list(file: UploadFile = File(...), _session: dict =
         "columns": result["columns"],
         "has_location": has_location,
         "columns_detected": cols,
+        "mode": mode,
+        # Phase 6a: Insert/Skip/Failed-Zaehler aus dem Harvest in die
+        # zentrale Tabelle. None, wenn der Harvest fehlgeschlagen ist
+        # (Legacy-Upload war dennoch erfolgreich).
+        "central_table": central_summary,
     }
 
 
@@ -246,6 +310,14 @@ def search_beneficiaries(
     limit: int = Query(60, ge=1, le=200),
     company_limit: int = Query(14, ge=1, le=50),
     country_code: str | None = Query(None, description="Optional Filter DE oder AT"),
+    min_score: float | None = Query(
+        None, ge=40.0, le=100.0,
+        description=(
+            "Fuzzy-Schwellwert (0..100). Wenn nicht gesetzt, wird er adaptiv "
+            "aus der Query-Laenge bestimmt (1 Token=80, 2=70, ≥3=60) — "
+            "konsistent mit /api/state-aid/search."
+        ),
+    ),
 ):
     cc = _normalize_country_code(country_code)
     try:
@@ -259,6 +331,7 @@ def search_beneficiaries(
             limit=limit,
             company_limit=company_limit,
             country_code=cc,
+            min_score=min_score,
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc))
