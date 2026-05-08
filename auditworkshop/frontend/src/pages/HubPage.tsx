@@ -46,7 +46,7 @@ const TILES = [
   },
   {
     key: 'beneficiaries',
-    title: 'Begünstigtenkarte',
+    title: 'Begünstigtenverzeichnisse',
     description: 'EFRE/ESF/JTF/ISF/AMIF',
     icon: MapPin,
     href: '/scenario/6',

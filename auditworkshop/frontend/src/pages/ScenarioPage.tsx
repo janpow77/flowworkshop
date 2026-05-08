@@ -105,7 +105,7 @@ export default function ScenarioPage() {
   }
   const num = parseInt(resolvedId || '1', 10);
   const info = SCENARIO_INFO[num] || SCENARIO_INFO[1];
-  // Public-Modus: nicht eingeloggt + Begünstigtenkarte → Workshop-Branding ausblenden
+  // Public-Modus: nicht eingeloggt + Begünstigtenverzeichnisse → Workshop-Branding ausblenden
   const isPublicMode = num === 6 && !localStorage.getItem('workshop_token');
 
   const [prompt, setPrompt] = useState('');

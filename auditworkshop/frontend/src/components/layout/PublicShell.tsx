@@ -35,7 +35,7 @@ export default function PublicShell() {
                   : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
-              <MapIcon size={14} /> Begünstigtenkarte
+              <MapIcon size={14} /> Begünstigtenverzeichnisse
             </Link>
             <Link
               to="/beihilfen"

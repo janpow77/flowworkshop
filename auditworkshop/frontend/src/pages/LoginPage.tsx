@@ -158,9 +158,9 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
               Beihilfen aus DE und AT seit 2014.
             </p>
             <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
-              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> 349.000+ Awards (DE 254k + AT 95k)</li>
+              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> 349.135 Awards (DE 253.731 + AT 95.404)</li>
               <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> NUTS-Karte mit Aggregation auf Bundesland/Kreis</li>
-              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> 4-Stufen-Hybrid-Suche (Trigram + Fuzzy + Embedding + LLM)</li>
+              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> Hybrid-Suche (Trigram + Fuzzy-Match + LLM-Verifikation)</li>
               <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> KI-Suche mit Klartext-Fragen</li>
             </ul>
             <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-amber-300/80">
@@ -192,14 +192,14 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
             </p>
           </button>
 
-          {/* Kachel 1: Begünstigtenkarte */}
+          {/* Kachel 1: Begünstigtenverzeichnisse */}
           <button
             onClick={() => navigate('/scenario/6')}
             className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-emerald-500/10 hover:scale-[1.01] hover:shadow-xl"
           >
             <div className="flex items-center gap-3 mb-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-2xl backdrop-blur-sm">🗺</span>
-              <h2 className="text-lg font-semibold text-white">Begünstigtenkarte</h2>
+              <h2 className="text-lg font-semibold text-white">Begünstigtenverzeichnisse</h2>
             </div>
             <p className="text-sm leading-relaxed text-blue-200/80">
               Konsolidiertes Begünstigtenverzeichnis aus EFRE, ESF+, JTF, ISF und AMIF
@@ -207,9 +207,9 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
             </p>
             <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
               <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> Interaktive Karte mit Geocoding aller Standorte</li>
-              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> Volltextsuche, Filter nach Land, Fonds, Förderhöhe</li>
+              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> Volltextsuche, Filter nach Land und Förderhöhe</li>
               <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> LLM-Auswertung von Auffälligkeiten</li>
-              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> Export als XLSX, CSV oder PNG</li>
+              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> Export als PNG oder PDF</li>
             </ul>
             <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-emerald-300/80">
               Öffentlich nach Art. 49 VO (EU) 2021/1060
@@ -230,9 +230,9 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
               USA, UK und Schweiz.
             </p>
             <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
-              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> EU FSF, OFAC, OFSI, SECO, BAFA, UN</li>
+              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> EU FSF, UN, OFAC, OFSI, SECO</li>
               <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> Lokale Fuzzy-Suche (kein Datenabfluss)</li>
-              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> 5.900+ Einträge, 29.600 Vergleichsstrings</li>
+              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> 39.000+ Einträge inkl. Aliase und Schreibvarianten</li>
               <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> Täglich automatisch aktualisiert</li>
             </ul>
             <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-rose-300/80">

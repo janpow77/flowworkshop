@@ -144,7 +144,7 @@ DEFAULT_SANCTIONS_SOURCES: list[SanctionsSource] = [
     SanctionsSource(
         key="eu_fsf",
         display_name="EU Konsolidierte Finanzsanktionsliste (FSF)",
-        issuer="Europaeische Kommission",
+        issuer="Europäische Kommission",
         download_url="https://data.opensanctions.org/datasets/latest/eu_fsf/targets.simple.csv",
         csv_path="/app/data/sanctions/eu_fsf_targets.csv",
         license="CC BY 4.0",
@@ -1131,9 +1131,9 @@ def method_explanation() -> dict:
             "Die Eingabe wird mit jedem Namen und Aliase aller aktivierten "
             "Sanktionslisten verglichen. Beide Seiten werden vorher normalisiert "
             "(Kleinschreibung, Akzente und Sonderzeichen entfernt, Rechtsform­"
-            "suffixe wie GmbH oder Ltd ignoriert). Anschliessend berechnet "
-            "rapidfuzz mit dem Token-Set-Ratio einen Aehnlichkeitswert von 0 bis 100. "
-            "Treffer werden quellenuebergreifend aggregiert und mit Quelle markiert."
+            "suffixe wie GmbH oder Ltd ignoriert). Anschließend berechnet "
+            "rapidfuzz mit dem Token-Set-Ratio einen Ähnlichkeitswert von 0 bis 100. "
+            "Treffer werden quellenübergreifend aggregiert und mit Quelle markiert."
         ),
         "steps": [
             {
@@ -1142,7 +1142,7 @@ def method_explanation() -> dict:
                     "Eingabe und Listenname werden in eine vergleichbare Form gebracht: "
                     "casefold, Diakritika weg, Bindestriche und Punkte als Trennzeichen, "
                     "Rechtsformsuffixe (GmbH, AG, Ltd, OOO …) entfernt. Damit matcht "
-                    "‚Mueller-Schmidt GmbH‘ auch auf ‚MUELLER SCHMIDT‘."
+                    "‚Müller-Schmidt GmbH‘ auch auf ‚MÜLLER SCHMIDT‘."
                 ),
             },
             {
@@ -1151,24 +1151,24 @@ def method_explanation() -> dict:
                     "Die normalisierten Strings werden in Tokens zerlegt. Verglichen wird "
                     "die Mengenschnittmenge — Reihenfolge spielt keine Rolle, doppelte "
                     "Tokens werden ignoriert. ‚Anatoly Petrov Sergeev‘ trifft so auf "
-                    "‚Sergeev Anatoly‘ mit hoher Aehnlichkeit."
+                    "‚Sergeev Anatoly‘ mit hoher Ähnlichkeit."
                 ),
             },
             {
                 "title": "3. Best-Match pro Eintrag",
                 "text": (
                     "Pro Datensatz werden Hauptname und alle Aliase einzeln verglichen. "
-                    "Behalten wird der hoechste Score — so geht ein Treffer in einer "
+                    "Behalten wird der höchste Score — so geht ein Treffer in einer "
                     "russischen Schreibung nicht verloren, nur weil der lateinische Name "
-                    "schwaecher matcht."
+                    "schwächer matcht."
                 ),
             },
             {
                 "title": "4. Multi-Source-Aggregation",
                 "text": (
-                    "Die Suche laeuft pro Quelle (EU FSF, UN, OFAC, OFSI, SECO) separat "
-                    "und aggregiert anschliessend nach Score. Treffer werden mit der "
-                    "Quelle markiert, sodass der Pruefer sehen kann, welche Liste "
+                    "Die Suche läuft pro Quelle (EU FSF, UN, OFAC, OFSI, SECO) separat "
+                    "und aggregiert anschließend nach Score. Treffer werden mit der "
+                    "Quelle markiert, sodass der Prüfer sehen kann, welche Liste "
                     "gelistet hat. Eine Person kann durchaus auf mehreren Listen "
                     "stehen — alle Treffer werden ausgegeben."
                 ),
@@ -1177,8 +1177,8 @@ def method_explanation() -> dict:
                 "title": "5. Konfidenz-Klassen",
                 "text": (
                     "exact (>=97): Schreibweise praktisch identisch · "
-                    "high (>=90): klare Uebereinstimmung, lohnt sich Abklaerung · "
-                    "medium (>=80): Hinweis, manuell pruefen · "
+                    "high (>=90): klare Übereinstimmung, lohnt sich Abklärung · "
+                    "medium (>=80): Hinweis, manuell prüfen · "
                     "low (>=65): nur Verdacht, oft Namensgleichheit ohne Bezug."
                 ),
             },
@@ -1192,7 +1192,7 @@ def method_explanation() -> dict:
                 "issuer": s.issuer,
                 "url": s.download_url,
                 "license": s.license,
-                "update_frequency": "taeglich (OpenSanctions-Crawl)",
+                "update_frequency": "täglich (OpenSanctions-Crawl)",
             }
             for s in DEFAULT_SANCTIONS_SOURCES
         ],
@@ -1201,14 +1201,14 @@ def method_explanation() -> dict:
             "name": "OpenSanctions — eu_fsf (targets.simple.csv)",
             "url": FSF_DOWNLOAD_URL,
             "license": "CC BY 4.0",
-            "update_frequency": "taeglich (OpenSanctions-Crawl)",
+            "update_frequency": "täglich (OpenSanctions-Crawl)",
         },
         "limits": [
-            "Pruefung erfolgt gegen die EU-Konsolidierte Finanzsanktionsliste (FSF), "
+            "Prüfung erfolgt gegen die EU-Konsolidierte Finanzsanktionsliste (FSF), "
             "UN-Sicherheitsrats-Liste, OFAC SDN, UK OFSI und SECO. BAFA und "
-            "Bundesbank-Hinweise sind hierueber nicht abgedeckt — dafuer separate "
-            "Recherche ueber die jeweiligen offiziellen Tools (siehe Karten unten).",
-            "Namensgleichheit ist haeufig — vor allem bei Russisch-Transliterationen. "
+            "Bundesbank-Hinweise sind hierüber nicht abgedeckt — dafür separate "
+            "Recherche über die jeweiligen offiziellen Tools (siehe Karten unten).",
+            "Namensgleichheit ist häufig — vor allem bei Russisch-Transliterationen. "
             "Geburtsdatum und Land im Treffer immer mit dem Vorgang abgleichen.",
         ],
     }

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowUpRight, Banknote, BookOpenCheck, Building2,
+  AlertTriangle, ArrowLeft, ArrowUpRight, Banknote, BookOpenCheck, Building2,
   CheckCircle2, Crown, Database, Download, ExternalLink, Filter, Globe, Globe2, Landmark,
   Layers, Loader2, Mountain, RefreshCw, Search, ShieldAlert,
   Sparkles, Target,
@@ -497,14 +498,15 @@ export default function SanktionslistenPage() {
 
   return (
     <div className="space-y-8">
+      <Link to="/" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-indigo-600">
+        <ArrowLeft size={16} /> Zurück
+      </Link>
+
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden rounded-[34px] border border-white/70 bg-[linear-gradient(135deg,rgba(46,16,16,0.98),rgba(120,30,40,0.94)_45%,rgba(190,60,50,0.85))] px-7 py-9 text-white shadow-[0_38px_120px_-64px_rgba(15,23,42,0.95)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),rgba(255,255,255,0)_38%)]" />
         <div className="relative grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80">
-              <ShieldAlert size={13} /> Workshop 5 · Mittwoch 10:00
-            </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight lg:text-4xl">Sanktionslisten</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/85 lg:text-base">
               Eine kuratierte Übersicht der wichtigsten Sanktions- und Embargo-Verzeichnisse mit

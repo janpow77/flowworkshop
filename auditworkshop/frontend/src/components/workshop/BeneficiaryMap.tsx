@@ -182,7 +182,7 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
       } else {
         await exportApi.toPdf(target, {
           filename: fileBase,
-          title: 'Begünstigtenkarte',
+          title: 'Begünstigtenverzeichnisse',
           subtitle: `${filtered.length} Vorhaben · ${formatEur(totalKosten)} · Stand ${ts}`,
         });
       }

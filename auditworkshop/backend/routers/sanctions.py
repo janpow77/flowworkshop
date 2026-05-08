@@ -45,24 +45,24 @@ _SANCTIONS_LISTS = [
     {
         "key": "eu_fsf",
         "name": "EU Konsolidierte Finanzsanktionsliste (FSF)",
-        "issuer": "Europaeische Kommission",
+        "issuer": "Europäische Kommission",
         "scope": "Personen, Organisationen, Schiffe — alle EU-Finanzsanktionen",
         "description": (
-            "Konsolidierte Liste aller von der EU verhaengten Finanzsanktionen. "
-            "Von der Europaeischen Kommission gepflegt; deckt saemtliche "
+            "Konsolidierte Liste aller von der EU verhängten Finanzsanktionen. "
+            "Von der Europäischen Kommission gepflegt; deckt sämtliche "
             "EU-Sanktionsregime nach Art. 215 AEUV ab."
         ),
         "url": "https://webgate.ec.europa.eu/fsd/fsf",
         "search_url": "https://webgate.ec.europa.eu/fsd/fsf/public/searchFSF",
-        "data_format": "XML / CSV (ueber OpenSanctions)",
-        "update_frequency": "bei Listenaenderung (i.d.R. mehrfach pro Woche)",
+        "data_format": "XML / CSV (über OpenSanctions)",
+        "update_frequency": "bei Listenänderung (i.d.R. mehrfach pro Woche)",
         "language": "DE / EN / alle Amtssprachen",
         "color": "rose",
         "icon": "ShieldAlert",
         "tag": "EU-Konsolidiert",
         "use_in_audit": (
             "Zentrale Quelle bei Bezug zu sanktionsrelevanten Personen oder "
-            "Organisationen — etwa bei der Plausibilisierung von Beguenstigten "
+            "Organisationen — etwa bei der Plausibilisierung von Begünstigten "
             "oder wirtschaftlich Berechtigten."
         ),
         "is_searchable_locally": True,
@@ -80,14 +80,14 @@ _SANCTIONS_LISTS = [
         "url": "https://www.sanctionsmap.eu/",
         "search_url": "https://www.sanctionsmap.eu/#/main",
         "data_format": "Web-UI",
-        "update_frequency": "bei Rechtsaktaenderung",
+        "update_frequency": "bei Rechtsaktänderung",
         "language": "EN",
         "color": "indigo",
         "icon": "Globe2",
         "tag": "Recherche",
         "use_in_audit": (
             "Schnelle Orientierung, ob ein Land/Sektor von EU-Sanktionen betroffen "
-            "ist und welche Rechtsakte einschlaegig sind."
+            "ist und welche Rechtsakte einschlägig sind."
         ),
         "is_searchable_locally": False,
     },
@@ -97,21 +97,21 @@ _SANCTIONS_LISTS = [
         "issuer": "UN-Sicherheitsrat",
         "scope": "Personen und Organisationen unter UN-Sanktionen",
         "description": (
-            "Konsolidierte Liste aller vom Sicherheitsrat verhaengten "
+            "Konsolidierte Liste aller vom Sicherheitsrat verhängten "
             "Sanktionen. Bildet den Kern der EU-Listen, geht aber bei einzelnen "
-            "Regimen darueber hinaus."
+            "Regimen darüber hinaus."
         ),
         "url": "https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list",
         "search_url": "https://scsanctions.un.org/consolidated/",
-        "data_format": "XML / HTML (ueber OpenSanctions als CSV)",
+        "data_format": "XML / HTML (über OpenSanctions als CSV)",
         "update_frequency": "bei Resolution",
         "language": "EN / FR / ES / RU / AR / ZH",
         "color": "sky",
         "icon": "Globe",
         "tag": "international",
         "use_in_audit": (
-            "Ergaenzende Recherche bei internationalem Bezug. UN-Listungen werden "
-            "in EU-Recht uebernommen, Listung kann aber kurzzeitig vor der "
+            "Ergänzende Recherche bei internationalem Bezug. UN-Listungen werden "
+            "in EU-Recht übernommen, Listung kann aber kurzzeitig vor der "
             "EU-Umsetzung sichtbar sein."
         ),
         "is_searchable_locally": True,
@@ -122,33 +122,33 @@ _SANCTIONS_LISTS = [
         "issuer": "U.S. Treasury — OFAC",
         "scope": "Specially Designated Nationals & Blocked Persons (USA)",
         "description": (
-            "US-Sanktionsliste. Fuer EFRE-Pruefungen rechtlich nicht bindend, "
-            "aber fuer Risikoeinschaetzungen und Bank-/Korrespondenzbezuege "
-            "relevant — viele Banken sperren OFAC-gelistete Empfaenger weltweit."
+            "US-Sanktionsliste. Für EFRE-Prüfungen rechtlich nicht bindend, "
+            "aber für Risikoeinschätzungen und Bank-/Korrespondenzbezüge "
+            "relevant — viele Banken sperren OFAC-gelistete Empfänger weltweit."
         ),
         "url": "https://sanctionssearch.ofac.treas.gov/",
         "search_url": "https://sanctionssearch.ofac.treas.gov/",
-        "data_format": "XML / CSV (ueber OpenSanctions)",
-        "update_frequency": "taeglich",
+        "data_format": "XML / CSV (über OpenSanctions)",
+        "update_frequency": "täglich",
         "language": "EN",
         "color": "amber",
         "icon": "Banknote",
         "tag": "Risiko",
         "use_in_audit": (
             "Hilft bei der Risiko-Triage. Bankzahlungsablehnungen sind oft "
-            "auf OFAC-Treffer zurueckzufuehren, auch wenn EU-Listungen fehlen."
+            "auf OFAC-Treffer zurückzuführen, auch wenn EU-Listungen fehlen."
         ),
         "is_searchable_locally": True,
     },
     {
         "key": "bafa_de",
-        "name": "BAFA — Aussenwirtschaftsrechtliche Embargos",
-        "issuer": "Bundesamt fuer Wirtschaft und Ausfuhrkontrolle",
-        "scope": "Embargo- und Sanktionsmerkblaetter, deutsche Umsetzung",
+        "name": "BAFA — Außenwirtschaftsrechtliche Embargos",
+        "issuer": "Bundesamt für Wirtschaft und Ausfuhrkontrolle",
+        "scope": "Embargo- und Sanktionsmerkblätter, deutsche Umsetzung",
         "description": (
-            "Aufbereitung der EU-Sanktionen aus deutscher Behoerdensicht: "
-            "Embargo-Merkblaetter, Auslegungshinweise, Allgemeinverfuegungen. "
-            "Wichtig fuer die Praxis von Aussenwirtschaft und Foerderabwicklung."
+            "Aufbereitung der EU-Sanktionen aus deutscher Behördensicht: "
+            "Embargo-Merkblätter, Auslegungshinweise, Allgemeinverfügungen. "
+            "Wichtig für die Praxis von Außenwirtschaft und Förderabwicklung."
         ),
         "url": "https://www.bafa.de/DE/Aussenwirtschaft/Ausfuhrkontrolle/Embargos/embargos_node.html",
         "search_url": "https://www.bafa.de/DE/Aussenwirtschaft/Ausfuhrkontrolle/Embargos/embargos_node.html",
@@ -160,7 +160,7 @@ _SANCTIONS_LISTS = [
         "tag": "DE-Praxis",
         "use_in_audit": (
             "Auslegungshilfe bei Auslandsbezug eines Vorhabens (Lieferketten, "
-            "Beteiligungen, Endempfaenger). Bei Dual-Use-Guetern empfehlenswerte Lektuere."
+            "Beteiligungen, Endempfänger). Bei Dual-Use-Gütern empfehlenswerte Lektüre."
         ),
         "is_searchable_locally": False,
     },
@@ -171,7 +171,7 @@ _SANCTIONS_LISTS = [
         "scope": "Hinweise und Bekanntmachungen zu Finanzsanktionen",
         "description": (
             "Servicebereich der Bundesbank zu EU-Finanzsanktionen — Antrags"
-            "formulare fuer Genehmigungen nach §§ 4-6 AWG, Hinweise zur "
+            "formulare für Genehmigungen nach §§ 4-6 AWG, Hinweise zur "
             "Listenanwendung und Newsletter."
         ),
         "url": "https://www.bundesbank.de/de/service/finanzsanktionen",
@@ -183,8 +183,8 @@ _SANCTIONS_LISTS = [
         "icon": "Landmark",
         "tag": "DE-Genehmigung",
         "use_in_audit": (
-            "Anlaufstelle fuer Genehmigungen bei eingefrorenem Vermoegen. "
-            "Nur relevant, wenn ein Vorhabenempfaenger gelistet ist."
+            "Anlaufstelle für Genehmigungen bei eingefrorenem Vermögen. "
+            "Nur relevant, wenn ein Vorhabenempfänger gelistet ist."
         ),
         "is_searchable_locally": False,
     },
@@ -195,14 +195,14 @@ _SANCTIONS_LISTS = [
         "scope": "UK-Sanktionen post-Brexit (FCDO + HMT/OFSI)",
         "description": (
             "Britische konsolidierte Liste. Seit dem Brexit rechtlich eigen"
-            "staendig, ueberlappt aber stark mit der EU FSF. Wichtig bei UK-"
+            "ständig, überlappt aber stark mit der EU FSF. Wichtig bei UK-"
             "Bezug eines Vorhabens (Beteiligungen, Empfangsbank). "
             "OpenSanctions liefert FCDO + HMT/OFSI als kombinierten Datensatz."
         ),
         "url": "https://www.gov.uk/government/publications/financial-sanctions-consolidated-list-of-targets",
         "search_url": "https://sanctionssearchapp.ofsi.hmtreasury.gov.uk/",
-        "data_format": "CSV / XML (ueber OpenSanctions, gb_fcdo_sanctions)",
-        "update_frequency": "woechentlich",
+        "data_format": "CSV / XML (über OpenSanctions, gb_fcdo_sanctions)",
+        "update_frequency": "wöchentlich",
         "language": "EN",
         "color": "violet",
         "icon": "Crown",
@@ -216,23 +216,23 @@ _SANCTIONS_LISTS = [
     {
         "key": "ch_seco",
         "name": "SECO — Schweizer Sanktionsliste",
-        "issuer": "Staatssekretariat fuer Wirtschaft (SECO)",
+        "issuer": "Staatssekretariat für Wirtschaft (SECO)",
         "scope": "Schweizer Umsetzung internationaler Sanktionen",
         "description": (
-            "Die Schweiz uebernimmt EU- und UN-Sanktionen weitgehend, weicht "
-            "aber in Einzelfaellen ab. Bei CH-Bezug (Empfaenger, Lieferant) "
-            "gegenpruefen."
+            "Die Schweiz übernimmt EU- und UN-Sanktionen weitgehend, weicht "
+            "aber in Einzelfällen ab. Bei CH-Bezug (Empfänger, Lieferant) "
+            "gegenprüfen."
         ),
         "url": "https://www.seco.admin.ch/seco/de/home/Aussenwirtschaftspolitik_Wirtschaftliche_Zusammenarbeit/Wirtschaftsbeziehungen/exportkontrollen-und-sanktionen/sanktionen-embargos/sanktionsmassnahmen.html",
         "search_url": "https://www.sesam.search.admin.ch/sesam-search-web/pages/searchSanctionedPersons.xhtml",
-        "data_format": "HTML / XML (ueber OpenSanctions als CSV)",
+        "data_format": "HTML / XML (über OpenSanctions als CSV)",
         "update_frequency": "anlassbezogen",
         "language": "DE / FR / IT / EN",
         "color": "rose",
         "icon": "Mountain",
         "tag": "CH",
         "use_in_audit": (
-            "Bei Schweizer Geschaeftsbeziehungen ergaenzend pruefen — die "
+            "Bei Schweizer Geschäftsbeziehungen ergänzend prüfen — die "
             "Liste ist nicht in der EU FSF enthalten."
         ),
         "is_searchable_locally": True,
@@ -424,7 +424,7 @@ def search_get(
             raise HTTPException(
                 400,
                 f"Keine bekannten Source-Keys angegeben. "
-                f"Verfuegbar: {', '.join(sorted(valid))}",
+                f"Verfügbar: {', '.join(sorted(valid))}",
             )
 
     hits = svc.search(
@@ -473,10 +473,10 @@ def search_get(
 
 
 _SANCTIONS_EXPORT_PFLICHTHINWEIS = (
-    "Datenstand abhaengig vom letzten Refresh pro Quelle (siehe "
+    "Datenstand abhängig vom letzten Refresh pro Quelle (siehe "
     "GET /api/sanctions/sources). Der lokale Index wird aus den OpenSanctions-"
-    "CSVs gebaut. Treffer sind nicht rechtlich verbindlich — vor Massnahmen "
-    "stets die offizielle Quelle (EU FSF, UN-Liste, OFAC, OFSI, SECO) pruefen."
+    "CSVs gebaut. Treffer sind nicht rechtlich verbindlich — vor Maßnahmen "
+    "stets die offizielle Quelle (EU FSF, UN-Liste, OFAC, OFSI, SECO) prüfen."
 )
 
 _SANCTIONS_EXPORT_COLUMNS = [
@@ -552,7 +552,7 @@ def export_sanctions_search(
             raise HTTPException(
                 400,
                 f"Keine bekannten Source-Keys angegeben. "
-                f"Verfuegbar: {', '.join(sorted(valid))}",
+                f"Verfügbar: {', '.join(sorted(valid))}",
             )
 
     hits = svc.search(
@@ -573,7 +573,7 @@ def export_sanctions_search(
             continue
         loaded_at = s.get("loaded_at") or "—"
         per_source_metadata[key] = (
-            f"{int(s.get('total_entries') or 0)} Eintraege · "
+            f"{int(s.get('total_entries') or 0)} Einträge · "
             f"geladen {loaded_at}"
         )
 
@@ -602,7 +602,7 @@ def export_sanctions_search(
             table_name="SanktionenTreffer",
             pflichthinweis=_SANCTIONS_EXPORT_PFLICHTHINWEIS,
             metadata=metadata,
-            notes_title="Sanktionspruefung · Hinweise",
+            notes_title="Sanktionsprüfung · Hinweise",
         )
         filename = f"sanktionen_search_{safe_q}_{timestamp}.xlsx"
         return StreamingResponse(
@@ -654,7 +654,7 @@ def _stream_sanctions_pdf(rows: list[dict], metadata: dict[str, str]) -> Streami
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             501,
-            f"PDF-Export nicht verfuegbar: pymupdf nicht installiert ({exc}).",
+            f"PDF-Export nicht verfügbar: pymupdf nicht installiert ({exc}).",
         ) from exc
 
     doc = fitz.open()
@@ -677,7 +677,7 @@ def _stream_sanctions_pdf(rows: list[dict], metadata: dict[str, str]) -> Streami
             page.insert_text((margin, cursor_y), text, fontsize=size)
         cursor_y += line_height + (size - 9)
 
-    _write("FlowWorkshop · Sanktionspruefung", size=14, bold=True)
+    _write("FlowWorkshop · Sanktionsprüfung", size=14, bold=True)
     _write(datetime.utcnow().strftime("Erstellt: %Y-%m-%d %H:%M UTC"), size=9)
     for k, v in metadata.items():
         _write(f"  · {k}: {v}", size=8)
@@ -702,7 +702,7 @@ def _stream_sanctions_pdf(rows: list[dict], metadata: dict[str, str]) -> Streami
             if aliases_str:
                 _write(f"   Aliase: {aliases_str[:160]}", size=8)
         if row.get("countries"):
-            _write(f"   Laender: {row['countries'][:160]}", size=8)
+            _write(f"   Länder: {row['countries'][:160]}", size=8)
         if row.get("sanctions"):
             _write(f"   Rechtsakt: {row['sanctions'][:160]}", size=8)
         cursor_y += 2
@@ -747,7 +747,7 @@ def refresh(
         raise HTTPException(
             400,
             f"Unbekannte Source: {source_key}. "
-            f"Verfuegbar: {', '.join(sorted(svc.indices.keys()))}",
+            f"Verfügbar: {', '.join(sorted(svc.indices.keys()))}",
         )
     try:
         from services.scheduler import run_sanctions_refresh
