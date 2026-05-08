@@ -64,8 +64,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Nur Matches der letzten N Stunden (default 48).",
     )
     p.add_argument(
-        "--per-call-timeout", type=float, default=30.0,
-        help="Per-Call-Timeout in Sekunden (default 30).",
+        "--per-call-timeout", type=float, default=120.0,
+        help=(
+            "Per-Call-Timeout in Sekunden (default 120). Qwen3-14B braucht "
+            "unter Last (z.B. parallel laufender Embedding-Build) deutlich "
+            "laenger als die alten 30s, daher konservativer Default."
+        ),
     )
     p.add_argument(
         "--overall-timeout", type=float, default=7200.0,
