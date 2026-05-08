@@ -113,7 +113,11 @@ export default function BeneficiaryCompanySearch({ countryCode, onResultsChange 
           q: trimmed,
           scope: 'company',
           country_code: countryCode || undefined,
-          limit: 50,
+          // limit zaehlt nach Records (vor Company-Gruppierung). Wird er
+          // zu klein gewaehlt, fallen unique Firmen mit nur 1-2 Records
+          // unter Score-Tail-Records anderer Firmen heraus. Max-Werte des
+          // Backend-Endpoints (limit<=200, company_limit<=50) ausschoepfen.
+          limit: 200,
           company_limit: 50,
         });
         setResponse(data);

@@ -2302,15 +2302,29 @@ def search_beneficiary_records(
             tokens = [t for t in re.split(r"\s+", normalized_query) if len(t) >= 3]
             ilike_clauses: list[str] = []
             for i, tok in enumerate(tokens):
-                key = f"tok_{i}"
-                escaped = tok.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-                ilike_clauses.append(
-                    f"(beneficiary_name_normalized ILIKE :{key} "
-                    f"OR project_name ILIKE :{key} "
-                    f"OR project_aktenzeichen ILIKE :{key} "
-                    f"OR location ILIKE :{key})"
+                key_raw = f"tok_{i}_raw"
+                key_db = f"tok_{i}_db"
+                escaped_raw = tok.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                # Die Spalte beneficiary_name_normalized expandiert Umlaute
+                # (ä→ae, ö→oe, ü→ue, ß→ss). Die Query-Normalisierung tut das
+                # NICHT — also matcht ILIKE '%universität%' den DB-Wert
+                # 'universitaet' nicht. Wir bauen daher zwei Varianten:
+                # die Original-Form fuer project_name/location (nicht
+                # umlaut-expandiert) und die ae/oe/ue/ss-Form fuer
+                # beneficiary_name_normalized.
+                tok_db = (
+                    tok.replace("ä", "ae").replace("ö", "oe")
+                    .replace("ü", "ue").replace("ß", "ss")
                 )
-                params[key] = f"%{escaped}%"
+                escaped_db = tok_db.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                ilike_clauses.append(
+                    f"(beneficiary_name_normalized ILIKE :{key_db} "
+                    f"OR project_name ILIKE :{key_raw} "
+                    f"OR project_aktenzeichen ILIKE :{key_raw} "
+                    f"OR location ILIKE :{key_raw})"
+                )
+                params[key_raw] = f"%{escaped_raw}%"
+                params[key_db] = f"%{escaped_db}%"
             if ilike_clauses:
                 where.append("(" + " OR ".join(ilike_clauses) + ")")
 
