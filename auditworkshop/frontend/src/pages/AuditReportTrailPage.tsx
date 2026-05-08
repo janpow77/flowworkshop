@@ -32,12 +32,14 @@ import {
   X,
 } from 'lucide-react';
 import {
+  auditTrailExportUrl,
   downloadAuditReportPdf,
   getAuditReportLog,
   type AuditReportLogItem,
   type AuditReportLogParams,
   type AuditReportPdfParams,
 } from '../lib/stateAidApi';
+import ExportButtons, { type ExportFormat } from '../components/ui/ExportButtons';
 
 const PAGE_SIZE = 25;
 
@@ -271,19 +273,41 @@ export default function AuditReportTrailPage() {
       {/* ── Hero-Card ────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden rounded-[34px] border border-white/70 bg-[linear-gradient(135deg,rgba(15,23,72,0.98),rgba(31,41,128,0.94)_45%,rgba(67,86,198,0.85))] px-7 py-9 text-white shadow-[0_38px_120px_-64px_rgba(15,23,42,0.95)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),rgba(255,255,255,0)_38%)]" />
-        <div className="relative">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-indigo-100/80">
-              <ScrollText size={13} /> Audit-Trail
-            </span>
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-indigo-100/80">
+                <ScrollText size={13} /> Audit-Trail
+              </span>
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight lg:text-4xl">
+              Prüfbericht-Verlauf
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-indigo-50/90 lg:text-base">
+              Wer hat wann welchen Bericht erzeugt — vollständige Historie aus dem
+              Audit-Log.
+            </p>
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight lg:text-4xl">
-            Prüfbericht-Verlauf
-          </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-indigo-50/90 lg:text-base">
-            Wer hat wann welchen Bericht erzeugt — vollständige Historie aus dem
-            Audit-Log.
-          </p>
+          <div className="rounded-2xl border border-white/20 bg-white/10 p-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-indigo-100/80">
+              Trail exportieren
+            </div>
+            <div className="mt-2">
+              <ExportButtons
+                formats={['csv', 'xlsx']}
+                onExport={(fmt: ExportFormat) => {
+                  if (fmt !== 'csv' && fmt !== 'xlsx') return;
+                  const url = auditTrailExportUrl(fmt, 500);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.rel = 'noopener noreferrer';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                }}
+              />
+            </div>
+          </div>
         </div>
       </section>
 

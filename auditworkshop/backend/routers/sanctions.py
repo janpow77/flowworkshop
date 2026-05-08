@@ -14,9 +14,14 @@ Recherche-Karten gefuehrt — sie sind nicht lokal indexiert.
 """
 from __future__ import annotations
 
+import csv
+import io
 import logging
+import re
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from routers.auth import require_admin
@@ -461,6 +466,262 @@ def search_get(
             )
             for h in hits
         ],
+    )
+
+
+# ── Export ────────────────────────────────────────────────────────────────────
+
+
+_SANCTIONS_EXPORT_PFLICHTHINWEIS = (
+    "Datenstand abhaengig vom letzten Refresh pro Quelle (siehe "
+    "GET /api/sanctions/sources). Der lokale Index wird aus den OpenSanctions-"
+    "CSVs gebaut. Treffer sind nicht rechtlich verbindlich — vor Massnahmen "
+    "stets die offizielle Quelle (EU FSF, UN-Liste, OFAC, OFSI, SECO) pruefen."
+)
+
+_SANCTIONS_EXPORT_COLUMNS = [
+    "id", "source_key", "source_display_name",
+    "schema_type", "name", "score", "confidence",
+    "matched_field", "matched_on",
+    "aliases", "birth_date", "countries", "addresses",
+    "identifiers", "sanctions", "program_ids",
+    "first_seen", "last_seen",
+]
+
+
+def _hit_to_dict(hit) -> dict:
+    """Vereinheitlicht ein SanctionsHit-Objekt zu einem Export-Dict."""
+    return {
+        "id": hit.id,
+        "source_key": hit.source_key,
+        "source_display_name": hit.source_display_name,
+        "schema_type": hit.schema,
+        "name": hit.name,
+        "score": round(float(hit.score), 1),
+        "confidence": hit.confidence,
+        "matched_field": hit.matched_field,
+        "matched_on": hit.matched_on,
+        "aliases": hit.aliases,
+        "birth_date": hit.birth_date,
+        "countries": hit.countries,
+        "addresses": hit.addresses,
+        "identifiers": hit.identifiers,
+        "sanctions": hit.sanctions,
+        "program_ids": hit.program_ids,
+        "first_seen": hit.first_seen,
+        "last_seen": hit.last_seen,
+    }
+
+
+def _safe_filename_part(value: str) -> str:
+    """Macht aus einem Suchbegriff einen sicheren Dateinamen-Bestandteil."""
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip())[:40]
+    return cleaned or "alle"
+
+
+@router.get("/export")
+def export_sanctions_search(
+    format: str = Query("csv", pattern="^(csv|xlsx|pdf)$"),
+    q: str = Query(..., min_length=2, description="Suchbegriff (Name oder Alias)"),
+    limit: int = Query(50, ge=1, le=500),
+    min_score: float = Query(65.0, ge=40.0, le=100.0),
+    schema_filter: str | None = Query(None, description='"Person" oder "Organization"'),
+    sources: str | None = Query(
+        None,
+        description=(
+            "Komma-Liste der Source-Keys (z.B. 'eu_fsf,un_sc'). "
+            "Default: alle aktivierten Quellen."
+        ),
+    ),
+):
+    """Export der Sanctions-Suche in CSV / XLSX / PDF.
+
+    Selbe Filter-Parameter wie GET /search. Pflichthinweis und Datenstand pro
+    Quelle werden in den Export aufgenommen (CSV als Kommentarzeilen, XLSX in
+    eigenem Sheet "Hinweise", PDF im Footer).
+    """
+    svc = get_multi_service()
+    if not svc.is_any_loaded():
+        raise HTTPException(503, "Kein Sanctions-Index geladen.")
+
+    source_keys = _parse_sources_param(sources)
+    if source_keys is not None:
+        valid = set(svc.indices.keys())
+        source_keys = [k for k in source_keys if k in valid]
+        if not source_keys:
+            raise HTTPException(
+                400,
+                f"Keine bekannten Source-Keys angegeben. "
+                f"Verfuegbar: {', '.join(sorted(valid))}",
+            )
+
+    hits = svc.search(
+        q,
+        limit=limit,
+        min_score=min_score,
+        schema=schema_filter,
+        sources=source_keys,
+    )
+    rows = [_hit_to_dict(h) for h in hits]
+
+    sources_searched = source_keys or list(svc.indices.keys())
+    stats_aggregated = svc.stats()
+    per_source_metadata: dict[str, str] = {}
+    for s in stats_aggregated.get("per_source", []):
+        key = s.get("source_key") or ""
+        if not key:
+            continue
+        loaded_at = s.get("loaded_at") or "—"
+        per_source_metadata[key] = (
+            f"{int(s.get('total_entries') or 0)} Eintraege · "
+            f"geladen {loaded_at}"
+        )
+
+    metadata = {
+        "Suchbegriff": q,
+        "Trefferzahl": str(len(rows)),
+        "Schwellenwert": f"{min_score:.1f}",
+        "Schema-Filter": schema_filter or "alle",
+        "Listen-Filter": ", ".join(sources_searched) or "alle",
+    }
+    metadata.update(per_source_metadata)
+
+    safe_q = _safe_filename_part(q)
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+    if format == "xlsx":
+        from services.excel_export import (
+            XLSX_MEDIA_TYPE,
+            make_xlsx,
+            xlsx_response_headers,
+        )
+        xlsx_bytes = make_xlsx(
+            rows,
+            sheet_name="Sanktionen-Treffer",
+            headers=_SANCTIONS_EXPORT_COLUMNS,
+            table_name="SanktionenTreffer",
+            pflichthinweis=_SANCTIONS_EXPORT_PFLICHTHINWEIS,
+            metadata=metadata,
+            notes_title="Sanktionspruefung · Hinweise",
+        )
+        filename = f"sanktionen_search_{safe_q}_{timestamp}.xlsx"
+        return StreamingResponse(
+            iter([xlsx_bytes]),
+            media_type=XLSX_MEDIA_TYPE,
+            headers=xlsx_response_headers(filename),
+        )
+
+    if format == "pdf":
+        return _stream_sanctions_pdf(rows, metadata)
+
+    # CSV-Export (default)
+    buf = io.StringIO()
+    buf.write("﻿")  # UTF-8 BOM für Excel
+    buf.write(f"# FlowWorkshop · Sanctions-Search-Export · {datetime.utcnow().isoformat()}Z\n")
+    buf.write(f"# {_SANCTIONS_EXPORT_PFLICHTHINWEIS}\n")
+    buf.write(f"# Suchbegriff: {q}\n")
+    buf.write(f"# Schwelle: {min_score:.1f}  ·  Schema-Filter: {schema_filter or 'alle'}\n")
+    buf.write(f"# Listen-Filter: {', '.join(sources_searched) or 'alle'}\n")
+    for key, info in per_source_metadata.items():
+        buf.write(f"# Datenstand {key}: {info}\n")
+
+    writer = csv.writer(buf, delimiter=";", quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(_SANCTIONS_EXPORT_COLUMNS)
+    for d in rows:
+        cells = []
+        for k in _SANCTIONS_EXPORT_COLUMNS:
+            v = d.get(k)
+            if v is None:
+                cells.append("")
+            elif isinstance(v, (list, tuple)):
+                cells.append(" | ".join(str(x) for x in v if x))
+            else:
+                cells.append(str(v))
+        writer.writerow(cells)
+
+    filename = f"sanktionen_search_{safe_q}_{timestamp}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _stream_sanctions_pdf(rows: list[dict], metadata: dict[str, str]) -> StreamingResponse:
+    """Sanctions-PDF analog zu state_aid: pymupdf, A4 quer, Pflichthinweis im Footer."""
+    try:
+        import fitz  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            501,
+            f"PDF-Export nicht verfuegbar: pymupdf nicht installiert ({exc}).",
+        ) from exc
+
+    doc = fitz.open()
+    page = doc.new_page(width=842, height=595)  # A4 Querformat
+    margin = 28
+    cursor_y = margin
+    line_height = 11
+
+    def _write(text: str, *, size: int = 9, bold: bool = False) -> None:
+        nonlocal cursor_y, page
+        if cursor_y > page.rect.height - margin - line_height:
+            page = doc.new_page(width=842, height=595)
+            cursor_y = margin
+        font = "helvB" if bold else "helv"
+        try:
+            page.insert_text(
+                (margin, cursor_y), text, fontsize=size, fontname=font,
+            )
+        except Exception:
+            page.insert_text((margin, cursor_y), text, fontsize=size)
+        cursor_y += line_height + (size - 9)
+
+    _write("FlowWorkshop · Sanktionspruefung", size=14, bold=True)
+    _write(datetime.utcnow().strftime("Erstellt: %Y-%m-%d %H:%M UTC"), size=9)
+    for k, v in metadata.items():
+        _write(f"  · {k}: {v}", size=8)
+    cursor_y += line_height // 2
+
+    _write(f"Treffer: {len(rows)}", size=10, bold=True)
+    cursor_y += line_height // 2
+
+    for row in rows:
+        _write(
+            f"{row.get('name', '')} · {row.get('schema_type', '')} · Score "
+            f"{row.get('score', 0):.1f} ({row.get('confidence', '')}) · "
+            f"{row.get('source_display_name') or row.get('source_key', '')}",
+            size=9, bold=True,
+        )
+        if row.get("aliases"):
+            aliases = row["aliases"]
+            if isinstance(aliases, (list, tuple)):
+                aliases_str = ", ".join(str(a) for a in aliases[:6] if a)
+            else:
+                aliases_str = str(aliases)
+            if aliases_str:
+                _write(f"   Aliase: {aliases_str[:160]}", size=8)
+        if row.get("countries"):
+            _write(f"   Laender: {row['countries'][:160]}", size=8)
+        if row.get("sanctions"):
+            _write(f"   Rechtsakt: {row['sanctions'][:160]}", size=8)
+        cursor_y += 2
+
+    _write("", size=8)
+    _write(_SANCTIONS_EXPORT_PFLICHTHINWEIS, size=7)
+
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    suchbegriff = metadata.get("Suchbegriff", "alle")
+    filename = (
+        f"sanktionen_search_{_safe_filename_part(suchbegriff)}_"
+        f"{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
+    )
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

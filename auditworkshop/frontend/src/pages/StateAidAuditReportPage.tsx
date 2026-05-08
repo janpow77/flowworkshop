@@ -322,15 +322,11 @@ function StateAidAuditReportPageInner() {
             <h1 className="mt-4 text-3xl font-semibold tracking-tight lg:text-4xl">
               Cross-Register-Prüfbericht
             </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-indigo-50/90 lg:text-base">
-              Faktische Zusammenfassung aus drei öffentlichen Registern.
-              Bewertung obliegt dem Prüfer.
-            </p>
             <div className="mt-5 inline-flex max-w-2xl items-start gap-2.5 rounded-[22px] border border-white/15 bg-white/10 px-4 py-3 text-xs leading-5 text-indigo-50/90 backdrop-blur-sm">
               <Sparkles size={14} className="mt-0.5 shrink-0 text-indigo-200" />
               <span>
-                Faktische Aggregation aus 3 öffentlichen Registern in einem Schritt — ohne Wertung.
-                Spart 30+ Minuten manuelle Recherche pro Vorgang.
+                Faktische Aggregation aus 3 öffentlichen Registern in einem Schritt — ohne Wertung,
+                mit Quellen- und Trefferanhang für die fachliche Nachprüfung.
               </span>
             </div>
           </div>
@@ -396,14 +392,14 @@ function StateAidAuditReportPageInner() {
               </label>
               <label className="block">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  Prüfer-Name <span className="font-normal lowercase tracking-normal text-slate-400">(optional, erscheint im PDF)</span>
+                  Bearbeiter <span className="font-normal lowercase tracking-normal text-slate-400">(optional, erscheint im PDF)</span>
                 </span>
                 <input
                   type="text"
                   value={prueferName}
                   onChange={(e) => setPrueferName(e.target.value.slice(0, MAX_PRUEFER))}
                   maxLength={MAX_PRUEFER}
-                  placeholder="z.B. Jan Riener, Prüfbehörde"
+                  placeholder="z.B. Jan Riener"
                   className="mt-1.5 w-full rounded-[20px] border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/30"
                 />
               </label>
@@ -561,8 +557,9 @@ function StateAidAuditReportPageInner() {
                 </span>
               </div>
               <p id="llm-verify-hint" className="mt-1 text-xs leading-5 text-violet-800/85 dark:text-violet-200/85">
-                Stufe 4 der Hybrid-Pipeline: Qwen3-14B re-ranked die unsicheren Querbezüge (Score 75–89)
-                und liefert pro Eintrag ein strukturiertes JSON-Verdict mit Begründung.
+                Ein lokal laufendes Sprachmodell schaut sich die unsicheren Querbezüge noch einmal
+                an und urteilt in einem Satz, ob es wirklich um denselben Akteur geht. Die Originaldaten
+                bleiben unangetastet — die Bewertung ist eine Zweitmeinung mit kurzer Begründung.
               </p>
             </div>
           </label>

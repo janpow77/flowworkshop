@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LogIn, Map as MapIcon, Shield, ArrowLeft } from 'lucide-react';
+import { Banknote, ClipboardCheck, LogIn, Map as MapIcon, Shield, ArrowLeft } from 'lucide-react';
 import ErrorBoundary from './ErrorBoundary';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
@@ -22,7 +22,7 @@ export default function PublicShell() {
             <div className="leading-tight">
               <div className="text-sm font-semibold">Prüferworkshop 2026</div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                Öffentliche Tools nach Art. 49 / 73 VO (EU) 2021/1060
+                Registerabgleich für Prüfbehörden
               </div>
             </div>
           </Link>
@@ -36,6 +36,26 @@ export default function PublicShell() {
               }`}
             >
               <MapIcon size={14} /> Begünstigtenkarte
+            </Link>
+            <Link
+              to="/beihilfen"
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm transition-colors ${
+                loc.pathname === '/beihilfen'
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200'
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Banknote size={14} /> Beihilfenregister
+            </Link>
+            <Link
+              to="/audit-report"
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm transition-colors ${
+                loc.pathname === '/audit-report'
+                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200'
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+            >
+              <ClipboardCheck size={14} /> Prüfbericht
             </Link>
             <Link
               to="/sanktionslisten"

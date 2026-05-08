@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   AlertTriangle, ArrowUpRight, Banknote, BookOpenCheck, Building2,
-  CheckCircle2, Crown, Database, Download, ExternalLink, FileSpreadsheet, FileText, Filter, Globe, Globe2, Landmark,
+  CheckCircle2, Crown, Database, Download, ExternalLink, Filter, Globe, Globe2, Landmark,
   Layers, Loader2, Mountain, RefreshCw, Search, ShieldAlert,
   Sparkles, Target,
 } from 'lucide-react';
 import { useExport } from '../lib/useExport';
+import ExportButtons, { type ExportFormat } from '../components/ui/ExportButtons';
 import {
   getSanctionsSources,
   refreshSanctionsSource,
@@ -410,33 +411,59 @@ export default function SanktionslistenPage() {
 
   const loadedSourceCount = sources.filter((s) => s.loaded).length;
 
-  async function exportPdf() {
+  /**
+   * Server-seitiger Export der Sanctions-Suche (CSV / XLSX / PDF).
+   *
+   * Bevorzugt das Backend-Endpoint /api/sanctions/export — der liefert das
+   * korrekte XLSX und PDF mit Pflichthinweis. Fuer den clientseitigen
+   * Result-Filter (resultSourceFilter) faellt der Export auf den lokalen
+   * Renderer zurueck, weil das Backend keinen Filter pro Hit kennt.
+   */
+  async function handleExport(format: ExportFormat) {
     if (!searchResult) return;
-    setExporting('pdf');
+    if (format === 'png' || format === 'geojson') return; // nicht unterstuetzt
+    setExporting(format === 'pdf' ? 'pdf' : 'csv');
     try {
-      await exportApi.toPdf(resultRef.current, {
-        title: `Sanktionsprüfung: ${searchResult.query}`,
-        subtitle: `Multi-Source · Schwelle ${searchResult.threshold} · ${filteredHits.length} angezeigte Treffer · Listen: ${activeSources.map(sourceShortLabel).join(', ')}`,
-        filename: searchFilename,
-      });
-    } finally {
-      setExporting(null);
-    }
-  }
+      const useClientFilter = resultSourceFilter.length > 0;
+      if (!useClientFilter) {
+        // Server-Pfad: vollstaendiger Export inkl. Pflichthinweis-Sheet.
+        const params = new URLSearchParams({
+          format,
+          q: searchResult.query,
+          limit: '500',
+          min_score: String(searchResult.threshold),
+        });
+        if (schemaFilter) params.set('schema_filter', schemaFilter);
+        if (activeSources.length > 0) params.set('sources', activeSources.join(','));
+        const url = `/api/sanctions/export?${params.toString()}`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
 
-  function exportCsv() {
-    if (!searchResult) return;
-    setExporting('csv');
-    try {
+      // Clientseitiger Filter aktiv → lokaler Export auf gefilterten Hits.
+      if (format === 'pdf') {
+        await exportApi.toPdf(resultRef.current, {
+          title: `Sanktionsprüfung: ${searchResult.query}`,
+          subtitle: `Multi-Source · Schwelle ${searchResult.threshold} · ${filteredHits.length} angezeigte Treffer · Listen: ${activeSources.map(sourceShortLabel).join(', ')}`,
+          filename: searchFilename,
+        });
+        return;
+      }
+      // CSV oder XLSX clientseitig — wir liefern CSV in beiden Faellen,
+      // weil resultSourceFilter ohnehin nur ein Subset ist und Excel
+      // CSV mit Komma-Trenner und BOM problemlos oeffnet.
       const meta = {
         suchbegriff: searchResult.query,
         normalisiert: searchResult.normalized,
         schwellenwert: searchResult.threshold,
         typfilter: schemaFilter || 'Alle',
         listen_aktiv: activeSources.map(sourceShortLabel).join(' | '),
-        listen_filter_clientseitig: resultSourceFilter.length === 0
-          ? 'kein clientseitiger Filter'
-          : resultSourceFilter.map(sourceShortLabel).join(' | '),
+        listen_filter_clientseitig: resultSourceFilter.map(sourceShortLabel).join(' | '),
         exportiert_am: new Date().toISOString(),
       };
       const rows = filteredHits.length > 0
@@ -461,27 +488,7 @@ export default function SanktionslistenPage() {
             erstmals_gelistet: hit.first_seen,
             zuletzt_bestaetigt: hit.last_seen,
           }))
-        : [{
-            ...meta,
-            id: '',
-            quelle_key: '',
-            quelle: '',
-            typ: '',
-            name: 'Kein Treffer oberhalb des Schwellenwerts',
-            score: '',
-            konfidenz: '',
-            trefferquelle: '',
-            matched_on: '',
-            aliase: '',
-            geburtsdatum: '',
-            laender: '',
-            adressen: '',
-            identifier: '',
-            rechtsakt: '',
-            programm: '',
-            erstmals_gelistet: '',
-            zuletzt_bestaetigt: '',
-          }];
+        : [{ ...meta, id: '', name: 'Kein Treffer oberhalb des Schwellenwerts' }];
       exportApi.toCsv(rows, { filename: searchFilename });
     } finally {
       setExporting(null);
@@ -721,28 +728,18 @@ export default function SanktionslistenPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/75 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/55">
                   <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                     <Download size={14} />
-                    Prüfnotiz exportieren
+                    Pruefnotiz exportieren · Pflichthinweis und Datenstand sind im Export enthalten
+                    {resultSourceFilter.length > 0 && (
+                      <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
+                        Clientseitiger Filter aktiv — Export ohne Server-Pflichthinweis-Sheet
+                      </span>
+                    )}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={exportPdf}
-                      disabled={!!exporting}
-                      className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
-                    >
-                      {exporting === 'pdf' ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
-                      PDF
-                    </button>
-                    <button
-                      type="button"
-                      onClick={exportCsv}
-                      disabled={!!exporting}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                    >
-                      {exporting === 'csv' ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={13} />}
-                      CSV/Excel
-                    </button>
-                  </div>
+                  <ExportButtons
+                    formats={['csv', 'xlsx', 'pdf']}
+                    onExport={handleExport}
+                    disabled={!!exporting}
+                  />
                 </div>
 
                 {/* Result-Filter (clientseitig) */}

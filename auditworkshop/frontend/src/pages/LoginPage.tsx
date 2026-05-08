@@ -135,15 +135,63 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
         </div>
       </div>
 
-      {/* Login + Public-Tools */}
-      <div className="relative z-10 w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+      {/* Register-Tools + Login */}
+      <div className="relative z-10 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10">
           <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight">Pr&uuml;ferworkshop 2026</h1>
           <p className="text-base text-blue-200/70 mt-3">Workshop 5 &mdash; KI und Digitalisierung in der Pr&uuml;ft&auml;tigkeit</p>
         </div>
 
-        {/* Drei Kacheln: Begünstigtenkarte · Sanktionslisten · Anmelden */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        {/* Auswertungskacheln + Anmelden */}
+        <div className="grid grid-cols-1 gap-7 md:grid-cols-2 items-stretch">
+          {/* Kachel A: Beihilfenregister */}
+          <button
+            onClick={() => navigate('/beihilfen')}
+            className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-amber-500/10 hover:scale-[1.01] hover:shadow-xl"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-2xl backdrop-blur-sm">💰</span>
+              <h2 className="text-lg font-semibold text-white">Beihilfenregister</h2>
+            </div>
+            <p className="text-sm leading-relaxed text-blue-200/80">
+              EU-Transparency-Aid-Module (TAM) lokal indiziert &mdash; alle veröffentlichungs&shy;pflichtigen
+              Beihilfen aus DE und AT seit 2014.
+            </p>
+            <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
+              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> 349.000+ Awards (DE 254k + AT 95k)</li>
+              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> NUTS-Karte mit Aggregation auf Bundesland/Kreis</li>
+              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> 4-Stufen-Hybrid-Suche (Trigram + Fuzzy + Embedding + LLM)</li>
+              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> KI-Suche mit Klartext-Fragen</li>
+            </ul>
+            <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-amber-300/80">
+              Veröffentlicht nach Art. 9 Abs. 1 lit. c) VO (EU) 651/2014
+            </p>
+          </button>
+
+          {/* Kachel B: Cross-Register-Prüfbericht (NEU) */}
+          <button
+            onClick={() => navigate('/audit-report')}
+            className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-indigo-500/10 hover:scale-[1.01] hover:shadow-xl"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/20 text-2xl backdrop-blur-sm">📄</span>
+              <h2 className="text-lg font-semibold text-white">Cross-Register-Prüfbericht</h2>
+            </div>
+            <p className="text-sm leading-relaxed text-blue-200/80">
+              Eine Eingabe (Firma + Personen) &rarr; ein PDF aus drei Registern.
+              Faktisch, ohne Risiko-Bewertung.
+            </p>
+            <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
+              <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">●</span> State-Aid + Begünstigte + Sanktionen aggregiert</li>
+              <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">●</span> Personen-Sanctions-Check (Geschäftsführer/UBO)</li>
+              <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">●</span> Konzernverbund via GLEIF</li>
+              <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">●</span> Mehrseitiger PDF-Download</li>
+            </ul>
+            <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-indigo-300/80">
+              Registerübergreifende Prüfnotiz mit Quellen- und Trefferanhang
+            </p>
+          </button>
+
           {/* Kachel 1: Begünstigtenkarte */}
           <button
             onClick={() => navigate('/scenario/6')}
@@ -192,8 +240,8 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
             </p>
           </button>
 
-          {/* Kachel 3: Login */}
-          <div className="glass-card flex flex-col rounded-3xl p-8">
+          {/* Login */}
+          <div className="glass-card flex flex-col rounded-3xl p-8 md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/20 text-cyan-300 backdrop-blur-sm">
                 {qrToken ? <QrCode size={22} /> : <LogIn size={22} />}
@@ -205,7 +253,7 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
                 ? 'Der QR-Code wird geprüft. Falls der Link abgelaufen ist, können Sie sich unten normal anmelden.'
                 : 'Melden Sie sich mit Ihrer registrierten E-Mail-Adresse an. Falls gesetzt, geben Sie zusätzlich Ihr Passwort ein.'}
             </p>
-            <div className="flex flex-col gap-3 flex-1">
+            <div className="grid gap-3 flex-1 lg:grid-cols-[1fr_1fr_auto] lg:items-start">
               <input
                 type="email"
                 value={email}
@@ -235,20 +283,20 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {error && (
-                <div className="rounded-lg border border-red-400/30 bg-red-500/20 px-3 py-2 text-xs text-red-200">
-                  {error}
-                </div>
-              )}
               <button
                 onClick={handleLogin}
                 disabled={loading || !email}
-                className="login-button mt-1 w-full flex items-center justify-center gap-2 rounded-full py-3 text-sm font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                className="login-button w-full flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed lg:min-w-40"
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
                 Anmelden
               </button>
             </div>
+            {error && (
+              <div className="mt-3 rounded-lg border border-red-400/30 bg-red-500/20 px-3 py-2 text-xs text-red-200">
+                {error}
+              </div>
+            )}
             <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
               <button onClick={() => navigate('/signup')} className="text-blue-300/70 hover:text-blue-200 flex items-center gap-1 transition-colors">
                 <UserPlus size={12} /> Konto erstellen

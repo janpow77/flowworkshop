@@ -33,6 +33,7 @@ export type SanctionsSourceKey =
 
 export interface SanctionsSourceInfo {
   source_key: SanctionsSourceKey;
+  key?: SanctionsSourceKey;
   display_name: string;
   issuer: string;
   loaded: boolean;
@@ -147,8 +148,11 @@ export async function getSanctionsSources(): Promise<SanctionsSourceInfo[]> {
   const data = await getJson<{ sources: SanctionsSourceInfo[] } | SanctionsSourceInfo[]>(
     '/sanctions/sources',
   );
-  if (Array.isArray(data)) return data;
-  return data.sources ?? [];
+  const sources = Array.isArray(data) ? data : data.sources ?? [];
+  return sources.map((source) => ({
+    ...source,
+    source_key: source.source_key ?? source.key ?? 'unknown',
+  }));
 }
 
 /**
@@ -194,7 +198,8 @@ export async function getSanctionsStats(): Promise<SanctionsStatsResponse> {
  * Unbekannte Keys werden uppercase ausgegeben, damit neue Sources, die
  * spaeter im Backend registriert werden, nicht zu undefined fuehren.
  */
-export function sourceShortLabel(key: SanctionsSourceKey): string {
+export function sourceShortLabel(key: SanctionsSourceKey | string | null | undefined): string {
+  if (!key) return '—';
   switch (key) {
     case 'eu_fsf':
       return 'EU FSF';
@@ -207,7 +212,7 @@ export function sourceShortLabel(key: SanctionsSourceKey): string {
     case 'ch_seco':
       return 'CH SECO';
     default:
-      return key.toUpperCase().replace(/_/g, ' ');
+      return String(key).toUpperCase().replace(/_/g, ' ');
   }
 }
 

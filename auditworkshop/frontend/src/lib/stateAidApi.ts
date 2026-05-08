@@ -312,7 +312,7 @@ function buildQuery(params: Record<string, unknown>): string {
   const sp = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === null) continue;
-    if (typeof value === 'string' && value === '') continue;
+    if (typeof value === 'string' && value === '' && key !== 'q') continue;
     sp.set(key, String(value));
   }
   const s = sp.toString();
@@ -354,7 +354,7 @@ export function getSources(): Promise<StateAidSourcesResponse> {
 }
 
 export function search(params: StateAidSearchParams): Promise<StateAidSearchResponse> {
-  return getJson<StateAidSearchResponse>(`/search${buildQuery(params as Record<string, unknown>)}`);
+  return getJson<StateAidSearchResponse>(`/search${buildQuery({ q: '', ...params } as Record<string, unknown>)}`);
 }
 
 export function getAward(id: string): Promise<StateAidAward> {
@@ -395,9 +395,28 @@ export async function deleteSource(sourceKey: string): Promise<{ status: string;
   return res.json();
 }
 
-export function exportUrl(format: 'csv' | 'pdf', params: StateAidSearchParams): string {
+export function exportUrl(format: 'csv' | 'xlsx' | 'pdf', params: StateAidSearchParams): string {
   const all: Record<string, unknown> = { ...(params as Record<string, unknown>), format };
   return `${BASE}/export${buildQuery(all)}`;
+}
+
+/**
+ * Statistics-Export-URL fuer den Auswertungs-Tab. Liefert ein Multi-Sheet-XLSX
+ * mit Top-Behoerden, Top-Beguenstigte, Top-NUTS, Top-Instrumente und
+ * Jahresverteilung — Filter wie bei `/stats`.
+ */
+export function statsExportUrl(params: StateAidSearchParams = {}): string {
+  const all: Record<string, unknown> = { ...(params as Record<string, unknown>), format: 'xlsx' };
+  return `${BASE}/stats/export${buildQuery(all)}`;
+}
+
+/**
+ * Audit-Trail-Export (Admin-only). Liefert die Liste der erzeugten
+ * Pruefberichte als CSV oder XLSX — KEINE PDFs, nur Metadaten.
+ */
+export function auditTrailExportUrl(format: 'csv' | 'xlsx', limit = 500): string {
+  const params = new URLSearchParams({ format, limit: String(limit) });
+  return `${BASE}/audit-report/log/export?${params.toString()}`;
 }
 
 // ── Validator-API ────────────────────────────────────────────────────────────

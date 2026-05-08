@@ -365,6 +365,16 @@ def _check_source_quality(db: Session) -> list[ValidationFinding]:
     for src in rows:
         rc = int(src.record_count or 0)
         q = (src.quality or "").lower()
+        # Sources, die nie geharvested wurden (last_successful_harvest_at IS NULL),
+        # gelten als "geplant"/"placeholder" — der Quality-Status ist hier nicht
+        # aussagekraeftig, also nicht als Mismatch werten. Nationale Register
+        # (PL/RO/ES/SI) sind der Hauptfall: Default 'red' als „Connector noch
+        # nicht implementiert", ohne dass es ein echtes Datenqualitaetsproblem
+        # ist. Cases-Quellen werden grundsaetzlich nie geharvested.
+        if src.last_successful_harvest_at is None:
+            continue
+        if src.source_type == "cases":
+            continue
         if rc > 0 and q == "red":
             mismatches.append({
                 "source_key": src.source_key,
@@ -417,14 +427,16 @@ def _check_duplicate_sa_reference(db: Session, *, sample_limit: int = 10) -> lis
             }
             for r in rows[:sample_limit]
         ]
+        # Severity bewusst "info" — TAM-Beihilferegelungen werden vielfach
+        # vergeben; dieselbe SA-Referenz kann fuer hunderte Beguenstigte gelten.
+        # Das ist KEIN Datenqualitaetsproblem, sondern fachliche Realitaet.
         findings.append(ValidationFinding(
-            severity="warning",
+            severity="info",
             code="DUPLICATE_SA_REFERENCE",
             message=(
-                f"{len(rows)} SA-Referenz(en) erscheinen mehrfach innerhalb "
-                "derselben Source. Hinweis: KOM-Faelle koennen mehrere Awards "
-                "pro Beguenstigtem haben — ein Match ist nicht zwingend ein "
-                "Duplikat, aber pruefenswert."
+                f"{len(rows):,} SA-Referenz(en) werden mehrfach genutzt — "
+                "fachlich erwartet (eine Beihilferegelung kann viele "
+                "Empfaenger foerdern), nur als Hintergrund-Information."
             ),
             detail={"count": len(rows), "sample": sample},
         ))

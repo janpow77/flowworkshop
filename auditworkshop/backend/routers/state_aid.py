@@ -419,7 +419,7 @@ def _adaptive_min_score(query: str, requested: float | None) -> float:
 @router.get("/search")
 def search(
     request: Request,
-    q: str = Query(..., min_length=2, max_length=200, description="Suchbegriff (Beguenstigtenname)."),
+    q: str | None = Query(None, max_length=200, description="Suchbegriff (Beguenstigtenname). Optional, wenn andere Filter gesetzt sind."),
     country_code: str | None = Query(None, max_length=3),
     nuts_code: str | None = Query(None, max_length=10),
     since: date | None = Query(None),
@@ -467,13 +467,64 @@ def search(
     # ueber den 170k+ Records grossen RapidFuzz-Index.
     _check_rate_limit("search", request)
     cc = country_code.upper() if country_code else None
+    q_clean = (q or "").strip()
     auto_min_score = min_score is None
-    effective_min_score = _adaptive_min_score(q, min_score)
+    effective_min_score = _adaptive_min_score(q_clean, min_score) if q_clean else 0.0
 
     relaxed: list[str] = []
     location_hint_clean = (location_hint or "").strip() or None
+
+    # Filter-only-Modus: wenn keine Query gesetzt ist, aber andere Filter,
+    # zeigen wir die Awards anhand der Filter. Kein Fuzzy-Score noetig.
+    if not q_clean:
+        # Mindestens ein anderer Filter sollte gesetzt sein, sonst wird die
+        # Antwort sehr gross. Wir lassen es zu, beschneiden aber hart.
+        # (StateAidAward wird oben am Modul importiert.)
+        rows_q = db.query(StateAidAward)
+        rows_q = _apply_award_filters(
+            rows_q, country_code=cc, nuts_code=nuts_code,
+            since=since, until=until,
+            min_amount=min_amount, max_amount=max_amount,
+            aid_instrument=aid_instrument, objective=objective,
+            granting_authority=granting_authority, sa_reference=sa_reference,
+            source_key=source_key,
+        )
+        # Sort: highest amount first when filter-only, easier to spot big grants
+        rows_q = rows_q.order_by(StateAidAward.aid_amount_eur.desc().nullslast())
+        rows = rows_q.limit(limit).all()
+        return {
+            "query": "",
+            "normalized": "",
+            "total_hits": len(rows),
+            "threshold": 0.0,
+            "hits": [
+                {**_serialize_award(r), "score": 100.0, "confidence": "exact",
+                 "matched_field": "filter", "via_alias": None,
+                 "match_stage": "filter"}
+                for r in rows
+            ],
+            "filters_applied": {
+                k: v for k, v in {
+                    "country_code": cc, "nuts_code": nuts_code,
+                    "since": since.isoformat() if since else None,
+                    "until": until.isoformat() if until else None,
+                    "min_amount": min_amount, "max_amount": max_amount,
+                    "aid_instrument": aid_instrument, "objective": objective,
+                    "granting_authority": granting_authority,
+                    "sa_reference": sa_reference, "source_key": source_key,
+                }.items() if v is not None
+            },
+            "meta": {
+                "mode": "filter_only",
+                "auto_min_score": False,
+                "alias_used": None,
+                "relaxed": [],
+                "location_hint_used": False,
+            },
+        }
+
     hits = fuzzy_match_company(
-        db, q, limit=limit * 3, min_score=effective_min_score, country_code=cc,
+        db, q_clean, limit=limit * 3, min_score=effective_min_score, country_code=cc,
         location_hint=location_hint_clean,
     )
 
@@ -742,6 +793,154 @@ def get_stats(
     }
 
 
+@router.get("/stats/export")
+def export_stats(
+    format: str = Query("xlsx", pattern="^(xlsx)$"),
+    q: str | None = Query(None, max_length=200),
+    country_code: str | None = Query(None, max_length=3),
+    nuts_code: str | None = Query(None, max_length=10),
+    since: date | None = Query(None),
+    until: date | None = Query(None),
+    min_amount: float | None = Query(None, ge=0),
+    max_amount: float | None = Query(None, ge=0),
+    aid_instrument: str | None = Query(None, max_length=200),
+    objective: str | None = Query(None, max_length=200),
+    granting_authority: str | None = Query(None, max_length=200),
+    sa_reference: str | None = Query(None, max_length=64),
+    source_key: str | None = Query(None, max_length=64),
+    limit: int = Query(20, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    """Auswertungs-Export — Top-Listen + Jahresverteilung als Multi-Sheet-XLSX.
+
+    Sheets:
+      - Top Behoerden
+      - Top Beguenstigte
+      - Top NUTS-Regionen (auf Basis von Awards je NUTS-Code)
+      - Top Instrumente
+      - Jahresverteilung
+
+    Kein PDF/CSV — Statistiken sind ohnehin tabellarisch und Excel das natuerliche
+    Format. Filter-Param-Set ist identisch zu /api/state-aid/stats.
+    """
+    from services.excel_export import (
+        XLSX_MEDIA_TYPE,
+        make_xlsx_multi_sheet,
+        xlsx_response_headers,
+    )
+
+    cc = country_code.upper() if country_code else None
+
+    # Re-Use von /stats Logik via direktem Aufruf — vermeidet Code-Duplikation
+    stats = get_stats(
+        q=q, country_code=cc, nuts_code=nuts_code, since=since, until=until,
+        min_amount=min_amount, max_amount=max_amount,
+        aid_instrument=aid_instrument, objective=objective,
+        granting_authority=granting_authority, sa_reference=sa_reference,
+        source_key=source_key, limit=limit, db=db,
+    )
+
+    # NUTS-Auswertung separat — /stats liefert keinen by_nuts-Block, wir
+    # bauen ihn hier on-the-fly.
+    base = db.query(StateAidAward)
+    base = _apply_award_filters(
+        base,
+        country_code=cc, nuts_code=nuts_code, since=since, until=until,
+        min_amount=min_amount, max_amount=max_amount,
+        aid_instrument=aid_instrument, objective=objective,
+        granting_authority=granting_authority, sa_reference=sa_reference,
+        source_key=source_key,
+    )
+    if q:
+        hits = fuzzy_match_company(db, q, limit=2000, min_score=70.0, country_code=cc)
+        if not hits:
+            base = base.filter(StateAidAward.id.in_([]))
+        else:
+            base = base.filter(StateAidAward.id.in_([h.award_id for h in hits]))
+
+    base_subq = base.subquery()
+    nuts_rows = (
+        db.query(
+            base_subq.c.nuts_code.label("nuts_code"),
+            base_subq.c.nuts_label.label("nuts_label"),
+            sql_func.count().label("count"),
+            sql_func.sum(base_subq.c.aid_amount_eur).label("total_eur"),
+        )
+        .select_from(base_subq)
+        .group_by(base_subq.c.nuts_code, base_subq.c.nuts_label)
+        .order_by(sql_func.sum(base_subq.c.aid_amount_eur).desc().nullslast())
+        .limit(limit)
+        .all()
+    )
+    by_nuts = [
+        {
+            "nuts_code": r.nuts_code or "",
+            "nuts_label": r.nuts_label or "",
+            "count": int(r.count or 0),
+            "total_eur": _to_float(r.total_eur),
+        }
+        for r in nuts_rows if r.nuts_code or r.nuts_label
+    ]
+
+    sheets = [
+        {
+            "name": "Top Behoerden",
+            "headers": ["key", "count", "total_eur"],
+            "rows": stats.get("top_authorities") or [],
+            "table_name": "TopBehoerden",
+        },
+        {
+            "name": "Top Beguenstigte",
+            "headers": ["key", "count", "total_eur"],
+            "rows": stats.get("top_beneficiaries") or [],
+            "table_name": "TopBeguenstigte",
+        },
+        {
+            "name": "Top NUTS-Regionen",
+            "headers": ["nuts_code", "nuts_label", "count", "total_eur"],
+            "rows": by_nuts,
+            "table_name": "TopNUTS",
+        },
+        {
+            "name": "Top Instrumente",
+            "headers": ["key", "count", "total_eur"],
+            "rows": stats.get("top_instruments") or [],
+            "table_name": "TopInstrumente",
+        },
+        {
+            "name": "Jahresverteilung",
+            "headers": ["year", "count", "total_eur"],
+            "rows": stats.get("by_year") or [],
+            "table_name": "Jahresverteilung",
+        },
+    ]
+
+    metadata: dict[str, str] = {
+        "Trefferzahl gesamt": str(stats.get("total_awards") or 0),
+        "Foerdervolumen gesamt (EUR)": f"{stats.get('total_eur') or 0:.2f}",
+        "Limit pro Top-Liste": str(limit),
+    }
+    filters_applied = stats.get("filters_applied") or {}
+    if filters_applied:
+        metadata["Filter"] = ", ".join(f"{k}={v}" for k, v in filters_applied.items())
+    sources = db.query(StateAidSource).order_by(StateAidSource.source_key).all()
+    metadata.update(_build_source_metadata(sources))
+
+    xlsx_bytes = make_xlsx_multi_sheet(
+        sheets,
+        pflichthinweis=_pflichthinweis(),
+        metadata=metadata,
+        notes_title="State-Aid-Auswertung · Hinweise",
+    )
+
+    filename = f"state_aid_stats_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        iter([xlsx_bytes]),
+        media_type=XLSX_MEDIA_TYPE,
+        headers=xlsx_response_headers(filename),
+    )
+
+
 @router.get("/company-dossier")
 def company_dossier(
     q: str = Query(..., min_length=2, max_length=200, description="Firmenname / Beguenstigter."),
@@ -942,6 +1141,55 @@ def _stream_csv(awards: list[StateAidAward], filters: dict, sources: list[StateA
     )
 
 
+def _build_source_metadata(sources: list[StateAidSource]) -> dict:
+    """Datenstand pro Quelle (Source-Key → Beschreibung) — fuer XLSX-Hinweise."""
+    out: dict[str, str] = {}
+    for s in sources:
+        last = s.last_successful_harvest_at.isoformat() if s.last_successful_harvest_at else "—"
+        out[s.source_key] = (
+            f"{s.record_count or 0} Awards · letzter Harvest {last} · "
+            f"Qualitaet {s.quality or '?'}"
+        )
+    return out
+
+
+def _stream_xlsx(awards: list[StateAidAward], filters: dict, sources: list[StateAidSource]) -> StreamingResponse:
+    """XLSX-Export via openpyxl (services/excel_export.py).
+
+    Sheet 1: Awards-Daten mit AutoFilter und Header-Style
+    Sheet "Hinweise": Pflichthinweis + Datenstand pro Quelle (Plan §13)
+    """
+    from services.excel_export import (
+        XLSX_MEDIA_TYPE,
+        make_xlsx,
+        xlsx_response_headers,
+    )
+
+    rows = [_serialize_award(a) for a in awards]
+    metadata: dict[str, str] = {}
+    if filters:
+        metadata["Filter"] = ", ".join(f"{k}={v}" for k, v in filters.items())
+    metadata["Trefferzahl"] = str(len(awards))
+    metadata.update(_build_source_metadata(sources))
+
+    xlsx_bytes = make_xlsx(
+        rows,
+        sheet_name="Beihilfen",
+        headers=CSV_COLUMNS,
+        table_name="Beihilfen",
+        pflichthinweis=_pflichthinweis(),
+        metadata=metadata,
+        notes_title="EU-Beihilfe-Export · Hinweise",
+    )
+
+    filename = f"state_aid_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        iter([xlsx_bytes]),
+        media_type=XLSX_MEDIA_TYPE,
+        headers=xlsx_response_headers(filename),
+    )
+
+
 def _stream_pdf(awards: list[StateAidAward], filters: dict, sources: list[StateAidSource]) -> StreamingResponse:
     """PDF-Export via PyMuPDF (pymupdf ist installiert)."""
     try:
@@ -1028,7 +1276,7 @@ def _stream_pdf(awards: list[StateAidAward], filters: dict, sources: list[StateA
 
 @router.get("/export")
 def export_awards(
-    format: str = Query("csv", pattern="^(csv|pdf)$"),
+    format: str = Query("csv", pattern="^(csv|xlsx|pdf)$"),
     q: str | None = Query(None, min_length=2, max_length=200),
     country_code: str | None = Query(None, max_length=3),
     nuts_code: str | None = Query(None, max_length=10),
@@ -1067,6 +1315,8 @@ def export_awards(
 
     if format == "csv":
         return _stream_csv(awards, filters_applied, sources)
+    if format == "xlsx":
+        return _stream_xlsx(awards, filters_applied, sources)
     return _stream_pdf(awards, filters_applied, sources)
 
 
@@ -1806,6 +2056,100 @@ def get_audit_report_log(
             for r in rows
         ],
     }
+
+
+@router.get("/audit-report/log/export")
+def export_audit_report_log(
+    format: str = Query("csv", pattern="^(csv|xlsx)$"),
+    limit: int = Query(500, ge=1, le=5000),
+    _session: dict = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: Audit-Trail der erzeugten Pruefberichte als CSV oder XLSX.
+
+    Liefert NUR Metadaten — keine PDFs. Format-Default ist CSV (UTF-8 mit BOM
+    fuer Excel-Kompatibilitaet).
+    """
+    from models.state_aid_audit import AuditReportLog
+
+    rows = (
+        db.query(AuditReportLog)
+        .order_by(AuditReportLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    log_columns = [
+        "id", "created_at", "query", "auftraggeber",
+        "pruefer_name", "pruefer_user_id",
+        "state_aid_hits", "beneficiaries_hits", "sanctions_hits",
+        "cross_references", "pdf_size_bytes", "pdf_sha256",
+    ]
+    serialized = [
+        {
+            "id": int(r.id),
+            "created_at": r.created_at.isoformat() if r.created_at else "",
+            "query": r.query or "",
+            "auftraggeber": r.auftraggeber or "",
+            "pruefer_name": r.pruefer_name or "",
+            "pruefer_user_id": r.pruefer_user_id or "",
+            "state_aid_hits": int(r.state_aid_hits or 0),
+            "beneficiaries_hits": int(r.beneficiaries_hits or 0),
+            "sanctions_hits": int(r.sanctions_hits or 0),
+            "cross_references": int(r.cross_references or 0),
+            "pdf_size_bytes": int(r.pdf_size_bytes or 0),
+            "pdf_sha256": r.pdf_sha256 or "",
+        }
+        for r in rows
+    ]
+
+    pflichthinweis = (
+        "Audit-Trail der Cross-Register-Pruefberichte. Enthaelt NUR Metadaten — "
+        "keine PDFs, keine Bewertungen, kein Risiko-Score. SHA256 erlaubt die "
+        "Reproduktion (gleiche Eingabe + gleicher Datenstand = gleicher Hash)."
+    )
+
+    if format == "xlsx":
+        from services.excel_export import (
+            XLSX_MEDIA_TYPE,
+            make_xlsx,
+            xlsx_response_headers,
+        )
+        xlsx_bytes = make_xlsx(
+            serialized,
+            sheet_name="Audit-Trail",
+            headers=log_columns,
+            table_name="AuditTrail",
+            pflichthinweis=pflichthinweis,
+            metadata={
+                "Anzahl Eintraege": str(len(serialized)),
+                "Limit": str(limit),
+            },
+            notes_title="Pruefbericht-Audit-Trail · Hinweise",
+        )
+        filename = f"audit_trail_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        return StreamingResponse(
+            iter([xlsx_bytes]),
+            media_type=XLSX_MEDIA_TYPE,
+            headers=xlsx_response_headers(filename),
+        )
+
+    # CSV-Export — UTF-8 mit BOM fuer Excel
+    buf = io.StringIO()
+    buf.write("﻿")  # BOM
+    buf.write(f"# FlowWorkshop · Pruefbericht-Audit-Trail · {datetime.utcnow().isoformat()}Z\n")
+    buf.write(f"# {pflichthinweis}\n")
+    buf.write(f"# Anzahl Eintraege: {len(serialized)}\n")
+    writer = csv.writer(buf, delimiter=";", quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(log_columns)
+    for d in serialized:
+        writer.writerow([d.get(k, "") for k in log_columns])
+
+    filename = f"audit_trail_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.delete("/awards/{source_key}")

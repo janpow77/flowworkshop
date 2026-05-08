@@ -715,8 +715,8 @@ function LlmVerificationSection({ data }: { data: AuditReportData }) {
     <SectionFrame
       id="sec-llm-verification"
       icon={Brain}
-      title="LLM-Verifikation der Querbezüge"
-      subtitle={`Stufe 4 der Hybrid-Pipeline · Qwen3-14B re-ranked unsichere Treffer (Score 75–89)`}
+      title="Zweitmeinung des Sprachmodells"
+      subtitle="Lokales KI-Modell prüft die unsicheren Querbezüge noch einmal mit Klartext-Begründung"
     >
       {/* Zusammenfassung */}
       <div className="mb-4 rounded-[22px] border border-violet-200/70 bg-violet-50/60 px-4 py-3 text-sm text-violet-900 dark:border-violet-500/30 dark:bg-violet-950/30 dark:text-violet-100">

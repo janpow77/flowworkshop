@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { search as searchStateAid, type StateAidSearchHit } from '../lib/stateAidApi';
 import { Skeleton } from '../components/ui/Skeleton';
+import ExportButtons, { type ExportFormat } from '../components/ui/ExportButtons';
 import {
   deleteReferenceSource,
   getSystemProfile,
@@ -295,6 +296,31 @@ export default function CompanySearchPage() {
   const resultTitle = deferredQuery
     ? `Treffer für "${deferredQuery}"`
     : 'Top-Unternehmen nach Fördervolumen';
+
+  /**
+   * Beneficiary-Search-Export — verlinkt auf das Server-Endpoint
+   * /api/beneficiaries/export?format=...&q=&... mit den aktuellen Filtern.
+   * Pflichthinweis und Datenstand werden serverseitig in den Export gelegt.
+   */
+  const handleBeneficiaryExport = (format: ExportFormat) => {
+    if (format !== 'csv' && format !== 'xlsx' && format !== 'pdf') return;
+    const params = new URLSearchParams({ format });
+    params.set('q', deferredQuery || '');
+    params.set('scope', scope);
+    if (countryCode) params.set('country_code', countryCode);
+    if (bundesland) params.set('bundesland', bundesland);
+    if (fonds) params.set('fonds', fonds);
+    if (beneficiarySourceFilter) params.set('source', beneficiarySourceFilter);
+    if (minCost > 0) params.set('min_cost', String(minCost));
+    params.set('limit', '500');
+    const url = `/api/beneficiaries/export?${params.toString()}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   const handleImportFile = (file: File | null) => {
     setImportFile(file);
@@ -659,6 +685,19 @@ export default function CompanySearchPage() {
               {result.summary.total_match_volume ? formatCurrency(result.summary.total_match_volume) : '0 €'}
             </div>
           </div>
+
+          {beneficiarySources.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/75 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900/55">
+              <span className="text-slate-500 dark:text-slate-400">
+                Treffer als Pruefnotiz exportieren · Datenstand abh. vom letzten Upload pro Bundesland.
+              </span>
+              <ExportButtons
+                formats={['csv', 'xlsx', 'pdf']}
+                onExport={handleBeneficiaryExport}
+                disabled={result.companies.length === 0 && !deferredQuery}
+              />
+            </div>
+          )}
 
           <div className="mt-4 space-y-3">
             {result.companies.length === 0 ? (

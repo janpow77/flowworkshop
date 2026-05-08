@@ -39,6 +39,7 @@ import {
   getStats,
   getStatus,
   search as searchAwards,
+  statsExportUrl,
   triggerHarvest,
   type HarvestMode,
   type HarvestResult,
@@ -50,6 +51,7 @@ import {
   type StateAidStatsResponse,
   type StateAidStatus,
 } from '../lib/stateAidApi';
+import ExportButtons from '../components/ui/ExportButtons';
 
 type TabKey = 'hits' | 'map' | 'stats' | 'sources' | 'dossier' | 'ask';
 
@@ -395,12 +397,12 @@ function StateAidRegisterPageInner() {
                 <div className="flex items-start gap-3 pr-8">
                   <Info size={18} className="mt-0.5 shrink-0 text-cyan-600 dark:text-cyan-300" />
                   <div className="space-y-1">
-                    <div className="font-semibold">Eine Suche, alle Koerperschaften</div>
+                    <div className="font-semibold">Eine Suche über alle bewilligenden Stellen</div>
                     <p className="text-[13px] leading-6 text-cyan-800/90 dark:text-cyan-100/85">
-                      Anders als das EU-TAM-Portal musst du hier nicht erst die
-                      bewilligende Stelle (Bund / Land / Foerderbank) auswaehlen — eine
-                      Eingabe nach Unternehmen oder NUTS-Region zeigt automatisch alle
-                      Treffer aus saemtlichen Koerperschaften zusammen.
+                      Anders als im EU-TAM-Portal müssen Sie nicht zuerst Bund,
+                      Land oder Förderbank auswählen. Eine Suche nach Unternehmen,
+                      SA-Referenz oder NUTS-Region führt die Treffer aus allen
+                      geladenen öffentlichen Quellen zusammen.
                     </p>
                   </div>
                 </div>
@@ -481,8 +483,9 @@ function StateAidRegisterPageInner() {
               <div className="flex items-start gap-2 rounded-[22px] border border-slate-200/70 bg-slate-50/70 px-4 py-2 text-[11px] leading-5 text-slate-500 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-400">
                 <Sparkles size={12} className="mt-0.5 shrink-0 text-emerald-500" />
                 <span>
-                  Fuzzy-Methode: <span className="font-mono">rapidfuzz token_set_ratio</span>
-                  {' '}(Casefold + Akzente weg + Rechtsformsuffixe ignoriert).
+                  Die Namenssuche normalisiert Groß- und Kleinschreibung, Akzente
+                  und Rechtsformzusätze wie GmbH, AG oder Ltd. Zusätzlich werden
+                  abweichende Wortreihenfolgen und Schreibvarianten berücksichtigt.
                 </span>
               </div>
             )}
@@ -491,27 +494,41 @@ function StateAidRegisterPageInner() {
               <section className="rounded-[26px] border border-cyan-200/70 bg-cyan-50/60 p-4 text-sm leading-6 text-cyan-900 dark:border-cyan-500/30 dark:bg-cyan-950/30 dark:text-cyan-100">
                 <h4 className="font-semibold flex items-center gap-2">
                   <Layers3 className="h-4 w-4" />
-                  4-Stufen-Such-Pipeline
+                  Wie die Suche Treffer priorisiert
                 </h4>
                 <p className="mt-1">
-                  Diese Suche kombiniert vier Verfahren — schnell wo möglich, präzise wo nötig:
+                  Die Plattform kombiniert schnelle Datenbankfilter mit fachlicher
+                  Plausibilisierung. Dadurch bleibt die Suche auch bei großen
+                  Datenbeständen bedienbar, ohne unklare Treffer als Bewertung
+                  auszugeben.
                 </p>
                 <ol className="mt-2 space-y-1 text-sm">
                   <li>
-                    <strong>1. Trigram-Index (pg_trgm)</strong> — SQL-Vorfilter über 170k+ Records, ~5 ms
+                    <strong>1. Datenbank-Vorfilter</strong> — grenzt passende
+                    Beihilfeeinträge nach Name, Land, Zeitraum, NUTS-Region und
+                    weiteren Filtern schnell ein.
                   </li>
                   <li>
-                    <strong>2. rapidfuzz Multi-Algo</strong> — Levenshtein, Jaro-Winkler, token_set, partial; mit Coverage-Penalty gegen False-Positives, ~10 ms
+                    <strong>2. Namensähnlichkeit</strong> — erkennt Schreibvarianten,
+                    Aliasnamen, andere Wortreihenfolgen und Rechtsformzusätze; zu
+                    kurze oder unvollständige Übereinstimmungen werden abgewertet.
                   </li>
                   <li>
-                    <strong>3. bge-m3 Embedding</strong> — semantische Nähe (1024-dim Vektoren); findet auch ohne Token-Overlap, ~100 ms
+                    <strong>3. Semantische Ergänzung</strong> — findet verwandte
+                    Vorgänge auch dann, wenn Beschreibung oder Bezeichnung nicht
+                    exakt dieselben Wörter verwenden.
                   </li>
                   <li>
-                    <strong>4. Qwen3-14B LLM</strong> — re-ranked unsichere Matches im Audit-Report (Score 75–89), strukturiertes JSON-Verdict, ~3 Min für Top-20
+                    <strong>4. Optionale Zweitmeinung</strong> — im
+                    Cross-Register-Prüfbericht kann ein lokal laufendes Sprachmodell
+                    unsichere Querbezüge erneut prüfen und kurz begründen, ob es
+                    wahrscheinlich derselbe Akteur ist.
                   </li>
                 </ol>
                 <p className="mt-2 text-xs">
-                  Daten lokal in PostgreSQL, alle KI-Schritte auf der GPU im Workshop-Stack — kein Cloud-Versand.
+                  Datenhaltung und KI-Schritte laufen lokal im Workshop-Stack. Es
+                  werden keine Suchanfragen oder Registerdaten an Cloud-Dienste
+                  versendet.
                 </p>
               </section>
             )}
@@ -557,13 +574,13 @@ function StateAidRegisterPageInner() {
                   </span>
                 </div>
               </div>
-              {sources.length > 0 && (
+              {sources.some((source) => (source.record_count ?? 0) > 0) && (
                 <div className="mt-4 space-y-2">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                     Quellen-Health
                   </div>
                   <ul className="space-y-1.5">
-                    {sources.slice(0, 6).map((s) => {
+                    {sources.filter((source) => (source.record_count ?? 0) > 0).slice(0, 6).map((s) => {
                       const dot = s.quality === 'green' ? 'bg-emerald-500'
                         : s.quality === 'yellow' ? 'bg-amber-400'
                         : s.quality === 'red' ? 'bg-rose-500'
@@ -726,7 +743,12 @@ function StateAidRegisterPageInner() {
       )}
 
       {activeTab === 'stats' && (
-        <StatsTab loading={statsLoading} error={statsError} stats={stats} />
+        <StatsTab
+          loading={statsLoading}
+          error={statsError}
+          stats={stats}
+          filters={filters}
+        />
       )}
 
       {activeTab === 'sources' && (
@@ -782,7 +804,18 @@ function StateAidRegisterPageInner() {
 
 // ── Hilfskomponenten ─────────────────────────────────────────────────────────
 
-function StatsTab({ loading, error, stats }: { loading: boolean; error: string | null; stats: StateAidStatsResponse | null }) {
+function StatsTab({ loading, error, stats, filters }: { loading: boolean; error: string | null; stats: StateAidStatsResponse | null; filters: StateAidFilterState }) {
+  const exportParams = useMemo(() => filtersToParams(filters), [filters]);
+  const handleStatsExport = useCallback(() => {
+    const url = statsExportUrl(exportParams);
+    const a = document.createElement('a');
+    a.href = url;
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [exportParams]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 rounded-[30px] border border-slate-200/80 bg-white/88 px-6 py-10 text-sm text-slate-500 shadow-[0_24px_80px_-52px_rgba(15,23,42,0.62)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75 dark:text-slate-400">
@@ -804,6 +837,15 @@ function StatsTab({ loading, error, stats }: { loading: boolean; error: string |
 
   return (
     <section className="grid gap-4 lg:grid-cols-2">
+      <div className="lg:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_18px_60px_-48px_rgba(15,23,42,0.45)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
+        <div className="text-xs text-slate-500 dark:text-slate-400">
+          Statistiken als Excel-Datei mit fünf Sheets exportieren (Behoerden, Beguenstigte, NUTS, Instrumente, Jahre).
+        </div>
+        <ExportButtons
+          formats={['xlsx']}
+          onExport={handleStatsExport}
+        />
+      </div>
       <BucketCard title="Top-Beguenstigte" subtitle="Hauptempfaenger der Beihilfen" buckets={stats.top_beneficiaries} icon={Building2} />
       <BucketCard title="Top-Behoerden" subtitle="Bewilligende Stellen" buckets={stats.top_authorities} icon={Layers} />
       <BucketCard title="Top-Beihilfeziele" subtitle="Foerderzwecke und Programme" buckets={stats.top_objectives} icon={Sparkles} />

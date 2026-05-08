@@ -7,8 +7,15 @@ Phase 6a: Upload zusaetzlich zur per-Source-Tabelle in die zentrale Tabelle
 ``workshop_beneficiary_records`` (Smart-Mode-Harvest, idempotent). Default
 mode="smart" — bestehende Records bleiben unangetastet, neue werden ergaenzt.
 """
+import csv
+import io
 import logging
+import re
+from datetime import datetime
+
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, Depends
+from fastapi.responses import StreamingResponse
+
 from services.geocoding_service import get_beneficiary_map_data, detect_columns
 from services.dataframe_service import (
     ingest_dataframe, get_beneficiary_sources, delete_dataframe_table,
@@ -375,3 +382,249 @@ def delete_source(source: str, _session: dict = Depends(require_moderator)):
     """Begünstigtenverzeichnis entfernen."""
     delete_dataframe_table(source)
     return {"status": "deleted", "source": source}
+
+
+# ── Export ────────────────────────────────────────────────────────────────────
+
+
+_BEN_EXPORT_PFLICHTHINWEIS = (
+    "Datenstand abhaengig vom letzten Upload pro Bundesland. Die Verzeichnisse "
+    "werden aus den Transparenz-/Beguenstigtenlisten der Foerderbehoerden "
+    "(Art. 49/69 VO (EU) 2021/1060) eingelesen. Mehrfacheintraege moeglich, "
+    "wenn ein Beguenstigter in mehreren Vorhaben gefoerdert wurde."
+)
+
+_BEN_EXPORT_COLUMNS = [
+    "company_name", "project_name", "aktenzeichen",
+    "kosten", "kosten_label",
+    "location", "bundesland", "fonds", "periode",
+    "country_code", "country_name",
+    "category", "description",
+    "source", "nuts_code",
+    "match_score", "match_confidence", "matched_fields",
+]
+
+
+def _safe_ben_filename_part(value: str) -> str:
+    """Macht aus einem Suchbegriff einen sicheren Dateinamen-Bestandteil."""
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", (value or "").strip())[:40]
+    return cleaned or "alle"
+
+
+@router.get("/export")
+def export_beneficiaries(
+    format: str = Query("csv", pattern="^(csv|xlsx|pdf)$"),
+    q: str = Query("", description="Suchbegriff fuer Unternehmen, Vorhaben oder Aktenzeichen"),
+    scope: str = Query("all", description="all|company|project|aktenzeichen|location"),
+    bundesland: str | None = Query(None),
+    fonds: str | None = Query(None),
+    source: str | None = Query(None),
+    min_cost: float | None = Query(None, ge=0),
+    limit: int = Query(500, ge=1, le=2000),
+    country_code: str | None = Query(None, description="Optional Filter DE oder AT"),
+    min_score: float | None = Query(
+        None, ge=40.0, le=100.0,
+        description="Fuzzy-Schwellwert (0..100). Default adaptiv aus Query-Laenge.",
+    ),
+):
+    """Beneficiary-Search-Export — alle gefundenen Records als CSV / XLSX / PDF.
+
+    Gleiche Filter-Parameter wie GET /search. Limit erhoeht (bis 2000), damit
+    Pruefer den vollstaendigen Treffer-Satz exportieren koennen.
+    """
+    cc = _normalize_country_code(country_code)
+    try:
+        result = search_beneficiary_records(
+            query=q,
+            scope=scope,
+            bundesland=bundesland,
+            fonds=fonds,
+            source=source,
+            min_cost=min_cost,
+            limit=limit,
+            company_limit=1,  # Companies-Block ignorieren — wir exportieren records
+            country_code=cc,
+            min_score=min_score,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+    raw_records = result.get("records") or []
+    summary = result.get("summary") or {}
+
+    rows: list[dict] = []
+    for r in raw_records:
+        rows.append({
+            "company_name": r.get("company_name") or "",
+            "project_name": r.get("project_name") or "",
+            "aktenzeichen": r.get("aktenzeichen") or "",
+            "kosten": r.get("kosten") if r.get("kosten") is not None else "",
+            "kosten_label": r.get("kosten_label") or "",
+            "location": r.get("location") or "",
+            "bundesland": r.get("bundesland") or "",
+            "fonds": r.get("fonds") or "",
+            "periode": r.get("periode") or "",
+            "country_code": r.get("country_code") or "",
+            "country_name": r.get("country_name") or "",
+            "category": r.get("category") or "",
+            "description": r.get("description") or "",
+            "source": r.get("source") or "",
+            "nuts_code": r.get("nuts_code") or "",
+            "match_score": r.get("match_score") if r.get("match_score") is not None else "",
+            "match_confidence": r.get("match_confidence") or "",
+            "matched_fields": r.get("matched_fields") or [],
+        })
+
+    metadata: dict[str, str] = {
+        "Suchbegriff": q or "(leer)",
+        "Scope": scope,
+        "Trefferzahl": str(len(rows)),
+        "Records gescannt": str(int(summary.get("records_scanned") or 0)),
+        "Quellen": str(int(summary.get("sources_considered") or 0)),
+    }
+    if cc:
+        metadata["Land"] = cc
+    if bundesland:
+        metadata["Bundesland"] = bundesland
+    if fonds:
+        metadata["Fonds"] = fonds
+    if source:
+        metadata["Quelle"] = source
+    if min_cost is not None:
+        metadata["Mindestbetrag"] = f"{min_cost:.0f} EUR"
+    if min_score is not None:
+        metadata["Schwellenwert"] = f"{min_score:.1f}"
+
+    safe_q = _safe_ben_filename_part(q or "alle")
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+    if format == "xlsx":
+        from services.excel_export import (
+            XLSX_MEDIA_TYPE,
+            make_xlsx,
+            xlsx_response_headers,
+        )
+        xlsx_bytes = make_xlsx(
+            rows,
+            sheet_name="Beguenstigte",
+            headers=_BEN_EXPORT_COLUMNS,
+            table_name="Beguenstigte",
+            pflichthinweis=_BEN_EXPORT_PFLICHTHINWEIS,
+            metadata=metadata,
+            notes_title="Beguenstigtenverzeichnis · Hinweise",
+        )
+        filename = f"beguenstigte_{safe_q}_{timestamp}.xlsx"
+        return StreamingResponse(
+            iter([xlsx_bytes]),
+            media_type=XLSX_MEDIA_TYPE,
+            headers=xlsx_response_headers(filename),
+        )
+
+    if format == "pdf":
+        return _stream_beneficiaries_pdf(rows, metadata)
+
+    # CSV (default)
+    buf = io.StringIO()
+    buf.write("﻿")  # UTF-8 BOM für Excel
+    buf.write(f"# FlowWorkshop · Beguenstigtensuche-Export · {datetime.utcnow().isoformat()}Z\n")
+    buf.write(f"# {_BEN_EXPORT_PFLICHTHINWEIS}\n")
+    for k, v in metadata.items():
+        buf.write(f"# {k}: {v}\n")
+
+    writer = csv.writer(buf, delimiter=";", quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(_BEN_EXPORT_COLUMNS)
+    for d in rows:
+        cells = []
+        for k in _BEN_EXPORT_COLUMNS:
+            v = d.get(k)
+            if v is None or v == "":
+                cells.append("")
+            elif isinstance(v, (list, tuple)):
+                cells.append(" | ".join(str(x) for x in v if x))
+            else:
+                cells.append(str(v))
+        writer.writerow(cells)
+
+    filename = f"beguenstigte_{safe_q}_{timestamp}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _stream_beneficiaries_pdf(rows: list[dict], metadata: dict[str, str]) -> StreamingResponse:
+    """Beneficiary-PDF analog zu state_aid: pymupdf, A4 quer, Pflichthinweis im Footer."""
+    try:
+        import fitz  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            501,
+            f"PDF-Export nicht verfuegbar: pymupdf nicht installiert ({exc}).",
+        ) from exc
+
+    doc = fitz.open()
+    page = doc.new_page(width=842, height=595)
+    margin = 28
+    cursor_y = margin
+    line_height = 11
+
+    def _write(text: str, *, size: int = 9, bold: bool = False) -> None:
+        nonlocal cursor_y, page
+        if cursor_y > page.rect.height - margin - line_height:
+            page = doc.new_page(width=842, height=595)
+            cursor_y = margin
+        font = "helvB" if bold else "helv"
+        try:
+            page.insert_text(
+                (margin, cursor_y), text, fontsize=size, fontname=font,
+            )
+        except Exception:
+            page.insert_text((margin, cursor_y), text, fontsize=size)
+        cursor_y += line_height + (size - 9)
+
+    _write("FlowWorkshop · Beguenstigtensuche", size=14, bold=True)
+    _write(datetime.utcnow().strftime("Erstellt: %Y-%m-%d %H:%M UTC"), size=9)
+    for k, v in metadata.items():
+        _write(f"  · {k}: {v}", size=8)
+    cursor_y += line_height // 2
+
+    _write(f"Treffer: {len(rows)}", size=10, bold=True)
+    cursor_y += line_height // 2
+
+    for r in rows:
+        kosten_label = r.get("kosten_label") or "—"
+        _write(
+            f"{r.get('company_name', '')} · {r.get('bundesland') or '—'} · "
+            f"{kosten_label}",
+            size=9, bold=True,
+        )
+        if r.get("project_name"):
+            _write(f"   Vorhaben: {r['project_name'][:160]}", size=8)
+        if r.get("aktenzeichen"):
+            _write(f"   Aktenzeichen: {r['aktenzeichen']}", size=8)
+        if r.get("location"):
+            _write(f"   Standort: {r['location'][:120]}", size=8)
+        if r.get("fonds") or r.get("periode"):
+            _write(
+                f"   Fonds: {r.get('fonds') or '—'} · Periode: {r.get('periode') or '—'}",
+                size=8,
+            )
+        cursor_y += 2
+
+    _write("", size=8)
+    _write(_BEN_EXPORT_PFLICHTHINWEIS, size=7)
+
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    suchbegriff = metadata.get("Suchbegriff", "alle")
+    filename = (
+        f"beguenstigte_{_safe_ben_filename_part(suchbegriff)}_"
+        f"{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
+    )
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

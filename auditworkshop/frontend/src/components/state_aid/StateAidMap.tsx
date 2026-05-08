@@ -15,7 +15,7 @@
  * triggert `onRegionClick` — der Page-Container setzt damit `nuts_code` und
  * springt zum Treffer-Tab.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleMarker,
   GeoJSON,
@@ -34,6 +34,8 @@ import {
   type StateAidMapResponse,
 } from '../../lib/stateAidApi';
 import { getSystemProfile, type SystemProfile } from '../../lib/api';
+import { useExport } from '../../lib/useExport';
+import ExportButtons, { type ExportFormat } from '../ui/ExportButtons';
 
 export interface StateAidRegionClickPayload {
   nuts_code: string;
@@ -173,6 +175,8 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
   const [geoData, setGeoData] = useState<NutsFeatureCollection | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const mapShellRef = useRef<HTMLDivElement>(null);
+  const exportApi = useExport();
 
   useEffect(() => {
     getSystemProfile().then(setProfile).catch(() => setProfile(null));
@@ -375,6 +379,77 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
   const unmappable = data?.unmappable ?? 0;
   const mapped = totalRecords - unmappable;
 
+  // ── Karten-Export ─────────────────────────────────────────────────────
+  // PNG/PDF: html-to-image auf Map-Shell (analog BeneficiaryMap).
+  // GeoJSON: aktuelle NUTS-Aggregat-Punkte als FeatureCollection serialisieren.
+  const handleMapExport = useCallback(
+    async (format: ExportFormat) => {
+      const ts = new Date().toISOString().slice(0, 10);
+      const fileBase = `state_aid_karte_${countryCode || 'EU'}_${aggregateLevel}_${ts}`;
+      if (format === 'png') {
+        await exportApi.toPng(mapShellRef.current, { filename: fileBase });
+        return;
+      }
+      if (format === 'pdf') {
+        await exportApi.toPdf(mapShellRef.current, {
+          filename: fileBase,
+          title: 'EU-Beihilfen · Geo-Verteilung',
+          subtitle: `${mapped.toLocaleString('de-DE')} kartierbare Awards · NUTS-${aggregateLevel} · Stand ${ts}`,
+        });
+        return;
+      }
+      if (format === 'geojson') {
+        // FeatureCollection aus den NUTS-Aggregat-Punkten bauen (Plan §13).
+        const features = points.map((p) => ({
+          type: 'Feature' as const,
+          properties: {
+            nuts_code: p.nuts_code,
+            nuts_label: p.nuts_label,
+            nuts_level: p.nuts_level,
+            country_code: p.country_code,
+            count: p.count,
+            total_eur: p.total_eur,
+          },
+          geometry: {
+            type: 'Point' as const,
+            coordinates: [p.lon, p.lat],
+          },
+        }));
+        const fc = {
+          type: 'FeatureCollection' as const,
+          name: `state_aid_karte_${countryCode || 'EU'}`,
+          features,
+          metadata: {
+            generated_at: new Date().toISOString(),
+            country_code: countryCode || null,
+            aggregate_level: aggregateLevel,
+            mode,
+            since: since ?? null,
+            until: until ?? null,
+            total_records: totalRecords,
+            mapped,
+            unmappable,
+            disclaimer:
+              'Quelle: EU TAM und nationale Beihilfe-Register (Art. 9 Abs. 1 lit. c) VO (EU) Nr. 651/2014). '
+              + 'NUTS-Aggregation, keine Adressdaten. Datenstand abhaengig vom letzten Harvest pro Quelle.',
+          },
+        };
+        const blob = new Blob([JSON.stringify(fc, null, 2)], {
+          type: 'application/geo+json;charset=utf-8',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${fileBase}.geojson`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    },
+    [aggregateLevel, countryCode, exportApi, mapped, mode, points, since, totalRecords, unmappable, until],
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(241,245,249,0.86))] px-4 py-3 text-sm dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.72),rgba(2,6,23,0.8))]">
@@ -461,6 +536,12 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
               Betrag (EUR)
             </button>
           </div>
+          <ExportButtons
+            formats={['png', 'pdf', 'geojson']}
+            onExport={handleMapExport}
+            disabled={loading || totalRecords === 0}
+            variant="compact"
+          />
           <button
             type="button"
             onClick={() => setFullscreen((v) => !v)}
@@ -485,7 +566,7 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
         </div>
       </div>
 
-      <div className={`overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_18px_60px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-900/75 ${fullscreen ? 'fixed inset-2 z-[1000] flex flex-col shadow-2xl' : ''}`}>
+      <div ref={mapShellRef} className={`overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_18px_60px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-900/75 ${fullscreen ? 'fixed inset-2 z-[1000] flex flex-col shadow-2xl' : ''}`}>
         <div className={`relative ${fullscreen ? 'flex-1' : 'h-[640px]'}`}>
           {(loading || (effectiveDisplayMode === 'choropleth' && geoLoading)) && (
             <div className="absolute inset-0 z-[400] flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur dark:bg-slate-900/85">
