@@ -52,6 +52,7 @@ import {
   type StateAidStatus,
 } from '../lib/stateAidApi';
 import ExportButtons from '../components/ui/ExportButtons';
+import Stat from '../components/ui/Stat';
 
 type TabKey = 'hits' | 'map' | 'stats' | 'sources' | 'dossier' | 'ask';
 
@@ -307,21 +308,25 @@ function StateAidRegisterPageInner() {
               Cases Search. Faellt das Internet aus, bleibt die Suche verfuegbar.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <div className="rounded-[26px] border border-white/15 bg-black/10 px-4 py-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-emerald-100/60">Awards</div>
-              <div className="mt-2 text-2xl font-semibold">{status?.total_awards.toLocaleString('de-DE') ?? '—'}</div>
-              <div className="mt-1 text-sm text-emerald-50/70">Lokale Beihilfe-Transparenzdaten im Workshop-Index.</div>
+          <div className="rounded-[28px] border border-white/15 bg-black/15 p-5 backdrop-blur">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-white/60">Lokaler Workshop-Index</div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <Stat label="Awards" value={status?.total_awards.toLocaleString('de-DE') ?? '—'} />
+              <Stat label="Aktive Quellen" value={status?.sources_enabled ?? '—'} />
+              <Stat label="Harvest-Laeufe" value={status?.total_runs ?? '—'} />
             </div>
-            <div className="rounded-[26px] border border-white/15 bg-black/10 px-4 py-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-emerald-100/60">Aktive Quellen</div>
-              <div className="mt-2 text-2xl font-semibold">{status?.sources_enabled ?? '—'}</div>
-              <div className="mt-1 text-sm text-emerald-50/70">{status?.total_runs ?? 0} Harvest-Laeufe insgesamt.</div>
-            </div>
-            <div className="rounded-[26px] border border-white/15 bg-black/10 px-4 py-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-emerald-100/60">Letzter Harvest</div>
-              <div className="mt-2 text-base font-semibold font-mono">{formatDateTime(status?.last_harvest_at ?? null)}</div>
-              <div className="mt-1 text-sm text-emerald-50/70">Aktualitaet je Quelle siehe Tab „Quellen".</div>
+            {sources.filter((s) => (s.record_count ?? 0) > 0).length > 0 && (
+              <div className="mt-4 space-y-1 text-[11px] text-white/70">
+                {sources.filter((s) => (s.record_count ?? 0) > 0).slice(0, 3).map((s) => (
+                  <div key={s.source_key} className="flex items-center justify-between">
+                    <span className="truncate" title={s.display_name}>{s.display_name}</span>
+                    <span className="font-mono">{s.record_count.toLocaleString('de-DE')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-3 text-[10px] uppercase tracking-[0.18em] text-white/50">
+              Letzter Harvest <span className="ml-1 font-mono normal-case tracking-normal text-white/70">{formatDateTime(status?.last_harvest_at ?? null)}</span>
             </div>
           </div>
         </div>

@@ -18,15 +18,12 @@ import {
   AlertTriangle,
   ArrowDownToLine,
   Brain,
-  Building2,
   ClipboardCheck,
-  Database,
   FileSearch,
   Loader2,
   Plus,
   RefreshCcw,
   Search,
-  ShieldCheck,
   Sparkles,
   Users,
   X,
@@ -42,6 +39,7 @@ import {
 import StateAidErrorBoundary from '../components/state_aid/StateAidErrorBoundary';
 import AuditReportPreview from '../components/state_aid/AuditReportPreview';
 import { Skeleton } from '../components/ui/Skeleton';
+import Stat from '../components/ui/Stat';
 
 type CountryFilter = '' | 'DE' | 'AT';
 
@@ -330,25 +328,27 @@ function StateAidAuditReportPageInner() {
               </span>
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <StatTile
-              label="State-Aid-Awards"
-              value={report ? stats.stateAid : null}
-              icon={Database}
-              hint="TAM / nationale Register"
-            />
-            <StatTile
-              label="Begünstigten-Treffer"
-              value={report ? stats.beneficiaries : null}
-              icon={Building2}
-              hint="Art. 49 Verzeichnisse"
-            />
-            <StatTile
-              label="Sanktions-Treffer"
-              value={report ? stats.sanctions : null}
-              icon={ShieldCheck}
-              hint="EU FSF (neutral)"
-            />
+          <div className="rounded-[28px] border border-white/15 bg-black/15 p-5 backdrop-blur">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-white/60">Aggregations-Uebersicht</div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <Stat label="State-Aid" value={report ? stats.stateAid.toLocaleString('de-DE') : '—'} />
+              <Stat label="Beguenstigte" value={report ? stats.beneficiaries.toLocaleString('de-DE') : '—'} />
+              <Stat label="Sanktionen" value={report ? stats.sanctions.toLocaleString('de-DE') : '—'} />
+            </div>
+            <div className="mt-4 space-y-1 text-[11px] text-white/70">
+              <div className="flex items-center justify-between">
+                <span>TAM / nationale Register</span>
+                <span className="font-mono">{report ? stats.stateAid.toLocaleString('de-DE') : '—'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Art. 49 Verzeichnisse</span>
+                <span className="font-mono">{report ? stats.beneficiaries.toLocaleString('de-DE') : '—'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>EU FSF (neutral)</span>
+                <span className="font-mono">{report ? stats.sanctions.toLocaleString('de-DE') : '—'}</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -673,29 +673,6 @@ function StateAidAuditReportPageInner() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ── Hilfs-Komponente: Stat-Tile ─────────────────────────────────────────────
-
-interface StatTileProps {
-  label: string;
-  value: number | null;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  hint?: string;
-}
-
-function StatTile({ label, value, icon: Icon, hint }: StatTileProps) {
-  return (
-    <div className="rounded-[26px] border border-white/15 bg-black/10 px-4 py-4">
-      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-indigo-100/70">
-        <Icon size={12} /> {label}
-      </div>
-      <div className="mt-2 text-2xl font-semibold">
-        {value === null ? '—' : value.toLocaleString('de-DE')}
-      </div>
-      {hint && <div className="mt-1 text-sm text-indigo-50/70">{hint}</div>}
     </div>
   );
 }

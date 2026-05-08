@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useExport } from '../lib/useExport';
 import ExportButtons, { type ExportFormat } from '../components/ui/ExportButtons';
+import Stat from '../components/ui/Stat';
 import {
   getSanctionsSources,
   refreshSanctionsSource,
@@ -922,15 +923,6 @@ export default function SanktionslistenPage() {
 }
 
 // ── Subkomponenten ──────────────────────────────────────────────────────────
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-2 py-3">
-      <div className="text-[10px] uppercase tracking-wider text-white/60">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-white">{value}</div>
-    </div>
-  );
-}
 
 interface ListCardProps {
   list: SanctionsList;
