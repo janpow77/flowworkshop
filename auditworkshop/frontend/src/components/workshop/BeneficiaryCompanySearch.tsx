@@ -115,10 +115,10 @@ export default function BeneficiaryCompanySearch({ countryCode, onResultsChange 
           country_code: countryCode || undefined,
           // limit zaehlt nach Records (vor Company-Gruppierung). Wird er
           // zu klein gewaehlt, fallen unique Firmen mit nur 1-2 Records
-          // unter Score-Tail-Records anderer Firmen heraus. Max-Werte des
-          // Backend-Endpoints (limit<=200, company_limit<=50) ausschoepfen.
+          // unter Score-Tail-Records anderer Firmen heraus. Backend-Maxima
+          // sind limit<=200 und company_limit<=200 (nach Polish Mai 2026).
           limit: 200,
-          company_limit: 50,
+          company_limit: 200,
         });
         setResponse(data);
       } catch (e) {
@@ -164,9 +164,36 @@ export default function BeneficiaryCompanySearch({ countryCode, onResultsChange 
     });
   };
 
-  const companies = useMemo(() => response?.companies ?? [], [response]);
+  const allCompanies = useMemo(() => response?.companies ?? [], [response]);
 
-  // Bei jeder neuen Trefferliste alle automatisch fuer die Karte aktivieren.
+  // Clientseitiger Bundesland-Filter — alle eindeutigen Bundeslaender, in
+  // denen mindestens ein Treffer liegt, plus Sonderwert "" (= alle).
+  const [filterBl, setFilterBl] = useState<string>('');
+  const availableBundeslaender = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of allCompanies) {
+      for (const bl of c.bundeslaender || []) {
+        if (bl) set.add(bl);
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'de'));
+  }, [allCompanies]);
+
+  // Wenn der gewaehlte Filter nach einem neuen Suchlauf nicht mehr in
+  // den Treffern vorkommt, zuruecksetzen.
+  useEffect(() => {
+    if (filterBl && !availableBundeslaender.includes(filterBl)) {
+      setFilterBl('');
+    }
+  }, [availableBundeslaender, filterBl]);
+
+  const companies = useMemo(() => {
+    if (!filterBl) return allCompanies;
+    return allCompanies.filter((c) => (c.bundeslaender || []).includes(filterBl));
+  }, [allCompanies, filterBl]);
+
+  // Bei jeder neuen Trefferliste alle (gefilterten) automatisch fuer die
+  // Karte aktivieren.
   useEffect(() => {
     setMapSelected(new Set(companies.map((c) => c.company_name)));
   }, [companies]);
@@ -314,8 +341,12 @@ export default function BeneficiaryCompanySearch({ countryCode, onResultsChange 
             <div>
               <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                 {companies.length === 0
-                  ? 'Keine Treffer'
-                  : `${companies.length.toLocaleString('de-DE')} Begünstigte gefunden`}
+                  ? filterBl
+                    ? `Keine Treffer in ${filterBl}`
+                    : 'Keine Treffer'
+                  : filterBl
+                    ? `${companies.length.toLocaleString('de-DE')} von ${allCompanies.length.toLocaleString('de-DE')} Begünstigten in ${filterBl}`
+                    : `${allCompanies.length.toLocaleString('de-DE')} Begünstigte gefunden`}
               </div>
               {companies.length > 0 && (
                 <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
@@ -325,7 +356,21 @@ export default function BeneficiaryCompanySearch({ countryCode, onResultsChange 
               )}
             </div>
             {companies.length > 0 && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {availableBundeslaender.length > 1 && (
+                  <select
+                    value={filterBl}
+                    onChange={(e) => setFilterBl(e.target.value)}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                    aria-label="Nach Bundesland filtern"
+                    title="Treffer nach Bundesland filtern"
+                  >
+                    <option value="">Alle Bundesländer ({availableBundeslaender.length})</option>
+                    {availableBundeslaender.map((bl) => (
+                      <option key={bl} value={bl}>{bl}</option>
+                    ))}
+                  </select>
+                )}
                 <button
                   type="button"
                   onClick={() => setAllMapSelection(mapSelected.size < companies.length)}

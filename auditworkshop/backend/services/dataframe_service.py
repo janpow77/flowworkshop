@@ -2555,7 +2555,7 @@ def search_beneficiary_records(
 
     company_results = sorted(company_results, key=_company_sort_key)
     limited_records = sorted_records[:max(1, min(limit, 200))]
-    limited_companies = company_results[:max(1, min(company_limit, 50))]
+    limited_companies = company_results[:max(1, min(company_limit, 200))]
 
     # Paket 2/3: Meta-Block — Alias-Expansion + gelockerte Filter sind fuer
     # den Aufrufer transparent (UI kann Hinweis-Banner anzeigen).

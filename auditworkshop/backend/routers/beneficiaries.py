@@ -315,7 +315,7 @@ def search_beneficiaries(
     source: str | None = Query(None),
     min_cost: float | None = Query(None, ge=0),
     limit: int = Query(60, ge=1, le=200),
-    company_limit: int = Query(14, ge=1, le=50),
+    company_limit: int = Query(14, ge=1, le=200),
     country_code: str | None = Query(None, description="Optional Filter DE oder AT"),
     min_score: float | None = Query(
         None, ge=40.0, le=100.0,
