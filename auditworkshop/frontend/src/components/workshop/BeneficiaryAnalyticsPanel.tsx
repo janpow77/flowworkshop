@@ -162,9 +162,13 @@ export default function BeneficiaryAnalyticsPanel(
           mode,
           bundesland: bundesland || undefined,
           fonds: fonds || undefined,
-          // state_fund_totals braucht alle BL/Fonds-Kombinationen sichtbar
-          // (DE allein hat 18, plus AT — Default 10 hat zu wenige).
-          limit: mode === 'state_fund_totals' ? 50 : 10,
+          // Aggregations-Modes brauchen alle Kombinationen sichtbar:
+          //   state_fund_totals: 16 BL × ≤5 Fonds = bis ~50 Items (DE)
+          //   region_project_counts: 16 BL + Bund = bis 17 Items (DE)
+          // Default 10 ist zu wenig fuer beide. Andere Modes (Top-N) -> 10.
+          limit: mode === 'state_fund_totals' ? 50
+            : mode === 'region_project_counts' ? 50
+            : 10,
           country_code: countryCode || undefined,
         });
         if (!cancelled) setAnalysis(response);
