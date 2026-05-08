@@ -139,6 +139,12 @@ COLUMN_PATTERNS = {
         r"recipient", r"undertaking", r"subject.*name",
         r"entity.*name", r"company.*name", r"name$",
         r"förderempf", r"empf.*name", r"firma", r"name.*firma",
+        # Baden-Württemberg EFRE: PostgreSQL-Spalten-Limit (63 chars) hat
+        # den langen englischen Header
+        # „In the case of legal entities, the beneficiary's name; …"
+        # auf "in_the_case_of_legal_entities_the_beneficiarys_and_in_the_case_"
+        # gekürzt — keines der bisherigen Patterns trifft. Daher gezielt:
+        r"^in_the_case_of_legal_entities", r"beneficiarys",
     ],
     "projekt": [
         r"^op_?name$",

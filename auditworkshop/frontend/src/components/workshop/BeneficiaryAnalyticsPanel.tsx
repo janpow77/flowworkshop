@@ -434,15 +434,34 @@ export default function BeneficiaryAnalyticsPanel(
                             })()}
                             {item.sources_breakdown && item.sources_breakdown.length > 0 && (
                               <div className="mt-2 flex flex-wrap gap-1.5">
-                                {item.sources_breakdown.map((sb, i) => (
-                                  <span
-                                    key={`${sb.source}-${i}`}
-                                    className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                                    title={`${sb.value_label} aus Quelle ${sb.source}`}
-                                  >
-                                    {sb.fonds ?? sb.source}: {sb.count.toLocaleString('de-DE')}
-                                  </span>
-                                ))}
+                                {item.sources_breakdown.map((sb, i) => {
+                                  // Wenn ein Bundesland mehrere Sources mit
+                                  // gleichem Fonds hat (z.B. Brandenburg
+                                  // EFRE 2014-2020 + EFRE 2021-2027), die
+                                  // Foerderperiode aus dem source-Key
+                                  // (Suffix nach Fonds) ableiten und im Tag
+                                  // anzeigen, sonst sind die Tags
+                                  // ununterscheidbar.
+                                  const fondsLabel = sb.fonds ?? sb.source;
+                                  const sameFondsCount = (item.sources_breakdown || [])
+                                    .filter((x) => x.fonds === sb.fonds).length;
+                                  let suffix = '';
+                                  if (sameFondsCount > 1 && sb.fonds) {
+                                    const periodMatch = sb.source.match(/(\d{4})[_-](\d{4})/);
+                                    if (periodMatch) {
+                                      suffix = ` ${periodMatch[1].slice(2)}-${periodMatch[2].slice(2)}`;
+                                    }
+                                  }
+                                  return (
+                                    <span
+                                      key={`${sb.source}-${i}`}
+                                      className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                      title={`${sb.value_label} aus Quelle ${sb.source}`}
+                                    >
+                                      {fondsLabel}{suffix}: {sb.count.toLocaleString('de-DE')}
+                                    </span>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
