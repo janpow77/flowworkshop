@@ -45,7 +45,7 @@ export default function PublicShell() {
                   : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
-              <Banknote size={14} /> Beihilfenregister
+              <Banknote size={14} /> Beihilfe-Register
             </Link>
             <Link
               to="/audit-report"
@@ -88,7 +88,7 @@ export default function PublicShell() {
         </div>
       </header>
       <main className="relative z-10 flex-1 overflow-auto px-5 pb-8 pt-6 lg:px-8">
-        <div className="mx-auto w-full max-w-7xl animate-enter">
+        <div className="mx-auto w-full max-w-[1600px] animate-enter">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>

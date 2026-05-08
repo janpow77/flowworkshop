@@ -25,7 +25,7 @@ export default function AppShell() {
         <PresenterToolbar />
         <MobileNav />
         <main className="flex-1 overflow-auto px-5 pb-8 pt-6 lg:px-8">
-          <div className="mx-auto w-full max-w-7xl animate-enter">
+          <div className="mx-auto w-full max-w-[1600px] animate-enter">
             <ErrorBoundary>
               <Outlet />
             </ErrorBoundary>

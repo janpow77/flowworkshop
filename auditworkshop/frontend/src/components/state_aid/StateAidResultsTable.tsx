@@ -221,14 +221,6 @@ export default function StateAidResultsTable({ hits, onSelect, loading }: Props)
                         {identifier}
                       </div>
                     )}
-                    <a
-                      href={auditReportUrl(hit)}
-                      onClick={(event) => event.stopPropagation()}
-                      className="mt-2 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-medium text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-950/30 dark:text-indigo-200 dark:hover:bg-indigo-950/50"
-                    >
-                      <ClipboardCheck size={11} />
-                      In Auswertung übernehmen
-                    </a>
                   </td>
                   <td className="px-3 py-3 text-slate-600 dark:text-slate-300">{region || '—'}</td>
                   <td className="px-3 py-3 text-right font-mono text-slate-900 dark:text-slate-100">
@@ -262,11 +254,21 @@ export default function StateAidResultsTable({ hits, onSelect, loading }: Props)
                   </td>
                   <td className="px-3 py-3 text-slate-600 dark:text-slate-300">{hit.granting_authority || '—'}</td>
                   <td className="px-3 py-3 text-right">
-                    <div className="inline-flex items-center justify-end gap-1.5">
+                    <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${badge.class}`}>
                         {hit.score} · {badge.label}
                       </span>
                       {hit.match_stage && <StageBadge stage={hit.match_stage} />}
+                      <a
+                        href={auditReportUrl(hit)}
+                        onClick={(event) => event.stopPropagation()}
+                        title="In Auswertung übernehmen"
+                        aria-label="In Auswertung übernehmen"
+                        className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-medium text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-950/30 dark:text-indigo-200 dark:hover:bg-indigo-950/50"
+                      >
+                        <ClipboardCheck size={11} />
+                        In Auswertung
+                      </a>
                     </div>
                   </td>
                 </tr>

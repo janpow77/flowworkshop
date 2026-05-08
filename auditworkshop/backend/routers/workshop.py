@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from config import SYSTEM_PROMPTS, DISCLAIMER
-from routers.auth import require_session
+from routers.auth import require_session, _resolve_session_optional
 from services import knowledge_service as ks
 from services.dataframe_service import (
     build_beneficiary_analysis_answer,
@@ -27,9 +27,14 @@ from services.file_parser import extract as file_extract, ALLOWED_EXTENSIONS
 router = APIRouter(
     prefix="/api/workshop",
     tags=["workshop"],
-    dependencies=[Depends(require_session)],
 )
 log = logging.getLogger(__name__)
+
+
+# Szenarien, die ohne Login (Public-Tools) genutzt werden duerfen. Aktuell
+# nur Szenario 6 (Beguenstigtenverzeichnis) — die zugehoerige Seite wird
+# unter /scenario/6 und /beguenstigte ohne Auth-Gate gemountet.
+PUBLIC_SCENARIOS = {6}
 
 
 # ── Rate-Limiting (In-Memory, 10 Requests/Minute pro IP) ────────────────────
@@ -375,6 +380,12 @@ async def workshop_stream(req: StreamRequest, request: Request):
     """
     import time as _time
     _t0 = _time.monotonic()
+    # Auth-Logik: Public-Szenarien (z.B. Beguenstigtenkarte unter
+    # /scenario/6) duerfen ohne Login streamen. Alle anderen Szenarien
+    # verlangen eine Workshop-Session.
+    if req.scenario not in PUBLIC_SCENARIOS:
+        if _resolve_session_optional(request) is None:
+            raise HTTPException(401, "Nicht angemeldet.")
     _check_rate_limit(request.client.host if request.client else "unknown")
 
     # System-Prompt auswählen
@@ -507,7 +518,7 @@ async def workshop_stream(req: StreamRequest, request: Request):
     )
 
 
-@router.post("/parse-file")
+@router.post("/parse-file", dependencies=[Depends(require_session)])
 async def parse_file(file: UploadFile = File(...)):
     """
     Extrahiert Text aus einer Datei (PDF, XLSX, DOCX, HTML, RTF, TXT).
@@ -534,7 +545,7 @@ async def parse_file(file: UploadFile = File(...)):
     }
 
 
-@router.get("/supported-formats")
+@router.get("/supported-formats", dependencies=[Depends(require_session)])
 def supported_formats():
     """Gibt die unterstuetzten Dateiformate zurueck."""
     return {"extensions": sorted(ALLOWED_EXTENSIONS)}

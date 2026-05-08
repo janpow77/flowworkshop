@@ -144,14 +144,14 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
 
         {/* Auswertungskacheln + Anmelden */}
         <div className="grid grid-cols-1 gap-7 md:grid-cols-2 items-stretch">
-          {/* Kachel A: Beihilfenregister */}
+          {/* Kachel A: Beihilfe-Register */}
           <button
             onClick={() => navigate('/beihilfen')}
             className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-amber-500/10 hover:scale-[1.01] hover:shadow-xl"
           >
             <div className="flex items-center gap-3 mb-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-2xl backdrop-blur-sm">💰</span>
-              <h2 className="text-lg font-semibold text-white">Beihilfenregister</h2>
+              <h2 className="text-lg font-semibold text-white">Beihilfe-Register</h2>
             </div>
             <p className="text-sm leading-relaxed text-blue-200/80">
               EU-Transparency-Aid-Module (TAM) lokal indiziert &mdash; alle veröffentlichungs&shy;pflichtigen
