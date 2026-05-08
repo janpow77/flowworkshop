@@ -346,7 +346,7 @@ def search_beneficiaries(
 
 @router.get("/analytics")
 def analyze_beneficiaries(
-    mode: str = Query("top_beneficiaries", description="top_beneficiaries|repeat_beneficiaries|state_fund_totals|top_locations"),
+    mode: str = Query("top_beneficiaries", description="top_beneficiaries|repeat_beneficiaries|state_fund_totals|top_locations|top_sectors|multi_state_beneficiaries|region_project_counts|kreis_project_counts"),
     bundesland: str | None = Query(None),
     fonds: str | None = Query(None),
     source: str | None = Query(None),

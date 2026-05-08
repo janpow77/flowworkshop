@@ -174,6 +174,19 @@ def _format_eur(value: float | None) -> str:
     return f"{value:,.0f}".replace(",", ".") + " €"
 
 
+def _de_int(value: int | float | None) -> str:
+    """Formatiert eine Ganzzahl mit deutschem Tausenderpunkt (z.B. 4501 -> '4.501').
+
+    None wird als '0' ausgegeben, damit f-Strings sauber bleiben.
+    """
+    if value is None:
+        return "0"
+    try:
+        return f"{int(value):,}".replace(",", ".")
+    except (TypeError, ValueError):
+        return str(value)
+
+
 def _normalize_search_text(value: Any) -> str:
     text_value = str(value or "").strip().lower()
     text_value = re.sub(r"\s+", " ", text_value)
@@ -1799,8 +1812,8 @@ def get_beneficiary_llm_context(
         f"Fokus: {analysis['title']}",
         (
             "Abdeckung: "
-            f"{summary['sources_considered']} Quelle(n), "
-            f"{summary['records_scanned']} Datensaetze, "
+            f"{_de_int(summary['sources_considered'])} Quelle(n), "
+            f"{_de_int(summary['records_scanned'])} Datensaetze, "
             f"{summary['total_volume_label']} Gesamtvolumen"
         ),
     ]
@@ -1819,8 +1832,8 @@ def get_beneficiary_llm_context(
         detail_summary = detail_results.get("summary") or {}
         parts.append(
             "Konkrete Treffer aus der strukturierten Suche "
-            f"({detail_summary.get('matches', 0)} Treffer, "
-            f"{detail_summary.get('sources_considered', 0)} Quelle(n), "
+            f"({_de_int(detail_summary.get('matches', 0))} Treffer, "
+            f"{_de_int(detail_summary.get('sources_considered', 0))} Quelle(n), "
             f"Suchbegriff='{detail_query}'):"
         )
         for row in (detail_results.get("records") or [])[:10]:
@@ -1851,7 +1864,7 @@ def get_beneficiary_llm_context(
                     item.get("value_label") or "",
                 ]
                 if item.get("project_count"):
-                    detail_parts.append(f"{item['project_count']} Vorhaben")
+                    detail_parts.append(f"{_de_int(item['project_count'])} Vorhaben")
                 if item.get("sublabel"):
                     detail_parts.append(str(item["sublabel"]))
                 parts.append("- " + " | ".join(str(p) for p in detail_parts if p))
@@ -1873,7 +1886,7 @@ def get_beneficiary_llm_context(
             item.get("value_label") or _format_eur(item.get("value")),
         ]
         if item.get("project_count"):
-            detail_parts.append(f"{item['project_count']} Vorhaben")
+            detail_parts.append(f"{_de_int(item['project_count'])} Vorhaben")
         if item.get("sublabel"):
             detail_parts.append(str(item["sublabel"]))
         parts.append("- " + " | ".join(str(part) for part in detail_parts if part))
@@ -1980,14 +1993,14 @@ def build_beneficiary_analysis_answer(
     for item in items[:effective_limit]:
         line = f"{item['rank']}. {item['label']}: {item.get('value_label') or _format_eur(item.get('value'))}"
         if item.get("project_count"):
-            line += f" bei {item['project_count']} Vorhaben"
+            line += f" bei {_de_int(item['project_count'])} Vorhaben"
         if item.get("sublabel"):
             line += f" ({item['sublabel']})"
         lines.append(line)
 
     coverage = (
-        f"Datengrundlage: {summary['sources_considered']} Quelle(n), "
-        f"{summary['records_scanned']} Datensätze, "
+        f"Datengrundlage: {_de_int(summary['sources_considered'])} Quelle(n), "
+        f"{_de_int(summary['records_scanned'])} Datensätze, "
         f"{summary['total_volume_label']} Gesamtvolumen."
     )
     lines.append(coverage)
@@ -2607,6 +2620,8 @@ def analyze_beneficiary_records(
         "state_fund_totals",
         "top_locations",
         "top_sectors",
+        "region_project_counts",
+        "kreis_project_counts",
     }
     if mode not in supported_modes:
         raise ValueError(f"Unbekannter Analysemodus '{mode}'.")
@@ -2617,7 +2632,7 @@ def analyze_beneficiary_records(
     # Eintraege ausgeben — daher dort ebenfalls weicheres Cap.
     if mode == "multi_state_beneficiaries":
         max_limit = 500
-    elif mode == "state_fund_totals":
+    elif mode in {"state_fund_totals", "region_project_counts", "kreis_project_counts"}:
         max_limit = 100
     else:
         max_limit = 20
@@ -2744,7 +2759,7 @@ def analyze_beneficiary_records(
             aggregated.append({
                 "label": company["label"],
                 "sublabel": " · ".join(part for part in [
-                    f"{len(company['bundeslaender'])} Bundesländer" if mode == "multi_state_beneficiaries" else f"{company['project_count']} Vorhaben",
+                    f"{_de_int(len(company['bundeslaender']))} Bundesländer" if mode == "multi_state_beneficiaries" else f"{_de_int(company['project_count'])} Vorhaben",
                     ", ".join(sorted(company["bundeslaender"])[:5]),
                     ", ".join(sorted(company["fonds"])[:2]),
                 ] if part),
@@ -2803,7 +2818,7 @@ def analyze_beneficiary_records(
         items = sorted([
             {
                 "label": bucket["label"],
-                "sublabel": f"{bucket['project_count']} Vorhaben · {len(bucket['sources'])} Quelle(n)",
+                "sublabel": f"{_de_int(bucket['project_count'])} Vorhaben · {_de_int(len(bucket['sources']))} Quelle(n)",
                 "value": bucket["value"],
                 "value_label": _format_eur(bucket["value"] or None),
                 "project_count": bucket["project_count"],
@@ -2848,7 +2863,7 @@ def analyze_beneficiary_records(
             {
                 "label": bucket["label"],
                 "sublabel": " · ".join(part for part in [
-                    f"{bucket['project_count']} Vorhaben",
+                    f"{_de_int(bucket['project_count'])} Vorhaben",
                     ", ".join(sorted(bucket["bundeslaender"])[:3]),
                     ", ".join(sorted(bucket["fonds"])[:2]),
                 ] if part),
@@ -2862,7 +2877,7 @@ def analyze_beneficiary_records(
         ], key=lambda item: (-float(item["value"] or 0.0), -int(item["project_count"]), item["label"]))[:limit]
         title = (
             f"Wirtschaftszweige / Interventionsbereiche "
-            f"({records_with_category} von {scanned_records} Vorhaben mit Angabe)"
+            f"({_de_int(records_with_category)} von {_de_int(scanned_records)} Vorhaben mit Angabe)"
         )
 
     elif mode == "top_locations":
@@ -2890,7 +2905,7 @@ def analyze_beneficiary_records(
             {
                 "label": bucket["label"],
                 "sublabel": " · ".join(part for part in [
-                    f"{bucket['project_count']} Vorhaben",
+                    f"{_de_int(bucket['project_count'])} Vorhaben",
                     ", ".join(sorted(bucket["bundeslaender"])[:2]),
                     ", ".join(sorted(bucket["fonds"])[:2]),
                 ] if part),
@@ -2903,6 +2918,217 @@ def analyze_beneficiary_records(
             for bucket in grouped_locations.values()
         ], key=lambda item: (-float(item["value"] or 0.0), item["label"]))[:limit]
         title = "Standorte mit dem höchsten Fördervolumen"
+
+    elif mode == "region_project_counts":
+        # Vorhaben je Bundesland mit Quellen-/Fonds-Aufschluesselung.
+        # Aggregation aus dem bereits gefilterten flat_results-Set; pro
+        # Bundesland-Bucket eine zweite Sub-Aggregation nach
+        # (source, fonds), damit der Pruefer sieht, aus welchem Topf
+        # die Vorhaben stammen.
+        grouped_regions: dict[str, dict[str, Any]] = {}
+        for item in flat_results:
+            state = item.get("bundesland") or "Unbekannt"
+            bucket = grouped_regions.setdefault(state, {
+                "label": state,
+                "value": 0.0,
+                "project_count": 0,
+                "bundesland": state,
+                "sources": set(),
+                "fonds": set(),
+                "sub_buckets": {},
+            })
+            if item.get("kosten") is not None:
+                bucket["value"] += float(item["kosten"])
+            bucket["project_count"] += 1
+            src_key = item.get("source") or "unknown"
+            fonds_label = item.get("fonds") or "Unbekannt"
+            if item.get("source"):
+                bucket["sources"].add(item["source"])
+            if item.get("fonds"):
+                bucket["fonds"].add(item["fonds"])
+            sub_key = (src_key, fonds_label)
+            sub = bucket["sub_buckets"].setdefault(sub_key, {
+                "source": src_key,
+                "fonds": fonds_label,
+                "count": 0,
+                "value": 0.0,
+            })
+            sub["count"] += 1
+            if item.get("kosten") is not None:
+                sub["value"] += float(item["kosten"])
+
+        items_local: list[dict[str, Any]] = []
+        for bucket in grouped_regions.values():
+            sources_breakdown = sorted(
+                (
+                    {
+                        "source": sub["source"],
+                        "fonds": sub["fonds"],
+                        "count": sub["count"],
+                        "value": sub["value"],
+                        "value_label": _format_eur(sub["value"] or None),
+                    }
+                    for sub in bucket["sub_buckets"].values()
+                ),
+                key=lambda s: (-int(s["count"]), s["source"]),
+            )
+            items_local.append({
+                "label": bucket["label"],
+                "sublabel": (
+                    f"{_de_int(bucket['project_count'])} Vorhaben · "
+                    f"{_de_int(len(bucket['sources']))} Quelle(n)"
+                ),
+                "value": bucket["project_count"],
+                "value_label": f"{_de_int(bucket['project_count'])} Vorhaben",
+                "project_count": bucket["project_count"],
+                "bundesland": bucket["bundesland"],
+                "fonds": None,
+                "source_count": len(bucket["sources"]),
+                "fonds_list": sorted(bucket["fonds"]),
+                "total_volume": bucket["value"],
+                "total_volume_label": _format_eur(bucket["value"] or None),
+                "sources_breakdown": sources_breakdown,
+            })
+        items = sorted(
+            items_local,
+            key=lambda it: (-int(it["project_count"] or 0), it["label"]),
+        )[:limit]
+        title = "Vorhaben je Bundesland (mit Quellen-Aufschlüsselung)"
+        metric_label = "Vorhaben"
+
+    elif mode == "kreis_project_counts":
+        # Vorhaben je Kreis (NUTS-3). Liest direkt aus
+        # workshop_beneficiary_records, weil nur dort der nuts_code-
+        # Spalte verlaesslich gefuellt ist; die XLSX-Quellen
+        # (get_beneficiary_sources) haben kein NUTS-Feld im
+        # detect_columns-Schema.
+        from services.geocoding_service import lookup_nuts_code  # lazy import
+
+        kreis_where: list[str] = ["nuts_code IS NOT NULL", "nuts_code <> ''"]
+        kreis_params: dict[str, Any] = {}
+        if country_code:
+            kreis_where.append("country_code = :country_code")
+            kreis_params["country_code"] = country_code.upper()
+        if bundesland:
+            kreis_where.append("bundesland = :bundesland")
+            kreis_params["bundesland"] = bundesland
+        if fonds:
+            kreis_where.append("fonds = :fonds")
+            kreis_params["fonds"] = fonds
+        if source:
+            kreis_where.append("source_key = :source")
+            kreis_params["source"] = source
+        if min_cost is not None:
+            kreis_where.append("cost_total IS NOT NULL AND cost_total >= :min_cost")
+            kreis_params["min_cost"] = float(min_cost)
+
+        kreis_sql = (
+            "SELECT nuts_code, source_key, fonds, bundesland, "
+            "       COUNT(*) AS cnt, "
+            "       COALESCE(SUM(cost_total), 0) AS sum_cost "
+            "FROM workshop_beneficiary_records "
+            f"WHERE {' AND '.join(kreis_where)} "
+            "GROUP BY nuts_code, source_key, fonds, bundesland"
+        )
+        kreis_grouped: dict[str, dict[str, Any]] = {}
+        kreis_scanned = 0
+        try:
+            with engine.connect() as conn:
+                rows = conn.execute(text(kreis_sql), kreis_params).fetchall()
+        except Exception as exc:  # noqa: BLE001
+            log.warning("kreis_project_counts: DB-Query fehlgeschlagen: %s", exc)
+            rows = []
+
+        for row in rows:
+            r = dict(row._mapping)
+            nuts = (r.get("nuts_code") or "").strip().upper()
+            if not nuts:
+                continue
+            cnt = int(r.get("cnt") or 0)
+            kreis_scanned += cnt
+            sum_cost = float(r.get("sum_cost") or 0.0)
+            bucket = kreis_grouped.setdefault(nuts, {
+                "nuts_code": nuts,
+                "label": nuts,
+                "bundesland": r.get("bundesland") or "",
+                "value": 0.0,
+                "project_count": 0,
+                "sources": set(),
+                "fonds": set(),
+                "sub_buckets": {},
+            })
+            bucket["project_count"] += cnt
+            bucket["value"] += sum_cost
+            src_key = r.get("source_key") or "unknown"
+            fonds_label = r.get("fonds") or "Unbekannt"
+            if r.get("source_key"):
+                bucket["sources"].add(r["source_key"])
+            if r.get("fonds"):
+                bucket["fonds"].add(r["fonds"])
+            if not bucket["bundesland"] and r.get("bundesland"):
+                bucket["bundesland"] = r["bundesland"]
+            sub_key = (src_key, fonds_label)
+            sub = bucket["sub_buckets"].setdefault(sub_key, {
+                "source": src_key,
+                "fonds": fonds_label,
+                "count": 0,
+                "value": 0.0,
+            })
+            sub["count"] += cnt
+            sub["value"] += sum_cost
+
+        items_local: list[dict[str, Any]] = []
+        for bucket in kreis_grouped.values():
+            nuts = bucket["nuts_code"]
+            info = lookup_nuts_code(nuts) or {}
+            kreis_name = info.get("ort") or nuts
+            bl = info.get("bundesland") or bucket.get("bundesland") or ""
+            display_label = (
+                f"{kreis_name} ({nuts})" if kreis_name and kreis_name != nuts else nuts
+            )
+            sources_breakdown = sorted(
+                (
+                    {
+                        "source": sub["source"],
+                        "fonds": sub["fonds"],
+                        "count": sub["count"],
+                        "value": sub["value"],
+                        "value_label": _format_eur(sub["value"] or None),
+                    }
+                    for sub in bucket["sub_buckets"].values()
+                ),
+                key=lambda s: (-int(s["count"]), s["source"]),
+            )
+            items_local.append({
+                "label": display_label,
+                "sublabel": (
+                    f"{_de_int(bucket['project_count'])} Vorhaben · "
+                    f"{_de_int(len(bucket['sources']))} Quelle(n)"
+                    + (f" · {bl}" if bl else "")
+                ),
+                "value": bucket["project_count"],
+                "value_label": f"{_de_int(bucket['project_count'])} Vorhaben",
+                "project_count": bucket["project_count"],
+                "nuts_code": nuts,
+                "bundesland": bl,
+                "fonds": None,
+                "source_count": len(bucket["sources"]),
+                "fonds_list": sorted(bucket["fonds"]),
+                "total_volume": bucket["value"],
+                "total_volume_label": _format_eur(bucket["value"] or None),
+                "sources_breakdown": sources_breakdown,
+            })
+        items = sorted(
+            items_local,
+            key=lambda it: (-int(it["project_count"] or 0), it["label"]),
+        )[:limit]
+        # scanned_records bleibt bei 0 fuer den XLSX-Pfad — wir setzen
+        # einen sinnvollen Ersatzwert aus dem DB-Aggregat, damit das
+        # Coverage-Summary nicht 0 anzeigt.
+        if kreis_scanned and not scanned_records:
+            scanned_records = kreis_scanned
+        title = "Vorhaben je Kreis (NUTS-3, mit Quellen-Aufschlüsselung)"
+        metric_label = "Vorhaben"
 
     for index, item in enumerate(items, start=1):
         item["rank"] = index

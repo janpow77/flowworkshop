@@ -274,7 +274,10 @@ export type BeneficiaryAnalysisMode =
   | 'top_beneficiaries'
   | 'repeat_beneficiaries'
   | 'state_fund_totals'
-  | 'top_locations';
+  | 'top_locations'
+  | 'top_sectors'
+  | 'multi_state_beneficiaries'
+  | 'region_project_counts';
 
 export interface BeneficiaryAnalysisItem {
   rank: number;
@@ -290,6 +293,15 @@ export interface BeneficiaryAnalysisItem {
   fonds_list?: string[];
   locations?: string[];
   sources?: string[];
+  // Bei mode=region_project_counts: Aufschluesselung pro Quelle
+  // (Bundesprogramm vs. Landesprogramm).
+  sources_breakdown?: Array<{
+    source: string;
+    fonds: string | null;
+    count: number;
+    value: number;
+    value_label: string;
+  }>;
 }
 
 export interface BeneficiaryAnalyticsResponse {

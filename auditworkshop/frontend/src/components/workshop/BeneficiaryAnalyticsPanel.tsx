@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Building2, MapPinned, RefreshCw, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  BarChart3,
+  Building2,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
+  MapPinned,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react';
 import { Skeleton } from '../ui/Skeleton';
 import {
   analyzeBeneficiaries,
@@ -9,6 +18,7 @@ import {
   type BeneficiarySource,
   type CountryCode,
 } from '../../lib/api';
+import { useExport } from '../../lib/useExport';
 
 const REGION_LABEL_BY_COUNTRY: Record<string, string> = {
   DE: 'Bundesland',
@@ -39,6 +49,11 @@ const ANALYSIS_OPTIONS: Array<{
     value: 'top_locations',
     label: 'Top Standorte',
     description: 'Welche Orte bündeln das höchste Fördervolumen?',
+  },
+  {
+    value: 'region_project_counts',
+    label: 'Vorhaben je Bundesland',
+    description: 'Wie viele Vorhaben werden pro Bundesland gefoerdert? Mit Aufschluesselung nach Quelle (Bundes- vs. Landesprogramme).',
   },
 ];
 
@@ -81,6 +96,8 @@ function buildPrompt(mode: BeneficiaryAnalysisMode, bundesland: string, fonds: s
       return `Stelle das Fördervolumen pro Bundesland und pro Fonds übersichtlich dar.${suffix}`;
     case 'top_locations':
       return `Welche Standorte bündeln das höchste Fördervolumen und welche Träger dominieren dort?${suffix}`;
+    case 'region_project_counts':
+      return `Wie viele Vorhaben werden pro Bundesland gefördert? Schlüssele die Anzahl nach Quelle (Bundes- vs. Landesprogramme) auf.${suffix}`;
     default:
       return `Analysiere die geladenen Begünstigtenverzeichnisse.${suffix}`;
   }
@@ -103,6 +120,10 @@ export default function BeneficiaryAnalyticsPanel(
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState<'xlsx' | 'csv' | 'pdf' | null>(null);
+  const exportApi = useExport();
+  // Ziel fuer den PDF-Export: das gerenderte Trefferlisten-Panel.
+  const exportTargetRef = useRef<HTMLDivElement | null>(null);
 
   const regionLabel = countryCode ? REGION_LABEL_BY_COUNTRY[countryCode] || 'Region/Bundesland' : 'Region/Bundesland';
 
@@ -187,6 +208,62 @@ export default function BeneficiaryAnalyticsPanel(
     }
   };
 
+  // Tabellarische Repraesentation der aktuell sichtbaren Auswertung.
+  // Wird von XLSX und CSV-Export genutzt; Spaltenreihenfolge ist hier
+  // verbindlich (SheetJS wuerde sonst Object.keys-Reihenfolge nehmen).
+  const exportRows = useMemo(
+    () => (analysis?.items ?? []).map((it) => ({
+      Rang: it.rank,
+      Bezeichnung: it.label,
+      Untertitel: it.sublabel ?? '',
+      Wert: typeof it.value === 'number' ? Math.round(it.value) : it.value,
+      Wert_formatiert: it.value_label,
+      Vorhaben: it.project_count ?? '',
+      Bundesland: it.bundesland ?? '',
+      Fonds: it.fonds ?? '',
+      Quellen_Anzahl: it.source_count ?? '',
+      Quellen_Breakdown: (it.sources_breakdown ?? [])
+        .map((sb) => `${sb.fonds ?? sb.source}: ${sb.count}`)
+        .join(', '),
+    })),
+    [analysis],
+  );
+
+  const exportFilenameBase = useMemo(
+    () => `auswertung_${mode}_${countryCode || 'all'}_${new Date().toISOString().slice(0, 10)}`,
+    [mode, countryCode],
+  );
+
+  const canExport = (analysis?.items?.length ?? 0) > 0 && !loading;
+
+  const handleExport = async (format: 'xlsx' | 'csv' | 'pdf') => {
+    if (!canExport || exporting) return;
+    setExporting(format);
+    try {
+      if (format === 'csv') {
+        exportApi.toCsv(exportRows, { filename: exportFilenameBase });
+      } else if (format === 'xlsx') {
+        await exportApi.toXlsx(exportRows, {
+          filename: exportFilenameBase,
+          sheetName: currentOption?.label ?? 'Auswertung',
+        });
+      } else if (format === 'pdf') {
+        const target = exportTargetRef.current;
+        if (target) {
+          await exportApi.toPdf(target, {
+            filename: exportFilenameBase,
+            title: analysis?.title ?? 'Begünstigten-Auswertung',
+            subtitle: `Stand ${new Date().toLocaleDateString('de-DE')} · ${analysis?.summary?.total_volume_label ?? ''}`,
+          });
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export fehlgeschlagen.');
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <div className={`rounded-[26px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_22px_80px_-52px_rgba(15,23,42,0.7)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 ${className || ''}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -249,14 +326,43 @@ export default function BeneficiaryAnalyticsPanel(
             ))}
           </select>
         </label>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing || loading}
-          className="inline-flex items-center justify-center gap-2 self-end rounded-full bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:bg-rose-500 dark:hover:bg-rose-400 dark:disabled:bg-slate-700"
-        >
-          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-          Neu laden
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2 self-end">
+          <button
+            onClick={() => handleExport('xlsx')}
+            disabled={!canExport || Boolean(exporting)}
+            title="Trefferliste als Excel-Datei exportieren"
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+          >
+            <FileSpreadsheet size={13} className={exporting === 'xlsx' ? 'animate-pulse' : ''} />
+            XLSX
+          </button>
+          <button
+            onClick={() => handleExport('csv')}
+            disabled={!canExport || Boolean(exporting)}
+            title="Trefferliste als CSV exportieren"
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <FileText size={13} className={exporting === 'csv' ? 'animate-pulse' : ''} />
+            CSV
+          </button>
+          <button
+            onClick={() => handleExport('pdf')}
+            disabled={!canExport || Boolean(exporting)}
+            title="Trefferliste als PDF exportieren"
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <FileDown size={13} className={exporting === 'pdf' ? 'animate-pulse' : ''} />
+            PDF
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:bg-rose-500 dark:hover:bg-rose-400 dark:disabled:bg-slate-700"
+          >
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+            Neu laden
+          </button>
+        </div>
       </div>
 
       {currentOption && (
@@ -298,7 +404,7 @@ export default function BeneficiaryAnalyticsPanel(
             </div>
           </div>
 
-          <div className="mt-5 rounded-[28px] border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/50">
+          <div ref={exportTargetRef} className="mt-5 rounded-[28px] border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/50">
             <div className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-white">
               {mode === 'top_locations' ? <MapPinned size={16} className="text-cyan-500" /> : <Building2 size={16} className="text-rose-500" />}
               {analysis.title}
@@ -322,6 +428,19 @@ export default function BeneficiaryAnalyticsPanel(
                                 <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{sub}</div>
                               ) : null;
                             })()}
+                            {item.sources_breakdown && item.sources_breakdown.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {item.sources_breakdown.map((sb, i) => (
+                                  <span
+                                    key={`${sb.source}-${i}`}
+                                    className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                    title={`${sb.value_label} aus Quelle ${sb.source}`}
+                                  >
+                                    {sb.fonds ?? sb.source}: {sb.count.toLocaleString('de-DE')}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">

@@ -146,6 +146,83 @@ export function useExport() {
   }, []);
 
   /**
+   * XLSX-Export: erzeugt ein minimales OOXML-Spreadsheet (1 Sheet, 1 Tab)
+   * direkt im Browser — ohne SheetJS-Dependency. Nutzt das bereits
+   * gebundelte JSZip. Die Datei laesst sich in Excel, LibreOffice, Numbers
+   * und Google Sheets oeffnen.
+   *
+   * Hinweis: Strings werden via inline-strings (`<is><t>`) geschrieben,
+   * Zahlen als Number. Keine Formeln, kein Styling. Reicht voellig fuer
+   * tabellarische Auswertungs-Exporte.
+   */
+  const toXlsx = useCallback(async (
+    rows: Array<Record<string, unknown>>,
+    opts: { filename?: string; columns?: string[]; sheetName?: string } = {},
+  ) => {
+    const { default: JSZip } = await import('jszip');
+    const cols = opts.columns ?? (rows.length > 0 ? Object.keys(rows[0]) : []);
+    const sheetName = (opts.sheetName ?? 'Auswertung').slice(0, 31).replace(/[\\/*?[\]:]/g, '');
+
+    const colLetter = (n: number): string => {
+      let s = '';
+      let i = n;
+      while (i >= 0) {
+        s = String.fromCharCode((i % 26) + 65) + s;
+        i = Math.floor(i / 26) - 1;
+      }
+      return s;
+    };
+    const escapeXml = (v: unknown): string => {
+      const s = v === null || v === undefined ? '' : String(v);
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+    };
+    const isFiniteNumber = (v: unknown): v is number =>
+      typeof v === 'number' && Number.isFinite(v);
+
+    const allRows: Array<Array<unknown>> = [
+      cols,
+      ...rows.map((r) => cols.map((c) => r[c])),
+    ];
+    const sheetXmlRows = allRows.map((row, rIdx) => {
+      const cells = row.map((val, cIdx) => {
+        const ref = `${colLetter(cIdx)}${rIdx + 1}`;
+        // Header-Zeile (rIdx==0) immer als String ausgeben, damit auch
+        // numerische Spaltennamen als Text erhalten bleiben.
+        if (rIdx > 0 && isFiniteNumber(val)) {
+          return `<c r="${ref}"><v>${val}</v></c>`;
+        }
+        return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(val)}</t></is></c>`;
+      }).join('');
+      return `<row r="${rIdx + 1}">${cells}</row>`;
+    }).join('');
+    const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetXmlRows}</sheetData></worksheet>`;
+    const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+    const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`;
+    const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+    const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`;
+
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', contentTypes);
+    zip.folder('_rels')!.file('.rels', rootRels);
+    const xl = zip.folder('xl')!;
+    xl.file('workbook.xml', workbookXml);
+    xl.folder('_rels')!.file('workbook.xml.rels', workbookRels);
+    xl.folder('worksheets')!.file('sheet1.xml', sheetXml);
+
+    const blob = await zip.generateAsync({
+      type: 'blob',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    downloadBlob(blob, `${opts.filename ?? `export_${isoStamp()}`}.xlsx`);
+  }, []);
+
+  /**
    * CSV-Export: rendert Zeilen als RFC-4180-konformes CSV (BOM für Excel)
    */
   const toCsv = useCallback((
@@ -192,5 +269,5 @@ export function useExport() {
     downloadBlob(out, `${opts.filename ?? `dokumente_${isoStamp()}`}.zip`);
   }, []);
 
-  return { toPng, toJpeg, toPdf, toCsv, toZip };
+  return { toPng, toJpeg, toPdf, toCsv, toXlsx, toZip };
 }
