@@ -1,8 +1,11 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap, GeoJSON } from 'react-leaflet';
+import type { Feature, FeatureCollection, Geometry } from 'geojson';
+import type { Layer, PathOptions } from 'leaflet';
 import {
   Loader2, MapPin, AlertTriangle, X, FileSpreadsheet,
   Trash2, ShieldCheck, FileImage, FileText, Maximize2, Minimize2,
+  Layers,
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -154,13 +157,66 @@ type BeneficiaryMapProps = {
   // visueller Begleiter dient (Unternehmenssuche, KI-Auswertung) — dort
   // filtert die Suche bzw. der Country-Picker schon ausserhalb der Karte.
   showFilterControls?: boolean;
+  // Choropleth-Layer (NUTS-1) zusätzlich/statt Pins. Default off.
+  choroplethEnabled?: boolean;
+  choroplethMetric?: 'count' | 'value';
 };
+
+interface ChoroplethRegion {
+  nuts_code: string;
+  name: string;
+  value: number;
+  value_label: string;
+}
+
+interface ChoroplethResponse {
+  regions: ChoroplethRegion[];
+  max_value: number;
+}
+
+// 5-stufige sequentielle Rose-Skala (hell → dunkel). Passt zum Workshop-Farbton
+// (Begünstigtenverzeichnisse nutzen rose-500 als Akzent).
+const CHOROPLETH_BINS = ['#fff1f2', '#fecdd3', '#fb7185', '#e11d48', '#9f1239'];
+const CHOROPLETH_NEUTRAL = '#e5e7eb'; // Region ohne Daten
+
+// Bestimmt die Farbe per Quintil-Klassifizierung. Werte == 0 -> neutral grau.
+function colorForValue(value: number, breaks: number[]): string {
+  if (!Number.isFinite(value) || value <= 0) return CHOROPLETH_NEUTRAL;
+  for (let i = 0; i < breaks.length; i += 1) {
+    if (value <= breaks[i]) return CHOROPLETH_BINS[i];
+  }
+  return CHOROPLETH_BINS[CHOROPLETH_BINS.length - 1];
+}
+
+// Berechnet 5 Quintil-Schwellen aus den positiven Regionswerten. Wenn weniger
+// als 5 unterschiedliche Werte vorliegen, werden die Bin-Grenzen einfach durch
+// das Maximum gestaucht — die Farbskala bleibt nutzbar.
+function computeQuintileBreaks(values: number[]): number[] {
+  const positives = values.filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+  if (positives.length === 0) return [0, 0, 0, 0, 0];
+  const max = positives[positives.length - 1];
+  if (positives.length < 5) {
+    return [0.2, 0.4, 0.6, 0.8, 1].map((q) => max * q);
+  }
+  const breaks: number[] = [];
+  for (let i = 1; i <= 5; i += 1) {
+    const idx = Math.min(positives.length - 1, Math.ceil((i / 5) * positives.length) - 1);
+    breaks.push(positives[idx]);
+  }
+  return breaks;
+}
+
+function formatChoroplethMetric(metric: 'count' | 'value'): string {
+  return metric === 'count' ? 'Vorhaben' : 'Volumen';
+}
 
 export default function BeneficiaryMap({
   className,
   countryCode = 'DE',
   highlightNames,
   showFilterControls = true,
+  choroplethEnabled = false,
+  choroplethMetric = 'count',
 }: BeneficiaryMapProps) {
   const [data, setData] = useState<Beneficiary[]>([]);
   const [sources, setSources] = useState<SourceInfo[]>([]);
@@ -178,6 +234,19 @@ export default function BeneficiaryMap({
   const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null);
   const [showSources, setShowSources] = useState(false);
   const mapShellRef = useRef<HTMLDivElement>(null);
+
+  // Choropleth-Layer State. Initialwert kommt aus den Props, wird aber per
+  // Toolbar-Button (Layers-Icon) lokal getoggelt.
+  const [choroplethActive, setChoroplethActive] = useState(choroplethEnabled);
+  const [choroplethData, setChoroplethData] = useState<ChoroplethResponse | null>(null);
+  const [choroplethGeo, setChoroplethGeo] = useState<FeatureCollection | null>(null);
+  const [choroplethGeoMissing, setChoroplethGeoMissing] = useState(false);
+  const [choroplethLoading, setChoroplethLoading] = useState(false);
+  const [choroplethError, setChoroplethError] = useState('');
+
+  useEffect(() => {
+    setChoroplethActive(choroplethEnabled);
+  }, [choroplethEnabled]);
 
   const countryQuery = countryCode ? `?country_code=${countryCode}` : '';
 
@@ -245,6 +314,49 @@ export default function BeneficiaryMap({
     getSystemProfile().then(setProfile).catch(() => setProfile(null));
   }, []);
 
+  // Choropleth-Daten holen (NUTS-1, aktuelles Land + gewählte Metrik). Werte
+  // werden auch dann geladen, wenn die GeoJSON-Polygone fehlen — dann zeigt
+  // das Inset-Fallback (Top-5 Bar-Chart) trotzdem etwas Sinnvolles.
+  useEffect(() => {
+    if (!choroplethActive) return;
+    if (!countryCode) return;
+    let cancelled = false;
+    setChoroplethLoading(true);
+    setChoroplethError('');
+
+    const headers = { ...getWorkshopAuthHeaders() };
+    const valuesUrl = `/api/beneficiaries/choropleth?country_code=${countryCode}&level=1&metric=${choroplethMetric}`;
+    const geoUrl = `/api/beneficiaries/nuts-geojson?country_code=${countryCode}&level=1`;
+
+    Promise.all([
+      fetch(valuesUrl, { headers }).then((res) => {
+        if (!res.ok) throw new Error(`Werte HTTP ${res.status}`);
+        return res.json() as Promise<ChoroplethResponse>;
+      }),
+      fetch(geoUrl, { headers }).then((res) => {
+        // 404 ist erlaubt — Endpoint optional. Fallback: Bar-Chart-Inset.
+        if (res.status === 404) return null;
+        if (!res.ok) throw new Error(`GeoJSON HTTP ${res.status}`);
+        return res.json() as Promise<FeatureCollection>;
+      }),
+    ])
+      .then(([values, geo]) => {
+        if (cancelled) return;
+        setChoroplethData(values);
+        setChoroplethGeo(geo);
+        setChoroplethGeoMissing(geo === null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setChoroplethError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setChoroplethLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [choroplethActive, countryCode, choroplethMetric]);
+
   const handleDeleteSource = async (source: string) => {
     if (!confirm('Verzeichnis entfernen?')) return;
     await fetch(`/api/beneficiaries/${encodeURIComponent(source)}`, {
@@ -297,6 +409,57 @@ export default function BeneficiaryMap({
     if (kosten <= 0) return 3;
     return Math.max(3, Math.min(18, Math.log10(kosten) * 2));
   };
+
+  // Lookup nuts_code → Region für schnellen Zugriff im GeoJSON-Renderer.
+  const choroplethByCode = useMemo(() => {
+    const m = new Map<string, ChoroplethRegion>();
+    for (const r of choroplethData?.regions || []) {
+      m.set(r.nuts_code, r);
+    }
+    return m;
+  }, [choroplethData]);
+
+  const choroplethBreaks = useMemo(
+    () => computeQuintileBreaks((choroplethData?.regions || []).map((r) => r.value)),
+    [choroplethData],
+  );
+
+  const choroplethTop5 = useMemo(() => {
+    return [...(choroplethData?.regions || [])]
+      .filter((r) => r.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  }, [choroplethData]);
+
+  // Style-Funktion für GeoJSON-Features: Farbe nach Wert, schmaler Rand.
+  const choroplethStyle = useCallback((feature?: Feature<Geometry>): PathOptions => {
+    const props = (feature?.properties ?? {}) as { nuts_code?: string; NUTS_ID?: string };
+    const code = props.nuts_code || props.NUTS_ID || '';
+    const region = choroplethByCode.get(code);
+    return {
+      fillColor: colorForValue(region?.value ?? 0, choroplethBreaks),
+      fillOpacity: 0.65,
+      color: '#475569',
+      weight: 0.8,
+      opacity: 0.7,
+    };
+  }, [choroplethByCode, choroplethBreaks]);
+
+  // Pro Feature einen Tooltip/Popup mit Regionname + Wert binden.
+  const choroplethOnEach = useCallback((feature: Feature<Geometry>, layer: Layer) => {
+    const props = (feature.properties ?? {}) as { nuts_code?: string; NUTS_ID?: string; name?: string; NAME?: string };
+    const code = props.nuts_code || props.NUTS_ID || '';
+    const region = choroplethByCode.get(code);
+    const fallbackName = props.name || props.NAME || code || 'Region';
+    const name = region?.name || fallbackName;
+    const valueLabel = region?.value_label ?? '–';
+    const html = `<div style="font-size:12px;line-height:1.4">
+      <strong>${name}</strong><br/>
+      <span style="color:#64748b">${formatChoroplethMetric(choroplethMetric)}: </span>${valueLabel}
+    </div>`;
+    layer.bindPopup(html);
+    layer.bindTooltip(`${name}: ${valueLabel}`, { sticky: true });
+  }, [choroplethByCode, choroplethMetric]);
 
   return (
     <div className={`space-y-4 ${className || ''}`}>
@@ -387,6 +550,19 @@ export default function BeneficiaryMap({
                   <option value={5000000}>&gt; 5 Mio €</option>
                 </select>
               )}
+              <button
+                onClick={() => setChoroplethActive((v) => !v)}
+                className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${
+                  choroplethActive
+                    ? 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                    : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600'
+                }`}
+                title={choroplethActive ? 'Heatmap (Bundesländer einfärben) deaktivieren' : 'Heatmap: Bundesländer nach Vorhabenanzahl einfärben'}
+                aria-pressed={choroplethActive}
+              >
+                <Layers size={12} />
+                Heatmap
+              </button>
               <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-600 pl-2 ml-1">
                 <button
                   onClick={() => exportMap('png')}
@@ -431,6 +607,16 @@ export default function BeneficiaryMap({
                   />
                 )}
                 {points.length > 0 && <FitBounds points={points} />}
+                {choroplethActive && choroplethGeo && (
+                  <GeoJSON
+                    // Key zwingt React zum Re-Mount, sobald sich Werte/Skala
+                    // ändern — sonst übernimmt Leaflet die neuen Styles nicht.
+                    key={`choro-${countryCode}-${choroplethMetric}-${choroplethBreaks.join('|')}`}
+                    data={choroplethGeo}
+                    style={choroplethStyle}
+                    onEachFeature={choroplethOnEach}
+                  />
+                )}
                 {pins.map((pin, i) => {
                   // Begünstigte am gleichen Standort nochmal nach Name gruppieren —
                   // ein Begünstigter mit mehreren Vorhaben am selben Ort soll
@@ -505,6 +691,51 @@ export default function BeneficiaryMap({
               {!allowRemoteTiles && (
                 <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-md bg-white/90 dark:bg-slate-900/90 px-2 py-1 text-[10px] text-slate-500 shadow">
                   Kartenkacheln lokal deaktiviert
+                </div>
+              )}
+              {choroplethActive && choroplethLoading && (
+                <div className="pointer-events-none absolute right-3 top-3 z-[500] rounded-md bg-white/90 dark:bg-slate-900/90 px-2 py-1 text-[10px] text-slate-500 shadow inline-flex items-center gap-1">
+                  <Loader2 size={11} className="animate-spin" />
+                  Heatmap lädt…
+                </div>
+              )}
+              {choroplethActive && choroplethError && !choroplethLoading && (
+                <div className="absolute right-3 top-3 z-[500] max-w-[260px] rounded-md bg-red-50 dark:bg-red-950/70 border border-red-200 dark:border-red-800 px-2 py-1 text-[10px] text-red-700 dark:text-red-300 shadow">
+                  Heatmap nicht ladbar: {choroplethError}
+                </div>
+              )}
+              {choroplethActive && !choroplethLoading && !choroplethError && choroplethGeoMissing && choroplethData && (
+                <div className="absolute right-3 top-3 z-[500] w-[260px] rounded-md bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 px-3 py-2 shadow">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">
+                      Top 5 · {formatChoroplethMetric(choroplethMetric)}
+                    </span>
+                    <Layers size={11} className="text-rose-500" />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mb-2 leading-tight">
+                    NUTS-Polygone nicht verfügbar — Fallback als Bar-Chart.
+                  </p>
+                  {choroplethTop5.length === 0 ? (
+                    <p className="text-[11px] text-slate-500">Keine Daten.</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {choroplethTop5.map((r) => {
+                        const max = choroplethData.max_value || r.value || 1;
+                        const width = Math.max(6, Math.round((r.value / max) * 100));
+                        return (
+                          <li key={r.nuts_code} className="text-[11px]">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="truncate text-slate-700 dark:text-slate-200">{r.name}</span>
+                              <span className="shrink-0 text-slate-500 dark:text-slate-400 tabular-nums">{r.value_label}</span>
+                            </div>
+                            <div className="mt-0.5 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                              <div className="h-full rounded-full bg-rose-500" style={{ width: `${width}%` }} />
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
               )}
             </div>

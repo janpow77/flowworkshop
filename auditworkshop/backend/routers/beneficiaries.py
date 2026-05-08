@@ -377,6 +377,215 @@ def get_nuts_regions():
     return {"count": len(nuts), "regions": nuts}
 
 
+# ── NUTS-GeoJSON ──────────────────────────────────────────────────────────────
+# Liefert die Polygone fuer die Choropleth-Karte. DE: NUTS-1 (16 Bundeslaender),
+# AT: NUTS-2 (9 Bundeslaender, in unserer Choropleth-API als "level=1" gefuehrt,
+# weil AT auf NUTS-1 nur drei Grossregionen hat). Die Dateien sind aus dem
+# Frontend (`public/state_aid/*.geojson`) uebernommen — siehe data/geo/.
+
+import json as _json
+from pathlib import Path as _Path
+
+_GEO_DIR = _Path(__file__).resolve().parent.parent / "data" / "geo"
+
+_GEOJSON_PATHS: dict[tuple[str, int], _Path] = {
+    ("DE", 1): _GEO_DIR / "nuts1_de.geojson",
+    ("AT", 1): _GEO_DIR / "nuts1_at.geojson",
+}
+
+
+@router.get("/nuts-geojson")
+def get_nuts_geojson(
+    country_code: str = Query("DE", description="DE oder AT"),
+    level: int = Query(1, ge=1, le=3, description="1 = Bundesland-Polygone"),
+):
+    """Liefert das NUTS-Polygon-GeoJSON fuer die Choropleth-Karte.
+
+    Aktuell unterstuetzt: DE level=1 (NUTS-1, 16 Bundeslaender) und
+    AT level=1 (NUTS-2, 9 Bundeslaender). NUTS-3-GeoJSONs sind nicht im
+    Repo — Aufrufer faellt auf Centroids zurueck.
+    """
+    cc = _normalize_country_code(country_code) or "DE"
+    if cc not in {"DE", "AT"}:
+        raise HTTPException(400, f"country_code '{cc}' wird nicht unterstuetzt.")
+    if level != 1:
+        raise HTTPException(
+            404,
+            "GeoJSON nur fuer level=1 (Bundesland-Polygone) verfuegbar.",
+        )
+
+    path = _GEOJSON_PATHS.get((cc, level))
+    if not path or not path.exists():
+        raise HTTPException(404, f"Kein GeoJSON fuer {cc} level={level} hinterlegt.")
+    try:
+        data = _json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        log.exception("GeoJSON-Datei nicht ladbar: %s", path)
+        raise HTTPException(500, f"GeoJSON nicht ladbar: {exc}")
+    return data
+
+
+# ── Choropleth ────────────────────────────────────────────────────────────────
+# Aggregiert die Beneficiary-Records auf NUTS-Ebene fuer Frontend-Karten.
+# Datenquelle ist `analyze_beneficiary_records` (Mode region_project_counts /
+# kreis_project_counts) — die Analytics-Pipeline liefert bereits Bundesland-
+# bzw. NUTS-3-Aggregate, wir mappen sie hier nur in das Choropleth-Schema und
+# ergaenzen NUTS-1-Codes pro Bundesland.
+
+# DE-Bundesland → NUTS-1 (Original-Schreibweise wie in den Records).
+_DE_BUNDESLAND_TO_NUTS1: dict[str, str] = {
+    "Baden-Württemberg": "DE1", "Bayern": "DE2", "Berlin": "DE3",
+    "Brandenburg": "DE4", "Bremen": "DE5", "Hamburg": "DE6",
+    "Hessen": "DE7", "Mecklenburg-Vorpommern": "DE8",
+    "Niedersachsen": "DE9", "Nordrhein-Westfalen": "DEA",
+    "Rheinland-Pfalz": "DEB", "Saarland": "DEC",
+    "Sachsen": "DED", "Sachsen-Anhalt": "DEE",
+    "Schleswig-Holstein": "DEF", "Thüringen": "DEG",
+}
+# AT-Bundesland → NUTS-2 (als "Level 1" in der Choropleth-API, da AT auf
+# NUTS-1 nur drei Grossregionen kennt — fuer eine Bundeslaender-Karte
+# liefern wir die NUTS-2-Codes).
+_AT_BUNDESLAND_TO_NUTS2: dict[str, str] = {
+    "Burgenland": "AT11", "Niederösterreich": "AT12", "Wien": "AT13",
+    "Kärnten": "AT21", "Steiermark": "AT22",
+    "Oberösterreich": "AT31", "Salzburg": "AT32", "Tirol": "AT33",
+    "Vorarlberg": "AT34",
+}
+
+
+def _format_choropleth_value(metric: str, value: float | int | None) -> str:
+    """Formatiert den Wert als deutschen Label-String (analog Analytics-Schema)."""
+    if value is None:
+        return "k.A." if metric == "value" else "0"
+    if metric == "value":
+        return f"{float(value):,.0f}".replace(",", ".") + " €"
+    return f"{int(value):,}".replace(",", ".") + " Vorhaben"
+
+
+@router.get("/choropleth")
+def get_choropleth(
+    country_code: str = Query("DE", description="DE oder AT"),
+    level: int = Query(1, ge=1, le=3, description="1 = Bundesland (NUTS-1/-2), 3 = Kreis (NUTS-3)"),
+    metric: str = Query("count", description="count = Anzahl Vorhaben, value = Gesamtkosten"),
+):
+    """Aggregierte Werte pro NUTS-Region fuer eine Choropleth-Karte.
+
+    Antwort-Schema:
+    ``{country_code, level, metric, regions: [{nuts_code, name, value, value_label}],
+       total, total_label, max_value}``
+
+    Public — analog ``/api/beneficiaries/map`` ohne Auth, weil die Daten
+    nach Art. 49/69 VO (EU) 2021/1060 oeffentlich sind.
+    """
+    cc = _normalize_country_code(country_code) or "DE"
+    if cc not in {"DE", "AT"}:
+        raise HTTPException(400, f"country_code '{cc}' wird nicht unterstuetzt.")
+    if metric not in {"count", "value"}:
+        raise HTTPException(400, "metric muss 'count' oder 'value' sein.")
+    if level not in {1, 3}:
+        raise HTTPException(400, "level muss 1 (Bundesland) oder 3 (Kreis) sein.")
+
+    regions: list[dict] = []
+    max_value: float = 0.0
+    summary: dict | None = None
+
+    if level == 1:
+        # Level 1: Aggregation per NUTS-1 (DE) / NUTS-2 (AT) Prefix direkt
+        # aus workshop_beneficiary_records. Der Prefix-Pfad ist robust auch
+        # fuer Records ohne `bundesland`-Spalte (z.B. AT-Quellen liefern nur
+        # NUTS-Code) — in DE deckt er die ~99 % gefuellten Records ab.
+        from sqlalchemy import text  # local import: nur in diesem Pfad noetig
+        from database import engine
+
+        prefix_len = 3 if cc == "DE" else 4
+        bl_to_nuts = (
+            _DE_BUNDESLAND_TO_NUTS1 if cc == "DE" else _AT_BUNDESLAND_TO_NUTS2
+        )
+        nuts_to_name = {code: name for name, code in bl_to_nuts.items()}
+
+        sql = text(
+            """
+            SELECT UPPER(LEFT(nuts_code, :pl)) AS prefix,
+                   COUNT(*) AS cnt,
+                   COALESCE(SUM(cost_total), 0) AS sum_cost
+            FROM workshop_beneficiary_records
+            WHERE country_code = :cc
+              AND nuts_code IS NOT NULL AND nuts_code <> ''
+            GROUP BY prefix
+            """
+        )
+        with engine.connect() as conn:
+            rows = conn.execute(sql, {"pl": prefix_len, "cc": cc}).fetchall()
+
+        for row in rows:
+            r = dict(row._mapping)
+            nuts_code = (r.get("prefix") or "").strip().upper()
+            if not nuts_code or len(nuts_code) != prefix_len:
+                continue
+            count_value = int(r.get("cnt") or 0)
+            cost_value = float(r.get("sum_cost") or 0.0)
+            value: float = float(count_value) if metric == "count" else cost_value
+            if value > max_value:
+                max_value = value
+            regions.append({
+                "nuts_code": nuts_code,
+                "name": nuts_to_name.get(nuts_code, nuts_code),
+                "value": int(value) if metric == "count" else value,
+                "value_label": _format_choropleth_value(metric, value),
+                "project_count": count_value,
+                "total_volume": cost_value,
+                "bundesland": nuts_to_name.get(nuts_code, ""),
+            })
+
+    else:  # level == 3 — Aggregation aus kreis_project_counts
+        try:
+            analytics = analyze_beneficiary_records(
+                mode="kreis_project_counts",
+                country_code=cc,
+                limit=100,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        summary = analytics.get("summary")
+        seen_codes: set[str] = set()
+        for item in analytics.get("items", []):
+            nuts_code = (item.get("nuts_code") or "").strip().upper()
+            if not nuts_code or nuts_code in seen_codes:
+                continue
+            seen_codes.add(nuts_code)
+            label_raw = (item.get("label") or "").strip()
+            # "Frankfurt am Main, Stadt (DE712)" → "Frankfurt am Main, Stadt"
+            name = re.sub(r"\s*\([^)]*\)\s*$", "", label_raw) or nuts_code
+            count_value = int(item.get("project_count") or 0)
+            cost_value = float(item.get("total_volume") or 0.0)
+            value = float(count_value) if metric == "count" else cost_value
+            if value > max_value:
+                max_value = value
+            regions.append({
+                "nuts_code": nuts_code,
+                "name": name,
+                "value": int(value) if metric == "count" else value,
+                "value_label": _format_choropleth_value(metric, value),
+                "project_count": count_value,
+                "total_volume": cost_value,
+                "bundesland": item.get("bundesland") or "",
+            })
+
+    regions.sort(key=lambda r: -float(r["value"] or 0))
+
+    total: float = sum(float(r["value"] or 0) for r in regions)
+    return {
+        "country_code": cc,
+        "level": level,
+        "metric": metric,
+        "regions": regions,
+        "total": total if metric == "value" else int(total),
+        "total_label": _format_choropleth_value(metric, total),
+        "max_value": max_value if metric == "value" else int(max_value),
+        "summary": summary,
+    }
+
+
 @router.delete("/{source}")
 def delete_source(source: str, _session: dict = Depends(require_moderator)):
     """Begünstigtenverzeichnis entfernen."""

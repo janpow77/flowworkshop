@@ -55,6 +55,16 @@ const ANALYSIS_OPTIONS: Array<{
     label: 'Vorhaben je Bundesland',
     description: 'Wie viele Vorhaben werden pro Bundesland gefoerdert? Mit Aufschluesselung nach Quelle (Bundes- vs. Landesprogramme).',
   },
+  {
+    value: 'top_sectors',
+    label: 'Wirtschaftszweige / Interventionsbereiche',
+    description: 'Welche Sektoren bündeln das höchste Fördervolumen?',
+  },
+  {
+    value: 'multi_state_beneficiaries',
+    label: 'Begünstigte über mehrere Bundesländer',
+    description: 'Welche Träger erhalten Förderung in mehr als einem Bundesland?',
+  },
 ];
 
 function formatInt(value: number): string {
@@ -98,6 +108,10 @@ function buildPrompt(mode: BeneficiaryAnalysisMode, bundesland: string, fonds: s
       return `Welche Standorte bündeln das höchste Fördervolumen und welche Träger dominieren dort?${suffix}`;
     case 'region_project_counts':
       return `Wie viele Vorhaben werden pro Bundesland gefördert? Schlüssele die Anzahl nach Quelle (Bundes- vs. Landesprogramme) auf.${suffix}`;
+    case 'top_sectors':
+      return `Welche Wirtschaftszweige bzw. Interventionsbereiche bündeln das höchste Fördervolumen?${suffix}`;
+    case 'multi_state_beneficiaries':
+      return `Welche Träger erhalten Förderung in mehr als einem Bundesland und wie verteilt sich das Volumen?${suffix}`;
     default:
       return `Analysiere die geladenen Begünstigtenverzeichnisse.${suffix}`;
   }
