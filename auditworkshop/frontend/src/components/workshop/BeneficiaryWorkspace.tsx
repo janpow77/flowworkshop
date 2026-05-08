@@ -82,6 +82,10 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
   // Country-Filter wird tabübergreifend geteilt
   const [countryCode, setCountryCode] = useState<CountryCode | ''>('DE');
 
+  // Karte ist immer sichtbar; in Tab "unternehmen" filtert sie auf Suchtreffer.
+  // Die Suchkomponente meldet ihre aktuellen Treffer-Namen via Callback hoch.
+  const [highlightedNames, setHighlightedNames] = useState<string[]>([]);
+
   // KI-Frage-State
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
@@ -94,10 +98,12 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
   const [streamStartedAt, setStreamStartedAt] = useState<number | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
 
-  // Tab-Wechsel synchron in URL spiegeln
+  // Tab-Wechsel synchron in URL spiegeln. Beim Verlassen der Unternehmenssuche
+  // wird der Karten-Filter zurückgesetzt, damit die Default-Karte sichtbar ist.
   const handleTabChange = useCallback(
     (key: TabKey) => {
       setActiveTab(key);
+      if (key !== 'unternehmen') setHighlightedNames([]);
       const next = new URLSearchParams(searchParams);
       if (key === 'schnellsuche') {
         next.delete('tab');
@@ -233,21 +239,29 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
 
       <p className="text-xs text-slate-500 dark:text-slate-400">{activeDescription}</p>
 
-      {/* ── Tab-Inhalt ──────────────────────────────────────────── */}
+      {/* ── Karte (immer sichtbar) ─────────────────────────────── */}
+      <BeneficiaryMap
+        countryCode={countryCode}
+        highlightNames={activeTab === 'unternehmen' ? highlightedNames : null}
+      />
+
+      {/* ── Tab-spezifischer Inhalt unter der Karte ────────────── */}
       {activeTab === 'schnellsuche' && (
-        <div className="space-y-4">
-          <BeneficiaryMap countryCode={countryCode} />
-          <BeneficiaryAnalyticsPanel
-            countryCode={countryCode}
-            onSelectPrompt={(value) => {
-              setPrompt(value);
-              handleTabChange('frage');
-            }}
-          />
-        </div>
+        <BeneficiaryAnalyticsPanel
+          countryCode={countryCode}
+          onSelectPrompt={(value) => {
+            setPrompt(value);
+            handleTabChange('frage');
+          }}
+        />
       )}
 
-      {activeTab === 'unternehmen' && <BeneficiaryCompanySearch countryCode={countryCode} />}
+      {activeTab === 'unternehmen' && (
+        <BeneficiaryCompanySearch
+          countryCode={countryCode}
+          onResultsChange={setHighlightedNames}
+        />
+      )}
 
       {activeTab === 'frage' && (
         <div className="rounded-[28px] border-2 border-rose-300/60 bg-gradient-to-br from-rose-50/60 via-white to-amber-50/40 p-6 shadow-[0_24px_80px_-44px_rgba(225,29,72,0.45)] backdrop-blur dark:border-rose-900/60 dark:from-rose-950/30 dark:via-slate-900/80 dark:to-amber-950/20">

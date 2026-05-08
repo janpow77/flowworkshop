@@ -9,7 +9,7 @@
  *
  * Export: XLSX (clientseitig via SheetJS) und CSV (über useExport().toCsv).
  */
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Building2,
@@ -34,6 +34,33 @@ import { useExport } from '../../lib/useExport';
 
 interface Props {
   countryCode: CountryCode | '';
+  // Wird aufgerufen, wenn sich die Liste der Treffer-Firmennamen ändert.
+  // Eltern-Komponente nutzt das, um z.B. die Karte zu filtern.
+  onResultsChange?: (companyNames: string[]) => void;
+}
+
+// Einheitliche Anzeige "EFRE Bremen" — beide Werte mit Leerzeichen,
+// Einzelwert allein, sonst leer.
+function formatFondsBl(fonds?: string | null, bundesland?: string | null): string {
+  const f = (fonds || '').trim();
+  const b = (bundesland || '').trim();
+  if (f && b) return `${f} ${b}`;
+  return f || b || '';
+}
+
+// "EFRE (Berlin, Bayern) · ESF+ (Hessen)" für mehrere Fonds/BL eines Treffers.
+// Bei genau einem Fonds und einem BL: "EFRE Berlin" (ohne Klammern).
+function formatHitFondsBl(fonds: string[], bundeslaender: string[]): string {
+  const f = fonds.filter(Boolean);
+  const b = bundeslaender.filter(Boolean);
+  if (f.length === 0 && b.length === 0) return '';
+  if (f.length === 1 && b.length === 1) return `${f[0]} ${b[0]}`;
+  if (f.length === 1 && b.length === 0) return f[0];
+  if (f.length === 0 && b.length >= 1) return b.join(', ');
+  if (f.length === 1 && b.length > 1) return `${f[0]} (${b.join(', ')})`;
+  // Mehrere Fonds: jeden Fonds mit Komma-Liste der BL — der API-Response
+  // ordnet BL/Fonds nicht 1:1 zu, also Fallback auf separate Anzeige.
+  return `${f.join(' · ')}${b.length ? ` (${b.join(', ')})` : ''}`;
 }
 
 const CONFIDENCE_BADGE: Record<BeneficiaryMatchConfidence, { label: string; cls: string }> = {
@@ -56,7 +83,7 @@ function auditReportUrl(name: string, countryCode: CountryCode | ''): string {
   return `/audit-report?${params.toString()}`;
 }
 
-export default function BeneficiaryCompanySearch({ countryCode }: Props) {
+export default function BeneficiaryCompanySearch({ countryCode, onResultsChange }: Props) {
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [response, setResponse] = useState<BeneficiarySearchResponse | null>(null);
@@ -120,6 +147,17 @@ export default function BeneficiaryCompanySearch({ countryCode }: Props) {
   };
 
   const companies = useMemo(() => response?.companies ?? [], [response]);
+
+  // Treffer-Firmennamen nach oben melden (für Karten-Filter).
+  // Beim Unmount: Liste leeren, damit die Karte zum Default zurückkehrt.
+  useEffect(() => {
+    onResultsChange?.(companies.map((c) => c.company_name));
+  }, [companies, onResultsChange]);
+  useEffect(() => {
+    return () => {
+      onResultsChange?.([]);
+    };
+  }, [onResultsChange]);
 
   const totalVolume = useMemo(
     () => companies.reduce((sum, c) => sum + (c.total_kosten || 0), 0),
@@ -351,10 +389,10 @@ function CompanyRow({ hit, countryCode, expanded, onToggle }: RowProps) {
               <span>
                 {hit.project_count} Vorhaben · {hit.total_kosten_label}
               </span>
-              {hit.bundeslaender.length > 0 && (
-                <span>{hit.bundeslaender.join(', ')}</span>
-              )}
-              {hit.fonds.length > 0 && <span>{hit.fonds.join(' · ')}</span>}
+              {(() => {
+                const fb = formatHitFondsBl(hit.fonds, hit.bundeslaender);
+                return fb ? <span>{fb}</span> : null;
+              })()}
               {standortPreview && (
                 <span className="inline-flex items-center gap-1">
                   <MapPin size={10} />
@@ -385,26 +423,48 @@ function CompanyRow({ hit, countryCode, expanded, onToggle }: RowProps) {
             <Sparkles size={10} className="text-rose-500" />
             {hit.projects.length} Vorhaben
           </li>
-          {hit.projects.map((p, i) => (
-            <li
-              key={`${p.project_name}-${i}`}
-              className="border-l-2 border-rose-200 pl-3 py-1 text-slate-700 dark:border-rose-900/60 dark:text-slate-300"
-            >
-              <div className="font-medium leading-snug">{p.project_name || '(ohne Bezeichnung)'}</div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-                {p.kosten_label && <span>{p.kosten_label}</span>}
-                {p.bundesland && <span>{p.bundesland}</span>}
-                {p.fonds && <span>{p.fonds}</span>}
-                {p.location && (
-                  <span className="inline-flex items-center gap-0.5">
-                    <MapPin size={9} />
-                    {p.location}
-                  </span>
+          {hit.projects.map((p, i) => {
+            const fondsBl = formatFondsBl(p.fonds, p.bundesland);
+            // Land nur zeigen, wenn es vom Filter abweicht — bei AT-Treffern
+            // in einem DE-Filter (oder Filter "Alle") relevant.
+            const showCountry = !!p.country_name && p.country_code !== countryCode;
+            return (
+              <li
+                key={`${p.project_name}-${i}`}
+                className="border-l-2 border-rose-200 pl-3 py-1 text-slate-700 dark:border-rose-900/60 dark:text-slate-300"
+              >
+                <div className="font-medium leading-snug">{p.project_name || '(ohne Bezeichnung)'}</div>
+                {p.aktenzeichen && (
+                  <div className="mt-0.5">
+                    <code className="rounded bg-slate-200/70 px-1 py-0.5 text-[10px] text-slate-600 dark:bg-slate-700/60 dark:text-slate-300">
+                      {p.aktenzeichen}
+                    </code>
+                  </div>
                 )}
-                {p.periode && <span>{p.periode}</span>}
-              </div>
-            </li>
-          ))}
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  {p.kosten_label && <span>{p.kosten_label}</span>}
+                  {fondsBl && <span>{fondsBl}</span>}
+                  {p.location && (
+                    <span className="inline-flex items-center gap-0.5">
+                      <MapPin size={9} />
+                      {p.location}
+                    </span>
+                  )}
+                  {p.periode && <span>{p.periode}</span>}
+                  {p.category && (
+                    <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-slate-600 dark:bg-slate-700/50 dark:text-slate-300">
+                      {p.category}
+                    </span>
+                  )}
+                  {showCountry && (
+                    <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+                      {p.country_name}
+                    </span>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </li>

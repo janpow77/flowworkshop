@@ -81,6 +81,14 @@ const COUNTRY_CENTER: Record<string, { center: [number, number]; zoom: number }>
 function getBlColor(bl: string): string { return BL_COLORS[bl] || '#6b7280'; }
 function formatEur(val: number): string { return val.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' €'; }
 
+// "EFRE" + "Bremen" → "EFRE Bremen"; einzelner Wert → der Wert; sonst leer.
+function formatFondsBl(fonds?: string | null, bundesland?: string | null): string {
+  const f = (fonds || '').trim();
+  const b = (bundesland || '').trim();
+  if (f && b) return `${f} ${b}`;
+  return f || b || '';
+}
+
 // "2024-06-28" → "28.06.2024"; "2024-06-28T..." → "28.06.2024"; sonst Roh
 function formatDateDe(iso: string | undefined | null): string {
   if (!iso) return '';
@@ -138,9 +146,12 @@ function FitBounds({ points }: { points: [number, number][] }) {
 type BeneficiaryMapProps = {
   className?: string;
   countryCode?: CountryCode | '';
+  // Wenn gesetzt + nicht leer: Karte zeigt nur Begünstigte mit Namen-Match
+  // (case-insensitive). null/undefined/[] = Default (alle anzeigen).
+  highlightNames?: string[] | null;
 };
 
-export default function BeneficiaryMap({ className, countryCode = 'DE' }: BeneficiaryMapProps) {
+export default function BeneficiaryMap({ className, countryCode = 'DE', highlightNames }: BeneficiaryMapProps) {
   const [data, setData] = useState<Beneficiary[]>([]);
   const [sources, setSources] = useState<SourceInfo[]>([]);
   const [regionLabel, setRegionLabel] = useState<string>('Bundesland');
@@ -234,9 +245,21 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
   };
 
   const bundeslaender = [...new Set(data.map((b) => b.bundesland).filter(Boolean))].sort();
+  // Highlight-Filter: case-insensitive Substring/Match auf Beneficiary-Name.
+  // Aktiv nur wenn ein nicht-leeres Array übergeben wurde.
+  const highlightActive = Array.isArray(highlightNames) && highlightNames.length > 0;
+  const highlightLower = useMemo(
+    () => (highlightActive ? highlightNames!.map((n) => n.toLowerCase()) : []),
+    [highlightActive, highlightNames],
+  );
   const filtered = data.filter((b) => {
     if (filterBl && b.bundesland !== filterBl) return false;
     if (minKosten > 0 && b.kosten < minKosten) return false;
+    if (highlightActive) {
+      const name = (b.name || '').toLowerCase();
+      const hit = highlightLower.some((q) => name === q || name.includes(q));
+      if (!hit) return false;
+    }
     return true;
   });
   const pins = useMemo(() => groupByLocation(filtered), [filtered]);
@@ -306,6 +329,11 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
               </span>
               {totalKosten > 0 && (
                 <span className="text-slate-400">· {formatEur(totalKosten)}</span>
+              )}
+              {highlightActive && (
+                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+                  Filter: {highlightNames!.length === 1 ? highlightNames![0] : `${highlightNames!.length} Treffer`}
+                </span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -406,11 +434,16 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
                                 <p className="font-semibold text-slate-800 dark:text-slate-200">{g.name}</p>
                                 <p className="text-[10px] text-slate-500 mb-1">
                                   {g.vorhaben.length} Vorhaben · {formatEur(g.total)}
-                                  {g.vorhaben[0].fonds && ` · ${g.vorhaben[0].fonds}`}
+                                  {(() => {
+                                    const fondsBl = formatFondsBl(g.vorhaben[0].fonds, g.vorhaben[0].bundesland);
+                                    return fondsBl ? ` · ${fondsBl}` : '';
+                                  })()}
                                 </p>
                                 <ul className="space-y-1">
                                   {g.vorhaben.map((v, vi) => {
                                     const period = formatPeriod(v.beginn, v.ende);
+                                    const fondsBl = formatFondsBl(v.fonds, v.bundesland);
+                                    const showCountry = v.country_name && v.country_name !== pin.country_name;
                                     return (
                                       <li key={vi} className="text-slate-600 dark:text-slate-400">
                                         {v.projekt && (
@@ -419,7 +452,9 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
                                         <span className="text-[10px] text-slate-500 flex flex-wrap gap-x-2">
                                           {v.kosten > 0 && <span>{formatEur(v.kosten)}</span>}
                                           {period && <span>📅 {period}</span>}
+                                          {fondsBl && <span>{fondsBl}</span>}
                                           {v.kategorie && <span className="line-clamp-1">{v.kategorie}</span>}
+                                          {showCountry && <span>{v.country_name}</span>}
                                         </span>
                                       </li>
                                     );
