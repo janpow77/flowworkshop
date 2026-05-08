@@ -60,11 +60,11 @@ const SCENARIO_INFO: Record<number, {
   },
   6: {
     title: 'Begünstigtenverzeichnis',
-    description: 'Laden Sie Begünstigtenverzeichnisse beliebiger Bundesländer hoch. Die KI erstellt statistische Auswertungen, die Karte zeigt die Förderverteilung.',
+    description: 'Die Plattform aktualisiert öffentliche Begünstigtenverzeichnisse automatisch. Die KI erstellt statistische Auswertungen, die Karte zeigt die Förderverteilung.',
     placeholder: 'z.B. "Welche Kommunen erhalten die höchste Förderung?"',
     accent: 'from-rose-700 via-orange-700 to-amber-600',
     eyebrow: 'Raumbezogene Förderanalyse',
-    hint: 'Laden Sie ein Begünstigtenverzeichnis als XLSX hoch. Die Karte wird automatisch befüllt.',
+    hint: 'Die Verzeichnisse werden per Worker aktualisiert. Karte, Suche und KI-Auswertung verwenden denselben Datenstand.',
   },
 };
 
@@ -105,7 +105,7 @@ export default function ScenarioPage() {
   }
   const num = parseInt(resolvedId || '1', 10);
   const info = SCENARIO_INFO[num] || SCENARIO_INFO[1];
-  // Public-Modus: nicht eingeloggt + Begünstigtenkarte → Upload + Workshop-Branding ausblenden
+  // Public-Modus: nicht eingeloggt + Begünstigtenkarte → Workshop-Branding ausblenden
   const isPublicMode = num === 6 && !localStorage.getItem('workshop_token');
 
   const [prompt, setPrompt] = useState('');
@@ -154,7 +154,13 @@ export default function ScenarioPage() {
     let accumulated = '';
     controllerRef.current = streamSSE(
       '/workshop/stream',
-      { scenario: num, prompt, documents, with_context: withContext },
+      {
+        scenario: num,
+        prompt,
+        documents,
+        with_context: withContext,
+        ...(num === 6 && countryCode ? { country_code: countryCode } : {}),
+      },
       (token) => {
         accumulated += token;
         setStreamStatus(null);
@@ -181,7 +187,7 @@ export default function ScenarioPage() {
       },
       (state) => setStreamStatus(state),
     );
-  }, [prompt, num, documents, withContext, streaming]);
+  }, [prompt, num, documents, withContext, streaming, countryCode]);
 
   const handleStop = () => {
     controllerRef.current?.abort();
@@ -398,7 +404,7 @@ export default function ScenarioPage() {
           </div>
         </div>
       )}
-      {num === 6 && <BeneficiaryMap className="mb-2" countryCode={countryCode} readOnly={isPublicMode} />}
+      {num === 6 && <BeneficiaryMap className="mb-2" countryCode={countryCode} />}
       {num === 6 && <BeneficiaryAnalyticsPanel className="mb-2" onSelectPrompt={setPrompt} countryCode={countryCode} />}
 
       {num === 3 && (

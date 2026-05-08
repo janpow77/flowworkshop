@@ -29,6 +29,7 @@ import mimetypes
 import sys
 import time
 import zipfile
+import os
 from urllib.parse import urlparse
 from datetime import date
 from pathlib import Path
@@ -37,8 +38,9 @@ import requests
 
 # --- Konstanten ---
 
-BACKEND_DEFAULT = "http://localhost:8006"
+BACKEND_DEFAULT = os.environ.get("BACKEND_BASE", "http://localhost:8006")
 HEADERS = {"User-Agent": "Auditworkshop-EFRE-Demo/1.0 (Workshop-Vorbereitung)"}
+WORKER_TOKEN = os.environ.get("WORKER_API_TOKEN", "")
 TIMEOUT_DOWNLOAD = 60
 TIMEOUT_UPLOAD = 300
 TIMEOUT_GEOCODE = 600
@@ -159,6 +161,7 @@ def upload(label: str, content: bytes, filename: str, backend: str) -> dict | No
         r = requests.post(
             f"{backend}/api/beneficiaries/upload",
             files=files,
+            headers={"X-Worker-Token": WORKER_TOKEN} if WORKER_TOKEN else None,
             timeout=TIMEOUT_UPLOAD,
         )
         if r.ok:

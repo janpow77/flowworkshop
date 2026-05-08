@@ -20,6 +20,7 @@ from pathlib import Path
 from sqlalchemy import desc, func
 
 from database import SessionLocal
+from config import WORKER_API_TOKEN
 from models.automation import (
     HarvestRun, HarvestSourceUpdate, SanctionsRefreshRun,
 )
@@ -172,7 +173,7 @@ def run_beneficiary_harvest(triggered_by: str = "cron") -> dict:
         result = subprocess.run(
             ["python", str(script)],
             capture_output=True, text=True, timeout=1200,
-            env={**os.environ, "BACKEND_BASE": "http://localhost:8000"},
+            env={**os.environ, "BACKEND_BASE": "http://localhost:8000", "WORKER_API_TOKEN": WORKER_API_TOKEN},
         )
         log_excerpt = (result.stdout or "")[-4000:] + ("\n[STDERR]\n" + (result.stderr or ""))[-2000:]
         success = result.returncode == 0

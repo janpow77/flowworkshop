@@ -1552,6 +1552,27 @@ def get_beneficiary_llm_context(
         country_code=country_code,
         name_substrings=name_substrings or None,
     )
+    detail_query = " ".join(proper_nouns).strip()
+    if not detail_query and prompt and any(
+        phrase in _normalize_search_text(prompt)
+        for phrase in ("vorhaben von", "projekte von", "foerderung fuer", "förderung für", "traeger ", "träger ")
+    ):
+        detail_query = prompt.strip()
+    detail_results: dict[str, Any] | None = None
+    if detail_query:
+        try:
+            detail_results = search_beneficiary_records(
+                query=detail_query,
+                scope="all",
+                bundesland=bundesland,
+                fonds=fonds,
+                limit=12,
+                company_limit=6,
+                country_code=country_code,
+            )
+        except Exception:
+            log.exception("Detailkontext fuer Begueunstigtenfrage fehlgeschlagen.")
+            detail_results = None
 
     # Wenn die strenge Filterung leer ist, dem LLM zusaetzlich die
     # *naechstgelegenen* Kandidaten liefern. So kann das Modell
@@ -1650,12 +1671,37 @@ def get_beneficiary_llm_context(
     ]
 
     active_filters = []
+    if country_code:
+        active_filters.append(f"Land={get_country_name(country_code) or country_code}")
     if filters.get("bundesland"):
         active_filters.append(f"Bundesland={filters['bundesland']}")
     if filters.get("fonds"):
         active_filters.append(f"Fonds={filters['fonds']}")
     if active_filters:
         parts.append("Filter: " + ", ".join(active_filters))
+
+    if detail_results and detail_results.get("records"):
+        detail_summary = detail_results.get("summary") or {}
+        parts.append(
+            "Konkrete Treffer aus der strukturierten Suche "
+            f"({detail_summary.get('matches', 0)} Treffer, "
+            f"{detail_summary.get('sources_considered', 0)} Quelle(n), "
+            f"Suchbegriff='{detail_query}'):"
+        )
+        for row in (detail_results.get("records") or [])[:10]:
+            detail_parts = [
+                row.get("company_name") or "",
+                row.get("project_name") or "",
+                row.get("kosten_label") or "",
+                row.get("location") or "",
+                " / ".join(str(part) for part in (row.get("bundesland"), row.get("fonds"), row.get("periode")) if part),
+                f"Quelle={row.get('source')}" if row.get("source") else "",
+            ]
+            parts.append("- " + " | ".join(str(part) for part in detail_parts if part))
+        parts.append(
+            "Nutze diese konkreten Treffer fuer Fragen nach einzelnen Traegern, "
+            "Vorhaben, Orten oder Aktenzeichen. Nenne keine weiteren Einzelvorhaben."
+        )
 
     if not items:
         if fallback_items:
@@ -1814,6 +1860,7 @@ def build_beneficiary_analysis_answer(
         active_filters = ", ".join(
             part
             for part in (
+                f"Land={get_country_name(country_code) or country_code}" if country_code else None,
                 f"Bundesland={filters['bundesland']}" if filters.get("bundesland") else None,
                 f"Fonds={filters['fonds']}" if filters.get("fonds") else None,
                 f"Filter={name_filter_label_combined}" if name_filter_label_combined else None,
@@ -1821,6 +1868,8 @@ def build_beneficiary_analysis_answer(
             if part
         )
         lines.append(f"Verwendete Filter: {active_filters}.")
+    elif country_code:
+        lines.append(f"Verwendeter Filter: Land={get_country_name(country_code) or country_code}.")
     return "\n".join(lines)
 
 

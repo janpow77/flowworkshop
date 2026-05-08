@@ -21,7 +21,7 @@ from database import SessionLocal, get_db
 from models.registration import Registration, PasswordResetToken, SecurityAuditLog
 from models.audit_log import AuditLog
 from models.session import WorkshopSession
-from config import AUTH_TOKEN_SECRET
+from config import AUTH_TOKEN_SECRET, WORKER_API_TOKEN
 from services.country_profiles import REGIONS_FLAT
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -192,6 +192,20 @@ def require_moderator(request: Request) -> dict:
     if role in ("moderator", "admin") or email in MODERATOR_EMAILS or email in ADMIN_EMAILS:
         return session
     raise HTTPException(403, "Moderator-Login erforderlich.")
+
+
+def require_moderator_or_worker(request: Request) -> dict:
+    """Erlaubt Moderator/Admin oder den internen Automations-Worker."""
+    worker_token = request.headers.get("X-Worker-Token", "").strip()
+    if worker_token and hmac.compare_digest(worker_token, WORKER_API_TOKEN):
+        return {
+            "user_id": "system-worker",
+            "email": "system-worker@local",
+            "name": "System Worker",
+            "organization": "Auditworkshop",
+            "role": "worker",
+        }
+    return require_moderator(request)
 
 
 def require_admin(request: Request) -> dict:

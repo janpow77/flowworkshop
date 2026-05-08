@@ -1,11 +1,16 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import {
-  Loader2, MapPin, AlertTriangle, Upload, X, CheckCircle, FileSpreadsheet,
+  Loader2, MapPin, AlertTriangle, X, FileSpreadsheet,
   Trash2, ShieldCheck, FileImage, FileText, Maximize2, Minimize2,
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
-import { getSystemProfile, getWorkshopAuthHeaders, type SystemProfile, type CountryCode } from '../../lib/api';
+import {
+  getSystemProfile,
+  getWorkshopAuthHeaders,
+  type SystemProfile,
+  type CountryCode,
+} from '../../lib/api';
 import { useExport } from '../../lib/useExport';
 
 interface Beneficiary {
@@ -133,23 +138,15 @@ function FitBounds({ points }: { points: [number, number][] }) {
 type BeneficiaryMapProps = {
   className?: string;
   countryCode?: CountryCode | '';
-  /** Wenn true, wird die Upload-Zone (XLSX-Drop) ausgeblendet — fuer den
-   *  oeffentlichen Zugang nach Art. 49 VO 2021/1060. */
-  readOnly?: boolean;
 };
 
-export default function BeneficiaryMap({ className, countryCode = 'DE', readOnly = false }: BeneficiaryMapProps) {
+export default function BeneficiaryMap({ className, countryCode = 'DE' }: BeneficiaryMapProps) {
   const [data, setData] = useState<Beneficiary[]>([]);
   const [sources, setSources] = useState<SourceInfo[]>([]);
   const [regionLabel, setRegionLabel] = useState<string>('Bundesland');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [profile, setProfile] = useState<SystemProfile | null>(null);
-
-  // Upload
-  const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<{ status: string; bundesland: string; fonds: string; rows: number } | null>(null);
-  const [dragOver, setDragOver] = useState(false);
 
   // Filter
   const [filterBl, setFilterBl] = useState('');
@@ -172,6 +169,7 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', readOnly
   }, [fullscreen]);
 
   const exportApi = useExport();
+  const canManageSources = ['moderator', 'admin'].includes(localStorage.getItem('workshop_role') || '');
   const exportMap = useCallback(async (format: 'png' | 'pdf') => {
     const target = mapShellRef.current;
     if (!target) return;
@@ -226,42 +224,6 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', readOnly
     getSystemProfile().then(setProfile).catch(() => setProfile(null));
   }, []);
 
-  const handleUpload = async (file: File) => {
-    setUploading(true);
-    setUploadResult(null);
-    setError('');
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      const res = await fetch('/api/beneficiaries/upload', {
-        method: 'POST',
-        headers: { ...getWorkshopAuthHeaders() },
-        body: form,
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.detail || 'Upload fehlgeschlagen');
-      setUploadResult({
-        status: json.status,
-        bundesland: json.metadata.bundesland,
-        fonds: json.metadata.fonds,
-        rows: json.rows,
-      });
-      // Karte neu laden
-      await loadMap();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload-Fehler');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleUpload(file);
-  };
-
   const handleDeleteSource = async (source: string) => {
     if (!confirm('Verzeichnis entfernen?')) return;
     await fetch(`/api/beneficiaries/${encodeURIComponent(source)}`, {
@@ -298,63 +260,6 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', readOnly
 
   return (
     <div className={`space-y-4 ${className || ''}`}>
-      {/* Upload-Zone (nur fuer eingeloggte Workshop-Nutzer) */}
-      {!readOnly && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => !uploading && document.getElementById('beneficiary-upload')?.click()}
-          className={`rounded-xl border-2 border-dashed p-5 text-center cursor-pointer transition-colors ${
-            dragOver
-              ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-              : 'border-slate-300 dark:border-slate-600 hover:border-indigo-400 bg-white dark:bg-slate-900'
-          }`}
-          role="button"
-          tabIndex={0}
-          aria-label="Begünstigtenverzeichnis hochladen"
-        >
-          {uploading ? (
-            <div className="flex items-center justify-center gap-2 text-indigo-600">
-              <Loader2 size={20} className="animate-spin" />
-              <span className="text-sm font-medium">Wird eingelesen und geocodiert…</span>
-            </div>
-          ) : (
-            <>
-              <Upload size={22} className="mx-auto text-slate-400 mb-1" />
-              <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
-                Begünstigtenverzeichnis (XLSX) hierher ziehen
-              </p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Bundesland, Fonds und Förderperiode werden automatisch erkannt · Duplikate werden ersetzt
-              </p>
-            </>
-          )}
-          <input
-            id="beneficiary-upload"
-            type="file"
-            accept=".xlsx,.xls,.xlsm"
-            className="hidden"
-            onChange={(e) => { if (e.target.files?.[0]) handleUpload(e.target.files[0]); }}
-            disabled={uploading}
-          />
-        </div>
-      )}
-
-      {/* Upload-Ergebnis */}
-      {uploadResult && (
-        <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-4 py-2 flex items-center gap-2 text-sm">
-          <CheckCircle size={16} className="text-green-600 shrink-0" />
-          <span className="text-green-700 dark:text-green-300">
-            <strong>{uploadResult.bundesland}</strong> {uploadResult.fonds} — {uploadResult.rows.toLocaleString('de-DE')} Vorhaben eingelesen
-            {uploadResult.status === 'replaced' && ' (vorherige Version ersetzt)'}
-          </span>
-          <button onClick={() => setUploadResult(null)} className="ml-auto text-green-400 hover:text-green-600">
-            <X size={14} />
-          </button>
-        </div>
-      )}
-
       {/* Fehler */}
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-2 flex items-center gap-2 text-sm">
@@ -384,7 +289,7 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', readOnly
           <p className="text-xs text-slate-400 mt-1">
             {countryCode === 'AT'
               ? 'Quellen: efre.gv.at/projekte/projektlandkarte und esf.at/projekte/liste-der-vorhaben-2/.'
-              : 'Laden Sie eine XLSX-Transparenzliste hoch.'}
+              : 'Der automatische Worker hat fuer diese Auswahl noch keine auswertbaren Verzeichnisse geladen.'}
           </p>
         </div>
       ) : (
@@ -558,7 +463,7 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', readOnly
                     {s.periode && <span className="text-slate-400">{s.periode}</span>}
                     <span className="text-slate-400">·</span>
                     <span className="text-slate-500">{s.count.toLocaleString('de-DE')}/{s.total_rows.toLocaleString('de-DE')}</span>
-                    {!readOnly && (
+                    {canManageSources && (
                       <button
                         onClick={() => handleDeleteSource(s.source)}
                         className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 ml-0.5"

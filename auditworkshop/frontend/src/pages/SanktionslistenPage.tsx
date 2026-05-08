@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   AlertTriangle, ArrowUpRight, Banknote, BookOpenCheck, Building2,
-  CheckCircle2, Crown, Database, ExternalLink, Globe, Globe2, Landmark,
+  CheckCircle2, Crown, Database, Download, ExternalLink, FileSpreadsheet, FileText, Globe, Globe2, Landmark,
   Loader2, Mountain, RefreshCw, Search, ShieldAlert,
   Sparkles, Target,
 } from 'lucide-react';
+import { useExport } from '../lib/useExport';
 
 // ── Typen ────────────────────────────────────────────────────────────────────
 
@@ -169,6 +170,15 @@ function formatInt(n: number | undefined): string {
   return n.toLocaleString('de-DE');
 }
 
+function fileSafe(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9äöüß]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 60) || 'suche';
+}
+
 // ── Hauptkomponente ─────────────────────────────────────────────────────────
 
 export default function SanktionslistenPage() {
@@ -184,6 +194,9 @@ export default function SanktionslistenPage() {
   const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
+  const exportApi = useExport();
 
   useEffect(() => {
     fetch('/api/sanctions/lists').then(r => r.json()).then(d => setLists(d.lists || [])).catch(() => {});
@@ -222,6 +235,81 @@ export default function SanktionslistenPage() {
   }
 
   const exampleQueries = ['Putin', 'Sechin Igor', 'Wagner', 'Lukashenko', 'Rosneft', 'Gazprom Neft'];
+  const searchFilename = searchResult
+    ? `sanktionspruefung_${fileSafe(searchResult.query)}_${new Date().toISOString().slice(0, 10)}`
+    : 'sanktionspruefung';
+
+  async function exportPdf() {
+    if (!searchResult) return;
+    setExporting('pdf');
+    try {
+      await exportApi.toPdf(resultRef.current, {
+        title: `Sanktionsprüfung: ${searchResult.query}`,
+        subtitle: `EU FSF · Schwelle ${searchResult.threshold} · ${searchResult.total_hits} Treffer · Listenstand ${formatDate(stats?.source_mtime || null)}`,
+        filename: searchFilename,
+      });
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  function exportCsv() {
+    if (!searchResult) return;
+    setExporting('csv');
+    try {
+      const meta = {
+        suchbegriff: searchResult.query,
+        normalisiert: searchResult.normalized,
+        schwellenwert: searchResult.threshold,
+        typfilter: schemaFilter || 'Alle',
+        listenquelle: 'EU FSF via OpenSanctions',
+        listenstand: stats?.source_mtime || '',
+        exportiert_am: new Date().toISOString(),
+      };
+      const rows = searchResult.hits.length > 0
+        ? searchResult.hits.map((hit) => ({
+            ...meta,
+            id: hit.id,
+            typ: hit.schema_type,
+            name: hit.name,
+            score: hit.score,
+            konfidenz: hit.confidence,
+            trefferquelle: hit.matched_field,
+            matched_on: hit.matched_on,
+            aliase: hit.aliases.join(' | '),
+            geburtsdatum: hit.birth_date,
+            laender: hit.countries,
+            adressen: hit.addresses,
+            identifier: hit.identifiers,
+            rechtsakt: hit.sanctions,
+            programm: hit.program_ids,
+            erstmals_gelistet: hit.first_seen,
+            zuletzt_bestaetigt: hit.last_seen,
+          }))
+        : [{
+            ...meta,
+            id: '',
+            typ: '',
+            name: 'Kein Treffer oberhalb des Schwellenwerts',
+            score: '',
+            konfidenz: '',
+            trefferquelle: '',
+            matched_on: '',
+            aliase: '',
+            geburtsdatum: '',
+            laender: '',
+            adressen: '',
+            identifier: '',
+            rechtsakt: '',
+            programm: '',
+            erstmals_gelistet: '',
+            zuletzt_bestaetigt: '',
+          }];
+      exportApi.toCsv(rows, { filename: searchFilename });
+    } finally {
+      setExporting(null);
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -380,7 +468,37 @@ export default function SanktionslistenPage() {
             )}
 
             {searchResult && !searchError && (
-              <SearchResults result={searchResult} />
+              <div className="mt-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/75 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/55">
+                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <Download size={14} />
+                    Prüfnotiz exportieren
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={exportPdf}
+                      disabled={!!exporting}
+                      className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+                    >
+                      {exporting === 'pdf' ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+                      PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exportCsv}
+                      disabled={!!exporting}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      {exporting === 'csv' ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={13} />}
+                      CSV/Excel
+                    </button>
+                  </div>
+                </div>
+                <div ref={resultRef}>
+                  <SearchResults result={searchResult} />
+                </div>
+              </div>
             )}
 
             {!searchResult && !searchError && !searchLoading && (

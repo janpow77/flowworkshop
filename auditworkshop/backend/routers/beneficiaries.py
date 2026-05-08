@@ -19,7 +19,7 @@ from services.country_profiles import (
     get_region_label,
     list_country_codes,
 )
-from routers.auth import require_moderator, require_session
+from routers.auth import require_moderator, require_moderator_or_worker, require_session
 
 # Plan v3.2 §5.5: Karten- und Quellen-Daten sind nach Art. 49 VO (EU)
 # 2021/1060 öffentlich. Daher kein require_session auf Router-Ebene —
@@ -60,7 +60,7 @@ def list_countries():
 
 
 @router.post("/upload")
-async def upload_beneficiary_list(file: UploadFile = File(...), _session: dict = Depends(require_moderator)):
+async def upload_beneficiary_list(file: UploadFile = File(...), _session: dict = Depends(require_moderator_or_worker)):
     """
     Begünstigtenverzeichnis hochladen.
     - Erkennt automatisch Bundesland, Fonds, Förderperiode und Land (DE/AT)
@@ -99,6 +99,9 @@ async def upload_beneficiary_list(file: UploadFile = File(...), _session: dict =
     existing = get_beneficiary_sources()
     replaced = False
     for ex in existing:
+        ex_cc = ex.get("country_code") or country_code_for_bundesland(ex.get("bundesland"))
+        if ex_cc != country_code:
+            continue
         if ex["bundesland"] == bundesland and ex["fonds"] == (metadata.get("fonds") or "EFRE"):
             if ex["periode"] == periode or (not ex["periode"] and not periode):
                 # Duplikat → alte Tabelle löschen

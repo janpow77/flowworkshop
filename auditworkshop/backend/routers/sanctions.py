@@ -6,9 +6,10 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from routers.auth import require_admin
 from services.sanctions_service import (
     get_index,
     method_explanation,
@@ -337,7 +338,7 @@ def search_get(
 
 
 @router.post("/refresh")
-def refresh() -> dict:
+def refresh(_session: dict = Depends(require_admin)) -> dict:
     """Lädt die FSF-CSV neu von OpenSanctions (Admin-Aktion)."""
     idx = get_index()
     try:

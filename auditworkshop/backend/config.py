@@ -37,6 +37,7 @@ WORKSHOP_ADMIN = os.getenv("WORKSHOP_ADMIN", "false").lower() == "true"
 ALLOW_REMOTE_GEOCODING = os.getenv("ALLOW_REMOTE_GEOCODING", "false").lower() == "true"
 ALLOW_REMOTE_TILES = os.getenv("ALLOW_REMOTE_TILES", "true").lower() == "true"
 AUTH_TOKEN_SECRET = os.getenv("AUTH_TOKEN_SECRET", "workshop-dev-auth-secret-change-me")
+WORKER_API_TOKEN = os.getenv("WORKER_API_TOKEN", AUTH_TOKEN_SECRET)
 
 # ── Embedding ──────────────────────────────────────────────────────────────
 EMBEDDING_BACKEND = os.getenv(

@@ -20,6 +20,7 @@ from services.dataframe_service import (
     build_beneficiary_analysis_answer,
     get_beneficiary_llm_context,
 )
+from services.country_profiles import COUNTRY_PROFILES
 from services.ollama_service import stream
 from services.file_parser import extract as file_extract, ALLOWED_EXTENSIONS
 
@@ -293,6 +294,7 @@ class StreamRequest(BaseModel):
     documents: list[str] = Field(default_factory=list, max_length=5)
     with_context: bool = True   # Szenario 3: Kontext an/aus
     demo_doc: str | None = None  # Name des Demo-Dokuments (wird serverseitig geladen)
+    country_code: str | None = None
 
 
 SCENARIO_MAX_TOKENS = {
@@ -301,9 +303,9 @@ SCENARIO_MAX_TOKENS = {
     3: 180,
     4: 240,
     5: 220,
-    # Szenario 6 nutzt das groessere qwen3.5:35b auf der Evo-X2.
-    # Reasoning-Modelle brauchen ~300-700 Tokens Reasoning vor der eigentlichen
-    # Antwort — zu kleines Limit fuehrt zu leerer Antwort (User sah nur Loading).
+    # Szenario 6 bekommt mehr Budget, weil der LLM-Fallback strukturierten
+    # Tabellenkontext verdichten muss. Standardmodell bleibt MODEL_NAME
+    # (aktuell qwen3:14b via egpu-manager); Overrides laufen ueber SCENARIO_MODELS.
     6: 1500,
 }
 
@@ -348,6 +350,17 @@ def _log_llm_question(
             db.close()
     except Exception:
         log.exception("LLM-Logging fehlgeschlagen (non-blocking)")
+
+
+def _normalize_optional_country_code(country_code: str | None) -> str | None:
+    if not country_code:
+        return None
+    cc = country_code.strip().upper()
+    if not cc:
+        return None
+    if cc not in COUNTRY_PROFILES:
+        raise HTTPException(422, f"Unbekannter country_code '{country_code}'.")
+    return cc
 
 
 @router.post("/stream")
@@ -415,7 +428,8 @@ async def workshop_stream(req: StreamRequest, request: Request):
             log.exception("RAG-Kontext fuer Szenario 5 fehlgeschlagen.")
 
     if req.scenario == 6:
-        direct_answer = build_beneficiary_analysis_answer(req.prompt, limit=5)
+        country_code = _normalize_optional_country_code(req.country_code)
+        direct_answer = build_beneficiary_analysis_answer(req.prompt, limit=5, country_code=country_code)
         if direct_answer:
             from services.dataframe_service import (
                 _match_beneficiary_analysis_mode, _detect_beneficiary_name_filter,
@@ -431,7 +445,11 @@ async def workshop_stream(req: StreamRequest, request: Request):
                 elapsed_ms=int((_time.monotonic() - _t0) * 1000),
             )
             return await _stream_static_response(direct_answer, "beneficiary-analytics")
-        beneficiary_context = get_beneficiary_llm_context(req.prompt, max_entries_per_source=4)
+        beneficiary_context = get_beneficiary_llm_context(
+            req.prompt,
+            max_entries_per_source=4,
+            country_code=country_code,
+        )
         if beneficiary_context:
             docs.insert(0, beneficiary_context)
 
@@ -453,8 +471,8 @@ async def workshop_stream(req: StreamRequest, request: Request):
     # Disclaimer ans Ende des Prompts
     full_prompt = f"{req.prompt}\n\n---\n{DISCLAIMER}"
 
-    # Szenario-spezifisches Modell (z. B. qwen3.5:35b fuer Szenario 6)
-    from config import SCENARIO_MODELS
+    # Szenario-spezifisches Modell, falls per SCENARIO_MODELS gesetzt.
+    from config import MODEL_NAME, SCENARIO_MODELS
     model_override = SCENARIO_MODELS.get(req.scenario)
 
     # LLM-Pfad geht an — vorab loggen (elapsed_ms wird im finally aktualisiert).
@@ -465,7 +483,7 @@ async def workshop_stream(req: StreamRequest, request: Request):
     )
     _log_llm_question(
         request, scenario=req.scenario, prompt=req.prompt,
-        answer_path=answer_path, model_name=model_override or "qwen3:14b",
+        answer_path=answer_path, model_name=model_override or MODEL_NAME,
         elapsed_ms=int((_time.monotonic() - _t0) * 1000),
     )
 

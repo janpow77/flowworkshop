@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight, ShieldCheck, Database,
   MessageCircle, QrCode, Users, Upload, CalendarDays, UserPlus,
+  Mail,
 } from 'lucide-react';
 import PipelineWidget from '../components/workshop/PipelineWidget';
 import {
@@ -115,6 +116,22 @@ export default function HomePage() {
               <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-800/70">
                 <span>Datenr&auml;ume</span>
                 <span className="font-medium text-slate-900 dark:text-white">RAG + SQL + Karte</span>
+              </div>
+              <a
+                href="mailto:jan.riener@vwvg.de"
+                className="flex items-center justify-between gap-3 rounded-2xl bg-cyan-50 px-4 py-3 text-cyan-800 transition hover:bg-cyan-100 dark:bg-cyan-950/45 dark:text-cyan-200 dark:hover:bg-cyan-950/65"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Mail size={15} />
+                  Kontakt
+                </span>
+                <span className="text-right font-medium">
+                  Jan Riener
+                  <span className="block break-all text-xs font-normal opacity-80">jan.riener@vwvg.de</span>
+                </span>
+              </a>
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/35 dark:text-emerald-200">
+                Die &ouml;ffentlichen Anwendungen werten ausschlie&szlig;lich &ouml;ffentlich zug&auml;ngliche Datenquellen aus. Workshop-Unterlagen werden nur verarbeitet, wenn sie von Teilnehmenden oder Moderation bereitgestellt wurden.
               </div>
             </div>
           </div>
