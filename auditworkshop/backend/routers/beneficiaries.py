@@ -351,7 +351,7 @@ def analyze_beneficiaries(
     fonds: str | None = Query(None),
     source: str | None = Query(None),
     min_cost: float | None = Query(None, ge=0),
-    limit: int = Query(10, ge=1, le=20),
+    limit: int = Query(10, ge=1, le=100),
     country_code: str | None = Query(None, description="Optional Filter DE oder AT"),
 ):
     cc = _normalize_country_code(country_code)

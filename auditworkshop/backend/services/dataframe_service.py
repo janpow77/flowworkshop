@@ -2613,7 +2613,14 @@ def analyze_beneficiary_records(
 
     # Bei multi_state_beneficiaries weicheres Cap (alle Einrichtungen mit
     # ≥2 Bundesländern sollen aufgelistet werden — typ. < 100 Einträge).
-    max_limit = 500 if mode == "multi_state_beneficiaries" else 20
+    # state_fund_totals kann durch alle BL/Fonds-Kombinationen pro Land 50+
+    # Eintraege ausgeben — daher dort ebenfalls weicheres Cap.
+    if mode == "multi_state_beneficiaries":
+        max_limit = 500
+    elif mode == "state_fund_totals":
+        max_limit = 100
+    else:
+        max_limit = 20
     limit = max(1, min(limit, max_limit))
     beneficiary_sources = [
         item for item in get_beneficiary_sources(country_code=country_code)

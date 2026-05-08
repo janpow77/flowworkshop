@@ -46,6 +46,29 @@ function formatInt(value: number): string {
   return value.toLocaleString('de-DE');
 }
 
+/**
+ * Schreibt das Backend-Label fuer „Bund"-Eintraege um, damit klar wird,
+ * dass es sich um ein Bundesprogramm handelt und nicht um ein Bundesland.
+ * Beispiel: „Bund · AMIF" -> „Bundesprogramm · AMIF (national)".
+ */
+function rewriteAnalyticsLabel(item: { label: string; bundesland?: string | null; fonds?: string | null }): string {
+  const bl = (item.bundesland || '').trim();
+  if (bl.toLowerCase() === 'bund') {
+    const fonds = (item.fonds || '').trim();
+    return fonds ? `Bundesprogramm · ${fonds}` : 'Bundesprogramm';
+  }
+  return item.label;
+}
+
+function rewriteAnalyticsSublabel(item: { sublabel?: string; bundesland?: string | null }): string | undefined {
+  const bl = (item.bundesland || '').trim();
+  const baseSub = item.sublabel || '';
+  if (bl.toLowerCase() === 'bund') {
+    return baseSub ? `${baseSub} · national/föderal` : 'national/föderal';
+  }
+  return baseSub || undefined;
+}
+
 function buildPrompt(mode: BeneficiaryAnalysisMode, bundesland: string, fonds: string): string {
   const filterText = [bundesland || '', fonds || ''].filter(Boolean).join(' / ');
   const suffix = filterText ? ` Berücksichtige nur ${filterText}.` : '';
@@ -118,7 +141,9 @@ export default function BeneficiaryAnalyticsPanel(
           mode,
           bundesland: bundesland || undefined,
           fonds: fonds || undefined,
-          limit: 10,
+          // state_fund_totals braucht alle BL/Fonds-Kombinationen sichtbar
+          // (DE allein hat 18, plus AT — Default 10 hat zu wenige).
+          limit: mode === 'state_fund_totals' ? 50 : 10,
           country_code: countryCode || undefined,
         });
         if (!cancelled) setAnalysis(response);
@@ -290,10 +315,13 @@ export default function BeneficiaryAnalyticsPanel(
                             {item.rank}
                           </span>
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-slate-900 dark:text-white">{item.label}</div>
-                            {item.sublabel && (
-                              <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{item.sublabel}</div>
-                            )}
+                            <div className="truncate text-sm font-semibold text-slate-900 dark:text-white">{rewriteAnalyticsLabel(item)}</div>
+                            {(() => {
+                              const sub = rewriteAnalyticsSublabel(item);
+                              return sub ? (
+                                <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{sub}</div>
+                              ) : null;
+                            })()}
                           </div>
                         </div>
                         <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
