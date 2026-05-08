@@ -45,6 +45,7 @@ import type {
   AuditReportCoverage,
   AuditReportCrossReference,
   AuditReportData,
+  AuditReportFreshness,
   AuditReportLlmVerdict,
   AuditReportLlmVerification,
   AuditReportPersonsCheck,
@@ -98,6 +99,28 @@ function formatDate(iso: string | null | undefined): string {
   } catch {
     return iso;
   }
+}
+
+/**
+ * Backend liefert pro Modul ein Freshness-Objekt. Hier formatieren wir es zu
+ * einer kompakten Anzeige: „05.05.2026 · 349.135 Records — Note". Falls der
+ * Wert (aus aelteren Backend-Versionen) ein String ist, durchreichen.
+ */
+function formatFreshness(value: AuditReportFreshness | string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === 'string') return value.trim() || undefined;
+  const parts: string[] = [];
+  if (value.as_of) {
+    parts.push(formatDate(value.as_of));
+  }
+  if (typeof value.record_count === 'number' && Number.isFinite(value.record_count)) {
+    parts.push(`${value.record_count.toLocaleString('de-DE')} Records`);
+  }
+  const head = parts.join(' · ');
+  if (value.note) {
+    return head ? `${head} — ${value.note}` : value.note;
+  }
+  return head || undefined;
 }
 
 function pickString(record: Record<string, unknown>, ...keys: string[]): string {
@@ -215,7 +238,7 @@ function ConfidenceBadge({ confidence }: { confidence: string }) {
 
 function StateAidSection({ data }: { data: AuditReportData }) {
   const sa = data.state_aid;
-  const freshness = data.data_freshness?.state_aid;
+  const freshness = formatFreshness(data.data_freshness?.state_aid);
   // Sortiert nach granting_date desc, dann auf 30 begrenzen fuer die Vorschau.
   const sortedAwards = sortAwardsByDateDesc(sa.awards);
   const previewAwards = sortedAwards.slice(0, PREVIEW_ROW_LIMIT);
@@ -408,7 +431,7 @@ function StateAidSection({ data }: { data: AuditReportData }) {
 
 function BeneficiariesSection({ data }: { data: AuditReportData }) {
   const ben = data.beneficiaries;
-  const freshness = data.data_freshness?.beneficiaries;
+  const freshness = formatFreshness(data.data_freshness?.beneficiaries);
   const previewMatches = ben.matches.slice(0, PREVIEW_ROW_LIMIT);
   const remaining = ben.total_count - previewMatches.length;
 
@@ -524,7 +547,7 @@ function BeneficiariesSection({ data }: { data: AuditReportData }) {
 
 function SanctionsSection({ data }: { data: AuditReportData }) {
   const sanctions = data.sanctions;
-  const freshness = data.data_freshness?.sanctions;
+  const freshness = formatFreshness(data.data_freshness?.sanctions);
   const hasHits = sanctions.total_hits > 0;
 
   return (
@@ -829,7 +852,7 @@ function PersonsCheckSection({ data }: { data: AuditReportData }) {
   if (!personsCheck || personsCheck.total_persons === 0) return null;
 
   const hasAnyHit = personsCheck.total_hits > 0;
-  const freshness = data.data_freshness?.sanctions;
+  const freshness = formatFreshness(data.data_freshness?.sanctions);
 
   return (
     <SectionFrame

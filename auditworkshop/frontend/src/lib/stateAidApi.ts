@@ -684,6 +684,21 @@ export interface AuditReportCorporateGroup {
   cache_meta: Record<string, unknown>;
 }
 
+/**
+ * Backend liefert pro Modul (state_aid / beneficiaries / sanctions) ein Objekt
+ * mit Datenstand und Anzahl der Records. Frontend sollte dieses Objekt nicht
+ * direkt rendern — das fuehrt zu React-Error #31. Stattdessen
+ * `formatAuditFreshness()` (siehe AuditReportPreview.tsx) verwenden.
+ */
+export interface AuditReportFreshness {
+  as_of: string | null;
+  record_count?: number | null;
+  note?: string | null;
+  sources_loaded?: number | null;
+  sources_total?: number | null;
+  loaded_keys?: string[];
+}
+
 export interface AuditReportData {
   query: string;
   issued_at: string;
@@ -693,7 +708,7 @@ export interface AuditReportData {
   beneficiaries: AuditReportBeneficiaries;
   sanctions: AuditReportSanctions;
   cross_references: AuditReportCrossReference[];
-  data_freshness: Record<string, string>;
+  data_freshness: Record<string, AuditReportFreshness>;
   sources_explanation: AuditReportSourceExplanation[];
   /** Mehrzeiliger Hinweistext aus dem Backend (Absaetze via \n\n). */
   disclaimer: string;
