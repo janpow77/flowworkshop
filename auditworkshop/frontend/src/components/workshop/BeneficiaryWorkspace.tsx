@@ -243,6 +243,10 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
       <BeneficiaryMap
         countryCode={countryCode}
         highlightNames={activeTab === 'unternehmen' ? highlightedNames : null}
+        // Bundesland-/Mindestbetrag-Filter nur in der Schnellsuche
+        // anbieten — in Unternehmenssuche und KI-Auswertung filtert das
+        // Eingabefeld bzw. die Frage selbst, der Header bleibt minimal.
+        showFilterControls={activeTab === 'schnellsuche'}
       />
 
       {/* ── Tab-spezifischer Inhalt unter der Karte ────────────── */}

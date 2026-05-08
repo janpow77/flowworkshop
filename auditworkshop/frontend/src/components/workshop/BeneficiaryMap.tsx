@@ -149,9 +149,19 @@ type BeneficiaryMapProps = {
   // Wenn gesetzt + nicht leer: Karte zeigt nur Begünstigte mit Namen-Match
   // (case-insensitive). null/undefined/[] = Default (alle anzeigen).
   highlightNames?: string[] | null;
+  // Wenn false, blendet Bundesland-/Mindestbetrag-Filter und die linke
+  // Statistikzeile aus. Sinnvoll in Tabs, in denen die Karte nur als
+  // visueller Begleiter dient (Unternehmenssuche, KI-Auswertung) — dort
+  // filtert die Suche bzw. der Country-Picker schon ausserhalb der Karte.
+  showFilterControls?: boolean;
 };
 
-export default function BeneficiaryMap({ className, countryCode = 'DE', highlightNames }: BeneficiaryMapProps) {
+export default function BeneficiaryMap({
+  className,
+  countryCode = 'DE',
+  highlightNames,
+  showFilterControls = true,
+}: BeneficiaryMapProps) {
   const [data, setData] = useState<Beneficiary[]>([]);
   const [sources, setSources] = useState<SourceInfo[]>([]);
   const [regionLabel, setRegionLabel] = useState<string>('Bundesland');
@@ -332,7 +342,7 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', highligh
                 <span className="text-slate-500 dark:text-slate-400">
                   Karte wartet auf Suche — Treffer erscheinen hier nach der Eingabe.
                 </span>
-              ) : (
+              ) : showFilterControls ? (
                 <>
                   <span className="font-semibold text-slate-700 dark:text-slate-300">
                     {filtered.length.toLocaleString('de-DE')} Vorhaben
@@ -343,16 +353,22 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', highligh
                   {totalKosten > 0 && (
                     <span className="text-slate-400">· {formatEur(totalKosten)}</span>
                   )}
-                  {highlightActive && (
-                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
-                      Filter: {highlightNames!.length === 1 ? highlightNames![0] : `${highlightNames!.length} Treffer`}
-                    </span>
-                  )}
                 </>
+              ) : highlightActive ? (
+                <span className="text-slate-700 dark:text-slate-300 font-semibold">
+                  {filtered.length.toLocaleString('de-DE')} Treffer auf der Karte
+                </span>
+              ) : (
+                <span className="text-slate-500 dark:text-slate-400">Begünstigtenkarte</span>
+              )}
+              {showFilterControls && highlightActive && (
+                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+                  Filter: {highlightNames!.length === 1 ? highlightNames![0] : `${highlightNames!.length} Treffer`}
+                </span>
               )}
             </div>
             <div className="flex items-center gap-2">
-              {bundeslaender.length > 1 && (
+              {showFilterControls && bundeslaender.length > 1 && (
                 <select value={filterBl} onChange={(e) => setFilterBl(e.target.value)}
                   className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
                   aria-label={`${regionLabel} filtern`}>
@@ -360,15 +376,17 @@ export default function BeneficiaryMap({ className, countryCode = 'DE', highligh
                   {bundeslaender.map((bl) => <option key={bl} value={bl}>{bl}</option>)}
                 </select>
               )}
-              <select value={minKosten} onChange={(e) => setMinKosten(Number(e.target.value))}
-                className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
-                aria-label="Mindestbetrag">
-                <option value={0}>Alle Beträge</option>
-                <option value={100000}>&gt; 100.000 €</option>
-                <option value={500000}>&gt; 500.000 €</option>
-                <option value={1000000}>&gt; 1 Mio €</option>
-                <option value={5000000}>&gt; 5 Mio €</option>
-              </select>
+              {showFilterControls && (
+                <select value={minKosten} onChange={(e) => setMinKosten(Number(e.target.value))}
+                  className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
+                  aria-label="Mindestbetrag">
+                  <option value={0}>Alle Beträge</option>
+                  <option value={100000}>&gt; 100.000 €</option>
+                  <option value={500000}>&gt; 500.000 €</option>
+                  <option value={1000000}>&gt; 1 Mio €</option>
+                  <option value={5000000}>&gt; 5 Mio €</option>
+                </select>
+              )}
               <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-600 pl-2 ml-1">
                 <button
                   onClick={() => exportMap('png')}
