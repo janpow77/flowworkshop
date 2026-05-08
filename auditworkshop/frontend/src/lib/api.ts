@@ -211,6 +211,8 @@ export interface AustriaPresetSource {
   display_name: string;
 }
 
+export type BeneficiaryMatchConfidence = 'exact' | 'high' | 'medium' | 'low';
+
 export interface BeneficiaryProjectHit {
   project_name: string;
   aktenzeichen: string;
@@ -224,6 +226,9 @@ export interface BeneficiaryProjectHit {
   periode: string | null;
   matched_fields: string[];
   match_score: number;
+  match_confidence?: BeneficiaryMatchConfidence;
+  country_code?: CountryCode | null;
+  country_name?: string | null;
 }
 
 export interface BeneficiaryCompanyHit {
@@ -232,6 +237,7 @@ export interface BeneficiaryCompanyHit {
   total_kosten_label: string;
   project_count: number;
   match_score: number;
+  match_confidence?: BeneficiaryMatchConfidence;
   sources: string[];
   bundeslaender: string[];
   fonds: string[];

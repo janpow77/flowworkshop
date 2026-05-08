@@ -1,14 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Send, Sparkles, FolderOpen, Loader2, Database, ShieldCheck, Building2,
+  ArrowLeft, Send, Sparkles, FolderOpen, Loader2, ShieldCheck,
   FileText, RotateCcw, Info,
 } from 'lucide-react';
 import LlmResponsePanel from '../components/workshop/LlmResponsePanel';
 import DocumentDropzone from '../components/workshop/DocumentDropzone';
-import BeneficiaryMap from '../components/workshop/BeneficiaryMap';
-import BeneficiaryAnalyticsPanel from '../components/workshop/BeneficiaryAnalyticsPanel';
-import { seedDemoData, streamSSE, type CountryCode } from '../lib/api';
+import BeneficiaryWorkspace from '../components/workshop/BeneficiaryWorkspace';
+import { seedDemoData, streamSSE } from '../lib/api';
 
 const SCENARIO_INFO: Record<number, {
   title: string;
@@ -84,11 +83,6 @@ const DEMO_QUESTIONS: Record<number, string[]> = {
     'Zuwendungsbescheid-Auflagen Nr. 3 und 7 nicht erfüllt. Belege unvollständig.',
     'Doppelförderung bei Personalkosten festgestellt. Keine Abgrenzung der Zeiträume.',
   ],
-  6: [
-    'Welche Kommunen erhalten die höchste Förderung?',
-    'Wie verteilt sich die Fördersumme auf die Bundesländer?',
-    'Welche Branchen werden am stärksten gefördert?',
-  ],
 };
 
 export default function ScenarioPage() {
@@ -122,8 +116,6 @@ export default function ScenarioPage() {
   const [splitResponses, setSplitResponses] = useState<{without?: string; with?: string}>({});
   const [streamStatus, setStreamStatus] = useState<string | null>(null);
   const [streamStartedAt, setStreamStartedAt] = useState<number | null>(null);
-  // Szenario 6: Land-Filter (default Deutschland, "" = alle Länder zusammen)
-  const [countryCode, setCountryCode] = useState<CountryCode | ''>('DE');
   const controllerRef = useRef<AbortController | null>(null);
 
   // Cleanup on unmount
@@ -159,7 +151,6 @@ export default function ScenarioPage() {
         prompt,
         documents,
         with_context: withContext,
-        ...(num === 6 && countryCode ? { country_code: countryCode } : {}),
       },
       (token) => {
         accumulated += token;
@@ -187,7 +178,7 @@ export default function ScenarioPage() {
       },
       (state) => setStreamStatus(state),
     );
-  }, [prompt, num, documents, withContext, streaming, countryCode]);
+  }, [prompt, num, documents, withContext, streaming]);
 
   const handleStop = () => {
     controllerRef.current?.abort();
@@ -368,44 +359,7 @@ export default function ScenarioPage() {
         </div>
       )}
 
-      {num === 6 && (
-        <div className="mb-3 flex items-center justify-between gap-3 rounded-[26px] border border-rose-200/70 bg-rose-50/70 px-4 py-3 dark:border-rose-900/60 dark:bg-rose-950/30">
-          <div className="text-xs uppercase tracking-[0.18em] text-rose-700/80 dark:text-rose-300/80">
-            Land
-          </div>
-          <div
-            role="tablist"
-            aria-label="Begünstigtenverzeichnis nach Land filtern"
-            className="inline-flex rounded-full border border-rose-200 bg-white p-1 text-xs font-semibold dark:border-rose-900/60 dark:bg-slate-900"
-          >
-            {[
-              { value: 'DE' as const, label: 'Deutschland' },
-              { value: 'AT' as const, label: 'Österreich' },
-              { value: '' as const, label: 'Alle' },
-            ].map((option) => {
-              const active = countryCode === option.value;
-              return (
-                <button
-                  key={option.label}
-                  role="tab"
-                  type="button"
-                  aria-selected={active}
-                  onClick={() => setCountryCode(option.value)}
-                  className={`rounded-full px-4 py-1.5 transition ${
-                    active
-                      ? 'bg-rose-600 text-white shadow dark:bg-rose-500'
-                      : 'text-slate-600 hover:bg-rose-100 dark:text-slate-300 dark:hover:bg-rose-900/40'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {num === 6 && <BeneficiaryMap className="mb-2" countryCode={countryCode} />}
-      {num === 6 && <BeneficiaryAnalyticsPanel className="mb-2" onSelectPrompt={setPrompt} countryCode={countryCode} />}
+      {num === 6 && <BeneficiaryWorkspace isPublicMode={isPublicMode} />}
 
       {num === 3 && (
         <div className="mb-4 flex items-center justify-between gap-3 rounded-[26px] border border-amber-200 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/20">
@@ -431,99 +385,6 @@ export default function ScenarioPage() {
             <RotateCcw size={12} />
             Vergleich starten
           </button>
-        </div>
-      )}
-
-      {num === 6 && (
-        <div className="rounded-[28px] border-2 border-rose-300/60 bg-gradient-to-br from-rose-50/60 via-white to-amber-50/40 p-6 shadow-[0_24px_80px_-44px_rgba(225,29,72,0.45)] backdrop-blur dark:border-rose-900/60 dark:from-rose-950/30 dark:via-slate-900/80 dark:to-amber-950/20">
-          <div className="mb-4 flex items-start gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-amber-500 text-white shadow-lg">
-              <Sparkles size={20} />
-            </span>
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
-                KI-Auswertung der Begünstigtenverzeichnisse
-              </h2>
-              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {isPublicMode
-                  ? 'Stellen Sie freie Fragen zur konsolidierten Datenlage. Die Auswertung läuft lokal gegen die geladenen Begünstigtenverzeichnisse aus EFRE, ESF+, JTF, ISF und AMIF.'
-                  : 'Stellen Sie freie Fragen direkt an die KI. Die Auswertung läuft gegen die aktuell eingelesenen Begünstigtenlisten.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Eingabe + Submit als prominente Chat-Box */}
-          <div className="relative rounded-[20px] border-2 border-rose-200 bg-white shadow-[0_18px_60px_-48px_rgba(225,29,72,0.6)] focus-within:border-rose-400 focus-within:ring-2 focus-within:ring-rose-200 dark:border-rose-900/70 dark:bg-slate-950 dark:focus-within:border-rose-500">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-              placeholder={'Stellen Sie eine Frage an die KI… z.B. „Welche Träger dominieren in der Bauindustrie?"   ⏎ zum Senden'}
-              rows={3}
-              className="min-h-[100px] w-full resize-none rounded-[20px] bg-transparent px-5 pt-4 pb-14 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100"
-              aria-label="Frage an die KI"
-            />
-            <button
-              onClick={handleSubmit}
-              disabled={!prompt.trim() || streaming}
-              className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-600 to-amber-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:from-rose-700 hover:to-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {streaming ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-              {streaming ? 'Generiert…' : 'Frage stellen'}
-            </button>
-          </div>
-
-          {/* Vordefinierte Beispielfragen — klick füllt die Box */}
-          <div className="mt-4">
-            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              <Sparkles size={11} className="text-rose-500" />
-              Beispielfragen — Klicken zum Übernehmen
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {DEMO_QUESTIONS[6].map((q, i) => (
-                <button
-                  key={i}
-                  onClick={() => setPrompt(q)}
-                  disabled={streaming}
-                  className="group inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition hover:border-rose-400 hover:bg-rose-50 hover:text-rose-700 hover:shadow disabled:opacity-40 dark:border-rose-900/50 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-rose-600 dark:hover:bg-rose-950/30"
-                >
-                  <Sparkles size={11} className="text-rose-400 group-hover:text-rose-500" />
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Sekundär-Aktionen */}
-          {!isPublicMode && (
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-rose-200/60 pt-3 text-xs dark:border-rose-900/40">
-              <span className="text-slate-500 dark:text-slate-400">
-                Andere Suchwege:
-              </span>
-              <Link to="/company-search" className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-slate-700 hover:bg-rose-100/50 dark:text-slate-300 dark:hover:bg-rose-950/30">
-                <Building2 size={12} /> Unternehmenssuche
-              </Link>
-              <Link to="/dataframes" className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-slate-700 hover:bg-rose-100/50 dark:text-slate-300 dark:hover:bg-rose-950/30">
-                <Database size={12} /> Datenraum (SQL)
-              </Link>
-            </div>
-          )}
-
-          {/* Antwort */}
-          <div className="mt-5">
-            <LlmResponsePanel
-              response={response}
-              streaming={streaming}
-              tokenCount={tokenCount}
-              model={model}
-              tokPerS={tokPerS}
-              error={error}
-              onStop={handleStop}
-              onRetry={handleSubmit}
-              status={streamStatus}
-              startedAt={streamStartedAt}
-            />
-          </div>
         </div>
       )}
 

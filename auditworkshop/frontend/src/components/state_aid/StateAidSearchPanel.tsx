@@ -99,7 +99,7 @@ export default function StateAidSearchPanel({ value, onChange, onSubmit, onReset
             type="text"
             value={value.q}
             onChange={(e) => setField('q', e.target.value)}
-            placeholder="Unternehmen, Behoerde oder SA-Referenz …"
+            placeholder="Unternehmen, Behörde oder SA-Referenz …"
             className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100"
             aria-label="Suchbegriff"
           />

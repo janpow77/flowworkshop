@@ -36,12 +36,12 @@ interface Props {
 }
 
 const EXAMPLE_QUESTIONS: string[] = [
-  'Alle Beihilfen ueber 1 Mio. EUR aus Bayern fuer Maschinenbau im Jahr 2022',
-  'Welche Foerdersummen erhielt die Robert Bosch GmbH in den letzten drei Jahren?',
-  'Top 10 Empfaenger in Sachsen seit 2021',
-  'Beihilfen mit Buergschaft als Instrument in Hessen',
+  'Alle Beihilfen über 1 Mio. EUR aus Bayern für Maschinenbau im Jahr 2022',
+  'Welche Fördersummen erhielt die Robert Bosch GmbH in den letzten drei Jahren?',
+  'Top 10 Empfänger in Sachsen seit 2021',
+  'Beihilfen mit Bürgschaft als Instrument in Hessen',
   'Alle Awards mit SA-Referenz aus 2023',
-  'Welche Behoerde hat 2024 in Berlin am meisten ausgezahlt?',
+  'Welche Behörde hat 2024 in Berlin am meisten ausgezahlt?',
 ];
 
 function formatEur(value: number | null | undefined): string {
@@ -188,7 +188,7 @@ export default function StateAidAskPanel({ countryCode, onApplyFilters }: Props)
             <textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Frag in einem Satz: alle Beihilfen ueber 1 Mio. EUR aus Bayern fuer Maschinenbau 2022"
+              placeholder="Frag in einem Satz: alle Beihilfen über 1 Mio. EUR aus Bayern für Maschinenbau 2022"
               rows={3}
               className="w-full resize-none rounded-[20px] border border-slate-200 bg-white/90 px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30"
             />
@@ -248,7 +248,7 @@ export default function StateAidAskPanel({ countryCode, onApplyFilters }: Props)
       <div className="flex items-start gap-2 rounded-[22px] border border-slate-200/70 bg-slate-50/70 px-4 py-2 text-[11px] leading-5 text-slate-500 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-400">
         <Sparkles size={12} className="mt-0.5 shrink-0 text-emerald-500" />
         <span>
-          Die Filter werden vom LLM ermittelt. Treffer und Betraege stammen direkt
+          Die Filter werden vom LLM ermittelt. Treffer und Beträge stammen direkt
           aus der Datenbank, nicht vom LLM.
         </span>
       </div>
@@ -281,14 +281,14 @@ export default function StateAidAskPanel({ countryCode, onApplyFilters }: Props)
               onClick={handleApplyAndJump}
               disabled={filterEntries.length === 0}
               className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
-              title="Filter uebernehmen und zum Treffer-Tab wechseln"
+              title="Filter übernehmen und zum Treffer-Tab wechseln"
             >
-              <Wand2 size={12} /> In Treffer-Tab uebernehmen
+              <Wand2 size={12} /> In Treffer-Tab übernehmen
             </button>
           </div>
           {filterEntries.length === 0 ? (
             <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
-              Keine spezifischen Filter erkannt — die Suche laeuft ueber das aktuelle Land.
+              Keine spezifischen Filter erkannt — die Suche läuft über das aktuelle Land.
             </p>
           ) : (
             <ul className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -323,7 +323,7 @@ export default function StateAidAskPanel({ countryCode, onApplyFilters }: Props)
                   Treffer · {results.total_hits.toLocaleString('de-DE')}
                 </div>
                 <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Vorschau auf max. 10 Eintraege.
+                  Vorschau auf max. 10 Einträge.
                 </div>
               </div>
             </div>
@@ -344,7 +344,7 @@ export default function StateAidAskPanel({ countryCode, onApplyFilters }: Props)
                 <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-300" />
                 <div className="flex-1">
                   <div className="font-semibold">
-                    Keine Treffer fuer die erkannten Filter
+                    Keine Treffer für die erkannten Filter
                   </div>
                   <p className="mt-1 text-amber-800/90 dark:text-amber-100/85">
                     LLM-Filter waren zu spezifisch — versuche es mit weniger

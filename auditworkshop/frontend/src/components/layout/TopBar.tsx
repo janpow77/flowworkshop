@@ -67,7 +67,7 @@ export default function TopBar({ dark, onToggleDark }: Props) {
           {ollama !== null && !ollama.ok && (
             <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs text-amber-700 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-400">
               <AlertTriangle size={14} />
-              <span>KI-Modell nicht verfuegbar — Szenarien ohne LLM-Antworten. Bitte <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] dark:bg-amber-900/40">ollama serve</code> starten.</span>
+              <span>KI-Modell nicht verfügbar — Szenarien ohne LLM-Antworten. Bitte <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] dark:bg-amber-900/40">ollama serve</code> starten.</span>
             </div>
           )}
 

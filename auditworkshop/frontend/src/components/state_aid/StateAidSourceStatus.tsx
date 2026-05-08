@@ -62,7 +62,7 @@ export default function StateAidSourceStatus({ sources, isAdmin, onHarvest, onDe
   if (sources.length === 0) {
     return (
       <div className="rounded-[26px] border border-dashed border-slate-300 bg-white/85 px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
-        Noch keine Quellen registriert. Sobald der Harvester laeuft, erscheinen hier
+        Noch keine Quellen registriert. Sobald der Harvester läuft, erscheinen hier
         TAM, nationale Register und manuelle Importe.
       </div>
     );
@@ -147,7 +147,7 @@ export default function StateAidSourceStatus({ sources, isAdmin, onHarvest, onDe
               <Row label="Letzter Harvest" value={formatDateTime(source.last_successful_harvest_at)} mono />
               <Row label="Letzter Datensatz" value={formatDateTime(source.last_record_date)} mono />
               <Row
-                label="Datensaetze"
+                label="Datensätze"
                 value={source.record_count.toLocaleString('de-DE')}
                 mono
               />
@@ -164,8 +164,8 @@ export default function StateAidSourceStatus({ sources, isAdmin, onHarvest, onDe
               <div className="mt-3 inline-flex items-start gap-1.5 rounded-xl border border-amber-200/70 bg-amber-50/80 px-3 py-2 text-[11px] leading-5 text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-200">
                 <AlertTriangle size={11} className="mt-0.5 shrink-0" />
                 <span>
-                  Keine Datensaetze fuer den letzten Lauf — Connector noch nicht
-                  implementiert oder TAM-Antwort leer. Bitte den Admin pruefen
+                  Keine Datensätze für den letzten Lauf — Connector noch nicht
+                  implementiert oder TAM-Antwort leer. Bitte den Admin prüfen
                   lassen.
                 </span>
               </div>

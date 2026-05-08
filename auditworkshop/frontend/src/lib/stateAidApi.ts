@@ -1007,7 +1007,7 @@ export function askStateAid(req: AskStateAidRequest, handlers: AskEventHandlers)
       }
       const reader = res.body?.getReader();
       if (!reader) {
-        handlers.onError?.('Streaming nicht verfuegbar.');
+        handlers.onError?.('Streaming nicht verfügbar.');
         return;
       }
       const decoder = new TextDecoder();

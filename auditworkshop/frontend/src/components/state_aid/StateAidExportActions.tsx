@@ -35,7 +35,7 @@ export default function StateAidExportActions({ params, disabled, hitCount }: Pr
       onExport={handleExport}
       disabled={disabled}
       variant="full"
-      hint="Pruefnotiz inklusive Suchparameter, Datenstand und Quellenhinweis exportieren"
+      hint="Prüfnotiz inklusive Suchparameter, Datenstand und Quellenhinweis exportieren"
       hitCount={hitCount}
     />
   );

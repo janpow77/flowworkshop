@@ -145,7 +145,7 @@ export function getActiveFilterChips(
   if (state.max_amount.trim()) chips.push({ key: 'max_amount', label: 'max EUR', value: state.max_amount.trim() });
   if (state.aid_instrument.trim()) chips.push({ key: 'aid_instrument', label: 'Instrument', value: state.aid_instrument.trim() });
   if (state.aid_objective.trim()) chips.push({ key: 'aid_objective', label: 'Ziel', value: state.aid_objective.trim() });
-  if (state.granting_authority.trim()) chips.push({ key: 'granting_authority', label: 'Behoerde', value: state.granting_authority.trim() });
+  if (state.granting_authority.trim()) chips.push({ key: 'granting_authority', label: 'Behörde', value: state.granting_authority.trim() });
   if (state.sa_reference.trim()) chips.push({ key: 'sa_reference', label: 'SA-Ref', value: state.sa_reference.trim() });
   if (state.source_key) chips.push({ key: 'source_key', label: 'Quelle', value: state.source_key });
   if (state.nace.trim()) chips.push({ key: 'nace', label: 'NACE', value: state.nace.trim() });

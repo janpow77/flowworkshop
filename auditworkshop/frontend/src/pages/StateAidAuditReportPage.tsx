@@ -329,10 +329,10 @@ function StateAidAuditReportPageInner() {
             </div>
           </div>
           <div className="rounded-[28px] border border-white/15 bg-black/15 p-5 backdrop-blur">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-white/60">Aggregations-Uebersicht</div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-white/60">Aggregations-Übersicht</div>
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
               <Stat label="State-Aid" value={report ? stats.stateAid.toLocaleString('de-DE') : '—'} />
-              <Stat label="Beguenstigte" value={report ? stats.beneficiaries.toLocaleString('de-DE') : '—'} />
+              <Stat label="Begünstigte" value={report ? stats.beneficiaries.toLocaleString('de-DE') : '—'} />
               <Stat label="Sanktionen" value={report ? stats.sanctions.toLocaleString('de-DE') : '—'} />
             </div>
             <div className="mt-4 space-y-1 text-[11px] text-white/70">

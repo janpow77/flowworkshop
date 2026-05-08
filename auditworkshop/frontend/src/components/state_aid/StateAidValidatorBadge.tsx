@@ -181,7 +181,7 @@ export default function StateAidValidatorBadge({ intervalMs = 60000 }: Props) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  Self-Check fuer State-Aid-Modul
+                  Self-Check für State-Aid-Modul
                 </h2>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   Letzter Lauf: {report ? formatDateTime(report.started_at) : '—'} ·
@@ -208,8 +208,8 @@ export default function StateAidValidatorBadge({ intervalMs = 60000 }: Props) {
 
             {!report && !error && (
               <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
-                Noch kein Self-Check ausgefuehrt. Die Pruefung laeuft taeglich
-                automatisch nach dem Harvest oder kann von Admins manuell ausgeloest
+                Noch kein Self-Check ausgeführt. Die Prüfung läuft täglich
+                automatisch nach dem Harvest oder kann von Admins manuell ausgelöst
                 werden.
               </div>
             )}

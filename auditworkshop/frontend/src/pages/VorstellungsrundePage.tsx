@@ -227,7 +227,7 @@ export default function VorstellungsrundePage() {
                 <div className="mt-2 rounded-xl border-2 border-indigo-400 bg-white dark:bg-slate-900 p-4 space-y-3">
                   <div className="grid gap-2 sm:grid-cols-2">
                     <input value={editData.label} onChange={(e) => setEditData({ ...editData, label: e.target.value })} placeholder="Frage / Label *" className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800" />
-                    <input value={editData.hint} onChange={(e) => setEditData({ ...editData, hint: e.target.value })} placeholder="Hinweis / Erlaeuterung" className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                    <input value={editData.hint} onChange={(e) => setEditData({ ...editData, hint: e.target.value })} placeholder="Hinweis / Erläuterung" className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800" />
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div>
@@ -275,10 +275,10 @@ export default function VorstellungsrundePage() {
         {isAdmin && (
           showAdd ? (
             <div className="rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-700 p-4 space-y-3">
-              <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Neue Frage hinzufuegen</p>
+              <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Neue Frage hinzufügen</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 <input value={newData.label} onChange={(e) => setNewData({ ...newData, label: e.target.value })} placeholder="Frage / Label *" className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800" />
-                <input value={newData.hint} onChange={(e) => setNewData({ ...newData, hint: e.target.value })} placeholder="Hinweis / Erlaeuterung" className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800" />
+                <input value={newData.hint} onChange={(e) => setNewData({ ...newData, hint: e.target.value })} placeholder="Hinweis / Erläuterung" className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800" />
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
@@ -313,7 +313,7 @@ export default function VorstellungsrundePage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={addQuestion} disabled={!newData.label} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:bg-slate-300"><Plus size={12} /> Hinzufuegen</button>
+                <button onClick={addQuestion} disabled={!newData.label} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:bg-slate-300"><Plus size={12} /> Hinzufügen</button>
                 <button onClick={() => setShowAdd(false)} className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400"><X size={12} /> Abbrechen</button>
               </div>
             </div>
@@ -322,7 +322,7 @@ export default function VorstellungsrundePage() {
               onClick={() => setShowAdd(true)}
               className="flex items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 px-5 py-3 text-sm text-slate-400 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-all w-full"
             >
-              <Plus size={16} /> Frage hinzufuegen
+              <Plus size={16} /> Frage hinzufügen
             </button>
           )
         )}

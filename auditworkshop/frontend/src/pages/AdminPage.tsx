@@ -303,7 +303,7 @@ export default function AdminPage() {
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {meta.workshop_mode
                   ? 'Alle Teilnehmer sehen die Szenarien. Zum Deaktivieren umschalten.'
-                  : 'Szenarien sind nur fuer Moderatoren sichtbar. Am Workshop-Tag hier aktivieren.'}
+                  : 'Szenarien sind nur für Moderatoren sichtbar. Am Workshop-Tag hier aktivieren.'}
               </p>
             </div>
             <button

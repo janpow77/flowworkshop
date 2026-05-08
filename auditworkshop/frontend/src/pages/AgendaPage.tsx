@@ -70,7 +70,7 @@ const STATUS_STYLES: Record<string, { label: string; dot: string }> = {
   pending: { label: 'Offen', dot: 'bg-slate-300 dark:bg-slate-600' },
   active: { label: 'Aktiv', dot: 'bg-green-500 animate-pulse' },
   done: { label: 'Erledigt', dot: 'bg-emerald-500' },
-  skipped: { label: 'Uebersprungen', dot: 'bg-slate-400' },
+  skipped: { label: 'Übersprungen', dot: 'bg-slate-400' },
 };
 
 const SCENARIO_LABELS: Record<number, string> = {
@@ -79,7 +79,7 @@ const SCENARIO_LABELS: Record<number, string> = {
   3: 'RAG / Halluzination',
   4: 'Berichtsentwurf',
   5: 'Vorab-Upload',
-  6: 'Beguenstigtenverzeichnis',
+  6: 'Begünstigtenverzeichnis',
 };
 
 type ViewMode = 'plenary' | 'workshop5';
@@ -532,7 +532,7 @@ export default function AgendaPage() {
 
         {activeDays.length === 0 && (
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 p-8 text-center">
-            <p className="text-slate-500">Noch keine Programmpunkte fuer diese Ansicht vorhanden.</p>
+            <p className="text-slate-500">Noch keine Programmpunkte für diese Ansicht vorhanden.</p>
           </div>
         )}
 
@@ -779,7 +779,7 @@ export default function AgendaPage() {
                                       <button
                                         onClick={() => setItemStatus(item.id, 'skip')}
                                         className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 hover:scale-110 active:scale-95"
-                                        title="Ueberspringen"
+                                        title="Überspringen"
                                       >
                                         <SkipForward size={13} />
                                       </button>
@@ -845,7 +845,7 @@ export default function AgendaPage() {
                               <input value={newItem.page_url} onChange={(e) => setNewItem({ ...newItem, page_url: e.target.value })} placeholder="Seiten-URL (z.B. /vorstellungsrunde)" className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
                             </div>
                             <div className="flex gap-2">
-                              <button onClick={() => addItem(dayGroup.day)} disabled={!newItem.title || !newItem.time} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed"><Plus size={12} /> Hinzufuegen</button>
+                              <button onClick={() => addItem(dayGroup.day)} disabled={!newItem.title || !newItem.time} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed"><Plus size={12} /> Hinzufügen</button>
                               <button onClick={() => setShowAddForm(null)} className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400"><X size={12} /> Abbrechen</button>
                             </div>
                           </div>
@@ -854,7 +854,7 @@ export default function AgendaPage() {
                             onClick={() => setShowAddForm(dayGroup.day)}
                             className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm text-slate-400 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-all w-full"
                           >
-                            <Plus size={14} /> Programmpunkt hinzufuegen
+                            <Plus size={14} /> Programmpunkt hinzufügen
                           </button>
                         )}
                       </div>

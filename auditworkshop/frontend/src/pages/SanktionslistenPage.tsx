@@ -338,7 +338,7 @@ export default function SanktionslistenPage() {
       const res = await refreshSanctionsSource(key);
       setRefreshMessage(
         res.message
-          ?? `Aktualisiert: ${res.refreshed?.toLocaleString?.('de-DE') ?? '—'} Eintraege${res.source_key ? ` (${sourceShortLabel(res.source_key)})` : ''}.`,
+          ?? `Aktualisiert: ${res.refreshed?.toLocaleString?.('de-DE') ?? '—'} Einträge${res.source_key ? ` (${sourceShortLabel(res.source_key)})` : ''}.`,
       );
       // Sources neu laden, damit "loaded_at" und Counts frisch sind.
       await loadSources();
@@ -731,7 +731,7 @@ export default function SanktionslistenPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/75 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/55">
                   <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                     <Download size={14} />
-                    Pruefnotiz exportieren · Pflichthinweis und Datenstand sind im Export enthalten
+                    Prüfnotiz exportieren · Pflichthinweis und Datenstand sind im Export enthalten
                     {resultSourceFilter.length > 0 && (
                       <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
                         Clientseitiger Filter aktiv — Export ohne Server-Pflichthinweis-Sheet

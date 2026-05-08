@@ -436,7 +436,7 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
             unmappable,
             disclaimer:
               'Quelle: EU TAM und nationale Beihilfe-Register (Art. 9 Abs. 1 lit. c) VO (EU) Nr. 651/2014). '
-              + 'NUTS-Aggregation, keine Adressdaten. Datenstand abhaengig vom letzten Harvest pro Quelle.',
+              + 'NUTS-Aggregation, keine Adressdaten. Datenstand abhängig vom letzten Harvest pro Quelle.',
           },
         };
         const blob = new Blob([JSON.stringify(fc, null, 2)], {
@@ -520,9 +520,9 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
                     ? 'text-slate-600 dark:text-slate-300'
                     : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
               }`}
-              title={choroplethSupported ? 'Choropleth-Karte' : aggregateLevel === 3 ? 'Choropleth bei Kreis-Aggregation nicht verfuegbar' : 'Choropleth nur fuer DE/AT verfuegbar'}
+              title={choroplethSupported ? 'Choropleth-Karte' : aggregateLevel === 3 ? 'Choropleth bei Kreis-Aggregation nicht verfügbar' : 'Choropleth nur für DE/AT verfügbar'}
             >
-              Flaechen
+              Flächen
             </button>
           </div>
           <div className="inline-flex items-center rounded-full border border-slate-200 bg-white p-0.5 text-xs dark:border-slate-700 dark:bg-slate-900">
@@ -564,8 +564,8 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
           <AlertTriangle size={14} className="mt-0.5 shrink-0" />
           <span>
             Die Karte aggregiert nach der in der Quelle vorhandenen regionalen Genauigkeit.
-            Bei NUTS-Daten werden keine genaueren Standorte abgeleitet. Datensaetze ohne
-            NUTS-Code werden auf Land-Ebene mit groesserem Kreis und dem Hinweis
+            Bei NUTS-Daten werden keine genaueren Standorte abgeleitet. Datensätze ohne
+            NUTS-Code werden auf Land-Ebene mit größerem Kreis und dem Hinweis
             <em className="not-italic font-medium"> „ungenau (Land)“</em> markiert.
           </span>
         </div>
@@ -601,10 +601,10 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
               <div className="max-w-sm rounded-xl border border-slate-200 bg-white/90 px-5 py-5 shadow-md dark:border-slate-700 dark:bg-slate-900/90">
                 <MapPin size={26} className="mx-auto mb-2 text-slate-400" />
                 <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Keine kartierbaren Datensaetze fuer aktuelle Filter
+                  Keine kartierbaren Datensätze für aktuelle Filter
                 </div>
                 <p className="mt-1.5 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
-                  Pruefe, ob ein Land gewaehlt ist und der Zeitraum Daten enthaelt.
+                  Prüfe, ob ein Land gewählt ist und der Zeitraum Daten enthält.
                   Awards ohne NUTS-Code werden nicht auf der Karte gezeigt.
                 </p>
               </div>
@@ -735,18 +735,18 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
               </span>
             </div>
             <span>
-              {mode === 'count' ? 'Kreisgroesse = Anzahl Awards (log)' : 'Kreisgroesse = Gesamtbetrag in EUR (log)'}
+              {mode === 'count' ? 'Kreisgröße = Anzahl Awards (log)' : 'Kreisgröße = Gesamtbetrag in EUR (log)'}
             </span>
           </div>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-2 text-[11px] text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
             <span>
-              Polygone: {countryCode === 'DE' ? 'DE NUTS-1 (16 Bundeslaender)' : countryCode === 'AT' ? 'AT NUTS-2 (9 Bundeslaender)' : 'nicht verfuegbar'}
+              Polygone: {countryCode === 'DE' ? 'DE NUTS-1 (16 Bundesländer)' : countryCode === 'AT' ? 'AT NUTS-2 (9 Bundesländer)' : 'nicht verfügbar'}
               {' · '}
               Quelle GISCO Eurostat (Public Domain)
             </span>
             <span>
-              {mode === 'count' ? 'Faerbung = Anzahl Awards' : 'Faerbung = Gesamtbetrag in EUR'}
+              {mode === 'count' ? 'Färbung = Anzahl Awards' : 'Färbung = Gesamtbetrag in EUR'}
             </span>
           </div>
         )}

@@ -50,8 +50,8 @@ export default class StateAidErrorBoundary extends Component<Props, State> {
                 Server-Fehler im Beihilfe-Modul
               </h2>
               <p className="mt-1 text-sm leading-6 text-rose-800 dark:text-rose-200">
-                Pruefer-Hinweis: Bitte den Admin informieren. Die Anwendung
-                bleibt verfuegbar — nur dieser Bereich konnte nicht geladen
+                Prüfer-Hinweis: Bitte den Admin informieren. Die Anwendung
+                bleibt verfügbar — nur dieser Bereich konnte nicht geladen
                 werden. Ein Reload kann das Problem oft beheben.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">

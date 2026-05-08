@@ -157,10 +157,10 @@ export default function AdminBeneficiarySourcesPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <div className="rounded-2xl border border-amber-300 bg-amber-50 px-6 py-5 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-          <h2 className="font-semibold mb-2">Nur fuer Admins.</h2>
+          <h2 className="font-semibold mb-2">Nur für Admins.</h2>
           <p className="text-sm">
             Diese Seite verwaltet die datengetriebene Quellen-Pipeline und ist nur
-            fuer Administratoren zugaenglich.
+            für Administratoren zugänglich.
           </p>
         </div>
       </div>
@@ -181,10 +181,10 @@ export default function AdminBeneficiarySourcesPage() {
               Beneficiaries-Quellen-Verwaltung
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
-              Pro Begueenstigtenverzeichnis-Quelle eine Konfiguration: URL, Field-
+              Pro Begünstigtenverzeichnis-Quelle eine Konfiguration: URL, Field-
               Mapping, Validierungen, Update-Frequenz. Der Worker liest die
-              Configs nachts und fuehrt einen Smart-Mode-Harvest aus — keine
-              Code-Aenderung mehr noetig, wenn ein neues Bundesland dazukommt.
+              Configs nachts und führt einen Smart-Mode-Harvest aus — keine
+              Code-Änderung mehr nötig, wenn ein neues Bundesland dazukommt.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -661,7 +661,7 @@ function ConfigTab({
       <Section title="Notizen">
         <TextAreaField label="Coverage-Hinweis" value={draft.coverage_note || ''}
           onChange={(v) => setDraft({ ...draft, coverage_note: v || null })} />
-        <TextAreaField label="Hinweis fuer den Pruefer" value={draft.notes_for_pruefer || ''}
+        <TextAreaField label="Hinweis für den Prüfer" value={draft.notes_for_pruefer || ''}
           onChange={(v) => setDraft({ ...draft, notes_for_pruefer: v || null })} />
       </Section>
 
@@ -831,7 +831,7 @@ function MappingTab({
             onClick={addValidation}
             className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg border border-dashed border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900"
           >
-            <Plus size={12} /> Regel hinzufuegen
+            <Plus size={12} /> Regel hinzufügen
           </button>
         </div>
       </Section>

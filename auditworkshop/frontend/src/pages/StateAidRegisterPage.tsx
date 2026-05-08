@@ -303,9 +303,9 @@ function StateAidRegisterPageInner() {
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight lg:text-4xl">Beihilfe-Register</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-emerald-50/85 lg:text-base">
-              Lokal gespeicherte, oeffentlich zugaengliche Beihilfe-Transparenzdaten —
+              Lokal gespeicherte, öffentlich zugängliche Beihilfe-Transparenzdaten —
               Suche, Karte, Auswertung. Verlinkt SA-Referenzen auf die Competition
-              Cases Search. Faellt das Internet aus, bleibt die Suche verfuegbar.
+              Cases Search. Fällt das Internet aus, bleibt die Suche verfügbar.
             </p>
           </div>
           <div className="rounded-[28px] border border-white/15 bg-black/15 p-5 backdrop-blur">
@@ -313,7 +313,7 @@ function StateAidRegisterPageInner() {
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
               <Stat label="Awards" value={status?.total_awards.toLocaleString('de-DE') ?? '—'} />
               <Stat label="Aktive Quellen" value={status?.sources_enabled ?? '—'} />
-              <Stat label="Harvest-Laeufe" value={status?.total_runs ?? '—'} />
+              <Stat label="Harvest-Läufe" value={status?.total_runs ?? '—'} />
             </div>
             {sources.filter((s) => (s.record_count ?? 0) > 0).length > 0 && (
               <div className="mt-4 space-y-1 text-[11px] text-white/70">
@@ -337,9 +337,9 @@ function StateAidRegisterPageInner() {
         <div className="flex items-start gap-3 text-sm leading-6 text-amber-900 dark:text-amber-100">
           <Info size={18} className="mt-0.5 shrink-0" />
           <p>
-            Dieses Register bildet lokal gespeicherte, oeffentlich zugaengliche
-            Beihilfe-Transparenzdaten ab. Die Vollstaendigkeit haengt vom
-            Veroeffentlichungsweg der Mitgliedstaaten und vom letzten
+            Dieses Register bildet lokal gespeicherte, öffentlich zugängliche
+            Beihilfe-Transparenzdaten ab. Die Vollständigkeit hängt vom
+            Veröffentlichungsweg der Mitgliedstaaten und vom letzten
             Harvest-Zeitpunkt ab.
             {status?.coverage_note ? <span className="ml-1 opacity-80">{status.coverage_note}</span> : null}
           </p>
@@ -555,7 +555,7 @@ function StateAidRegisterPageInner() {
                 <div className="flex-1">
                   <div className="text-sm font-semibold text-slate-900 dark:text-white">Datenstand</div>
                   <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Aktuelle Indexgroesse und Quellen-Health auf einen Blick.
+                    Aktuelle Indexgröße und Quellen-Health auf einen Blick.
                   </div>
                 </div>
               </div>
@@ -621,7 +621,7 @@ function StateAidRegisterPageInner() {
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Land</div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(['DE', 'AT', ''] as const).map((code) => {
-                    const label = code === '' ? 'Alle Laender' : code === 'DE' ? 'DE Deutschland' : 'AT Oesterreich';
+                    const label = code === '' ? 'Alle Länder' : code === 'DE' ? 'DE Deutschland' : 'AT Österreich';
                     const active = filters.country_code === code;
                     return (
                       <button
@@ -710,7 +710,7 @@ function StateAidRegisterPageInner() {
               <div>
                 <div className="text-sm font-semibold text-slate-900 dark:text-white">Geo-Verteilung der Awards</div>
                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  NUTS-Aggregation als Kreise oder Choropleth-Flaechen.
+                  NUTS-Aggregation als Kreise oder Choropleth-Flächen.
                 </div>
               </div>
             </div>
@@ -844,17 +844,17 @@ function StatsTab({ loading, error, stats, filters }: { loading: boolean; error:
     <section className="grid gap-4 lg:grid-cols-2">
       <div className="lg:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_18px_60px_-48px_rgba(15,23,42,0.45)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
         <div className="text-xs text-slate-500 dark:text-slate-400">
-          Statistiken als Excel-Datei mit fünf Sheets exportieren (Behoerden, Beguenstigte, NUTS, Instrumente, Jahre).
+          Statistiken als Excel-Datei mit fünf Sheets exportieren (Behörden, Begünstigte, NUTS, Instrumente, Jahre).
         </div>
         <ExportButtons
           formats={['xlsx']}
           onExport={handleStatsExport}
         />
       </div>
-      <BucketCard title="Top-Beguenstigte" subtitle="Hauptempfaenger der Beihilfen" buckets={stats.top_beneficiaries} icon={Building2} />
-      <BucketCard title="Top-Behoerden" subtitle="Bewilligende Stellen" buckets={stats.top_authorities} icon={Layers} />
-      <BucketCard title="Top-Beihilfeziele" subtitle="Foerderzwecke und Programme" buckets={stats.top_objectives} icon={Sparkles} />
-      <BucketCard title="Top-Beihilfeinstrumente" subtitle="Zuschuss, Darlehen, Buergschaft …" buckets={stats.top_instruments} icon={Banknote} />
+      <BucketCard title="Top-Begünstigte" subtitle="Hauptempfänger der Beihilfen" buckets={stats.top_beneficiaries} icon={Building2} />
+      <BucketCard title="Top-Behörden" subtitle="Bewilligende Stellen" buckets={stats.top_authorities} icon={Layers} />
+      <BucketCard title="Top-Beihilfeziele" subtitle="Förderzwecke und Programme" buckets={stats.top_objectives} icon={Sparkles} />
+      <BucketCard title="Top-Beihilfeinstrumente" subtitle="Zuschuss, Darlehen, Bürgschaft …" buckets={stats.top_instruments} icon={Banknote} />
       {stats.by_year && stats.by_year.length > 0 && (
         <div className="lg:col-span-2 rounded-[30px] border border-slate-200/80 bg-white/88 p-5 shadow-[0_24px_80px_-52px_rgba(15,23,42,0.62)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
           <div className="mb-3 flex items-center gap-3">
@@ -921,7 +921,7 @@ function BucketCard({
             {subtitle && <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>}
           </div>
         </div>
-        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Keine Daten fuer den aktuellen Filter.</p>
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Keine Daten für den aktuellen Filter.</p>
       </div>
     );
   }
@@ -974,9 +974,9 @@ function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPi
               <FileSearch size={20} />
             </div>
             <div className="flex-1">
-              <div className="text-sm font-medium text-slate-900 dark:text-white">Registeruebergreifendes Dossier</div>
+              <div className="text-sm font-medium text-slate-900 dark:text-white">Registerübergreifendes Dossier</div>
               <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Foerdervorhaben, Beihilfen und Sanktionen in einer Ansicht.
+                Fördervorhaben, Beihilfen und Sanktionen in einer Ansicht.
               </div>
             </div>
           </div>
@@ -987,7 +987,7 @@ function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPi
                 type="text"
                 value={query}
                 onChange={(e) => onQueryChange(e.target.value)}
-                placeholder="Unternehmensname fuer das Dossier — registeruebergreifend …"
+                placeholder="Unternehmensname für das Dossier — registerübergreifend …"
                 className="w-full rounded-[24px] border border-slate-200 bg-white/90 py-3 pl-11 pr-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30"
               />
             </div>
@@ -1037,9 +1037,9 @@ function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPi
         <div className="flex items-start gap-3 rounded-[26px] border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800 dark:border-rose-500/40 dark:bg-rose-950/50 dark:text-rose-100">
           <ShieldAlert size={18} className="mt-0.5 shrink-0" />
           <div>
-            <div>Sanktionslisten-Treffer fuer „{dossier.query}“ gefunden.</div>
+            <div>Sanktionslisten-Treffer für „{dossier.query}“ gefunden.</div>
             <div className="mt-1 text-xs font-normal opacity-90">
-              Manuell pruefen — Geburtsdatum, Land und Identifier abgleichen.
+              Manuell prüfen — Geburtsdatum, Land und Identifier abgleichen.
             </div>
           </div>
         </div>
@@ -1051,7 +1051,7 @@ function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPi
             <SummaryCard
               icon={BadgeCheck}
               tone="emerald"
-              label="Foerdervorhaben"
+              label="Fördervorhaben"
               count={dossier.beneficiaries.count}
               hint="Begünstigtenverzeichnis"
             />
@@ -1067,7 +1067,7 @@ function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPi
               tone={dossier.sanctions.count > 0 ? 'rose' : 'slate'}
               label="Sanktionen"
               count={dossier.sanctions.count}
-              hint={dossier.sanctions.count > 0 ? 'Treffer pruefen' : 'kein Treffer'}
+              hint={dossier.sanctions.count > 0 ? 'Treffer prüfen' : 'kein Treffer'}
             />
           </div>
 
@@ -1122,10 +1122,10 @@ function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPi
 
             <DossierColumn
               icon={BadgeCheck}
-              title="Foerdervorhaben"
-              subtitle="Beguenstigtenverzeichnisse"
+              title="Fördervorhaben"
+              subtitle="Begünstigtenverzeichnisse"
               accent="cyan"
-              empty="Keine Treffer im Beguenstigtenverzeichnis."
+              empty="Keine Treffer im Begünstigtenverzeichnis."
             >
               {dossier.beneficiaries.hits.slice(0, 12).map((h, i) => (
                 <div key={i} className="rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
@@ -1168,8 +1168,8 @@ function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPi
 
       {!dossier && !busy && !error && (
         <div className="rounded-[24px] border border-dashed border-slate-300 bg-white/80 px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
-          Geben Sie einen Unternehmensnamen ein, um ein registeruebergreifendes Dossier
-          zu erzeugen — Foerdervorhaben, Beihilfen, Sanktionen.
+          Geben Sie einen Unternehmensnamen ein, um ein registerübergreifendes Dossier
+          zu erzeugen — Fördervorhaben, Beihilfen, Sanktionen.
         </div>
       )}
     </section>

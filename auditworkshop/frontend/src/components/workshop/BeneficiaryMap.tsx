@@ -289,7 +289,7 @@ export default function BeneficiaryMap({ className, countryCode = 'DE' }: Benefi
           <p className="text-xs text-slate-400 mt-1">
             {countryCode === 'AT'
               ? 'Quellen: efre.gv.at/projekte/projektlandkarte und esf.at/projekte/liste-der-vorhaben-2/.'
-              : 'Der automatische Worker hat fuer diese Auswahl noch keine auswertbaren Verzeichnisse geladen.'}
+              : 'Der automatische Worker hat für diese Auswahl noch keine auswertbaren Verzeichnisse geladen.'}
           </p>
         </div>
       ) : (
