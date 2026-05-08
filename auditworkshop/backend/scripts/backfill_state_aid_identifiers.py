@@ -79,7 +79,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="Alle TAM-Datensaetze mit source_url pruefen. Default: nur bekannte Kennungsart-Labels.",
     )
     parser.add_argument("--sleep", type=float, default=0.2, help="Pause zwischen TAM-Requests.")
-    parser.add_argument("--commit-every", type=int, default=100, help="Zwischencommit nach N Updates.")
+    parser.add_argument(
+        "--commit-every", type=int, default=10,
+        help=(
+            "Zwischencommit nach N Updates. Default 10, damit der Fortschritt "
+            "auch bei Long-Running-Workern (--limit 999999) sofort in der DB "
+            "sichtbar wird und ein Crash kein Batch-Verlust bedeutet."
+        ),
+    )
+    parser.add_argument(
+        "--worker-mod", type=int, default=1,
+        help="Sharding-Modul fuer parallele Worker. Default 1 (kein Sharding).",
+    )
+    parser.add_argument(
+        "--worker-id", type=int, default=0,
+        help=(
+            "Sharding-Index 0..worker-mod-1. Beispiel: 4 parallele Worker -> "
+            "--worker-mod 4 --worker-id 0/1/2/3."
+        ),
+    )
     return parser
 
 
@@ -107,6 +125,21 @@ def main() -> int:
             q = q.filter(
                 StateAidAward.beneficiary_identifier.in_(IDENTIFIER_TYPE_LABELS),
             )
+        if args.worker_mod > 1:
+            # Sharding ueber Hex-Praefix der UUID. id ist String(36), erste
+            # Zeichen sind gleichverteilt 0-f (UUID v4). Bei worker-mod=8
+            # verteilen wir je 2 Hex-Zeichen pro Worker (0/1, 2/3, ..., e/f).
+            from sqlalchemy import or_ as _or
+            hex_chars = "0123456789abcdef"
+            chunk_size = max(1, 16 // args.worker_mod)
+            start = args.worker_id * chunk_size
+            end = start + chunk_size if args.worker_id < args.worker_mod - 1 else 16
+            allowed = hex_chars[start:end]
+            log.info(
+                "Sharding aktiv: worker %d/%d (Hex-Praefixe %s)",
+                args.worker_id, args.worker_mod, allowed,
+            )
+            q = q.filter(_or(*[StateAidAward.id.like(f"{c}%") for c in allowed]))
 
         rows = q.order_by(StateAidAward.id).limit(args.limit).all()
         log.info("Kandidaten: %d (dry=%s)", len(rows), args.dry)
