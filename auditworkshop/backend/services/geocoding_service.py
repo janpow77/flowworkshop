@@ -247,6 +247,112 @@ def _find_column(columns: list[str], role: str) -> str | None:
     return None
 
 
+def _matches_role_label(value: object, role: str) -> bool:
+    text_value = str(value or "").strip()
+    if not text_value or len(text_value) > 140:
+        return False
+    if role == "kosten" and re.search(r"(instrument|rate|satz|quote|percent|proz|%)", text_value, re.IGNORECASE):
+        return False
+    return any(re.search(pattern, text_value, re.IGNORECASE) for pattern in COLUMN_PATTERNS.get(role, []))
+
+
+HEADER_LABEL_PATTERNS: dict[str, list[str]] = {
+    "name": [
+        r"^name$", r"name.*begünstig", r"^beneficiary$", r"beneficiar.*name", r"zuwendungsempf",
+    ],
+    "projekt": [
+        r"operation.*name", r"bezeichnung.*vorhaben", r"projektname", r"^operation$",
+    ],
+    "kosten": [
+        r"total.*cost", r"gesamtkosten", r"förderfähige.*kosten", r"project.*cost",
+    ],
+    "standort": [
+        r"standortindikator", r"location[\s\S]*indicator", r"geoloc", r"investitionsort",
+    ],
+    "plz": [
+        r"postleitzahl", r"postcode", r"postal.*code", r"^plz$",
+    ],
+    "ort": [
+        r"^ort$", r"location$", r"project.*location",
+    ],
+    "landkreis": [
+        r"bezirk", r"district", r"landkreis",
+    ],
+    "sz": [
+        r"intervention.*field", r"interven.?tion.*type", r"interventionsbereich", r"art.*intervention",
+    ],
+    "beschreibung": [
+        r"purpose", r"achievement", r"zweck", r"errungenschaft", r"summary",
+    ],
+    "aktenzeichen": [
+        r"operation.*id", r"projektnummer", r"aktenzeichen",
+    ],
+    "country": [
+        r"^country$", r"^land$",
+    ],
+    "beginn": [
+        r"start.*date", r"datum.*beginn", r"projektbeginn",
+    ],
+    "ende": [
+        r"end.*date", r"datum.*ende", r"datum.*abschluss", r"projektende",
+    ],
+}
+
+
+def _header_label_matches_role(value: object, role: str) -> bool:
+    text_value = str(value or "").strip()
+    if not text_value or len(text_value) > 90:
+        return False
+    if re.search(r"\d{4}-\d{2}-\d{2}|\d+[,.]\d+", text_value):
+        return False
+    return any(re.search(pattern, text_value, re.IGNORECASE) for pattern in HEADER_LABEL_PATTERNS.get(role, []))
+
+
+def _infer_columns_from_embedded_header_rows(table_name: str, columns: list[str]) -> dict[str, str]:
+    """Erkennt Dateien, bei denen die eigentlichen Header als erste Datenzeile
+    importiert wurden. Das passiert bei einigen Transparenzlisten mit
+    mehrzeiligen Titelbloecken vor der eigentlichen Tabellenkopfzeile.
+    """
+    inferred: dict[str, str] = {}
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(f'SELECT * FROM "{table_name}" LIMIT 5')).fetchall()
+    except Exception:
+        return inferred
+
+    for row in rows:
+        row_dict = dict(row._mapping)
+        label_hits = sum(
+            1
+            for value in row_dict.values()
+            if any(_header_label_matches_role(value, role) for role in HEADER_LABEL_PATTERNS)
+        )
+        if label_hits < 2:
+            continue
+        for col in columns:
+            value = row_dict.get(col)
+            for role in HEADER_LABEL_PATTERNS:
+                if role in inferred:
+                    continue
+                if _header_label_matches_role(value, role):
+                    inferred[role] = col
+    return inferred
+
+
+def _is_likely_rate_column(column_name: str | None) -> bool:
+    if not column_name:
+        return False
+    return bool(re.search(r"(satz|rate|quote|percent|proz|%)", column_name, re.IGNORECASE))
+
+
+def _looks_like_embedded_header_row(row_dict: dict) -> bool:
+    label_hits = 0
+    for value in row_dict.values():
+        if any(_header_label_matches_role(value, role) for role in HEADER_LABEL_PATTERNS):
+            label_hits += 1
+    return label_hits >= 2
+
+
 def detect_columns(source: str) -> dict[str, str | None]:
     """
     Erkennt automatisch welche Spalten Name, Standort, Kosten etc. enthalten.
@@ -269,6 +375,15 @@ def detect_columns(source: str) -> dict[str, str | None]:
     mapping = {}
     for role in COLUMN_PATTERNS:
         mapping[role] = _find_column(columns, role)
+
+    embedded_header_mapping = _infer_columns_from_embedded_header_rows(table_name, columns)
+    for role, col in embedded_header_mapping.items():
+        if not col:
+            continue
+        if not mapping.get(role):
+            mapping[role] = col
+        elif role == "kosten" and _is_likely_rate_column(mapping.get(role)):
+            mapping[role] = col
 
     # Inhalts-basierter Fallback: wenn KEINE Standort-Information per
     # Spaltennamen erkannt wurde (Brandenburg ESF, NRW ESF mit verstümmelten
@@ -627,9 +742,9 @@ def geocode_single(standort: str, country_code: str | None = None) -> dict | Non
     cache_key = f"{cc.lower()}::{base_key}"
 
     # Cache: zuerst landesspezifisch, dann legacy ohne Praefix
-    if cache_key in _cache:
+    if cache_key in _cache and _cache[cache_key]:
         return _cache[cache_key]
-    if cc == "DE" and base_key in _cache:
+    if cc == "DE" and base_key in _cache and _cache[base_key]:
         return _cache[base_key]
 
     search_term, country = _parse_location(standort, country_code=cc)
@@ -639,12 +754,12 @@ def geocode_single(standort: str, country_code: str | None = None) -> dict | Non
     # Fallback: Wenn "PLZ Ort" nicht im Cache, versuche nur "Ort"
     search_lower = search_term.strip().lower()
     fallback_key = f"{cc.lower()}::{search_lower}"
-    if fallback_key in _cache:
+    if fallback_key in _cache and _cache[fallback_key]:
         _cache[cache_key] = _cache[fallback_key]
         return _cache[cache_key]
     ort_only = re.sub(r'^\d{4,5}\s*', '', search_lower).strip()
     ort_key = f"{cc.lower()}::{ort_only}" if ort_only else None
-    if ort_key and ort_key in _cache:
+    if ort_key and ort_key in _cache and _cache[ort_key]:
         _cache[cache_key] = _cache[ort_key]
         return _cache[cache_key]
 
@@ -831,12 +946,12 @@ def get_beneficiary_map_data(source: str, country_code: str | None = None) -> di
     elif ort_col:
         select_parts.append(f'"{ort_col}" AS standort')
         where_clauses = [f'"{ort_col}" IS NOT NULL']
-    elif landkreis_col:
-        select_parts.append(f'"{landkreis_col}" AS standort')
-        where_clauses = [f'"{landkreis_col}" IS NOT NULL']
     elif plz_col:
         select_parts.append(f'"{plz_col}" AS standort')
         where_clauses = [f'"{plz_col}" IS NOT NULL']
+    elif landkreis_col:
+        select_parts.append(f'"{landkreis_col}" AS standort')
+        where_clauses = [f'"{landkreis_col}" IS NOT NULL']
     else:
         # Nur lat/lon vorhanden -> Standort als Fallback aus Koordinaten zusammensetzen
         select_parts.append("'' AS standort")
@@ -872,6 +987,8 @@ def get_beneficiary_map_data(source: str, country_code: str | None = None) -> di
     results = []
     for row in rows:
         row_dict = dict(row._mapping)
+        if _looks_like_embedded_header_row(row_dict):
+            continue
         standort = str(row_dict.get("standort", "") or "").strip()
 
         geo: dict | None = None
