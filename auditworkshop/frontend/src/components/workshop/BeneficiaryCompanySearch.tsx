@@ -90,6 +90,10 @@ export default function BeneficiaryCompanySearch({ countryCode, onResultsChange 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // Welche Treffer auf der Karte angezeigt werden sollen. Initial: alle.
+  // Damit kann der Pruefer einzelne Treffer ein-/ausblenden, ohne die Suche
+  // neu starten zu muessen.
+  const [mapSelected, setMapSelected] = useState<Set<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
   const exportApi = useExport();
 
@@ -135,6 +139,7 @@ export default function BeneficiaryCompanySearch({ countryCode, onResultsChange 
     setResponse(null);
     setError(null);
     setExpanded(new Set());
+    setMapSelected(new Set());
   };
 
   const toggleExpand = (name: string) => {
@@ -146,13 +151,31 @@ export default function BeneficiaryCompanySearch({ countryCode, onResultsChange 
     });
   };
 
+  const toggleMapSelection = (name: string) => {
+    setMapSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
   const companies = useMemo(() => response?.companies ?? [], [response]);
 
-  // Treffer-Firmennamen nach oben melden (für Karten-Filter).
-  // Beim Unmount: Liste leeren, damit die Karte zum Default zurückkehrt.
+  // Bei jeder neuen Trefferliste alle automatisch fuer die Karte aktivieren.
   useEffect(() => {
-    onResultsChange?.(companies.map((c) => c.company_name));
-  }, [companies, onResultsChange]);
+    setMapSelected(new Set(companies.map((c) => c.company_name)));
+  }, [companies]);
+
+  const setAllMapSelection = (on: boolean) => {
+    setMapSelected(on ? new Set(companies.map((c) => c.company_name)) : new Set());
+  };
+
+  // Aktuell ausgewaehlte Karten-Filter nach oben melden (Workspace -> Map).
+  // Beim Unmount: Liste leeren, damit die Karte zum Default zurueckkehrt.
+  useEffect(() => {
+    onResultsChange?.(Array.from(mapSelected));
+  }, [mapSelected, onResultsChange]);
   useEffect(() => {
     return () => {
       onResultsChange?.([]);
@@ -293,12 +316,21 @@ export default function BeneficiaryCompanySearch({ countryCode, onResultsChange 
               {companies.length > 0 && (
                 <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                   {response.summary.records_scanned.toLocaleString('de-DE')} Datensätze geprüft · Gesamtvolumen{' '}
-                  {formatEur(totalVolume)}
+                  {formatEur(totalVolume)} · {mapSelected.size} von {companies.length} auf Karte
                 </div>
               )}
             </div>
             {companies.length > 0 && (
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAllMapSelection(mapSelected.size < companies.length)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-950/30 dark:text-rose-200 dark:hover:bg-rose-950/50"
+                  title="Alle Treffer auf der Karte ein- oder ausblenden"
+                >
+                  <MapPin size={12} />
+                  {mapSelected.size < companies.length ? 'Alle auf Karte' : 'Karte leeren'}
+                </button>
                 <button
                   type="button"
                   onClick={handleXlsxExport}
@@ -339,6 +371,8 @@ export default function BeneficiaryCompanySearch({ countryCode, onResultsChange 
                   countryCode={countryCode}
                   expanded={expanded.has(c.company_name)}
                   onToggle={() => toggleExpand(c.company_name)}
+                  onMap={mapSelected.has(c.company_name)}
+                  onToggleMap={() => toggleMapSelection(c.company_name)}
                 />
               ))}
             </ul>
@@ -354,9 +388,11 @@ interface RowProps {
   countryCode: CountryCode | '';
   expanded: boolean;
   onToggle: () => void;
+  onMap: boolean;
+  onToggleMap: () => void;
 }
 
-function CompanyRow({ hit, countryCode, expanded, onToggle }: RowProps) {
+function CompanyRow({ hit, countryCode, expanded, onToggle, onMap, onToggleMap }: RowProps) {
   const confidence = hit.match_confidence ?? 'low';
   const badge = CONFIDENCE_BADGE[confidence];
   const standortPreview = hit.standorte.slice(0, 2).join(', ');
@@ -365,11 +401,27 @@ function CompanyRow({ hit, countryCode, expanded, onToggle }: RowProps) {
   return (
     <li className="px-4 py-3 transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
       <div className="flex flex-wrap items-start justify-between gap-3">
+        {/* Karten-Checkbox */}
+        <label
+          className="mt-0.5 inline-flex shrink-0 cursor-pointer items-center gap-1.5 self-center rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-medium text-slate-600 transition hover:border-rose-300 hover:bg-rose-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-rose-500/40 dark:hover:bg-rose-950/30"
+          title="Auf Karte anzeigen"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={onMap}
+            onChange={onToggleMap}
+            className="h-3 w-3 cursor-pointer accent-rose-600"
+            aria-label={`„${hit.company_name}" auf Karte ${onMap ? 'ausblenden' : 'anzeigen'}`}
+          />
+          <MapPin size={11} className={onMap ? 'text-rose-600' : 'text-slate-400'} />
+        </label>
+
         {/* Linke Spalte: Firma + Kontextdaten */}
         <button
           type="button"
           onClick={onToggle}
-          className="group flex flex-1 min-w-[260px] items-start gap-3 text-left"
+          className="group flex flex-1 min-w-[240px] items-start gap-3 text-left"
           aria-expanded={expanded}
         >
           <ChevronRight
@@ -412,7 +464,7 @@ function CompanyRow({ hit, countryCode, expanded, onToggle }: RowProps) {
           className="inline-flex shrink-0 items-center gap-1.5 self-center rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-medium text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-950/30 dark:text-indigo-200 dark:hover:bg-indigo-950/50"
         >
           <ClipboardCheck size={12} />
-          In Auswertung
+          In Auswertung übernehmen
         </Link>
       </div>
 
