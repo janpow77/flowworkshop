@@ -48,16 +48,6 @@ export default function PublicShell() {
               <Banknote size={14} /> Beihilfe-Register
             </Link>
             <Link
-              to="/audit-report"
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm transition-colors ${
-                loc.pathname === '/audit-report'
-                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200'
-                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-              }`}
-            >
-              <ClipboardCheck size={14} /> Auswertung
-            </Link>
-            <Link
               to="/sanktionslisten"
               className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm transition-colors ${
                 loc.pathname === '/sanktionslisten'
@@ -66,6 +56,16 @@ export default function PublicShell() {
               }`}
             >
               <Shield size={14} /> Sanktionslisten
+            </Link>
+            <Link
+              to="/audit-report"
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm transition-colors ${
+                loc.pathname === '/audit-report'
+                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200'
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+            >
+              <ClipboardCheck size={14} /> Auswertung
             </Link>
           </nav>
           <div className="flex items-center gap-2">

@@ -2052,7 +2052,7 @@ def _collect_sources_explanation(db: Session) -> list[SourceExplanation]:
         name="EU-State-Aid Transparency Aid Module (TAM)",
         url="https://webgate.ec.europa.eu/competition/transparency/public",
         description=(
-            "Veroeffentlichungspflichtige Beihilfen nach Art. 9 Abs. 1 lit. c) "
+            "Veröffentlichungspflichtige Beihilfen nach Art. 9 Abs. 1 lit. c) "
             "VO (EU) 651/2014 (AGVO) — i.d.R. > 100.000 EUR "
             "(Agrarbereich >= 10.000 EUR)."
         ),
@@ -2060,7 +2060,7 @@ def _collect_sources_explanation(db: Session) -> list[SourceExplanation]:
         record_count=int(sa_record_count),
     ))
 
-    # 2. Beguenstigtenverzeichnis (Transparenzlisten)
+    # 2. Begünstigtenverzeichnis (Transparenzlisten)
     ben_record_count = 0
     try:
         from services.dataframe_service import get_beneficiary_sources
@@ -2070,12 +2070,12 @@ def _collect_sources_explanation(db: Session) -> list[SourceExplanation]:
         log.exception("Audit-Report: Beneficiaries-Quelle-Stats fehlgeschlagen")
 
     out.append(SourceExplanation(
-        name="Beguenstigtenverzeichnis (Transparenzlisten)",
-        url="(lokale Uploads der EFRE-/ESF-/JTF-Foerderbehoerden)",
+        name="Begünstigtenverzeichnis (Transparenzlisten)",
+        url="(lokale Uploads der EFRE-/ESF-/JTF-Förderbehörden)",
         description=(
-            "Hochgeladene Transparenzlisten der Bundeslaender (Hessen, "
-            "Niedersachsen, ...) und Oesterreichs (BMK). EFRE/ESF/JTF-"
-            "gefoerderte Vorhaben gemaess Art. 49/69 VO (EU) 2021/1060."
+            "Hochgeladene Transparenzlisten der Bundesländer (Hessen, "
+            "Niedersachsen, …) und Österreichs (BMK). EFRE/ESF/JTF-"
+            "geförderte Vorhaben gemäß Art. 49/69 VO (EU) 2021/1060."
         ),
         last_data_update=None,
         record_count=int(ben_record_count),
