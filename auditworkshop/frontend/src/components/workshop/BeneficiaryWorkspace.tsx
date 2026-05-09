@@ -231,7 +231,7 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
   return (
     <div className="space-y-5">
       {/* ── Hero (Workshop-Branding nur wenn eingeloggt; Public: clean) ─ */}
-      <section className="relative overflow-hidden rounded-[32px] border border-white/70 bg-[linear-gradient(135deg,rgba(190,18,60,0.96),rgba(225,29,72,0.92)_45%,rgba(245,158,11,0.88))] px-7 py-8 text-white shadow-[0_34px_100px_-52px_rgba(15,23,42,0.95)]">
+      <section className="relative overflow-hidden rounded-[32px] border border-white/70 bg-gradient-to-br from-rose-700 via-orange-700 to-amber-600 px-7 py-8 text-white shadow-[0_34px_100px_-52px_rgba(15,23,42,0.95)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),rgba(255,255,255,0)_40%)]" />
         <div className="relative grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <div>
