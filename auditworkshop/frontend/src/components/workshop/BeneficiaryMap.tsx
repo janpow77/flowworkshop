@@ -174,9 +174,10 @@ interface ChoroplethResponse {
   max_value: number;
 }
 
-// 5-stufige sequentielle Rose-Skala (hell → dunkel). Passt zum Workshop-Farbton
-// (Begünstigtenverzeichnisse nutzen rose-500 als Akzent).
-const CHOROPLETH_BINS = ['#fff1f2', '#fecdd3', '#fb7185', '#e11d48', '#9f1239'];
+// 5-stufige sequentielle Amber→Orange-Skala (hell → dunkel). Passt zum
+// Workshop-Akzent (Cards verwenden bereits amber/orange-Verlauf in den
+// Stat-Tiles und im Choropleth-Pin-Hervorheber).
+const CHOROPLETH_BINS = ['#fffbeb', '#fde68a', '#fbbf24', '#f97316', '#c2410c'];
 const CHOROPLETH_NEUTRAL = '#e5e7eb'; // Region ohne Daten
 
 // Bestimmt die Farbe per Quintil-Klassifizierung. Werte == 0 -> neutral grau.
@@ -558,7 +559,7 @@ export default function BeneficiaryMap({
                 onClick={() => setChoroplethActive((v) => !v)}
                 className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${
                   choroplethActive
-                    ? 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                    ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
                     : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600'
                 }`}
                 title={choroplethActive ? 'Heatmap (Regionen einfärben) deaktivieren' : 'Heatmap: Regionen nach Vorhabenanzahl einfärben'}
@@ -571,7 +572,7 @@ export default function BeneficiaryMap({
                 <select
                   value={choroplethLevel}
                   onChange={(e) => setChoroplethLevel(Number(e.target.value) as 1 | 3)}
-                  className="text-xs px-2 py-1 rounded border border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                  className="text-xs px-2 py-1 rounded border border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
                   aria-label="Heatmap-Granularität"
                   title="Bundesland (NUTS-1) oder Kreis (NUTS-3)"
                 >
@@ -745,7 +746,7 @@ export default function BeneficiaryMap({
                               <span className="shrink-0 text-slate-500 dark:text-slate-400 tabular-nums">{r.value_label}</span>
                             </div>
                             <div className="mt-0.5 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                              <div className="h-full rounded-full bg-rose-500" style={{ width: `${width}%` }} />
+                              <div className="h-full rounded-full bg-orange-500" style={{ width: `${width}%` }} />
                             </div>
                           </li>
                         );
