@@ -391,27 +391,29 @@ _GEO_DIR = _Path(__file__).resolve().parent.parent / "data" / "geo"
 _GEOJSON_PATHS: dict[tuple[str, int], _Path] = {
     ("DE", 1): _GEO_DIR / "nuts1_de.geojson",
     ("AT", 1): _GEO_DIR / "nuts1_at.geojson",
+    ("DE", 3): _GEO_DIR / "nuts3_de.geojson",
+    ("AT", 3): _GEO_DIR / "nuts3_at.geojson",
 }
 
 
 @router.get("/nuts-geojson")
 def get_nuts_geojson(
     country_code: str = Query("DE", description="DE oder AT"),
-    level: int = Query(1, ge=1, le=3, description="1 = Bundesland-Polygone"),
+    level: int = Query(1, ge=1, le=3, description="1 = Bundesland (NUTS-1/-2), 3 = Kreis (NUTS-3)"),
 ):
     """Liefert das NUTS-Polygon-GeoJSON fuer die Choropleth-Karte.
 
-    Aktuell unterstuetzt: DE level=1 (NUTS-1, 16 Bundeslaender) und
-    AT level=1 (NUTS-2, 9 Bundeslaender). NUTS-3-GeoJSONs sind nicht im
-    Repo — Aufrufer faellt auf Centroids zurueck.
+    Unterstuetzt: DE/AT auf Level 1 (NUTS-1/-2 Bundeslaender) und
+    Level 3 (NUTS-3 Kreise/kreisfreie Staedte; Quelle: Eurostat
+    GISCO NUTS-2021 1:10M, EPSG:4326).
     """
     cc = _normalize_country_code(country_code) or "DE"
     if cc not in {"DE", "AT"}:
         raise HTTPException(400, f"country_code '{cc}' wird nicht unterstuetzt.")
-    if level != 1:
+    if level not in {1, 3}:
         raise HTTPException(
             404,
-            "GeoJSON nur fuer level=1 (Bundesland-Polygone) verfuegbar.",
+            "GeoJSON nur fuer level=1 (Bundesland) oder level=3 (Kreis) verfuegbar.",
         )
 
     path = _GEOJSON_PATHS.get((cc, level))
