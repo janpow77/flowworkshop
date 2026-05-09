@@ -794,7 +794,10 @@ def get_stats(
         )
         return [
             {
+                # Frontend erwartet `label` (siehe StateAidStatsBucket); `key`
+                # bleibt fuer Backward-Compat erhalten.
                 "key": r.key,
+                "label": r.key,
                 "count": int(r.count or 0),
                 "total_eur": _to_float(r.total_eur),
             }
