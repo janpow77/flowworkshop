@@ -591,7 +591,7 @@ function ConfigTab({
       setHarvestResult(d);
       await onChanged();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Harvest fehlgeschlagen');
+      setActionError(e instanceof Error ? e.message : 'Aktualisierung fehlgeschlagen');
     } finally {
       setHarvesting(false);
     }
@@ -677,7 +677,7 @@ function ConfigTab({
               className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
             >
               {harvesting ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-              Harvest jetzt
+              Jetzt aktualisieren
             </button>
             <button
               onClick={onToggleEnabled}

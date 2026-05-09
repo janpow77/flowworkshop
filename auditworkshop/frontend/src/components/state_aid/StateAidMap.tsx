@@ -436,7 +436,7 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
             unmappable,
             disclaimer:
               'Quelle: EU TAM und nationale Beihilfe-Register (Art. 9 Abs. 1 lit. c) VO (EU) Nr. 651/2014). '
-              + 'NUTS-Aggregation, keine Adressdaten. Datenstand abhängig vom letzten Harvest pro Quelle.',
+              + 'NUTS-Aggregation, keine Adressdaten. Datenstand abhängig von der letzten Aktualisierung pro Quelle.',
           },
         };
         const blob = new Blob([JSON.stringify(fc, null, 2)], {

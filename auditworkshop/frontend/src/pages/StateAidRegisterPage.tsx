@@ -225,7 +225,7 @@ function StateAidRegisterPageInner() {
               </div>
             )}
             <div className="mt-3 text-[10px] uppercase tracking-[0.18em] text-white/50">
-              Letzter Harvest <span className="ml-1 font-mono normal-case tracking-normal text-white/70">{formatDateTime(status?.last_harvest_at ?? null)}</span>
+              Letzte Aktualisierung <span className="ml-1 font-mono normal-case tracking-normal text-white/70">{formatDateTime(status?.last_harvest_at ?? null)}</span>
             </div>
           </div>
         </div>
@@ -238,8 +238,8 @@ function StateAidRegisterPageInner() {
           <p>
             Dieses Register bildet lokal gespeicherte, öffentlich zugängliche
             Beihilfe-Transparenzdaten ab. Die Vollständigkeit hängt vom
-            Veröffentlichungsweg der Mitgliedstaaten und vom letzten
-            Harvest-Zeitpunkt ab.
+            Veröffentlichungsweg der Mitgliedstaaten und vom Zeitpunkt der
+            letzten Aktualisierung ab.
             {status?.coverage_note ? <span className="ml-1 opacity-80">{status.coverage_note}</span> : null}
           </p>
         </div>

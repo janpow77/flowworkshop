@@ -1068,7 +1068,7 @@ function CoverageSection({ data }: { data: AuditReportData }) {
                 <th scope="col" className="px-4 py-2 text-right font-semibold">Lokal</th>
                 <th scope="col" className="px-4 py-2 text-right font-semibold">Erwartet</th>
                 <th scope="col" className="px-4 py-2 text-right font-semibold">Coverage</th>
-                <th scope="col" className="px-4 py-2 text-left font-semibold">Letzter Harvest</th>
+                <th scope="col" className="px-4 py-2 text-left font-semibold">Letzte Aktualisierung</th>
                 <th scope="col" className="px-4 py-2 text-left font-semibold">Status</th>
               </tr>
             </thead>

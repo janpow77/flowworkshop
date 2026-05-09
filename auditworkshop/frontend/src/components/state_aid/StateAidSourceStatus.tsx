@@ -99,7 +99,7 @@ export default function StateAidSourceStatus({ sources, isAdmin, onHarvest, onDe
         }));
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Harvest fehlgeschlagen.';
+      const msg = err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen.';
       setErrorBySource((prev) => ({ ...prev, [source.source_key]: msg }));
     } finally {
       setBusyKey(null);
@@ -144,7 +144,7 @@ export default function StateAidSourceStatus({ sources, isAdmin, onHarvest, onDe
             </div>
 
             <dl className="mt-4 space-y-1.5 rounded-[26px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(241,245,249,0.86))] px-4 py-3 text-xs dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.72),rgba(2,6,23,0.8))]">
-              <Row label="Letzter Harvest" value={formatDateTime(source.last_successful_harvest_at)} mono />
+              <Row label="Letzte Aktualisierung" value={formatDateTime(source.last_successful_harvest_at)} mono />
               <Row label="Letzter Datensatz" value={formatDateTime(source.last_record_date)} mono />
               <Row
                 label="Datensätze"
@@ -198,7 +198,7 @@ export default function StateAidSourceStatus({ sources, isAdmin, onHarvest, onDe
                 <>
                   <div
                     role="group"
-                    aria-label="Harvest-Modus"
+                    aria-label="Aktualisierungs-Modus"
                     title={MODE_OPTIONS.find((m) => m.value === currentMode)?.hint || ''}
                     className="inline-flex items-center rounded-full border border-slate-200 bg-white p-0.5 text-[11px] dark:border-slate-700 dark:bg-slate-900"
                   >
