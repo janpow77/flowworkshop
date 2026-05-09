@@ -109,12 +109,6 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
     return { total, active_count: active.length, bl_count: blSet.size, fonds_count: fondsSet.size };
   }, [sources]);
 
-  const topSources = useMemo(() => {
-    return [...sources]
-      .filter((s) => (s.row_count ?? 0) > 0)
-      .sort((a, b) => (b.row_count || 0) - (a.row_count || 0))
-      .slice(0, 4);
-  }, [sources]);
 
   // KI-Frage-State
   const [prompt, setPrompt] = useState('');
@@ -255,25 +249,10 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
                 <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/70">Quellen</div>
               </div>
               <div>
-                <div className="text-2xl font-semibold leading-none">{heroStats.bl_count}</div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/70">Bundesländer</div>
+                <div className="text-2xl font-semibold leading-none">{heroStats.fonds_count}</div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/70">Fonds</div>
               </div>
             </div>
-            {topSources.length > 0 && (
-              <div className="mt-4 space-y-1 text-[11px] text-white/75">
-                {topSources.map((s) => (
-                  <div key={s.source} className="flex items-center justify-between gap-3">
-                    <span className="truncate">{s.bundesland || '—'} {s.fonds ? `· ${s.fonds}` : ''}</span>
-                    <span className="font-mono tabular-nums">{(s.row_count || 0).toLocaleString('de-DE')}</span>
-                  </div>
-                ))}
-                {sources.filter((s) => (s.row_count ?? 0) > 0).length > topSources.length && (
-                  <div className="text-white/55">
-                    + {sources.filter((s) => (s.row_count ?? 0) > 0).length - topSources.length} weitere Quellen
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </section>

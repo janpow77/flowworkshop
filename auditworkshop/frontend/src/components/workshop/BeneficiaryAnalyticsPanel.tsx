@@ -492,32 +492,48 @@ export default function BeneficiaryAnalyticsPanel(
             </div>
 
             {/* Summen-Footer am Ende der Liste */}
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
-              <span>
-                <strong className="font-semibold text-slate-900 dark:text-white">
-                  {formatInt(analysis.items.length)}
-                </strong>
-                {' '}{analysis.items.length === 1 ? 'Eintrag' : 'Einträge'} angezeigt
-                {typeof analysis.summary?.records_scanned === 'number' && (
-                  <>
-                    {' '}· Datengrundlage{' '}
+            {(() => {
+              const totalProjects = analysis.items.reduce(
+                (sum, it) => sum + (typeof it.project_count === 'number' ? it.project_count : 0),
+                0,
+              );
+              return (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+                  <span>
                     <strong className="font-semibold text-slate-900 dark:text-white">
-                      {formatInt(analysis.summary.records_scanned)}
-                    </strong>{' '}Datensätze
-                  </>
-                )}
-              </span>
-              <span>
-                {analysis.summary?.total_volume_label && (
-                  <>
-                    Summe:{' '}
-                    <strong className="font-mono text-sm font-semibold text-slate-900 dark:text-white">
-                      {analysis.summary.total_volume_label}
+                      {formatInt(analysis.items.length)}
                     </strong>
-                  </>
-                )}
-              </span>
-            </div>
+                    {' '}{analysis.items.length === 1 ? 'Eintrag' : 'Einträge'} angezeigt
+                    {typeof analysis.summary?.records_scanned === 'number' && (
+                      <>
+                        {' '}· Datengrundlage{' '}
+                        <strong className="font-semibold text-slate-900 dark:text-white">
+                          {formatInt(analysis.summary.records_scanned)}
+                        </strong>{' '}Datensätze
+                      </>
+                    )}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-x-4">
+                    {totalProjects > 0 && (
+                      <span>
+                        Vorhaben:{' '}
+                        <strong className="font-mono text-sm font-semibold text-slate-900 dark:text-white">
+                          {formatInt(totalProjects)}
+                        </strong>
+                      </span>
+                    )}
+                    {analysis.summary?.total_volume_label && (
+                      <span>
+                        Summe:{' '}
+                        <strong className="font-mono text-sm font-semibold text-slate-900 dark:text-white">
+                          {analysis.summary.total_volume_label}
+                        </strong>
+                      </span>
+                    )}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         </>
       )}
