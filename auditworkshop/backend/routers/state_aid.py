@@ -311,10 +311,10 @@ def _pflichthinweis() -> str:
     """Plan §13 — Pflichthinweis zur Datenherkunft."""
     return (
         "Quelle: EU Transparency Aid Module (TAM) und nationale Beihilfe-Register, "
-        "veroeffentlicht nach Art. 9 Abs. 1 lit. c) VO (EU) Nr. 651/2014 (AGVO). "
-        "Erfasste Awards sind nur solche, fuer die eine Veroeffentlichungspflicht "
+        "veröffentlicht nach Art. 9 Abs. 1 lit. c) VO (EU) Nr. 651/2014 (AGVO). "
+        "Erfasste Beihilfen sind nur solche, für die eine Veröffentlichungspflicht "
         "besteht (i.d.R. > 100.000 EUR bzw. >= 10.000 EUR im Agrarbereich). "
-        "Der Datenbestand kann unvollstaendig sein."
+        "Der Datenbestand kann unvollständig sein."
     )
 
 

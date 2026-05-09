@@ -158,7 +158,7 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
               Beihilfen aus DE und AT seit 2014.
             </p>
             <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
-              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> 349.135 Awards (DE 253.731 + AT 95.404)</li>
+              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> 349.135 Beihilfen (DE 253.731 + AT 95.404)</li>
               <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> NUTS-Karte mit Aggregation auf Bundesland/Kreis</li>
               <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> Hybrid-Suche (Trigram + Fuzzy-Match + LLM-Verifikation)</li>
               <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> KI-Suche mit Klartext-Fragen</li>

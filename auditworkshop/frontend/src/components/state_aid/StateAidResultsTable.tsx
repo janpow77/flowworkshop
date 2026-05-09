@@ -183,7 +183,7 @@ export default function StateAidResultsTable({ hits, onSelect, loading }: Props)
           />
         </label>
       </div>
-      <div className="max-h-[640px] overflow-y-auto">
+      <div className="max-h-[1100px] overflow-y-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-700">
           <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900/60">
             <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">

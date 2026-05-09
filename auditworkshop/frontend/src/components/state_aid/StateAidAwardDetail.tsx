@@ -181,7 +181,7 @@ export default function StateAidAwardDetail({ award, onClose }: Props) {
       >
         <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-6 py-4 dark:border-slate-700">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.22em] text-emerald-600 dark:text-emerald-300">Beihilfe-Award</div>
+            <div className="text-[11px] uppercase tracking-[0.22em] text-emerald-600 dark:text-emerald-300">Beihilfe</div>
             <h2 className="mt-1 truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
               {award.beneficiary_name}
             </h2>
