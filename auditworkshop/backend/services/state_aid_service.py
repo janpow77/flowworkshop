@@ -51,13 +51,13 @@ ISO3_TO_ISO2 = {
 }
 
 ISO2_TO_NAME = {
-    "AT": "Oesterreich", "BE": "Belgien", "BG": "Bulgarien", "HR": "Kroatien",
-    "CY": "Zypern", "CZ": "Tschechien", "DK": "Daenemark", "EE": "Estland",
+    "AT": "Österreich", "BE": "Belgien", "BG": "Bulgarien", "HR": "Kroatien",
+    "CY": "Zypern", "CZ": "Tschechien", "DK": "Dänemark", "EE": "Estland",
     "FI": "Finnland", "FR": "Frankreich", "DE": "Deutschland", "EL": "Griechenland",
     "HU": "Ungarn", "IE": "Irland", "IT": "Italien", "LV": "Lettland", "LT": "Litauen",
     "LU": "Luxemburg", "MT": "Malta", "NL": "Niederlande", "PL": "Polen", "PT": "Portugal",
-    "RO": "Rumaenien", "SK": "Slowakei", "SI": "Slowenien", "ES": "Spanien", "SE": "Schweden",
-    "GB": "Vereinigtes Koenigreich",
+    "RO": "Rumänien", "SK": "Slowakei", "SI": "Slowenien", "ES": "Spanien", "SE": "Schweden",
+    "GB": "Vereinigtes Königreich",
 }
 
 # Englische, franzoesische und alternative Namen → ISO-2 (TAM liefert auf
