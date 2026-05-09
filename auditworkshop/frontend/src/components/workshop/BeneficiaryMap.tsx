@@ -384,18 +384,19 @@ export default function BeneficiaryMap({
     () => (highlightActive ? highlightNames!.map((n) => n.toLowerCase()) : []),
     [highlightActive, highlightNames],
   );
-  const filtered = highlightAwaiting
-    ? []
-    : data.filter((b) => {
-        if (filterBl && b.bundesland !== filterBl) return false;
-        if (minKosten > 0 && b.kosten < minKosten) return false;
-        if (highlightActive) {
-          const name = (b.name || '').toLowerCase();
-          const hit = highlightLower.some((q) => name === q || name.includes(q));
-          if (!hit) return false;
-        }
-        return true;
-      });
+  const filtered = useMemo(() => {
+    if (highlightAwaiting) return [];
+    return data.filter((b) => {
+      if (filterBl && b.bundesland !== filterBl) return false;
+      if (minKosten > 0 && b.kosten < minKosten) return false;
+      if (highlightActive) {
+        const name = (b.name || '').toLowerCase();
+        const hit = highlightLower.some((q) => name === q || name.includes(q));
+        if (!hit) return false;
+      }
+      return true;
+    });
+  }, [data, filterBl, minKosten, highlightActive, highlightAwaiting, highlightLower]);
   const pins = useMemo(() => groupByLocation(filtered), [filtered]);
   const points: [number, number][] = pins.map((p) => [p.lat, p.lon]);
   const totalKosten = filtered.reduce((s, b) => s + b.kosten, 0);
