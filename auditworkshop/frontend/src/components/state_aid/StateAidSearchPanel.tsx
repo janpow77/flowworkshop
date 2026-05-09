@@ -22,9 +22,9 @@ interface Props {
 }
 
 const COUNTRY_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'Alle Laender' },
+  { value: '', label: 'Alle Länder' },
   { value: 'DE', label: 'DE · Deutschland' },
-  { value: 'AT', label: 'AT · Oesterreich' },
+  { value: 'AT', label: 'AT · Österreich' },
   { value: 'EU', label: 'EU · alle Mitgliedstaaten' },
 ];
 
@@ -181,7 +181,7 @@ export default function StateAidSearchPanel({ value, onChange, onSubmit, onReset
           onClick={onReset}
           className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
         >
-          <RotateCcw size={12} /> Zuruecksetzen
+          <RotateCcw size={12} /> Zurücksetzen
         </button>
         {sources.length > 0 && (
           <span className="text-slate-400 dark:text-slate-500">
@@ -268,7 +268,7 @@ export default function StateAidSearchPanel({ value, onChange, onSubmit, onReset
               className={inputClass}
             />
           </Field>
-          <Field label="Hoechstbetrag (EUR)">
+          <Field label="Höchstbetrag (EUR)">
             <input
               type="number"
               min={0}

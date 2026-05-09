@@ -23,8 +23,8 @@ interface Props {
 }
 
 const QUALITY: Record<NonNullable<StateAidQuality> | 'unknown', { label: string; class: string; dot: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = {
-  green: { label: 'gruen — stabile Quelle', class: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200', dot: 'bg-emerald-500', icon: CheckCircle2 },
-  yellow: { label: 'gelb — eingeschraenkt', class: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-200', dot: 'bg-amber-400', icon: AlertTriangle },
+  green: { label: 'grün — stabile Quelle', class: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200', dot: 'bg-emerald-500', icon: CheckCircle2 },
+  yellow: { label: 'gelb — eingeschränkt', class: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-200', dot: 'bg-amber-400', icon: AlertTriangle },
   red: { label: 'rot — nicht harvestbar', class: 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-200', dot: 'bg-rose-500', icon: AlertTriangle },
   unknown: { label: 'unbestimmt', class: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300', dot: 'bg-slate-300', icon: Database },
 };
@@ -250,7 +250,7 @@ export default function StateAidSourceStatus({ sources, isAdmin, onHarvest, onDe
                   type="button"
                   disabled={isBusy}
                   onClick={async () => {
-                    if (!window.confirm(`Awards der Quelle "${source.display_name}" wirklich loeschen?`)) return;
+                    if (!window.confirm(`Awards der Quelle "${source.display_name}" wirklich löschen?`)) return;
                     setBusyKey(source.source_key);
                     setBusyAction('delete');
                     try { await onDelete(source); }
@@ -261,7 +261,7 @@ export default function StateAidSourceStatus({ sources, isAdmin, onHarvest, onDe
                   {isBusy && busyAction === 'delete'
                     ? <Loader2 size={12} className="animate-spin" />
                     : <Trash2 size={12} />}
-                  Awards loeschen
+                  Awards löschen
                 </button>
               )}
             </div>

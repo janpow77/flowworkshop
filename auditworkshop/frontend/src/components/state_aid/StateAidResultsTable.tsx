@@ -222,14 +222,14 @@ export default function StateAidResultsTable({ hits, onSelect, loading }: Props)
                       </div>
                     )}
                   </td>
-                  <td className="px-3 py-3 text-slate-600 dark:text-slate-300">{region || '—'}</td>
-                  <td className="px-3 py-3 text-right font-mono text-slate-900 dark:text-slate-100">
+                  <td className="px-3 py-3 text-xs text-slate-600 dark:text-slate-300">{region || '—'}</td>
+                  <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-slate-900 dark:text-slate-100">
                     {formatAmount(hit.aid_amount_eur ?? hit.aid_amount)}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300">
+                  <td className="px-3 py-3 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">
                     {formatDate(hit.granting_date || hit.publication_date)}
                   </td>
-                  <td className="px-3 py-3 text-slate-600 dark:text-slate-300">{hit.aid_instrument || '—'}</td>
+                  <td className="px-3 py-3 text-xs text-slate-600 dark:text-slate-300">{hit.aid_instrument || '—'}</td>
                   <td className="px-3 py-3">
                     {hit.sa_reference ? (() => {
                       // safeExternalUrl filtert javascript:/data:-Schemas raus.
@@ -252,7 +252,7 @@ export default function StateAidResultsTable({ hits, onSelect, loading }: Props)
                       <span className="text-slate-400">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-3 text-slate-600 dark:text-slate-300">{hit.granting_authority || '—'}</td>
+                  <td className="px-3 py-3 text-xs text-slate-600 dark:text-slate-300">{hit.granting_authority || '—'}</td>
                   <td className="px-3 py-3 text-right">
                     <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${badge.class}`}>

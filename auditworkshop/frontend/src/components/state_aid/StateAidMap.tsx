@@ -340,7 +340,7 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
         </div>
         <div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
           <div>
-            <div class="text-slate-400">Awards</div>
+            <div class="text-slate-400">Beihilfen</div>
             <div class="font-semibold text-slate-900">${count.toLocaleString('de-DE')}</div>
           </div>
           <div>
@@ -399,7 +399,7 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
         await exportApi.toPdf(mapShellRef.current, {
           filename: fileBase,
           title: 'EU-Beihilfen · Geo-Verteilung',
-          subtitle: `${mapped.toLocaleString('de-DE')} kartierbare Awards · NUTS-${aggregateLevel} · Stand ${ts}`,
+          subtitle: `${mapped.toLocaleString('de-DE')} kartierbare Beihilfen · NUTS-${aggregateLevel} · Stand ${ts}`,
         });
         return;
       }
@@ -605,7 +605,7 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
                 </div>
                 <p className="mt-1.5 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
                   Prüfe, ob ein Land gewählt ist und der Zeitraum Daten enthält.
-                  Awards ohne NUTS-Code werden nicht auf der Karte gezeigt.
+                  Beihilfen ohne NUTS-Code werden nicht auf der Karte gezeigt.
                 </p>
               </div>
             </div>
@@ -667,7 +667,7 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
                       )}
                       <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
                         <div>
-                          <div className="text-slate-400">Awards</div>
+                          <div className="text-slate-400">Beihilfen</div>
                           <div className="font-semibold text-slate-900">{p.count.toLocaleString('de-DE')}</div>
                         </div>
                         <div>
@@ -703,7 +703,7 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
           {effectiveDisplayMode === 'choropleth' && choroplethMax > 0 && (
             <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg bg-white/95 px-3 py-2 text-[10px] text-slate-700 shadow dark:bg-slate-900/95 dark:text-slate-200">
               <div className="mb-1 font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                {mode === 'count' ? 'Awards je Region' : 'Summe (EUR)'}
+                {mode === 'count' ? 'Beihilfen je Region' : 'Summe (EUR)'}
               </div>
               <div className="flex items-center gap-1">
                 {CHOROPLETH_COLORS.map((c) => (
@@ -735,7 +735,7 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
               </span>
             </div>
             <span>
-              {mode === 'count' ? 'Kreisgröße = Anzahl Awards (log)' : 'Kreisgröße = Gesamtbetrag in EUR (log)'}
+              {mode === 'count' ? 'Kreisgröße = Anzahl Beihilfen (log)' : 'Kreisgröße = Gesamtbetrag in EUR (log)'}
             </span>
           </div>
         ) : (
@@ -746,7 +746,7 @@ export default function StateAidMap({ countryCode, since, until, onRegionClick }
               Quelle GISCO Eurostat (Public Domain)
             </span>
             <span>
-              {mode === 'count' ? 'Färbung = Anzahl Awards' : 'Färbung = Gesamtbetrag in EUR'}
+              {mode === 'count' ? 'Färbung = Anzahl Beihilfen' : 'Färbung = Gesamtbetrag in EUR'}
             </span>
           </div>
         )}

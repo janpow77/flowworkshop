@@ -27,7 +27,7 @@ function formatType(type: string): string {
     name_match_state_aid_beneficiaries: 'Namens-Treffer State-Aid und Begünstigtenverzeichnis',
     sa_reference_seen_in_beneficiary: 'SA-Referenz auch im Begünstigtenverzeichnis',
     sanctions_listed_beneficiary: 'Begünstigter steht in einer Sanktionsliste',
-    same_authority_multiple_awards: 'Mehrere Awards von derselben Behörde',
+    same_authority_multiple_awards: 'Mehrere Beihilfen von derselben Behörde',
     same_nuts_concentration: 'Konzentration auf einer NUTS-Region',
   };
   if (known[type]) return known[type];

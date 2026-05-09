@@ -1,18 +1,15 @@
 /**
  * StateAidRegisterPage — EU-Beihilfe-Transparenzregister.
  *
- * Plan §9: Tabs Treffer | Karte | Auswertung | Quellen | Dossier.
+ * Plan §9: Tabs Treffer | Karte | Auswertung | KI-Suche.
  * Pflichthinweis (Plan §13) ueber dem ersten Tab. Filter sind in der
- * Search-Panel-Komponente; Dossier kombiniert Beguenstigte, Beihilfen
- * und Sanktionen registeruebergreifend.
+ * Search-Panel-Komponente.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowRight, BadgeCheck, BarChart3, Banknote, BrainCircuit, Building2,
-  CheckCircle2, ClipboardCheck, Coins, Database, FileSearch, Globe2, Info, Layers, Layers3, Loader2,
-  MapPin, Search, ShieldAlert, Sparkles, X,
+  AlertTriangle, BarChart3, Banknote, BrainCircuit, Building2,
+  ChevronDown, ChevronRight, FileDown, FileSearch, FileSpreadsheet, FileText, Info, Layers, Loader2,
+  MapPin, Sparkles, X,
 } from 'lucide-react';
 import StateAidSearchPanel from '../components/state_aid/StateAidSearchPanel';
 import {
@@ -27,24 +24,16 @@ import StateAidAwardDetail from '../components/state_aid/StateAidAwardDetail';
 import StateAidMap, {
   type StateAidRegionClickPayload,
 } from '../components/state_aid/StateAidMap';
-import StateAidSourceStatus from '../components/state_aid/StateAidSourceStatus';
-import StateAidExportActions from '../components/state_aid/StateAidExportActions';
 import StateAidAskPanel from '../components/state_aid/StateAidAskPanel';
-import StateAidValidatorBadge from '../components/state_aid/StateAidValidatorBadge';
 import StateAidErrorBoundary from '../components/state_aid/StateAidErrorBoundary';
 import {
-  deleteSource as apiDeleteSource,
-  getDossier,
+  exportUrl,
   getSources,
   getStats,
   getStatus,
   search as searchAwards,
   statsExportUrl,
-  triggerHarvest,
-  type HarvestMode,
-  type HarvestResult,
   type StateAidAward,
-  type StateAidDossierResponse,
   type StateAidSearchHit,
   type StateAidSearchResponse,
   type StateAidSource,
@@ -54,39 +43,14 @@ import {
 import ExportButtons from '../components/ui/ExportButtons';
 import Stat from '../components/ui/Stat';
 
-type TabKey = 'hits' | 'map' | 'stats' | 'sources' | 'dossier' | 'ask';
+type TabKey = 'hits' | 'map' | 'stats' | 'ask';
 
 const TABS: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = [
   { key: 'hits', label: 'Treffer', icon: FileSearch },
   { key: 'map', label: 'Karte', icon: MapPin },
   { key: 'stats', label: 'Auswertung', icon: BarChart3 },
-  { key: 'sources', label: 'Quellen', icon: Database },
-  { key: 'dossier', label: 'Dossier', icon: Building2 },
   { key: 'ask', label: 'KI-Suche', icon: BrainCircuit },
 ];
-
-const INFO_DISMISSED_KEY = 'state-aid-info-dismissed';
-
-function readInfoDismissed(): boolean {
-  try {
-    return localStorage.getItem(INFO_DISMISSED_KEY) === 'true';
-  } catch {
-    return false;
-  }
-}
-
-function persistInfoDismissed(): void {
-  try {
-    localStorage.setItem(INFO_DISMISSED_KEY, 'true');
-  } catch {
-    /* localStorage in iframe blockiert — Banner bleibt halt sichtbar. */
-  }
-}
-
-function isAdminUser(): boolean {
-  const role = localStorage.getItem('workshop_role');
-  return role === 'moderator' || role === 'admin';
-}
 
 function formatEur(value: number | null | undefined): string {
   if (value === null || value === undefined) return '—';
@@ -115,7 +79,6 @@ export default function StateAidRegisterPage() {
 
 function StateAidRegisterPageInner() {
   const [activeTab, setActiveTab] = useState<TabKey>('hits');
-  const [infoDismissed, setInfoDismissed] = useState<boolean>(() => readInfoDismissed());
 
   const [filters, setFilters] = useState<StateAidFilterState>(DEFAULT_FILTERS);
   const [searchResult, setSearchResult] = useState<StateAidSearchResponse | null>(null);
@@ -133,13 +96,6 @@ function StateAidRegisterPageInner() {
   const [stats, setStats] = useState<StateAidStatsResponse | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
-
-  const [dossierQuery, setDossierQuery] = useState('');
-  const [dossier, setDossier] = useState<StateAidDossierResponse | null>(null);
-  const [dossierBusy, setDossierBusy] = useState(false);
-  const [dossierError, setDossierError] = useState<string | null>(null);
-
-  const isAdmin = isAdminUser();
 
   const refreshStatus = useCallback(async () => {
     setStatusLoading(true);
@@ -217,12 +173,6 @@ function StateAidRegisterPageInner() {
     runSearch(next);
   }
 
-  /** Klick auf Schliess-Button im Info-Banner — Auswahl persistent ablegen. */
-  function handleDismissInfo() {
-    setInfoDismissed(true);
-    persistInfoDismissed();
-  }
-
   const searchParams = useMemo(() => filtersToParams(filters), [filters]);
   const activeChips = useMemo(() => getActiveFilterChips(filters, nutsLabel), [filters, nutsLabel]);
 
@@ -245,49 +195,6 @@ function StateAidRegisterPageInner() {
     return () => { cancelled = true; };
   }, [activeTab, filters.country_code, filters.since, filters.until]);
 
-  async function runDossier(e?: FormEvent) {
-    e?.preventDefault();
-    const q = dossierQuery.trim();
-    if (q.length < 2) {
-      setDossierError('Bitte mindestens 2 Zeichen eingeben.');
-      setDossier(null);
-      return;
-    }
-    setDossierBusy(true);
-    setDossierError(null);
-    try {
-      const res = await getDossier(q);
-      setDossier(res);
-    } catch (err) {
-      setDossierError(err instanceof Error ? err.message : 'Dossier-Abfrage fehlgeschlagen.');
-      setDossier(null);
-    } finally {
-      setDossierBusy(false);
-    }
-  }
-
-  async function handleHarvest(source: StateAidSource, mode: HarvestMode): Promise<HarvestResult> {
-    // Hinweis: Fehler nicht abfangen — die Komponente zeigt sie inline statt via alert().
-    const result = await triggerHarvest({
-      country: source.country_code || filters.country_code || 'DE',
-      regions: [],
-      source_key: source.source_key,
-      mode,
-    });
-    await refreshStatus();
-    return result;
-  }
-
-  async function handleDeleteSource(source: StateAidSource) {
-    try {
-      await apiDeleteSource(source.source_key);
-      await refreshStatus();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Loeschen fehlgeschlagen.';
-      alert(msg);
-    }
-  }
-
   return (
     <div className="space-y-6">
       {/* ── Hero ────────────────────────────────────────────────────── */}
@@ -295,13 +202,7 @@ function StateAidRegisterPageInner() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),rgba(255,255,255,0)_38%)]" />
         <div className="relative grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-100/80">
-                <Coins size={13} /> EU-Beihilfe-Transparenzregister
-              </span>
-              <StateAidValidatorBadge />
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight lg:text-4xl">Beihilfe-Register</h1>
+            <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">Beihilfe-Register</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-emerald-50/85 lg:text-base">
               Lokal gespeicherte, öffentlich zugängliche Beihilfe-Transparenzdaten —
               Suche, Karte, Auswertung. Verlinkt SA-Referenzen auf die Competition
@@ -311,7 +212,7 @@ function StateAidRegisterPageInner() {
           <div className="rounded-[28px] border border-white/15 bg-black/15 p-5 backdrop-blur">
             <div className="text-[10px] uppercase tracking-[0.22em] text-white/60">Lokaler Workshop-Index</div>
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              <Stat label="Awards" value={status?.total_awards.toLocaleString('de-DE') ?? '—'} />
+              <Stat label="Beihilfen" value={status?.total_awards.toLocaleString('de-DE') ?? '—'} />
               <Stat label="Aktive Quellen" value={status?.sources_enabled ?? '—'} />
               <Stat label="Harvest-Läufe" value={status?.total_runs ?? '—'} />
             </div>
@@ -397,31 +298,7 @@ function StateAidRegisterPageInner() {
               busy={searchBusy}
             />
 
-            {!infoDismissed && (
-              <div className="relative rounded-[26px] border border-cyan-200/70 bg-cyan-50/60 px-5 py-4 text-sm leading-6 text-cyan-900 shadow-[0_18px_60px_-48px_rgba(8,145,178,0.45)] dark:border-cyan-500/30 dark:bg-cyan-950/30 dark:text-cyan-100">
-                <div className="flex items-start gap-3 pr-8">
-                  <Info size={18} className="mt-0.5 shrink-0 text-cyan-600 dark:text-cyan-300" />
-                  <div className="space-y-1">
-                    <div className="font-semibold">Eine Suche über alle bewilligenden Stellen</div>
-                    <p className="text-[13px] leading-6 text-cyan-800/90 dark:text-cyan-100/85">
-                      Anders als im EU-TAM-Portal müssen Sie nicht zuerst Bund,
-                      Land oder Förderbank auswählen. Eine Suche nach Unternehmen,
-                      SA-Referenz oder NUTS-Region führt die Treffer aus allen
-                      geladenen öffentlichen Quellen zusammen.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDismissInfo}
-                  className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full text-cyan-700/70 transition hover:bg-cyan-100/70 hover:text-cyan-900 dark:text-cyan-200/70 dark:hover:bg-cyan-900/40 dark:hover:text-cyan-100"
-                  aria-label="Hinweis schliessen"
-                  title="Hinweis schliessen"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            )}
+            <SearchHelpBox />
 
             {activeChips.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 rounded-[26px] border border-emerald-200/70 bg-emerald-50/70 px-4 py-3 text-xs dark:border-emerald-500/30 dark:bg-emerald-950/30">
@@ -458,23 +335,27 @@ function StateAidRegisterPageInner() {
 
             {searchResult && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-200/80 bg-white/90 px-4 py-3 text-xs shadow-[0_18px_60px_-48px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-slate-900/75">
-                <div className="text-slate-500 dark:text-slate-400">
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">
-                    {searchResult.total_hits.toLocaleString('de-DE')}
-                  </span>{' '}
-                  Treffer
-                  {searchResult.threshold > 0 && <span> · Schwelle {searchResult.threshold}</span>}
-                  {searchResult.normalized && (
-                    <span> · normalisiert: <span className="font-mono">{searchResult.normalized}</span></span>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2 text-slate-500 dark:text-slate-400">
+                  <span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">
+                      {searchResult.total_hits.toLocaleString('de-DE')}
+                    </span>{' '}
+                    Treffer
+                    {searchResult.threshold > 0 && <span> · Schwelle {searchResult.threshold}</span>}
+                    {searchResult.normalized && (
+                      <span> · normalisiert: <span className="font-mono">{searchResult.normalized}</span></span>
+                    )}
+                  </span>
                   {Object.entries(searchResult.filters_applied).map(([k, v]) => (
                     <span key={k} className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                       {k}: <span className="font-medium">{v}</span>
                     </span>
                   ))}
                 </div>
+                <ResultsExportButtons
+                  params={searchParams}
+                  disabled={searchResult.hits.length === 0}
+                />
               </div>
             )}
 
@@ -482,66 +363,6 @@ function StateAidRegisterPageInner() {
               hits={searchResult?.hits ?? []}
               onSelect={(hit: StateAidSearchHit) => setSelectedAward(hit)}
               loading={searchBusy}
-            />
-
-            {searchResult && searchResult.hits.length > 0 && (
-              <div className="flex items-start gap-2 rounded-[22px] border border-slate-200/70 bg-slate-50/70 px-4 py-2 text-[11px] leading-5 text-slate-500 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-400">
-                <Sparkles size={12} className="mt-0.5 shrink-0 text-emerald-500" />
-                <span>
-                  Die Namenssuche normalisiert Groß- und Kleinschreibung, Akzente
-                  und Rechtsformzusätze wie GmbH, AG oder Ltd. Zusätzlich werden
-                  abweichende Wortreihenfolgen und Schreibvarianten berücksichtigt.
-                </span>
-              </div>
-            )}
-
-            {searchResult && searchResult.hits.length > 0 && (
-              <section className="rounded-[26px] border border-cyan-200/70 bg-cyan-50/60 p-4 text-sm leading-6 text-cyan-900 dark:border-cyan-500/30 dark:bg-cyan-950/30 dark:text-cyan-100">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <Layers3 className="h-4 w-4" />
-                  Wie die Suche Treffer priorisiert
-                </h4>
-                <p className="mt-1">
-                  Die Plattform kombiniert schnelle Datenbankfilter mit fachlicher
-                  Plausibilisierung. Dadurch bleibt die Suche auch bei großen
-                  Datenbeständen bedienbar, ohne unklare Treffer als Bewertung
-                  auszugeben.
-                </p>
-                <ol className="mt-2 space-y-1 text-sm">
-                  <li>
-                    <strong>1. Datenbank-Vorfilter</strong> — grenzt passende
-                    Beihilfeeinträge nach Name, Land, Zeitraum, NUTS-Region und
-                    weiteren Filtern schnell ein.
-                  </li>
-                  <li>
-                    <strong>2. Namensähnlichkeit</strong> — erkennt Schreibvarianten,
-                    Aliasnamen, andere Wortreihenfolgen und Rechtsformzusätze; zu
-                    kurze oder unvollständige Übereinstimmungen werden abgewertet.
-                  </li>
-                  <li>
-                    <strong>3. Semantische Ergänzung</strong> — findet verwandte
-                    Vorgänge auch dann, wenn Beschreibung oder Bezeichnung nicht
-                    exakt dieselben Wörter verwenden.
-                  </li>
-                  <li>
-                    <strong>4. Optionale Zweitmeinung</strong> — im
-                    Cross-Register-Auswertung kann ein lokal laufendes Sprachmodell
-                    unsichere Querbezüge erneut prüfen und kurz begründen, ob es
-                    wahrscheinlich derselbe Akteur ist.
-                  </li>
-                </ol>
-                <p className="mt-2 text-xs">
-                  Datenhaltung und KI-Schritte laufen lokal im Workshop-Stack. Es
-                  werden keine Suchanfragen oder Registerdaten an Cloud-Dienste
-                  versendet.
-                </p>
-              </section>
-            )}
-
-            <StateAidExportActions
-              params={searchParams}
-              disabled={!searchResult || searchResult.hits.length === 0}
-              hitCount={searchResult?.total_hits}
             />
           </div>
 
@@ -556,7 +377,7 @@ function StateAidRegisterPageInner() {
                 <MapPin size={20} />
               </div>
               <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-white">Geo-Verteilung der Awards</div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-white">Räumliche Verteilung der Beihilfen</div>
                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   NUTS-Aggregation als Kreise oder Choropleth-Flächen.
                 </div>
@@ -601,45 +422,12 @@ function StateAidRegisterPageInner() {
           error={statsError}
           stats={stats}
           filters={filters}
-        />
-      )}
-
-      {activeTab === 'sources' && (
-        <section className="rounded-[30px] border border-slate-200/80 bg-white/88 p-5 shadow-[0_24px_80px_-52px_rgba(15,23,42,0.62)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-              <Database size={20} />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-slate-900 dark:text-white">Quellen &amp; Harvest-Status</div>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Pro Quelle: Datenstand, Coverage-Note, Quality-Ampel.
-              </div>
-            </div>
-          </div>
-          {!isAdmin && (
-            <div className="mb-4 rounded-[24px] border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
-              Detaillierte Fehlermeldungen und Aktionen sind dem Admin-/Moderator-Konto vorbehalten.
-            </div>
-          )}
-          <StateAidSourceStatus
-            sources={sources}
-            isAdmin={isAdmin}
-            onHarvest={isAdmin ? handleHarvest : undefined}
-            onDelete={isAdmin ? handleDeleteSource : undefined}
-          />
-        </section>
-      )}
-
-      {activeTab === 'dossier' && (
-        <DossierTab
-          query={dossierQuery}
-          onQueryChange={setDossierQuery}
-          onSubmit={runDossier}
-          dossier={dossier}
-          busy={dossierBusy}
-          error={dossierError}
-          onPickAward={setSelectedAward}
+          onDrillDown={(query) => {
+            const next: StateAidFilterState = { ...filters, q: query };
+            setFilters(next);
+            setActiveTab('hits');
+            runSearch(next);
+          }}
         />
       )}
 
@@ -657,7 +445,7 @@ function StateAidRegisterPageInner() {
 
 // ── Hilfskomponenten ─────────────────────────────────────────────────────────
 
-function StatsTab({ loading, error, stats, filters }: { loading: boolean; error: string | null; stats: StateAidStatsResponse | null; filters: StateAidFilterState }) {
+function StatsTab({ loading, error, stats, filters, onDrillDown }: { loading: boolean; error: string | null; stats: StateAidStatsResponse | null; filters: StateAidFilterState; onDrillDown?: (query: string) => void }) {
   const exportParams = useMemo(() => filtersToParams(filters), [filters]);
   const handleStatsExport = useCallback(() => {
     const url = statsExportUrl(exportParams);
@@ -699,10 +487,38 @@ function StatsTab({ loading, error, stats, filters }: { loading: boolean; error:
           onExport={handleStatsExport}
         />
       </div>
-      <BucketCard title="Top-Begünstigte" subtitle="Hauptempfänger der Beihilfen" buckets={stats.top_beneficiaries} icon={Building2} />
-      <BucketCard title="Top-Behörden" subtitle="Bewilligende Stellen" buckets={stats.top_authorities} icon={Layers} />
-      <BucketCard title="Top-Beihilfeziele" subtitle="Förderzwecke und Programme" buckets={stats.top_objectives} icon={Sparkles} />
-      <BucketCard title="Top-Beihilfeinstrumente" subtitle="Zuschuss, Darlehen, Bürgschaft …" buckets={stats.top_instruments} icon={Banknote} />
+      <BucketCard
+        title="Top Begünstigte"
+        subtitle="Hauptempfänger der Beihilfen"
+        labelHeader="Begünstigter"
+        buckets={stats.top_beneficiaries}
+        icon={Building2}
+        onPick={onDrillDown}
+        drillHint="In der Trefferliste anzeigen"
+      />
+      <BucketCard
+        title="Top Behörden"
+        subtitle="Bewilligende Stellen"
+        labelHeader="Behörde"
+        buckets={stats.top_authorities}
+        icon={Layers}
+        onPick={onDrillDown}
+        drillHint="In der Trefferliste anzeigen"
+      />
+      <BucketCard
+        title="Top Beihilfeziele"
+        subtitle="Förderzwecke und Programme"
+        labelHeader="Beihilfeziel"
+        buckets={stats.top_objectives}
+        icon={Sparkles}
+      />
+      <BucketCard
+        title="Top Beihilfeinstrumente"
+        subtitle="Zuschuss, Darlehen, Bürgschaft …"
+        labelHeader="Instrument"
+        buckets={stats.top_instruments}
+        icon={Banknote}
+      />
       {stats.by_year && stats.by_year.length > 0 && (
         <div className="lg:col-span-2 rounded-[30px] border border-slate-200/80 bg-white/88 p-5 shadow-[0_24px_80px_-52px_rgba(15,23,42,0.62)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
           <div className="mb-3 flex items-center gap-3">
@@ -712,7 +528,7 @@ function StatsTab({ loading, error, stats, filters }: { loading: boolean; error:
             <div>
               <div className="text-sm font-semibold text-slate-900 dark:text-white">Jahresverteilung</div>
               <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                Anzahl Awards pro Bewilligungsjahr · Volumen rechts.
+                Anzahl Beihilfen pro Bewilligungsjahr · Volumen rechts.
               </div>
             </div>
           </div>
@@ -749,13 +565,19 @@ function StatsTab({ loading, error, stats, filters }: { loading: boolean; error:
 function BucketCard({
   title,
   subtitle,
+  labelHeader,
   buckets,
   icon: Icon,
+  onPick,
+  drillHint,
 }: {
   title: string;
   subtitle?: string;
+  labelHeader: string;
   buckets?: Array<{ label: string; count: number; total_eur: number | null }>;
   icon: React.ComponentType<{ size?: number; className?: string }>;
+  onPick?: (query: string) => void;
+  drillHint?: string;
 }) {
   if (!buckets || buckets.length === 0) {
     return (
@@ -773,6 +595,7 @@ function BucketCard({
       </div>
     );
   }
+  const clickable = !!onPick;
   return (
     <div className="rounded-[26px] border border-slate-200/80 bg-white/88 p-5 shadow-[0_24px_80px_-52px_rgba(15,23,42,0.62)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
       <div className="flex items-center gap-3">
@@ -784,329 +607,171 @@ function BucketCard({
           {subtitle && <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>}
         </div>
       </div>
-      <ol className="mt-4 space-y-1.5 text-sm">
-        {buckets.slice(0, 10).map((b, idx) => (
-          <li key={`${b.label}-${idx}`} className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-            <span className="w-5 shrink-0 text-right font-mono text-xs text-slate-400">{idx + 1}</span>
-            <span className="flex-1 truncate text-slate-700 dark:text-slate-200" title={b.label}>{b.label}</span>
-            <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
-              {b.count.toLocaleString('de-DE')}
-            </span>
-            <span className="hidden w-28 shrink-0 text-right font-mono text-[11px] text-slate-500 md:inline">
-              {formatEur(b.total_eur)}
-            </span>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}
-
-interface DossierProps {
-  query: string;
-  onQueryChange: (v: string) => void;
-  onSubmit: (e?: FormEvent) => void;
-  dossier: StateAidDossierResponse | null;
-  busy: boolean;
-  error: string | null;
-  onPickAward: (a: StateAidAward) => void;
-}
-
-function DossierTab({ query, onQueryChange, onSubmit, dossier, busy, error, onPickAward }: DossierProps) {
-  return (
-    <section className="space-y-4">
-      <div className="rounded-[30px] border border-slate-200/80 bg-white/88 p-5 shadow-[0_24px_80px_-52px_rgba(15,23,42,0.62)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
-        <div className="rounded-[26px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(241,245,249,0.86))] p-4 dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.72),rgba(2,6,23,0.8))]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-              <FileSearch size={20} />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-slate-900 dark:text-white">Registerübergreifendes Dossier</div>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Fördervorhaben, Beihilfen und Sanktionen in einer Ansicht.
-              </div>
-            </div>
-          </div>
-          <form onSubmit={onSubmit} className="mt-4 flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[280px] flex-1">
-              <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => onQueryChange(e.target.value)}
-                placeholder="Unternehmensname für das Dossier — registerübergreifend …"
-                className="w-full rounded-[24px] border border-slate-200 bg-white/90 py-3 pl-11 pr-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={busy}
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-medium text-white shadow-md shadow-emerald-600/30 transition hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              Dossier abrufen
-            </button>
-          </form>
-        </div>
-
-        {/* Cross-Register-Auswertung: prominenter Sprung mit aktueller Query */}
-        <Link
-          to={query.trim() ? `/audit-report?q=${encodeURIComponent(query.trim())}` : '/audit-report'}
-          className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-indigo-200 bg-[linear-gradient(135deg,rgba(238,242,255,0.9),rgba(224,231,255,0.7))] px-5 py-4 shadow-[0_18px_60px_-44px_rgba(67,56,202,0.45)] transition hover:border-indigo-300 hover:bg-indigo-50/90 dark:border-indigo-500/30 dark:bg-[linear-gradient(135deg,rgba(30,27,75,0.6),rgba(49,46,129,0.5))] dark:hover:bg-indigo-950/40"
-        >
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-indigo-700 shadow-sm dark:bg-indigo-900/60 dark:text-indigo-200">
-              <ClipboardCheck size={18} />
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
-                Ausführliche Auswertung erstellen
-              </div>
-              <p className="mt-0.5 text-xs leading-5 text-indigo-800/80 dark:text-indigo-200/80">
-                Faktische Aggregation aus drei Registern als PDF — neutral, ohne Bewertung.
-              </p>
-            </div>
-          </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition group-hover:bg-indigo-700">
-            Auswertung öffnen <ArrowRight size={12} />
-          </span>
-        </Link>
-      </div>
-
-      {error && (
-        <div className="flex items-start gap-2 rounded-[24px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-200">
-          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {dossier && dossier.summary.has_sanctions_hit && (
-        <div className="flex items-start gap-3 rounded-[26px] border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800 dark:border-rose-500/40 dark:bg-rose-950/50 dark:text-rose-100">
-          <ShieldAlert size={18} className="mt-0.5 shrink-0" />
-          <div>
-            <div>Sanktionslisten-Treffer für „{dossier.query}“ gefunden.</div>
-            <div className="mt-1 text-xs font-normal opacity-90">
-              Manuell prüfen — Geburtsdatum, Land und Identifier abgleichen.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {dossier && (
-        <>
-          <div className="grid gap-3 md:grid-cols-3">
-            <SummaryCard
-              icon={BadgeCheck}
-              tone="emerald"
-              label="Fördervorhaben"
-              count={dossier.beneficiaries.count}
-              hint="Begünstigtenverzeichnis"
-            />
-            <SummaryCard
-              icon={Coins}
-              tone="emerald"
-              label="Beihilfe-Awards"
-              count={dossier.state_aid.count}
-              hint={`Summe: ${formatEur(dossier.state_aid.total_eur)}`}
-            />
-            <SummaryCard
-              icon={ShieldAlert}
-              tone={dossier.sanctions.count > 0 ? 'rose' : 'slate'}
-              label="Sanktionen"
-              count={dossier.sanctions.count}
-              hint={dossier.sanctions.count > 0 ? 'Treffer prüfen' : 'kein Treffer'}
-            />
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-3">
-            <DossierColumn
-              icon={Coins}
-              title="Beihilfe-Awards"
-              subtitle="Lokales State-Aid-Register"
-              accent="emerald"
-              empty="Keine Beihilfe-Treffer."
-            >
-              {dossier.state_aid.hits.slice(0, 12).map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => onPickAward(a)}
-                  className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-emerald-300 hover:bg-emerald-50/50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-emerald-950/20"
+      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 dark:bg-slate-900/60">
+            <tr className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <th scope="col" className="w-10 px-2 py-2 text-right">Rang</th>
+              <th scope="col" className="px-3 py-2 text-left">{labelHeader}</th>
+              <th scope="col" className="w-20 px-2 py-2 text-right">Anzahl</th>
+              <th scope="col" className="hidden w-32 px-2 py-2 text-right md:table-cell">Volumen (EUR)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {buckets.slice(0, 10).map((b, idx) => {
+              const handleClick = () => { if (onPick && b.label) onPick(b.label); };
+              return (
+                <tr
+                  key={`${b.label}-${idx}`}
+                  className={clickable
+                    ? 'cursor-pointer transition hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20'
+                    : 'transition hover:bg-slate-50 dark:hover:bg-slate-800/50'}
+                  onClick={clickable ? handleClick : undefined}
+                  onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } } : undefined}
+                  role={clickable ? 'button' : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  title={clickable ? (drillHint || 'In der Trefferliste anzeigen') : b.label}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{a.beneficiary_name}</div>
-                    <div className="shrink-0 font-mono text-[11px] text-emerald-700 dark:text-emerald-300">
-                      {formatEur(a.aid_amount_eur ?? a.aid_amount)}
-                    </div>
-                  </div>
-                  <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
-                    {[a.country_code, a.nuts_label, a.aid_instrument, a.granting_authority].filter(Boolean).join(' · ')}
-                  </div>
-                  {a.sa_reference && (
-                    <div className="mt-0.5 font-mono text-[11px] text-cyan-700 dark:text-cyan-300">{a.sa_reference}</div>
-                  )}
-                </button>
-              ))}
-            </DossierColumn>
+                  <td className="px-2 py-2 text-right align-top font-mono text-xs text-slate-400">{idx + 1}</td>
+                  <td className="px-3 py-2 align-top">
+                    <span className="block whitespace-normal break-words text-slate-800 dark:text-slate-100">
+                      {b.label || <span className="italic text-slate-400">— ohne Bezeichnung —</span>}
+                    </span>
+                    {clickable && (
+                      <span className="mt-0.5 block text-[10px] text-emerald-700/80 dark:text-emerald-300/70">
+                        {drillHint || 'Klicken: in der Trefferliste anzeigen'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-right align-top font-mono text-[12px] text-slate-700 dark:text-slate-200">
+                    {b.count.toLocaleString('de-DE')}
+                  </td>
+                  <td className="hidden px-2 py-2 text-right align-top font-mono text-[11px] text-slate-500 md:table-cell">
+                    {formatEur(b.total_eur)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
-            <DossierColumn
-              icon={ShieldAlert}
-              title="Sanktionen"
-              subtitle="OpenSanctions-Spiegel"
-              accent={dossier.sanctions.count > 0 ? 'rose' : 'slate'}
-              empty="Kein Sanktionslisten-Treffer."
-            >
-              {dossier.sanctions.hits.slice(0, 12).map((h, i) => (
-                <DossierRow
-                  key={i}
-                  primary={String((h as { name?: string }).name || '—')}
-                  secondary={[
-                    String((h as { schema_type?: string }).schema_type || ''),
-                    String((h as { countries?: string }).countries || ''),
-                  ].filter(Boolean).join(' · ')}
-                />
-              ))}
-            </DossierColumn>
-
-            <DossierColumn
-              icon={BadgeCheck}
-              title="Fördervorhaben"
-              subtitle="Begünstigtenverzeichnisse"
-              accent="cyan"
-              empty="Keine Treffer im Begünstigtenverzeichnis."
-            >
-              {dossier.beneficiaries.hits.slice(0, 12).map((h, i) => (
-                <div key={i} className="rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
-                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                    {String((h as { company_name?: string; project_name?: string }).company_name || (h as { project_name?: string }).project_name || '—')}
-                  </div>
-                  <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
-                    {[
-                      String((h as { aktenzeichen?: string }).aktenzeichen || ''),
-                      String((h as { location?: string }).location || ''),
-                      String((h as { source?: string }).source || ''),
-                    ].filter(Boolean).join(' · ')}
-                  </div>
-                  {String((h as { company_name?: string; project_name?: string }).company_name || '').trim() && (
-                    <Link
-                      to={`/audit-report?q=${encodeURIComponent(String((h as { company_name?: string }).company_name).trim())}`}
-                      className="mt-2 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-medium text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-950/30 dark:text-indigo-200"
-                    >
-                      <ClipboardCheck size={11} />
-                      In Auswertung übernehmen
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </DossierColumn>
-          </div>
-
-          <div className="rounded-[24px] border border-slate-200/80 bg-slate-50/70 px-4 py-3 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
-            <div className="flex items-center gap-2">
-              <Globe2 size={13} />
-              <span>
-                Register-Treffer gesamt: <span className="font-semibold text-slate-700 dark:text-slate-200">{dossier.summary.register_count.toLocaleString('de-DE')}</span>
-                {' · '}
-                Beihilfevolumen: <span className="font-mono">{formatEur(dossier.summary.total_eur)}</span>
-              </span>
-            </div>
-          </div>
-        </>
-      )}
-
-      {!dossier && !busy && !error && (
-        <div className="rounded-[24px] border border-dashed border-slate-300 bg-white/80 px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
-          Geben Sie einen Unternehmensnamen ein, um ein registerübergreifendes Dossier
-          zu erzeugen — Fördervorhaben, Beihilfen, Sanktionen.
+/**
+ * SearchHelpBox — einklappbarer Hilfs-Hinweis am Sucheingabe-Feld.
+ *
+ * Zwei Themen:
+ *   1. Wie die Anfrage Treffer priorisiert (statt der frueheren Methodik-Sektion).
+ *   2. Wie die Schreibweise vor dem Vergleich vereinheitlicht wird (Normalisierung).
+ *
+ * Verwaltungssprache, kein Tech-Jargon ("rapidfuzz", "token_set_ratio",
+ * "Workshop-Stack" wurden bewusst entfernt — der Pruefer interessiert das
+ * Ergebnis, nicht die Implementierung).
+ */
+function SearchHelpBox() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-[26px] border border-cyan-200/70 bg-cyan-50/60 px-5 py-3 text-sm leading-6 text-cyan-900 shadow-[0_18px_60px_-48px_rgba(8,145,178,0.45)] dark:border-cyan-500/30 dark:bg-cyan-950/30 dark:text-cyan-100">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-3 text-left"
+        aria-expanded={open}
+      >
+        <Info size={18} className="shrink-0 text-cyan-600 dark:text-cyan-300" />
+        <div className="flex-1">
+          <div className="font-semibold">Hinweise zur Suche</div>
+          <p className="text-[12px] leading-5 text-cyan-800/85 dark:text-cyan-100/80">
+            Wie das System Treffer findet und Schreibweisen ausgleicht — bei Bedarf einblenden.
+          </p>
+        </div>
+        {open
+          ? <ChevronDown size={16} className="shrink-0 text-cyan-700/80 dark:text-cyan-200/80" />
+          : <ChevronRight size={16} className="shrink-0 text-cyan-700/80 dark:text-cyan-200/80" />}
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3 border-t border-cyan-200/60 pt-3 text-[13px] leading-6 dark:border-cyan-500/20">
+          <section>
+            <h4 className="font-semibold">Wie sucht das System?</h4>
+            <p className="mt-1 text-cyan-900/90 dark:text-cyan-50/85">
+              Eine Anfrage durchsucht den Begünstigten-Namen und die Bewilligungsstelle aller
+              geladenen öffentlichen Quellen gleichzeitig. Sie müssen nicht zuerst Bund, Land
+              oder Förderbank auswählen.
+            </p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-cyan-900/90 dark:text-cyan-50/85">
+              <li>Treffer mit identischer Schreibweise stehen vorn.</li>
+              <li>
+                Danach folgen ähnliche Schreibweisen — etwa kleinere Tippfehler, abweichende
+                Wortreihenfolge oder andere Rechtsformzusätze.
+              </li>
+              <li>
+                Datum, Land und NUTS-Region grenzen die Treffer zusätzlich ein, sobald
+                Sie die entsprechenden Filter setzen.
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h4 className="font-semibold">Schreibweise wird vereinheitlicht</h4>
+            <p className="mt-1 text-cyan-900/90 dark:text-cyan-50/85">
+              Anfrage und Datensatz werden vor dem Vergleich in eine einfache Form gebracht:
+              Großbuchstaben, Akzente und Sonderzeichen werden weggelassen, Rechtsformzusätze
+              wie GmbH, AG oder e. V. bleiben unberücksichtigt. So findet die Suche
+              „Müller-Schmidt GmbH" auch dann, wenn der Datensatz „MUELLER SCHMIDT" lautet.
+            </p>
+          </section>
         </div>
       )}
-    </section>
-  );
-}
-
-function SummaryCard({
-  icon: Icon,
-  tone,
-  label,
-  count,
-  hint,
-}: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  tone: 'emerald' | 'rose' | 'slate';
-  label: string;
-  count: number;
-  hint: string;
-}) {
-  const TONES: Record<typeof tone, string> = {
-    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-100',
-    rose: 'border-rose-200 bg-rose-50/70 text-rose-900 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-100',
-    slate: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200',
-  };
-  return (
-    <div className={`rounded-[26px] border px-4 py-4 shadow-[0_18px_60px_-44px_rgba(15,23,42,0.45)] ${TONES[tone]}`}>
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider opacity-80">
-        <Icon size={14} /> {label}
-      </div>
-      <div className="mt-2 text-2xl font-semibold">{count.toLocaleString('de-DE')}</div>
-      <div className="mt-1 text-xs opacity-80">{hint}</div>
     </div>
   );
 }
 
-function DossierColumn({
-  icon: Icon,
-  title,
-  subtitle,
-  empty,
-  accent = 'slate',
-  children,
-}: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  title: string;
-  subtitle?: string;
-  empty: string;
-  accent?: 'emerald' | 'rose' | 'cyan' | 'slate';
-  children?: React.ReactNode;
-}) {
-  const hasChildren = !!(children && (Array.isArray(children) ? children.length > 0 : true));
-  const accentMap: Record<typeof accent, string> = {
-    emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
-    rose: 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300',
-    cyan: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300',
-    slate: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-  };
+/**
+ * ResultsExportButtons — kompakte Export-Buttons (CSV/XLSX/PDF) im Trefferzaehler-Header,
+ * analog zur Begünstigtensuche. Nutzt direkt die Backend-Export-URL.
+ */
+function ResultsExportButtons({ params, disabled }: { params: Parameters<typeof exportUrl>[1]; disabled?: boolean }) {
+  function trigger(format: 'csv' | 'xlsx' | 'pdf') {
+    if (disabled) return;
+    const url = exportUrl(format, params);
+    const a = document.createElement('a');
+    a.href = url;
+    a.rel = 'noopener noreferrer';
+    a.target = '_self';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
   return (
-    <div className="flex h-full flex-col rounded-[26px] border border-slate-200/80 bg-white/88 p-5 shadow-[0_24px_80px_-52px_rgba(15,23,42,0.62)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
-      <div className="flex items-center gap-3">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${accentMap[accent]}`}>
-          <Icon size={16} />
-        </div>
-        <div>
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">{title}</div>
-          {subtitle && <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>}
-        </div>
-      </div>
-      <div className="mt-4 flex-1 space-y-2">
-        {hasChildren ? (
-          children
-        ) : (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
-            {empty}
-          </div>
-        )}
-      </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => trigger('xlsx')}
+        disabled={disabled}
+        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+        title="Trefferliste als XLSX exportieren"
+      >
+        <FileSpreadsheet size={12} /> XLSX
+      </button>
+      <button
+        type="button"
+        onClick={() => trigger('csv')}
+        disabled={disabled}
+        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+        title="Trefferliste als CSV exportieren"
+      >
+        <FileDown size={12} /> CSV
+      </button>
+      <button
+        type="button"
+        onClick={() => trigger('pdf')}
+        disabled={disabled}
+        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+        title="Trefferliste als PDF exportieren"
+      >
+        <FileText size={12} /> PDF
+      </button>
     </div>
   );
 }
-
-function DossierRow({ primary, secondary }: { primary: string; secondary?: string }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
-      <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{primary}</div>
-      {secondary && <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{secondary}</div>}
-    </div>
-  );
-}
-
-// Reservierte Lucide-Icons fuer den Plan-Hinweis (haelt den Bundler bei Tree-Shaking happy)
-void [CheckCircle2, Database, Banknote, Layers, Sparkles, Globe2, Building2];

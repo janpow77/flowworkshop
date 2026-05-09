@@ -40,7 +40,7 @@ const EXAMPLE_QUESTIONS: string[] = [
   'Welche Fördersummen erhielt die Robert Bosch GmbH in den letzten drei Jahren?',
   'Top 10 Empfänger in Sachsen seit 2021',
   'Beihilfen mit Bürgschaft als Instrument in Hessen',
-  'Alle Awards mit SA-Referenz aus 2023',
+  'Alle Beihilfen mit SA-Referenz aus 2023',
   'Welche Behörde hat 2024 in Berlin am meisten ausgezahlt?',
 ];
 
