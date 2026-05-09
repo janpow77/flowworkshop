@@ -277,7 +277,8 @@ export type BeneficiaryAnalysisMode =
   | 'top_locations'
   | 'top_sectors'
   | 'multi_state_beneficiaries'
-  | 'region_project_counts';
+  | 'region_project_counts'
+  | 'kreis_project_counts';
 
 export interface BeneficiaryAnalysisItem {
   rank: number;

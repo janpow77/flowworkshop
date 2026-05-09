@@ -238,6 +238,10 @@ export default function BeneficiaryMap({
   // Choropleth-Layer State. Initialwert kommt aus den Props, wird aber per
   // Toolbar-Button (Layers-Icon) lokal getoggelt.
   const [choroplethActive, setChoroplethActive] = useState(choroplethEnabled);
+  // Heatmap-Granularitaet: NUTS-1 (Bundesland) oder NUTS-3 (Kreis).
+  // NUTS-3 hat aktuell keine Polygon-GeoJSON — der Fallback zeigt
+  // automatisch ein Bar-Chart mit den Top-Kreisen.
+  const [choroplethLevel, setChoroplethLevel] = useState<1 | 3>(1);
   const [choroplethData, setChoroplethData] = useState<ChoroplethResponse | null>(null);
   const [choroplethGeo, setChoroplethGeo] = useState<FeatureCollection | null>(null);
   const [choroplethGeoMissing, setChoroplethGeoMissing] = useState(false);
@@ -325,8 +329,8 @@ export default function BeneficiaryMap({
     setChoroplethError('');
 
     const headers = { ...getWorkshopAuthHeaders() };
-    const valuesUrl = `/api/beneficiaries/choropleth?country_code=${countryCode}&level=1&metric=${choroplethMetric}`;
-    const geoUrl = `/api/beneficiaries/nuts-geojson?country_code=${countryCode}&level=1`;
+    const valuesUrl = `/api/beneficiaries/choropleth?country_code=${countryCode}&level=${choroplethLevel}&metric=${choroplethMetric}`;
+    const geoUrl = `/api/beneficiaries/nuts-geojson?country_code=${countryCode}&level=${choroplethLevel}`;
 
     Promise.all([
       fetch(valuesUrl, { headers }).then((res) => {
@@ -355,7 +359,7 @@ export default function BeneficiaryMap({
       });
 
     return () => { cancelled = true; };
-  }, [choroplethActive, countryCode, choroplethMetric]);
+  }, [choroplethActive, countryCode, choroplethMetric, choroplethLevel]);
 
   const handleDeleteSource = async (source: string) => {
     if (!confirm('Verzeichnis entfernen?')) return;
@@ -557,12 +561,24 @@ export default function BeneficiaryMap({
                     ? 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
                     : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600'
                 }`}
-                title={choroplethActive ? 'Heatmap (Bundesländer einfärben) deaktivieren' : 'Heatmap: Bundesländer nach Vorhabenanzahl einfärben'}
+                title={choroplethActive ? 'Heatmap (Regionen einfärben) deaktivieren' : 'Heatmap: Regionen nach Vorhabenanzahl einfärben'}
                 aria-pressed={choroplethActive}
               >
                 <Layers size={12} />
                 Heatmap
               </button>
+              {choroplethActive && (
+                <select
+                  value={choroplethLevel}
+                  onChange={(e) => setChoroplethLevel(Number(e.target.value) as 1 | 3)}
+                  className="text-xs px-2 py-1 rounded border border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                  aria-label="Heatmap-Granularität"
+                  title="Bundesland (NUTS-1) oder Kreis (NUTS-3)"
+                >
+                  <option value={1}>Bundesland</option>
+                  <option value={3}>Kreis (NUTS-3)</option>
+                </select>
+              )}
               <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-600 pl-2 ml-1">
                 <button
                   onClick={() => exportMap('png')}

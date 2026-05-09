@@ -65,6 +65,11 @@ const ANALYSIS_OPTIONS: Array<{
     label: 'Begünstigte über mehrere Bundesländer',
     description: 'Welche Träger erhalten Förderung in mehr als einem Bundesland?',
   },
+  {
+    value: 'kreis_project_counts',
+    label: 'Vorhaben je Kreis (NUTS-3)',
+    description: 'Wie viele Vorhaben werden pro Landkreis bzw. kreisfreier Stadt gefördert?',
+  },
 ];
 
 function formatInt(value: number): string {

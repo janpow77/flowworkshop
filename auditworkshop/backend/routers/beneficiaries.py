@@ -552,6 +552,13 @@ def get_choropleth(
             nuts_code = (item.get("nuts_code") or "").strip().upper()
             if not nuts_code or nuts_code in seen_codes:
                 continue
+            # Nur echte NUTS-3-Codes durchlassen. NUTS-3 ist 5-stellig
+            # (DE: DEA11, AT: AT130). Der Backfill enthaelt teilweise auch
+            # NUTS-1 (3-stellig) und NUTS-2 (4-stellig), die hier in Level=3
+            # ausgeschlossen werden — sonst mischen sich die Granularitaeten
+            # in der Choropleth.
+            if len(nuts_code) != 5:
+                continue
             seen_codes.add(nuts_code)
             label_raw = (item.get("label") or "").strip()
             # "Frankfurt am Main, Stadt (DE712)" → "Frankfurt am Main, Stadt"
