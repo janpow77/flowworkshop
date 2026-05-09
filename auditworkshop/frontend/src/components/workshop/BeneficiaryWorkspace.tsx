@@ -24,7 +24,7 @@ import LlmResponsePanel from './LlmResponsePanel';
 import BeneficiaryMap from './BeneficiaryMap';
 import BeneficiaryAnalyticsPanel from './BeneficiaryAnalyticsPanel';
 import BeneficiaryCompanySearch from './BeneficiaryCompanySearch';
-import { streamSSE, type CountryCode } from '../../lib/api';
+import { streamSSE, listBeneficiarySources, type CountryCode, type BeneficiarySource } from '../../lib/api';
 
 type TabKey = 'schnellsuche' | 'unternehmen' | 'frage';
 
@@ -85,6 +85,36 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
   // Karte ist immer sichtbar; in Tab "unternehmen" filtert sie auf Suchtreffer.
   // Die Suchkomponente meldet ihre aktuellen Treffer-Namen via Callback hoch.
   const [highlightedNames, setHighlightedNames] = useState<string[]>([]);
+
+  // Sources fuer die Hero-Stats (Total Vorhaben, Quellen aktiv, BL).
+  const [sources, setSources] = useState<BeneficiarySource[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await listBeneficiarySources(countryCode || undefined);
+        if (!cancelled) setSources(res.sources || []);
+      } catch {
+        if (!cancelled) setSources([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [countryCode]);
+
+  const heroStats = useMemo(() => {
+    const active = sources.filter((s) => (s.row_count ?? 0) > 0);
+    const total = active.reduce((sum, s) => sum + (s.row_count || 0), 0);
+    const blSet = new Set(active.map((s) => s.bundesland).filter(Boolean));
+    const fondsSet = new Set(active.map((s) => s.fonds).filter(Boolean));
+    return { total, active_count: active.length, bl_count: blSet.size, fonds_count: fondsSet.size };
+  }, [sources]);
+
+  const topSources = useMemo(() => {
+    return [...sources]
+      .filter((s) => (s.row_count ?? 0) > 0)
+      .sort((a, b) => (b.row_count || 0) - (a.row_count || 0))
+      .slice(0, 4);
+  }, [sources]);
 
   // KI-Frage-State
   const [prompt, setPrompt] = useState('');
@@ -200,6 +230,54 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
 
   return (
     <div className="space-y-5">
+      {/* ── Hero (Workshop-Branding nur wenn eingeloggt; Public: clean) ─ */}
+      <section className="relative overflow-hidden rounded-[32px] border border-white/70 bg-[linear-gradient(135deg,rgba(190,18,60,0.96),rgba(225,29,72,0.92)_45%,rgba(245,158,11,0.88))] px-7 py-8 text-white shadow-[0_34px_100px_-52px_rgba(15,23,42,0.95)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),rgba(255,255,255,0)_40%)]" />
+        <div className="relative grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
+              Begünstigtenverzeichnisse
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/85 lg:text-base">
+              Konsolidierte EFRE-, ESF+-, JTF-, ISF- und AMIF-Begünstigtenverzeichnisse für Deutschland und Österreich.
+              Filtern Sie nach Land und Bundesland, durchsuchen Sie die Karte und stellen Sie freie Fragen an die KI-Auswertung.
+            </p>
+          </div>
+          <div className="rounded-[26px] border border-white/15 bg-black/15 p-5 backdrop-blur">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-white/60">Lokaler Workshop-Index</div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <div>
+                <div className="text-2xl font-semibold leading-none">{heroStats.total.toLocaleString('de-DE')}</div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/70">Vorhaben</div>
+              </div>
+              <div>
+                <div className="text-2xl font-semibold leading-none">{heroStats.active_count}</div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/70">Quellen</div>
+              </div>
+              <div>
+                <div className="text-2xl font-semibold leading-none">{heroStats.bl_count}</div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/70">Bundesländer</div>
+              </div>
+            </div>
+            {topSources.length > 0 && (
+              <div className="mt-4 space-y-1 text-[11px] text-white/75">
+                {topSources.map((s) => (
+                  <div key={s.source} className="flex items-center justify-between gap-3">
+                    <span className="truncate">{s.bundesland || '—'} {s.fonds ? `· ${s.fonds}` : ''}</span>
+                    <span className="font-mono tabular-nums">{(s.row_count || 0).toLocaleString('de-DE')}</span>
+                  </div>
+                ))}
+                {sources.filter((s) => (s.row_count ?? 0) > 0).length > topSources.length && (
+                  <div className="text-white/55">
+                    + {sources.filter((s) => (s.row_count ?? 0) > 0).length - topSources.length} weitere Quellen
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* ── Tab-Pill-Bar + Country-Filter ───────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div

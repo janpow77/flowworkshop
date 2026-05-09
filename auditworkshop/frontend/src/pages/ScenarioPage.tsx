@@ -261,31 +261,30 @@ export default function ScenarioPage() {
         <ArrowLeft size={16} /> Zurück
       </Link>
 
-      <section className={`relative overflow-hidden rounded-[32px] border border-white/70 bg-gradient-to-br ${info.accent} px-7 py-8 text-white shadow-[0_34px_100px_-52px_rgba(15,23,42,0.95)]`}>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),rgba(255,255,255,0)_40%)]" />
-        <div className="relative flex items-start gap-5">
-          {!isPublicMode && (
+      {/* Hero fuer Beguenstigtenverzeichnis (num=6) wird vom
+          BeneficiaryWorkspace selbst geliefert (mit Stats-Karte rechts).
+          Andere Szenarien behalten den klassischen Workshop-Hero. */}
+      {num !== 6 && (
+        <section className={`relative overflow-hidden rounded-[32px] border border-white/70 bg-gradient-to-br ${info.accent} px-7 py-8 text-white shadow-[0_34px_100px_-52px_rgba(15,23,42,0.95)]`}>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),rgba(255,255,255,0)_40%)]" />
+          <div className="relative flex items-start gap-5">
             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold backdrop-blur-sm">
               {num}
             </span>
-          )}
-          <div>
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-white/60">
-              {isPublicMode
-                ? 'Öffentliches Begünstigtenverzeichnis · Art. 49 VO (EU) 2021/1060'
-                : <>Workshop-Szenario {num} &middot; {info.eyebrow}</>}
+            <div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-white/60">
+                Workshop-Szenario {num} &middot; {info.eyebrow}
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
+                {info.title}
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-white/84 lg:text-base">
+                {info.description}
+              </p>
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
-              {info.title}
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/84 lg:text-base">
-              {isPublicMode
-                ? 'Konsolidierte EFRE-, ESF+-, JTF-, ISF- und AMIF-Begünstigtenverzeichnisse für Deutschland und Österreich. Filtern Sie nach Land und Bundesland, durchsuchen Sie die Karte und stellen Sie freie Fragen an die KI-Auswertung.'
-                : info.description}
-            </p>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {info.hint && !isPublicMode && (
         <div className="rounded-xl border border-sky-200 bg-sky-50/50 px-4 py-3 text-sm text-sky-700 dark:border-sky-800 dark:bg-sky-950/20 dark:text-sky-400 flex items-start gap-2">

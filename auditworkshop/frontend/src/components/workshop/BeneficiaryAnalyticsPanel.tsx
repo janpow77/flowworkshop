@@ -412,21 +412,6 @@ export default function BeneficiaryAnalyticsPanel(
         </div>
       ) : (
         <>
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <div className="rounded-3xl bg-gradient-to-br from-rose-50 to-orange-50 px-4 py-4 dark:from-rose-950/40 dark:to-orange-950/30">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Volumen</div>
-              <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{analysis.summary.total_volume_label}</div>
-            </div>
-            <div className="rounded-3xl bg-gradient-to-br from-sky-50 to-cyan-50 px-4 py-4 dark:from-sky-950/40 dark:to-cyan-950/30">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Quellen</div>
-              <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{formatInt(analysis.summary.sources_considered)}</div>
-            </div>
-            <div className="rounded-3xl bg-gradient-to-br from-amber-50 to-yellow-50 px-4 py-4 dark:from-amber-950/40 dark:to-yellow-950/30">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Datensätze</div>
-              <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{formatInt(analysis.summary.records_scanned)}</div>
-            </div>
-          </div>
-
           <div ref={exportTargetRef} className="mt-5 rounded-[28px] border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/50">
             <div className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-white">
               {mode === 'top_locations' ? <MapPinned size={16} className="text-cyan-500" /> : <Building2 size={16} className="text-rose-500" />}
@@ -504,6 +489,34 @@ export default function BeneficiaryAnalyticsPanel(
                   </div>
                 );
               })}
+            </div>
+
+            {/* Summen-Footer am Ende der Liste */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+              <span>
+                <strong className="font-semibold text-slate-900 dark:text-white">
+                  {formatInt(analysis.items.length)}
+                </strong>
+                {' '}{analysis.items.length === 1 ? 'Eintrag' : 'Einträge'} angezeigt
+                {typeof analysis.summary?.records_scanned === 'number' && (
+                  <>
+                    {' '}· Datengrundlage{' '}
+                    <strong className="font-semibold text-slate-900 dark:text-white">
+                      {formatInt(analysis.summary.records_scanned)}
+                    </strong>{' '}Datensätze
+                  </>
+                )}
+              </span>
+              <span>
+                {analysis.summary?.total_volume_label && (
+                  <>
+                    Summe:{' '}
+                    <strong className="font-mono text-sm font-semibold text-slate-900 dark:text-white">
+                      {analysis.summary.total_volume_label}
+                    </strong>
+                  </>
+                )}
+              </span>
             </div>
           </div>
         </>
