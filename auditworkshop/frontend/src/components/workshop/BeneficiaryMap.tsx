@@ -634,7 +634,10 @@ export default function BeneficiaryMap({
                     onEachFeature={choroplethOnEach}
                   />
                 )}
-                {pins.map((pin, i) => {
+                {/* Pins ausblenden, sobald die Heatmap aktiv ist —
+                   die Polygone liefern dort die Aggregation, die Pins
+                   wuerden den Choropleth-Layer optisch ueberdecken. */}
+                {!choroplethActive && pins.map((pin, i) => {
                   // Begünstigte am gleichen Standort nochmal nach Name gruppieren —
                   // ein Begünstigter mit mehreren Vorhaben am selben Ort soll
                   // einen Block mit allen Vorhaben darunter bekommen.
