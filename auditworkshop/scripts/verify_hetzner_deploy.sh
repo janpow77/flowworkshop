@@ -118,10 +118,13 @@ status=$(echo "$health" | python3 -c "import sys,json; print(json.load(sys.stdin
 db=$(echo "$health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('checks',{}).get('db','?'))" 2>/dev/null || echo "?")
 ollm=$(echo "$health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('checks',{}).get('ollama','?'))" 2>/dev/null || echo "?")
 egpu=$(echo "$health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('checks',{}).get('egpu_gateway','?'))" 2>/dev/null || echo "?")
-if [[ "$status" == "ok" && "$db" == "ok" && "$ollm" == "ok" ]]; then
-  ok "(5) Health-Schema korrekt — status=ok, db=ok, ollama=ok, egpu=$egpu"
+db=$(echo "$health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('checks',{}).get('database',{}).get('status','?'))" 2>/dev/null || echo "?")
+ollm=$(echo "$health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('checks',{}).get('llm_router',{}).get('status','?'))" 2>/dev/null || echo "?")
+egpu=$(echo "$health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('checks',{}).get('egpu_gateway',{}).get('status','?'))" 2>/dev/null || echo "?")
+if [[ "$status" == "ready" && "$db" == "ready" && "$ollm" == "ready" ]]; then
+  ok "(5) Health-Schema korrekt — status=ready, database=ready, llm_router=ready, egpu_gateway=$egpu"
 else
-  nope "(5) Health-Schema" "status=$status db=$db ollama=$ollm egpu=$egpu"
+  nope "(5) Health-Schema" "status=$status database=$db llm_router=$ollm egpu_gateway=$egpu"
 fi
 
 # 6. Caddy-TLS — gültiges Zertifikat

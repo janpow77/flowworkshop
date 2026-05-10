@@ -5,7 +5,6 @@ FastAPI-Anwendung — Startup, CORS, Router-Registrierung.
 import logging
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
 
 import httpx
 from fastapi import FastAPI
@@ -22,27 +21,31 @@ from routers import beneficiaries_sources
 from routers import entities as entities_router
 from routers import embeddings as embeddings_router
 from services.access_log_middleware import AccessLogMiddleware
-from logging_config import configure_logging, RequestContextMiddleware
+from cockpit_common import (
+    HealthRegistry,
+    RequestContextMiddleware,
+    SubcheckResult,
+    build_health_handler,
+    configure_logging,
+)
 
 # Modelle importieren damit Base.metadata sie kennt
 import models  # noqa: F401
 
-# Cockpit-Health-Schema: Container-Startzeit und Version. Im Lifespan
-# gesetzt, vom /health-Endpoint zurückgegeben.
-APP_STARTED_AT: str | None = None
-APP_VERSION: str = os.getenv("APP_VERSION") or os.getenv("IMAGE_TAG") or "dev"
-
 # Cockpit-konformes Logging aufsetzen — JSON, wenn LOG_FORMAT=json,
 # sonst klassisch text für lokale Entwicklung.
-configure_logging()
+configure_logging(service=os.getenv("WORKSHOP_SERVICE_NAME", "auditworkshop-backend"))
 log = logging.getLogger(__name__)
+
+# Health-Registry mit den drei Standard-Subchecks (Datenbank, LLM,
+# EGPU-Gateway) — Schema gemäß APPS_PREPARATION.md §2.2.
+health_registry = HealthRegistry(service="auditworkshop-backend")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ────────────────────────────────────────────
-    global APP_STARTED_AT
-    APP_STARTED_AT = datetime.now(timezone.utc).isoformat()
+    health_registry.mark_started()
     log.info("flowworkshop startet …")
 
     # SQLAlchemy-Tabellen erstellen (workshop_*)
@@ -818,48 +821,39 @@ app.include_router(entities_router.admin_router)
 app.include_router(embeddings_router.router)
 
 
-@app.get("/health")
-async def health():
-    """Cockpit-konformes Health-Schema: status, version, started_at, checks.
-
-    Drei Subchecks: Datenbank (SELECT 1), Ollama-Modell-Liste, EGPU-Gateway.
-    Subchecks haben jeweils kurzen Timeout, damit der Endpoint auch unter
-    Last antwortet. Gesamt-Status ist `ok`, wenn alle Subchecks `ok` sind,
-    sonst `degraded`.
-    """
-    checks: dict[str, str] = {}
-
-    # ── DB ────────────────────────────────────────────────
-    try:
+@health_registry.subcheck("database", timeout_seconds=2.0)
+async def _hc_database() -> SubcheckResult:
+    def probe() -> SubcheckResult:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        checks["db"] = "ok"
-    except Exception as exc:  # noqa: BLE001
-        checks["db"] = f"error: {exc.__class__.__name__}"
+        return SubcheckResult(status="ready")
 
-    # ── LLM-Backend (Ollama bzw. EGPU-Gateway) ────────────
-    try:
-        ollama_state = await check_ollama()
-        checks["ollama"] = "ok" if ollama_state.get("ok") else "degraded"
-    except Exception as exc:  # noqa: BLE001
-        checks["ollama"] = f"error: {exc.__class__.__name__}"
+    import asyncio as _a
+    return await _a.to_thread(probe)
 
-    # ── EGPU-Gateway separat (auch ohne Modell-Match) ─────
+
+@health_registry.subcheck("llm_router", timeout_seconds=4.0)
+async def _hc_llm_router() -> SubcheckResult:
+    state = await check_ollama()
+    if state.get("ok"):
+        return SubcheckResult(status="ready", message="ollama")
+    return SubcheckResult(
+        status="degraded",
+        message=str(state.get("error") or "unreachable"),
+    )
+
+
+@health_registry.subcheck("egpu_gateway", timeout_seconds=3.0)
+async def _hc_egpu_gateway() -> SubcheckResult:
     egpu_url = os.getenv("EGPU_GATEWAY_URL")
-    if egpu_url:
-        try:
-            async with httpx.AsyncClient(timeout=3) as client:
-                resp = await client.get(f"{egpu_url.rstrip('/')}/api/llm/health")
-            checks["egpu_gateway"] = "ok" if resp.status_code == 200 else f"http_{resp.status_code}"
-        except Exception as exc:  # noqa: BLE001
-            checks["egpu_gateway"] = f"error: {exc.__class__.__name__}"
-    else:
-        checks["egpu_gateway"] = "not_configured"
+    if not egpu_url:
+        return SubcheckResult(status="ready", message="not_configured")
+    async with httpx.AsyncClient(timeout=3) as client:
+        resp = await client.get(f"{egpu_url.rstrip('/')}/api/llm/health")
+    return SubcheckResult(
+        status="ready" if resp.status_code == 200 else "degraded",
+        message=f"http_{resp.status_code}",
+    )
 
-    overall = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
-    return {
-        "status": overall,
-        "version": APP_VERSION,
-        "started_at": APP_STARTED_AT,
-        "checks": checks,
-    }
+
+app.add_api_route("/health", build_health_handler(health_registry), methods=["GET"])
