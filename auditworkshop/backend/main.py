@@ -3,14 +3,23 @@ flowworkshop · main.py
 FastAPI-Anwendung — Startup, CORS, Router-Registrierung.
 """
 import logging
+import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from database import engine, Base
 from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
+
+# Cockpit-Health-Schema: Container-Startzeit und Version. Im Lifespan
+# gesetzt, vom /health-Endpoint zurückgegeben.
+APP_STARTED_AT: str | None = None
+APP_VERSION: str = os.getenv("APP_VERSION") or os.getenv("IMAGE_TAG") or "dev"
 from routers import workshop, knowledge, system
 from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum, automation
 from routers import docs as docs_router, notifications, state_aid, admin_access
@@ -18,17 +27,22 @@ from routers import beneficiaries_sources
 from routers import entities as entities_router
 from routers import embeddings as embeddings_router
 from services.access_log_middleware import AccessLogMiddleware
+from logging_config import configure_logging, RequestContextMiddleware
 
 # Modelle importieren damit Base.metadata sie kennt
 import models  # noqa: F401
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
+# Cockpit-konformes Logging aufsetzen — JSON, wenn LOG_FORMAT=json,
+# sonst klassisch text für lokale Entwicklung.
+configure_logging()
 log = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ────────────────────────────────────────────
+    global APP_STARTED_AT
+    APP_STARTED_AT = datetime.now(timezone.utc).isoformat()
     log.info("flowworkshop startet …")
 
     # SQLAlchemy-Tabellen erstellen (workshop_*)
@@ -768,6 +782,11 @@ app.add_middleware(
 # der Middleware-Kette und nicht das eigentliche Request-Ergebnis.
 app.add_middleware(AccessLogMiddleware)
 
+# Cockpit-Request-Context: Request-ID + Tailscale-Identity. Letzte
+# add_middleware-Registrierung läuft als äußerste Schicht — damit alle
+# inneren Middlewares und Endpunkte die Request-ID im Logger sehen.
+app.add_middleware(RequestContextMiddleware)
+
 # Bestehende Router
 app.include_router(workshop.router)
 app.include_router(knowledge.router)
@@ -800,5 +819,47 @@ app.include_router(embeddings_router.router)
 
 
 @app.get("/health")
-def health():
-    return {"status": "ok", "service": "flowworkshop"}
+async def health():
+    """Cockpit-konformes Health-Schema: status, version, started_at, checks.
+
+    Drei Subchecks: Datenbank (SELECT 1), Ollama-Modell-Liste, EGPU-Gateway.
+    Subchecks haben jeweils kurzen Timeout, damit der Endpoint auch unter
+    Last antwortet. Gesamt-Status ist `ok`, wenn alle Subchecks `ok` sind,
+    sonst `degraded`.
+    """
+    checks: dict[str, str] = {}
+
+    # ── DB ────────────────────────────────────────────────
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        checks["db"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        checks["db"] = f"error: {exc.__class__.__name__}"
+
+    # ── LLM-Backend (Ollama bzw. EGPU-Gateway) ────────────
+    try:
+        ollama_state = await check_ollama()
+        checks["ollama"] = "ok" if ollama_state.get("ok") else "degraded"
+    except Exception as exc:  # noqa: BLE001
+        checks["ollama"] = f"error: {exc.__class__.__name__}"
+
+    # ── EGPU-Gateway separat (auch ohne Modell-Match) ─────
+    egpu_url = os.getenv("EGPU_GATEWAY_URL")
+    if egpu_url:
+        try:
+            async with httpx.AsyncClient(timeout=3) as client:
+                resp = await client.get(f"{egpu_url.rstrip('/')}/api/llm/health")
+            checks["egpu_gateway"] = "ok" if resp.status_code == 200 else f"http_{resp.status_code}"
+        except Exception as exc:  # noqa: BLE001
+            checks["egpu_gateway"] = f"error: {exc.__class__.__name__}"
+    else:
+        checks["egpu_gateway"] = "not_configured"
+
+    overall = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
+    return {
+        "status": overall,
+        "version": APP_VERSION,
+        "started_at": APP_STARTED_AT,
+        "checks": checks,
+    }

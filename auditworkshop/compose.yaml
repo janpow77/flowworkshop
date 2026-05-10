@@ -1,0 +1,71 @@
+# Hetzner-CCX23-Compose für auditworkshop.
+#
+# Konventionen aus Master-Dokument Abschnitt 7:
+#   - Stack-Verzeichnis: /opt/auditworkshop/
+#   - Datei-Name: compose.yaml
+#   - Service-Namen: auditworkshop-{role}
+#   - Restart-Policy: unless-stopped
+#   - Health-Checks definiert
+#   - Logging-Driver json-file mit Rotation
+#   - Bind-Mounts nur unter /var/lib/auditworkshop/ und /etc/auditworkshop/
+#
+# Abweichungen vom Heim-Stack (docker-compose.yml):
+#   - Service `db` entfällt — shared Postgres auf CCX23, Schema `workshop`.
+#   - Service `cloudflared` entfällt — Caddy auf CCX23 ist Reverse-Proxy.
+#   - Backend-Env zeigt auf shared Postgres, NUC-Tailscale-LLM oder
+#     llm-router-Container (siehe /etc/auditworkshop/env).
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+
+  # ── FastAPI Backend ────────────────────────────────────────
+  auditworkshop-backend:
+    image: ghcr.io/janpow77/auditworkshop-backend:${IMAGE_TAG:-latest}
+    container_name: auditworkshop-backend
+    restart: unless-stopped
+    mem_limit: 1024M
+    networks:
+      - cockpit
+      - auditworkshop
+    env_file:
+      - /etc/auditworkshop/env
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; r=urllib.request.urlopen('http://localhost:8000/health',timeout=3); sys.exit(0 if r.status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - /var/lib/auditworkshop/data:/app/data
+    logging: *default-logging
+
+  # ── React Frontend (nginx) ─────────────────────────────────
+  auditworkshop-frontend:
+    image: ghcr.io/janpow77/auditworkshop-frontend:${IMAGE_TAG:-latest}
+    container_name: auditworkshop-frontend
+    restart: unless-stopped
+    networks:
+      - auditworkshop
+    depends_on:
+      auditworkshop-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging: *default-logging
+
+networks:
+  # Externes Netz, in dem Caddy und shared Postgres liegen.
+  cockpit:
+    external: true
+  # Internes Netz für Backend ↔ Frontend.
+  auditworkshop:
+    driver: bridge
