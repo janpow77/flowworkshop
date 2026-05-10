@@ -57,24 +57,66 @@ unmittelbare Änderung der Plan-Dokumente.
    `egpu-manager-hub` (Workstream E). Lifecycle-Hooks bleiben Bash,
    GitHub-Workflows YAML.
 
+## Hetzner-Bestelliste (zur Eigentümer-Buchung)
+
+Konkrete Produkte, die für die Workshop-Migration und den parallelen
+Cockpit-Aufbau bei Hetzner gebucht werden müssen. Preise Stand
+Mai 2026 — beim Bestellen final prüfen.
+
+| # | Produkt | Standort | Konfiguration | ca. Preis |
+|---|---|---|---|---|
+| 1 | Cloud-Server **CCX23** | Falkenstein (FSN1) | Ubuntu 24.04 LTS · IPv4 + IPv6 · SSH-Key statt Passwort · 4 dedizierte AMD-EPYC-vCPU · 16 GB RAM · 160 GB NVMe · 20 TB Traffic · Cloud-Init für deploy-User + Tailscale | ~30 €/Monat |
+| 2 | **Storage Box BX11** | Falkenstein | 1 TB · Sub-Account `ccx23-backup` · Sub-Account `nuc-backup` · automatischer Snapshot 04:00 | ~3,90 €/Monat |
+| 3 | Cloud Snapshots | (zum CCX23) | täglich, Aufbewahrung 7 Tage | ~0,012 €/GB/Monat |
+
+**Nicht zusätzlich nötig:** Floating IP, Load Balancer, weitere Server.
+Das CCX23 trägt Cockpit, shared Postgres, Caddy und alle künftigen
+Anwendungen, die auf Hetzner laufen sollen. Workshop-Stack belegt
+~1,5 GB der 16 GB RAM (Backend ~512 MB + Frontend nginx ~50 MB +
+Postgres-Anteil ~1 GB).
+
+**Bestellschritte (am MacBook im Browser):**
+
+1. Hetzner-Account anlegen, Identitätsprüfung abwarten — kann je nach
+   Tageszeit Stunden dauern.
+2. Cloud Console → *Add Server* → Standort Falkenstein → Image *Ubuntu
+   24.04* → Type *CCX23* → IPv4 + IPv6 → SSH-Key hochladen →
+   Cloud-Init-User-Data einfügen (deploy-User, Tailscale-Daemon,
+   Tailscale-Beitritt mit OAuth-Auth-Key aus Tracker-Tresor).
+3. Nach Hochfahren: Backup aktivieren → täglich, 7 Tage.
+4. Storage Boxen → *Bestellen* → BX11 in Falkenstein → zwei Sub-
+   Accounts via API anlegen.
+5. API-Token im Cockpit-Tracker-Tresor ablegen
+   (`POST /api/v1/secrets`), nicht im Klartext speichern.
+
 ## Sitzungs-Einträge
 
-### YYYY-MM-DD: Phase 5 / Workstream D — Repository-Konventionen
+### 2026-05-10: Phase 5 / Workstream D — Repository-Konventionen
 
-(Erster Eintrag wird beim Abschluss von Workstream D gesetzt. Erwartetes
-Format:)
-
-```
-- Dauer: <Stunden>
-- Behandelte Aufgaben: Inventur, migration-plan, compose.yaml, lifecycle/,
-  caddy/, backup.yaml, GitHub-Workflows, Health-Endpoint, JSON-Logging.
+- Dauer: ~3 h (verteilt auf zwei Sitzungen).
+- Behandelte Aufgaben: Inventur, migration-plan, `compose.yaml` aus
+  `docker-compose.yml` abgeleitet, `lifecycle/{bootstrap,migrate,start,
+  stop}.sh`, `caddy/Caddyfile.fragment`, `backup.yaml`, drei GitHub-
+  Workflows (`ci.yaml`, `image.yaml`, `deploy.yaml`), Health-Endpoint
+  im `backend/main.py` auf Cockpit-Schema gehoben, JSON-Logging-Setup
+  als neues `backend/logging_config.py` (System-Prompts in
+  `config.py` unangetastet), `RequestContextMiddleware` registriert,
+  `.env.production.example`, drei Helper-Skripte
+  (`scripts/snapshot_for_hetzner.sh`,
+  `scripts/restore_on_ccx23.sh`,
+  `scripts/verify_hetzner_deploy.sh`).
 - Resultat: Workshop-Repository erfüllt die Cockpit-Konventionen aus
   Master-Dokument Abschnitt 7.
-- Nächster Schritt: Workstreams A, B, C, E starten, sobald
-  Hetzner-Zugangsdaten verfügbar sind. Stufe 8.2 (Daten-Snapshot)
-  sobald S1, S2, S3 erreicht sind.
-- Offene Punkte: Quell-Host und Pfad final bestätigen; produktive
-  Workshop-URL festlegen; Tracker-Tresor-IDs für Geheimnisse vergeben.
-- Beobachtungen für Plan-Anpassung: siehe oben Abschnitt
-  „Beobachtungen für Plan-Anpassung".
-```
+  - `docker compose -f compose.yaml config --quiet` → exit 0.
+  - `ruff check main.py logging_config.py` → All checks passed.
+  - Bash-Syntax aller drei Helper-Skripte: `bash -n` → OK.
+- Nächster Schritt: Hetzner-Bestellung (siehe Abschnitt oben), dann
+  Workstreams A (CCX23 + Storage Box), B (cockpit-tracker auf NUC),
+  C (Cockpit-Repository), E (egpu-manager + llm-router) starten.
+  Stufe 8.2 (Daten-Snapshot) sobald S1, S2, S3 erreicht sind.
+- Offene Punkte: Quell-Host und Compose-Pfad final bestätigen
+  (Annahme: NUC, `~/projects/auditworkshop`); produktive Workshop-URL
+  bestätigen (Annahme: `auditworkshop.tail-xxxx.ts.net`); Tracker-
+  Tresor-IDs für Workshop-Geheimnisse vergeben (DB-Passwort,
+  Tailscale-OAuth, ghcr.io-Pull-Token, age-Recipient).
+- Beobachtungen für Plan-Anpassung: siehe Abschnitt oben.
