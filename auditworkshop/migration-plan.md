@@ -37,10 +37,15 @@ Im Workstream D abgeschlossen:
 - `.github/workflows/{ci,image,deploy}.yaml` angelegt.
 - Health-Endpoint in `backend/main.py` auf das Cockpit-Schema gehoben:
   `{status, version, started_at, checks}`.
-- JSON-Logging-Setup in `backend/config.py` ergänzt
-  (Workshop-Constraint: System-Prompts unangetastet — die Änderung
-  betrifft nur Logging-Konfiguration und wurde mit dem Eigentümer
-  abgestimmt).
+- JSON-Logging-Setup in neuer Datei `backend/logging_config.py`
+  (Workshop-Constraint: `config.py` mit System-Prompts bleibt
+  unangetastet — die Logging-Konfiguration wurde bewusst in ein
+  eigenes Modul ausgelagert). Aktivierung über
+  `LOG_FORMAT=json` in `/etc/auditworkshop/env`.
+- `RequestContextMiddleware` in `backend/main.py` registriert; setzt
+  pro Request eine UUID-Request-ID und liest die Tailscale-Identity
+  aus dem `Tailscale-User-Login`-Header, den Caddy auf CCX23
+  durchreicht.
 
 Akzeptanzkriterien D:
 

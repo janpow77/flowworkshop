@@ -1,10 +1,24 @@
 name: CI
 
+# Cockpit-Konventionen aus Master-Dokument Abschnitt 7:
+#   - Drei Workflow-Dateien (ci.yaml, image.yaml, deploy.yaml).
+#   - Minimale Permissions, SHA-Pinning der Actions, Concurrency-Gruppen.
+#
+# CI läuft auf Push und PR gegen main; reine Code-Qualitäts-Checks ohne
+# Push zu Registries oder Deploy-Hosts.
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   frontend:
@@ -15,9 +29,9 @@ jobs:
         working-directory: auditworkshop/frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af  # v4.1.0
         with:
           node-version: 20
           cache: npm
@@ -31,7 +45,7 @@ jobs:
       - name: ESLint
         run: npm run lint -- --max-warnings 10
 
-      - name: Vitest (24 Tests)
+      - name: Vitest
         run: npm test
 
       - name: Production Build
@@ -45,14 +59,14 @@ jobs:
         working-directory: auditworkshop/backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
         with:
           python-version: "3.12"
 
       - name: Install Ruff
-        run: pip install ruff
+        run: pip install ruff==0.7.4
 
       - name: Ruff Check
         run: ruff check . --select E,W,F --ignore E501
@@ -61,10 +75,10 @@ jobs:
     name: Docker Build Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       - name: Build Backend Image
-        run: docker build -t flowworkshop-backend auditworkshop/backend/
+        run: docker build -t auditworkshop-backend auditworkshop/backend/
 
       - name: Build Frontend Image
-        run: docker build -t flowworkshop-frontend auditworkshop/frontend/
+        run: docker build -t auditworkshop-frontend auditworkshop/frontend/

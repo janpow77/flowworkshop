@@ -15,11 +15,6 @@ from sqlalchemy import text
 from database import engine, Base
 from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
-
-# Cockpit-Health-Schema: Container-Startzeit und Version. Im Lifespan
-# gesetzt, vom /health-Endpoint zurückgegeben.
-APP_STARTED_AT: str | None = None
-APP_VERSION: str = os.getenv("APP_VERSION") or os.getenv("IMAGE_TAG") or "dev"
 from routers import workshop, knowledge, system
 from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum, automation
 from routers import docs as docs_router, notifications, state_aid, admin_access
@@ -31,6 +26,11 @@ from logging_config import configure_logging, RequestContextMiddleware
 
 # Modelle importieren damit Base.metadata sie kennt
 import models  # noqa: F401
+
+# Cockpit-Health-Schema: Container-Startzeit und Version. Im Lifespan
+# gesetzt, vom /health-Endpoint zurückgegeben.
+APP_STARTED_AT: str | None = None
+APP_VERSION: str = os.getenv("APP_VERSION") or os.getenv("IMAGE_TAG") or "dev"
 
 # Cockpit-konformes Logging aufsetzen — JSON, wenn LOG_FORMAT=json,
 # sonst klassisch text für lokale Entwicklung.
