@@ -57,6 +57,28 @@ unmittelbare Änderung der Plan-Dokumente.
    `egpu-manager-hub` (Workstream E). Lifecycle-Hooks bleiben Bash,
    GitHub-Workflows YAML.
 
+8. **Google Drive als zweites Backup-Ziel.** Master-Dokument Abschnitt 7
+   nennt nur die Hetzner Storage Box als Backup-Ziel. Eigentümer-Wunsch:
+   parallel auch Google Drive als redundantes Off-Site-Backup.
+   Implementierung über `rclone` mit clientseitiger age-Verschlüsselung
+   (GDrive sieht nur Cipher-Text, Master-Key bleibt im Cockpit). Pro
+   App im `backup.yaml` über das Feld `destinations` mehrere Ziele
+   gleichzeitig anwählbar. Master-Dokument Abschnitt 7 sollte ergänzt
+   werden um „Backup-Ziele plural; Hetzner Storage Box ist Pflicht-
+   Ziel, weitere Ziele optional", PLAN.md Abschnitt 9 (Geheimnis-
+   Tresor) um den Tresor-Eintrag `cockpit/backup/gdrive/token`.
+
+9. **Erweiterung Cockpit-MVP über Update-Funktion hinaus.** Eigentümer
+   verlangt, dass Cockpit nicht nur Status + Update kann, sondern
+   auch: Backup-Verwaltung (Domäne 6 inkl. GDrive), GitHub-Repo-
+   Verwaltung (Domäne 2: PRs, Issues, CI-Runs, Environments) und
+   Traffic-/Zugriffs-Statistik (Domäne 4 mit TimescaleDB-Hypertable
+   und Caddy-Log-Konsumer). Diese Domänen sind im MVP-Skelett unter
+   `/home/user/cockpit/` als funktionsfähige Stubs angelegt; die
+   Reihenfolge im Master-Dokument Abschnitt 4 (Phase 8 Cluster A→G)
+   wird damit teilweise vorgezogen. Folge-Sitzung sollte das in einer
+   Plan-Anpassung formalisieren.
+
 ## Hetzner-Bestelliste (zur Eigentümer-Buchung)
 
 Konkrete Produkte, die für die Workshop-Migration und den parallelen
