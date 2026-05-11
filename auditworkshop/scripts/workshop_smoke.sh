@@ -1,4 +1,28 @@
 #!/usr/bin/env bash
+#
+# Smoke-Test fuer Auditworkshop. Standardziel: NUC-Dev (localhost:8000/:3000).
+# Funktioniert via BACKEND_BASE/FRONTEND_BASE-ENV auch gegen die Hetzner-
+# Deployment-URLs.
+#
+# Beispiele:
+#   # NUC (Default)
+#   bash scripts/workshop_smoke.sh
+#
+#   # CCX23 via Tailscale (intern)
+#   BACKEND_BASE=https://cockpit-nbg1-1.tailec75b1.ts.net \
+#   FRONTEND_BASE=https://cockpit-nbg1-1.tailec75b1.ts.net \
+#     bash scripts/workshop_smoke.sh
+#
+#   # CCX23 oeffentlich (nach DNS-Flip auf 178.105.58.231)
+#   BACKEND_BASE=https://workshop.flowaudit.de \
+#   FRONTEND_BASE=https://workshop.flowaudit.de \
+#     bash scripts/workshop_smoke.sh
+#
+#   # Anderer Login-User
+#   SMOKE_EMAIL=anderer@host.de  bash scripts/workshop_smoke.sh
+#
+# Erwartete Ausgabe: 9 Workshop-Checks + 15 State-Aid-Checks (siehe
+# state_aid_smoke.sh) — alle PASS. Nicht-Null Exit bei einem FAIL.
 set -euo pipefail
 
 BACKEND_BASE="${BACKEND_BASE:-http://localhost:8000}"
