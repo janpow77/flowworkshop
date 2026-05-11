@@ -1454,16 +1454,16 @@ def _build_persons_check_section(
 def _completeness_label(percent: float | None, local_count: int) -> str:
     """Wartungs-Status pro Quelle. KEINE Risiko-Aussage.
 
-    - ``vollstaendig``  : >= 95 % oder lokal == erwartet
-    - ``partiell``      : 1..94 %
-    - ``unbekannt``     : keine erwartete Zahl bekannt oder local_count==0
+    - ``vollständig``  : >= 95 % oder lokal == erwartet
+    - ``partiell``     : 1..94 %
+    - ``unbekannt``    : keine erwartete Zahl bekannt oder local_count==0
     """
     if percent is None:
         return "unbekannt"
     if local_count <= 0:
         return "unbekannt"
     if percent >= 95.0:
-        return "vollstaendig"
+        return "vollständig"
     return "partiell"
 
 

@@ -1,0 +1,55 @@
+x-logging: &id001
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+services:
+  auditworkshop-backend:
+    image: ghcr.io/janpow77/auditworkshop-backend:${IMAGE_TAG:-latest}
+    container_name: auditworkshop-backend
+    restart: unless-stopped
+    mem_limit: 1024M
+    networks:
+      cockpit: {}
+      auditworkshop:
+        aliases:
+        - backend
+    env_file:
+    - /etc/auditworkshop/env
+    healthcheck:
+      test:
+      - CMD
+      - python3
+      - -c
+      - import urllib.request,sys; r=urllib.request.urlopen('http://localhost:8000/health',timeout=3);
+        sys.exit(0 if r.status==200 else 1)
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+    - /var/lib/auditworkshop/data:/app/data
+    logging: *id001
+  auditworkshop-frontend:
+    image: ghcr.io/janpow77/auditworkshop-frontend:${IMAGE_TAG:-latest}
+    container_name: auditworkshop-frontend
+    restart: unless-stopped
+    networks:
+    - auditworkshop
+    depends_on:
+      auditworkshop-backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O - http://localhost/ >/dev/null || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging: *id001
+networks:
+  cockpit:
+    external: true
+  auditworkshop:
+    driver: bridge

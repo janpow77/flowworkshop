@@ -1,0 +1,118 @@
+name: Deploy (CCX23)
+
+# Cockpit-Konventionen aus Master-Dokument Abschnitt 7:
+#   - GitHub-Environments `production` und `development`
+#     mit Required Reviewers, Wait Timer, Branch-Restriction `main`.
+#   - Tailscale GitHub Action im OAuth-Modus mit Tag `tag:ci`.
+#   - Minimale Permissions, Concurrency.
+#   - Production-Deploy verlangt zusätzlich Cockpit-Production-Mode
+#     (zweite Schutzschicht — laut Master-Dokument Abschnitt 3).
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Ziel-Environment'
+        required: true
+        type: choice
+        options:
+          - development
+          - production
+      image_tag:
+        description: 'Image-Tag (z.B. sha-abc1234). Leer = letzter Build vom Default-Branch.'
+        required: false
+        default: ''
+  workflow_run:
+    workflows: ['Image (Build & Push to GHCR)']
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'development' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'development' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'development' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "image_tag=${{ github.event.inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image_tag=sha-$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Connect Tailscale
+        # CICD-05: SHA-Pinning. Aktualisierung über Dependabot
+        # (.github/dependabot.yml) — bei Update den SHA hier
+        # ersetzen, nicht den Tag.
+        uses: tailscale/github-action@84a3f23bb4d843bcf4da6cf824ec1be473daf4de  # v3.2.2
+        with:
+          oauth-client-id:     ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          oauth-secret:        ${{ secrets.TAILSCALE_OAUTH_SECRET }}
+          tags:                tag:ci
+          version:             latest
+
+      - name: Add CCX23 host key
+        env:
+          CCX23_HOST: ${{ secrets.CCX23_TAILSCALE_HOSTNAME }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$CCX23_HOST" >> ~/.ssh/known_hosts
+
+      - name: Install SSH key
+        env:
+          SSH_KEY: ${{ secrets.CCX23_DEPLOY_SSH_KEY }}
+        run: |
+          install -m 0600 /dev/null ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+
+      - name: Pull repository on CCX23
+        env:
+          CCX23_HOST: ${{ secrets.CCX23_TAILSCALE_HOSTNAME }}
+        run: |
+          ssh deploy@"$CCX23_HOST" "cd /opt/auditworkshop && git fetch origin && git checkout ${{ github.sha }}"
+
+      - name: Set image tag and start
+        env:
+          CCX23_HOST: ${{ secrets.CCX23_TAILSCALE_HOSTNAME }}
+          IMAGE_TAG:  ${{ steps.tag.outputs.image_tag }}
+        run: |
+          # Idempotent: if 'IMAGE_TAG=' line exists, replace it; else append.
+          # `sed -i 's|...|...|'` succeeds even when no line matches, so we
+          # must `grep -q` first and use an explicit if/else.
+          ssh deploy@"$CCX23_HOST" "
+            if sudo grep -q '^IMAGE_TAG=' /etc/auditworkshop/env; then
+              sudo sed -i 's|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|' /etc/auditworkshop/env
+            else
+              echo 'IMAGE_TAG=${IMAGE_TAG}' | sudo tee -a /etc/auditworkshop/env >/dev/null
+            fi
+          "
+          ssh deploy@"$CCX23_HOST" "cd /opt/auditworkshop/auditworkshop && sudo bash lifecycle/start.sh"
+
+      - name: Smoke test
+        env:
+          BASE_URL: ${{ secrets.AUDITWORKSHOP_BASE_URL }}
+        run: |
+          BACKEND_BASE="$BASE_URL" FRONTEND_BASE="$BASE_URL" \
+            bash auditworkshop/scripts/workshop_smoke.sh
+
+      - name: Roll back on smoke-test failure
+        if: failure()
+        env:
+          CCX23_HOST: ${{ secrets.CCX23_TAILSCALE_HOSTNAME }}
+        run: |
+          ssh deploy@"$CCX23_HOST" "cd /opt/auditworkshop && git checkout HEAD@{1} && sudo bash lifecycle/start.sh" || true
+          exit 1

@@ -758,6 +758,13 @@ export interface AuditReportParams {
 
 export interface AuditReportPdfParams extends AuditReportParams {
   pruefer_name?: string;
+  /**
+   * Karten-Seite (OSM + NUTS-Outline + Marker je Treffer-Region) ins PDF
+   * einbinden. Default false. Hinweis: OSM-Tiles werden bei Erstellung
+   * einmalig von tile.openstreetmap.org geladen — der Cover-Block des
+   * PDFs weist darauf gesondert hin.
+   */
+  include_map?: boolean;
 }
 
 /**

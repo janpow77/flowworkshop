@@ -1,0 +1,124 @@
+# migration.yaml — Klassifikation jedes Volumes und Schemas für die
+# Migration des Workshop-Projekts vom Heim-Host zum CCX23.
+#
+# Quelle: APPS_PREPARATION.md §8.1 (Vorbereitungs-Phase). Vier erlaubte
+# Klassifikations-Werte:
+#   - mitnehmen-transformiert: wandert mit, aber mit Anpassung (z.B.
+#     pgvector-Daten + ggf. Reembedding-Bedarf prüfen)
+#   - mitnehmen-identisch:     wandert 1:1 mit
+#   - verwerfen:               nicht migrieren (Cache, Build-Artefakte)
+#   - neu-erzeugen:            am Ziel neu anlegen (Logs, Tracking)
+#
+# Wird vom Cockpit (Domäne 14) und vom Migrations-Workflow gelesen.
+
+slug: auditworkshop
+visibility: shared
+source_environment: heim_host        # NUC oder Desktop (in Sitzung klären)
+target_environment: production       # CCX23 in Falkenstein
+
+# ── Postgres-Schemata ──────────────────────────────────────
+postgres:
+  - schema: workshop
+    classification: mitnehmen-transformiert
+    rationale: |
+      pgvector-Daten (knowledge_chunks) liegen mit dem aktuell aktiven
+      Embedding-Modell vor. Vor dem Cutover prüfen, ob das Modell auf
+      CCX23 identisch ist (bge-m3, 1024 Dim.) — falls Modellwechsel
+      ansteht, Reembedding-Job nach Restore einplanen.
+    transform_steps:
+      - "pg_dump -Fc des Schemas workshop am Quell-Host"
+      - "pg_restore in shared Postgres auf CCX23 als Schema workshop"
+      - "REINDEX SCHEMA workshop für IVFFlat-Index-Konsistenz"
+      - "Prüfung: Workshop-Constraint IVFFlat-Index auf knowledge_chunks erhalten"
+    expected_size_mb: ~150
+    consistency_checks:
+      - "Tabellen-Zeilen-Anzahl pro Tabelle vor/nach Restore identisch"
+      - "Anzahl knowledge_chunks im Schema entspricht /api/knowledge/stats"
+      - "md5(embedding::text) Stichprobe von 50 zufälligen Chunks identisch"
+
+# ── Filesystem-Pfade ───────────────────────────────────────
+filesystem:
+  - path: backend/data/geocode_cache.json
+    classification: mitnehmen-identisch
+    rationale: |
+      3.177 Geocoding-Einträge (Workshop-Constraint: nicht löschen).
+      Quelle: Nominatim mit 1 req/s Rate-Limit — Neuerzeugung würde
+      Stunden dauern.
+    target_path: /var/lib/auditworkshop/data/geocode_cache.json
+    consistency_checks:
+      - "sha256-Vergleich Quelle vs. Ziel"
+      - "Anzahl JSON-Keys identisch"
+
+  - path: backend/data/transparenzliste_hessen.xlsx
+    classification: mitnehmen-identisch
+    target_path: /var/lib/auditworkshop/data/transparenzliste_hessen.xlsx
+  - path: backend/data/transparenzliste_esf_hessen.xlsx
+    classification: mitnehmen-identisch
+    target_path: /var/lib/auditworkshop/data/transparenzliste_esf_hessen.xlsx
+  - path: backend/data/transparenzliste_jtf.xlsx
+    classification: mitnehmen-identisch
+    target_path: /var/lib/auditworkshop/data/transparenzliste_jtf.xlsx
+  - path: backend/data/beguenstigten_analyse.xlsx
+    classification: mitnehmen-identisch
+    target_path: /var/lib/auditworkshop/data/beguenstigten_analyse.xlsx
+
+  - path: backend/data/knowledge_raw/
+    classification: mitnehmen-identisch
+    rationale: |
+      Quell-PDFs der Verordnungen für Re-Ingest. Werden auf CCX23 nicht
+      automatisch ingestiert — nur manuell via WORKSHOP_ADMIN-Endpoint.
+    target_path: /var/lib/auditworkshop/data/knowledge_raw/
+
+  - path: backend/data/documents/
+    classification: mitnehmen-identisch
+    rationale: |
+      Hochgeladene Dokumente der Teilnehmer (Plan v3.2 §7).
+    target_path: /var/lib/auditworkshop/data/documents/
+
+# ── Docker-Volumes ─────────────────────────────────────────
+volumes:
+  - name: db_data
+    classification: verwerfen
+    rationale: |
+      Quell-DB läuft im Container `auditworkshop-db` (pgvector/pgvector:pg16).
+      Auf CCX23 wird das gemeinsame Postgres genutzt; das Volume wird
+      nicht migriert — Inhalte gehen über den pg_dump/pg_restore-Pfad.
+      Volume kann nach erfolgreichem Cutover (Stufe 8.7) gelöscht werden.
+
+# ── Externe Konfiguration ──────────────────────────────────
+external_config:
+  - name: cloudflared-tunnel
+    classification: verwerfen
+    rationale: |
+      Cloudflare-Tunnel wird auf CCX23 durch Caddy ersetzt
+      (Master-Dokument Abschnitt 3, Cloudflare-frei). Tunnel-Token in
+      Stufe 8.7 revoken.
+
+  - name: .env (Quell-Host)
+    classification: neu-erzeugen
+    rationale: |
+      Geheimnisse werden NICHT über die Migrations-Strecke kopiert
+      (APPS_PREPARATION.md §8.4). Auf CCX23 wird /etc/auditworkshop/env
+      aus dem Cockpit-Tracker-Tresor neu generiert.
+
+# ── Container-Logs ─────────────────────────────────────────
+logs:
+  classification: neu-erzeugen
+  rationale: |
+    Container-Logs sind ephemer und werden über json-file mit Rotation
+    am Ziel neu geschrieben. Quell-Logs nach Cleanup verwerfen.
+
+# ── Backup-/Tracking-Daten ─────────────────────────────────
+tracking:
+  classification: neu-erzeugen
+  rationale: |
+    Tracker-Einträge zur Migration werden in Workstream B (cockpit-tracker)
+    erfasst — keine Übernahme aus Quell-System.
+
+# ── Health-Baseline der Quelle (vor Migration messen) ──────
+baseline:
+  health_endpoint_status: ready
+  knowledge_chunks_total: TBD          # in Stufe 8.1 erfassen
+  geocode_cache_entries: 3177
+  registrations_count: TBD
+  beneficiary_records_count: TBD

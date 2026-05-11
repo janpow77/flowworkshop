@@ -3,10 +3,13 @@ flowworkshop · main.py
 FastAPI-Anwendung — Startup, CORS, Router-Registrierung.
 """
 import logging
+import os
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from database import engine, Base
 from services.knowledge_service import init_db
@@ -18,17 +21,31 @@ from routers import beneficiaries_sources
 from routers import entities as entities_router
 from routers import embeddings as embeddings_router
 from services.access_log_middleware import AccessLogMiddleware
+from cockpit_common import (
+    HealthRegistry,
+    RequestContextMiddleware,
+    SubcheckResult,
+    build_health_handler,
+    configure_logging,
+)
 
 # Modelle importieren damit Base.metadata sie kennt
 import models  # noqa: F401
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
+# Cockpit-konformes Logging aufsetzen — JSON, wenn LOG_FORMAT=json,
+# sonst klassisch text für lokale Entwicklung.
+configure_logging(service=os.getenv("WORKSHOP_SERVICE_NAME", "auditworkshop-backend"))
 log = logging.getLogger(__name__)
+
+# Health-Registry mit den drei Standard-Subchecks (Datenbank, LLM,
+# EGPU-Gateway) — Schema gemäß APPS_PREPARATION.md §2.2.
+health_registry = HealthRegistry(service="auditworkshop-backend")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ────────────────────────────────────────────
+    health_registry.mark_started()
     log.info("flowworkshop startet …")
 
     # SQLAlchemy-Tabellen erstellen (workshop_*)
@@ -768,6 +785,11 @@ app.add_middleware(
 # der Middleware-Kette und nicht das eigentliche Request-Ergebnis.
 app.add_middleware(AccessLogMiddleware)
 
+# Cockpit-Request-Context: Request-ID + Tailscale-Identity. Letzte
+# add_middleware-Registrierung läuft als äußerste Schicht — damit alle
+# inneren Middlewares und Endpunkte die Request-ID im Logger sehen.
+app.add_middleware(RequestContextMiddleware)
+
 # Bestehende Router
 app.include_router(workshop.router)
 app.include_router(knowledge.router)
@@ -799,6 +821,39 @@ app.include_router(entities_router.admin_router)
 app.include_router(embeddings_router.router)
 
 
-@app.get("/health")
-def health():
-    return {"status": "ok", "service": "flowworkshop"}
+@health_registry.subcheck("database", timeout_seconds=2.0)
+async def _hc_database() -> SubcheckResult:
+    def probe() -> SubcheckResult:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return SubcheckResult(status="ready")
+
+    import asyncio as _a
+    return await _a.to_thread(probe)
+
+
+@health_registry.subcheck("llm_router", timeout_seconds=4.0)
+async def _hc_llm_router() -> SubcheckResult:
+    state = await check_ollama()
+    if state.get("ok"):
+        return SubcheckResult(status="ready", message="ollama")
+    return SubcheckResult(
+        status="degraded",
+        message=str(state.get("error") or "unreachable"),
+    )
+
+
+@health_registry.subcheck("egpu_gateway", timeout_seconds=3.0)
+async def _hc_egpu_gateway() -> SubcheckResult:
+    egpu_url = os.getenv("EGPU_GATEWAY_URL")
+    if not egpu_url:
+        return SubcheckResult(status="ready", message="not_configured")
+    async with httpx.AsyncClient(timeout=3) as client:
+        resp = await client.get(f"{egpu_url.rstrip('/')}/api/llm/health")
+    return SubcheckResult(
+        status="ready" if resp.status_code == 200 else "degraded",
+        message=f"http_{resp.status_code}",
+    )
+
+
+app.add_api_route("/health", build_health_handler(health_registry), methods=["GET"])

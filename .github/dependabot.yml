@@ -1,0 +1,73 @@
+# Dependabot — wöchentliche SHA-Pflege für GitHub Actions und
+# Container-Base-Images. CICD-09: hält die SHA-gepinnten Actions
+# aktuell, ohne dass jemand händisch SHAs nachschauen muss.
+
+version: 2
+updates:
+  # GitHub Actions im Workshop-Repo (.github/workflows/*.yaml)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: scope
+    labels:
+      - dependencies
+      - github-actions
+
+  # Backend Python-Abhängigkeiten
+  - package-ecosystem: pip
+    directory: /auditworkshop/backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "backend(deps)"
+      include: scope
+    labels:
+      - dependencies
+      - python
+
+  # Frontend npm-Abhängigkeiten
+  - package-ecosystem: npm
+    directory: /auditworkshop/frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "frontend(deps)"
+      include: scope
+    labels:
+      - dependencies
+      - npm
+
+  # Docker-Base-Images
+  - package-ecosystem: docker
+    directory: /auditworkshop/backend
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "backend(docker)"
+    labels:
+      - dependencies
+      - docker
+  - package-ecosystem: docker
+    directory: /auditworkshop/frontend
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "frontend(docker)"
+    labels:
+      - dependencies
+      - docker

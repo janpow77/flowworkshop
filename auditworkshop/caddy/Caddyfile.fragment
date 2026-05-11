@@ -1,0 +1,58 @@
+# Caddy-Fragment für auditworkshop.
+# Konventionen aus Master-Dokument Abschnitt 7:
+#   - TLS via Let's Encrypt (automatisch durch Caddy)
+#   - Kompression (zstd, gzip)
+#   - HSTS
+#   - X-Content-Type-Options
+#   - Tailscale-only-Bind
+#
+# Einbindung im globalen Caddyfile auf CCX23:
+#   import /opt/auditworkshop/caddy/Caddyfile.fragment
+#
+# Hostnamen:
+#   Staging  : auditworkshop-stage.tail-xxxx.ts.net
+#   Produktion: auditworkshop.tail-xxxx.ts.net
+#
+# Beim Cutover (Stufe 8.5) wird der Staging-Block deaktiviert oder die
+# Hostnamen vertauscht.
+
+(auditworkshop-common) {
+	bind tailscale0
+
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Content-Type-Options    "nosniff"
+		Referrer-Policy           "strict-origin-when-cross-origin"
+		# Cockpit-Identity wird vom Tailscale-Daemon gesetzt; durchreichen.
+		-Server
+	}
+
+	# SSE-Buffering muss bereits global deaktiviert sein (Caddy-Konfig
+	# auf CCX23, siehe Workstream A). Hier nur Reverse-Proxy.
+
+	reverse_proxy auditworkshop-frontend:80 {
+		# Tailscale-Identity-Header an Backend durchreichen.
+		header_up Tailscale-User-Login        {http.request.header.Tailscale-User-Login}
+		header_up Tailscale-User-Name         {http.request.header.Tailscale-User-Name}
+		header_up Tailscale-User-Profile-Pic  {http.request.header.Tailscale-User-Profile-Pic}
+
+		# Streaming-Endpunkte: Buffering aus.
+		flush_interval -1
+	}
+
+	log {
+		output stdout
+		format json
+		level  INFO
+	}
+}
+
+auditworkshop-stage.tail-xxxx.ts.net {
+	import auditworkshop-common
+}
+
+auditworkshop.tail-xxxx.ts.net {
+	import auditworkshop-common
+}

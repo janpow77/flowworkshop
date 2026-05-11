@@ -1,0 +1,57 @@
+# backup.yaml — Backup-Deklaration für auditworkshop.
+# Wird vom Cockpit-Backup-Worker (Domäne 6) auf CCX23 ausgewertet.
+#
+# Konventionen aus Master-Dokument Abschnitt 7:
+#   - Aufbewahrungs-Policy: 7 tägliche, 4 wöchentliche, 12 monatliche.
+#   - Production-Backups verschlüsselt (age oder gpg).
+#   - Ziel: Hetzner Storage Box BX11, Sub-Account `ccx23-backup`.
+
+slug: auditworkshop
+visibility: shared
+
+postgres:
+  - database: cockpit
+    schema: workshop
+    # Schemas, die mit-gedumped werden sollen (z.B. zusätzliche
+    # workshop-spezifische Schemas, falls eingeführt).
+    extra_schemas: []
+
+filesystem:
+  - path: /var/lib/auditworkshop/data
+    description: |
+      Bind-Mount des Backend-Containers. Enthält geocode_cache.json
+      (3.177 Einträge, Workshop-Constraint), Transparenzlisten,
+      Demo-Dokumente, NUTS-/PLZ-Referenzdaten.
+  - path: /etc/auditworkshop
+    description: |
+      Konfigurationsverzeichnis. Enthält die env-Datei mit Tresor-
+      Werten — wird AGE-verschlüsselt im Backup abgelegt.
+
+retention:
+  daily:    7
+  weekly:   4
+  monthly: 12
+
+encryption:
+  method: age
+  # Tresor-ID des Recipient-Schlüssels (öffentlicher AGE-Key des
+  # Cockpit-Backup-Recipients). Wird in Workstream A vergeben.
+  recipient_secret_id: cockpit/backup/recipient/age
+
+destination:
+  type: hetzner-storage-box
+  sub_account: ccx23-backup
+  path: /auditworkshop
+
+schedule:
+  # Cockpit ergänzt den Cron-Eintrag automatisch; tägliches Backup um
+  # 04:00 (Master-Dokument Abschnitt 1, Storage-Box-Snapshot-Zeit).
+  cron: "0 4 * * *"
+  timezone: Europe/Berlin
+
+restore_test:
+  # Cockpit (Domäne 6) führt monatlich einen automatischen Restore-Test
+  # in eine Sandbox-DB durch und meldet Abweichungen.
+  enabled: true
+  frequency: monthly
+  target: sandbox
