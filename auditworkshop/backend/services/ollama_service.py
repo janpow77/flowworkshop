@@ -354,6 +354,10 @@ async def _stream_via_gateway(
             data.get("model") or model_name,
         )
 
+    # Tokens_sent-Flag: nachdem wir auch nur EIN Token an den Client gesendet
+    # haben, darf NICHT mehr retried werden — sonst sieht der User Tokens AB
+    # nochmal von vorne (Codex-Audit Befund #2).
+    tokens_sent = False
     for attempt in range(3):
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(10, read=300)) as client:
@@ -363,6 +367,12 @@ async def _stream_via_gateway(
                     json=payload,
                     headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
                 ) as resp:
+                    # Codex-Audit #5: 4xx ist nicht transient → kein Retry-Loop
+                    # bei Bad-Request/Auth-Fail/Schema-Error.
+                    if resp.status_code >= 400 and resp.status_code < 500 and resp.status_code != 429:
+                        body = await resp.aread()
+                        yield f"data: {json.dumps({'error': f'Gateway HTTP {resp.status_code}: {body.decode(errors=\"replace\")[:300]}', 'done': True})}\n\n"
+                        return
                     if resp.status_code >= 400:
                         body = await resp.aread()
                         raise RuntimeError(
@@ -378,6 +388,11 @@ async def _stream_via_gateway(
 
                         data_str = line[5:].strip()  # "data: ..." oder "data:..."
                         if data_str == "[DONE]":
+                            # Codex-Audit #1: aclose() vor break — sonst bleibt
+                            # die Stream-Connection im httpx-Pool offen bis
+                            # Upstream closed, blockiert Slot bei langlebigen
+                            # Keep-Alives.
+                            await resp.aclose()
                             break
 
                         try:
@@ -397,6 +412,7 @@ async def _stream_via_gateway(
                             )
                             if token:
                                 saw_content = True
+                                tokens_sent = True
                                 token_count += 1
                                 yield f"data: {json.dumps({'token': token, 'done': False})}\n\n"
                             elif reasoning:
@@ -415,12 +431,18 @@ async def _stream_via_gateway(
                     fallback_text, fallback_completion_tokens, fallback_model_name = await _fallback_non_streaming_answer()
                     if fallback_text:
                         model_name = fallback_model_name or model_name
+                        # Codex-Audit #5: token_count zuruecksetzen — sonst
+                        # ueberschreibt usage am Ende einen falsch akkumulierten
+                        # Counter.
+                        token_count = 0
                         fallback_chunks = _chunk_text(fallback_text)
                         for chunk in fallback_chunks:
-                            token_count += 1
+                            tokens_sent = True
                             yield f"data: {json.dumps({'token': chunk, 'done': False})}\n\n"
                         if fallback_completion_tokens:
                             token_count = int(fallback_completion_tokens)
+                        else:
+                            token_count = len(fallback_chunks)
 
                 elapsed = round(time.monotonic() - t_start, 1)
                 tok_per_s = round(token_count / elapsed, 1) if elapsed > 0 else 0
@@ -435,13 +457,26 @@ async def _stream_via_gateway(
                 )
                 yield f"data: {done_data}\n\n"
                 return
+        except asyncio.CancelledError:
+            # Codex-Audit #1: Client hat SSE-Tab geschlossen — KEIN Retry,
+            # einfach aufraeumen und nach oben propagieren.
+            raise
         except httpx.TimeoutException:
+            # Codex-Audit #2: nicht retry'en wenn schon Tokens gesendet wurden.
+            if tokens_sent:
+                yield f"data: {json.dumps({'error': 'upstream timeout after partial stream', 'done': True})}\n\n"
+                return
             if attempt < 2:
                 log.warning("Gateway Timeout - Versuch %d/3", attempt + 1)
                 continue
             yield f"data: {json.dumps({'error': 'timeout', 'done': True})}\n\n"
             return
         except Exception as e:
+            # Codex-Audit #2: nicht retry'en wenn schon Tokens gesendet wurden.
+            if tokens_sent:
+                log.warning("Gateway-Fehler (%s) nach partial stream — kein Retry.", e)
+                yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
+                return
             if attempt < 2:
                 wait = [1, 3][attempt]
                 log.warning("Gateway-Fehler (%s) - Retry in %ds", e, wait)
@@ -497,6 +532,9 @@ async def stream(
         },
     }
 
+    # Codex-Audit #2: nach erstem yield darf nicht mehr retried werden (sonst
+    # sieht Frontend Tokens AB nochmal).
+    tokens_sent = False
     for attempt in range(3):
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(10, read=300)) as client:
@@ -505,13 +543,22 @@ async def stream(
                     f"{OLLAMA_URL}/api/generate",
                     json=payload,
                 ) as resp:
+                    # Codex-Audit #5: 4xx ist nicht transient.
+                    if resp.status_code >= 400 and resp.status_code < 500 and resp.status_code != 429:
+                        body = await resp.aread()
+                        yield f"data: {json.dumps({'error': f'Ollama HTTP {resp.status_code}: {body.decode(errors=\"replace\")[:300]}', 'done': True})}\n\n"
+                        return
                     resp.raise_for_status()
                     async for line in resp.aiter_lines():
                         if not line:
                             continue
-                        data = json.loads(line)
+                        try:
+                            data = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
                         token = data.get("response", "")
                         if token:
+                            tokens_sent = True
                             token_count += 1
                             yield f"data: {json.dumps({'token': token, 'done': False})}\n\n"
                         if data.get("done"):
@@ -527,15 +574,25 @@ async def stream(
                                 }
                             )
                             yield f"data: {done_data}\n\n"
+                            await resp.aclose()  # Codex-Audit #1
                             return
             return
+        except asyncio.CancelledError:
+            raise  # Codex-Audit #1: Client-Cancel propagieren, kein Retry
         except httpx.TimeoutException:
+            if tokens_sent:
+                yield f"data: {json.dumps({'error': 'upstream timeout after partial stream', 'done': True})}\n\n"
+                return
             if attempt < 2:
                 log.warning("Ollama Timeout - Versuch %d/3", attempt + 1)
                 continue
             yield f"data: {json.dumps({'error': 'timeout', 'done': True})}\n\n"
             return
         except Exception as e:
+            if tokens_sent:
+                log.warning("Ollama-Fehler (%s) nach partial stream — kein Retry.", e)
+                yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
+                return
             if attempt < 2:
                 wait = [1, 3][attempt]
                 log.warning("Ollama-Fehler (%s) - Retry in %ds", e, wait)
