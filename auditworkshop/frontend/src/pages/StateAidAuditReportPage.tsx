@@ -392,7 +392,7 @@ function StateAidAuditReportPageInner() {
                   value={auftraggeber}
                   onChange={(e) => setAuftraggeber(e.target.value.slice(0, MAX_AUFTRAGGEBER))}
                   maxLength={MAX_AUFTRAGGEBER}
-                  placeholder="Hessisches Ministerium der Finanzen, Prüfbehörde EFRE"
+                  placeholder="Compliance Referat der Musterlandesbehörde"
                   className="mt-1.5 w-full rounded-[20px] border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/30"
                 />
               </label>
