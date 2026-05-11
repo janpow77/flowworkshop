@@ -461,7 +461,8 @@ async def _stream_via_gateway(
                     # bei Bad-Request/Auth-Fail/Schema-Error.
                     if resp.status_code >= 400 and resp.status_code < 500 and resp.status_code != 429:
                         body = await resp.aread()
-                        yield f"data: {json.dumps({'error': f'Gateway HTTP {resp.status_code}: {body.decode(errors=\"replace\")[:300]}', 'done': True})}\n\n"
+                        err_msg = f"Gateway HTTP {resp.status_code}: {body.decode(errors='replace')[:300]}"
+                        yield f"data: {json.dumps({'error': err_msg, 'done': True})}\n\n"
                         return
                     if resp.status_code >= 400:
                         body = await resp.aread()
@@ -643,7 +644,8 @@ async def stream(
                     # Codex-Audit #5: 4xx ist nicht transient.
                     if resp.status_code >= 400 and resp.status_code < 500 and resp.status_code != 429:
                         body = await resp.aread()
-                        yield f"data: {json.dumps({'error': f'Ollama HTTP {resp.status_code}: {body.decode(errors=\"replace\")[:300]}', 'done': True})}\n\n"
+                        err_msg = f"Ollama HTTP {resp.status_code}: {body.decode(errors='replace')[:300]}"
+                        yield f"data: {json.dumps({'error': err_msg, 'done': True})}\n\n"
                         return
                     resp.raise_for_status()
                     async for line in resp.aiter_lines():
