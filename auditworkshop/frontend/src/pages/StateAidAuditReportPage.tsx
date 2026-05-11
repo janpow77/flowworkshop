@@ -141,6 +141,10 @@ function StateAidAuditReportPageInner() {
   // der Re-Ranker pro Bericht spuerbar Zeit kostet — der Pruefer schaltet
   // ihn explizit zu.
   const [includeLlmVerification, setIncludeLlmVerification] = useState<boolean>(initialIncludeLlm);
+  // Karten-Seite im PDF einbinden (OSM-Tiles + NUTS-Outline + Marker).
+  // Default off — die OSM-Tiles werden beim Erstellen einmalig extern
+  // geladen; das ist in der UI ein bewusster Klick, kein Default.
+  const [includeMap, setIncludeMap] = useState<boolean>(false);
   // Toggle „auch LLM-abgelehnte Querbezuege zeigen" (Default off). Wird an
   // AuditReportPreview/AuditCrossReferences durchgereicht.
   const [showLlmRejected, setShowLlmRejected] = useState<boolean>(false);
@@ -242,6 +246,7 @@ function StateAidAuditReportPageInner() {
     setPrueferName('');
     setPersons([]);
     setIncludeLlmVerification(false);
+    setIncludeMap(false);
     setShowLlmRejected(false);
     setReport(null);
     setError(null);
@@ -283,6 +288,7 @@ function StateAidAuditReportPageInner() {
       const cleanedPersons = sanitizePersons(persons);
       if (cleanedPersons.length > 0) params.persons = cleanedPersons;
       if (includeLlmVerification) params.include_llm_verification = true;
+      if (includeMap) params.include_map = true;
 
       const blob = await downloadAuditReportPdf(params);
       const url = URL.createObjectURL(blob);
@@ -560,6 +566,36 @@ function StateAidAuditReportPageInner() {
                 Ein lokal laufendes Sprachmodell schaut sich die unsicheren Querbezüge noch einmal
                 an und urteilt in einem Satz, ob es wirklich um denselben Akteur geht. Die Originaldaten
                 bleiben unangetastet — die Bewertung ist eine Zweitmeinung mit kurzer Begründung.
+              </p>
+            </div>
+          </label>
+        </div>
+
+        {/* ── Karten-Seite Toggle ───────────────────────────────────────── */}
+        <div className="mt-3 rounded-[24px] border border-emerald-200/70 bg-emerald-50/50 p-4 dark:border-emerald-500/30 dark:bg-emerald-950/20">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={includeMap}
+              onChange={(e) => setIncludeMap(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+              aria-describedby="map-hint"
+            />
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                  Karten-Seite ins PDF einbinden
+                </span>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200">
+                  OSM + NUTS
+                </span>
+              </div>
+              <p id="map-hint" className="mt-1 text-xs leading-5 text-emerald-800/85 dark:text-emerald-200/85">
+                Ergänzt das PDF um eine eigene Seite mit OpenStreetMap als Hintergrund,
+                NUTS-1-Bundesländer als Outline und einem roten Marker je Treffer-Region
+                (Marker-Zahl = Award-Anzahl). Hinweis: die Hintergrundkacheln werden bei
+                Berichterstellung einmalig von tile.openstreetmap.org geladen — der
+                Cover-Block des PDFs weist darauf gesondert hin.
               </p>
             </div>
           </label>

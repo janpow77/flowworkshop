@@ -1853,6 +1853,20 @@ class AuditReportPdfRequest(BaseModel):
             "werden sollen. Maximal 20 Eintraege."
         ),
     )
+    # Mai 2026: Karten-Layer einbinden (OSM-Tiles + NUTS-Outline + Marker).
+    # Default false, weil OSM-Tile-Fetch externes Netz braucht und Cover-
+    # Hinweis dann angepasst werden muss.
+    include_map: bool = Field(
+        False,
+        description=(
+            "Wenn true, wird im PDF eine eigene Karten-Seite eingefuegt: "
+            "OSM-Tiles als Hintergrund, NUTS-Layer als Outline, ein Marker "
+            "je NUTS-Region mit Award-Treffern (Marker-Groesse ~ Anzahl). "
+            "Hinweis: OSM-Tiles werden bei Berichterstellung einmalig von "
+            "tile.openstreetmap.org geladen — der Cover-Block des PDFs "
+            "weist darauf gesondert hin."
+        ),
+    )
 
 
 def _parse_persons_query(persons_param: list[str] | None) -> list[dict]:
@@ -2057,7 +2071,7 @@ def post_audit_report_pdf(
         raise HTTPException(500, f"Bericht konnte nicht erstellt werden: {exc}") from exc
 
     try:
-        pdf_bytes = render_audit_report_pdf(data)
+        pdf_bytes = render_audit_report_pdf(data, include_map=bool(body.include_map))
     except Exception as exc:  # noqa: BLE001
         log.exception("Audit-Report PDF-Rendering fehlgeschlagen")
         raise HTTPException(500, f"PDF-Erzeugung fehlgeschlagen: {exc}") from exc
