@@ -90,8 +90,17 @@ jobs:
           CCX23_HOST: ${{ secrets.CCX23_TAILSCALE_HOSTNAME }}
           IMAGE_TAG:  ${{ steps.tag.outputs.image_tag }}
         run: |
-          ssh deploy@"$CCX23_HOST" "sudo sed -i 's|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|' /etc/auditworkshop/env || echo IMAGE_TAG=${IMAGE_TAG} | sudo tee -a /etc/auditworkshop/env >/dev/null"
-          ssh deploy@"$CCX23_HOST" "cd /opt/auditworkshop && sudo bash lifecycle/start.sh"
+          # Idempotent: if 'IMAGE_TAG=' line exists, replace it; else append.
+          # `sed -i 's|...|...|'` succeeds even when no line matches, so we
+          # must `grep -q` first and use an explicit if/else.
+          ssh deploy@"$CCX23_HOST" "
+            if sudo grep -q '^IMAGE_TAG=' /etc/auditworkshop/env; then
+              sudo sed -i 's|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|' /etc/auditworkshop/env
+            else
+              echo 'IMAGE_TAG=${IMAGE_TAG}' | sudo tee -a /etc/auditworkshop/env >/dev/null
+            fi
+          "
+          ssh deploy@"$CCX23_HOST" "cd /opt/auditworkshop/auditworkshop && sudo bash lifecycle/start.sh"
 
       - name: Smoke test
         env:
