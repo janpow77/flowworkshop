@@ -1,53 +1,56 @@
-x-logging: &id001
+# Hetzner-CCX23-Compose fuer auditworkshop (Phase 1, durch Ops-Agent angepasst).
+
+x-logging: &default-logging
   driver: json-file
   options:
-    max-size: 10m
-    max-file: '3'
+    max-size: "10m"
+    max-file: "3"
+
 services:
   auditworkshop-backend:
     image: ghcr.io/janpow77/auditworkshop-backend:${IMAGE_TAG:-latest}
     container_name: auditworkshop-backend
     restart: unless-stopped
-    mem_limit: 1024M
+    mem_limit: 2048M
     networks:
       cockpit: {}
       auditworkshop:
         aliases:
-        - backend
+          - backend
     env_file:
-    - /etc/auditworkshop/env
+      - /etc/auditworkshop/env
     healthcheck:
-      test:
-      - CMD
-      - python3
-      - -c
-      - import urllib.request,sys; r=urllib.request.urlopen('http://localhost:8000/health',timeout=3);
-        sys.exit(0 if r.status==200 else 1)
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; r=urllib.request.urlopen(\"http://localhost:8000/health\",timeout=3); sys.exit(0 if r.status==200 else 1)"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 60s
     volumes:
-    - /var/lib/auditworkshop/data:/app/data
-    logging: *id001
+      - /var/lib/auditworkshop/data:/app/data
+    logging: *default-logging
+
   auditworkshop-frontend:
     image: ghcr.io/janpow77/auditworkshop-frontend:${IMAGE_TAG:-latest}
     container_name: auditworkshop-frontend
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:3004:80"
     networks:
-    - auditworkshop
+      cockpit:
+        aliases:
+          - auditworkshop-frontend
+      auditworkshop: {}
     depends_on:
       auditworkshop-backend:
         condition: service_healthy
     healthcheck:
-      test:
-      - CMD-SHELL
-      - wget -q -O - http://localhost/ >/dev/null || exit 1
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/ >/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
-    logging: *id001
+    logging: *default-logging
+
 networks:
   cockpit:
     external: true
