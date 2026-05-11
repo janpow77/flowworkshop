@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import CommandPalette from './CommandPalette';
@@ -31,6 +31,11 @@ export default function AppShell() {
             </ErrorBoundary>
           </div>
         </main>
+        <footer className="border-t border-slate-200/60 bg-white/40 px-5 py-2 text-center text-[11px] text-slate-500 backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-950/30 dark:text-slate-400 lg:px-8">
+          <Link to="/impressum" className="hover:underline">Impressum</Link>
+          <span className="mx-2">·</span>
+          <Link to="/datenschutz" className="hover:underline">Datenschutz</Link>
+        </footer>
         <CommandPalette />
         <SprechzettelPanel />
       </div>

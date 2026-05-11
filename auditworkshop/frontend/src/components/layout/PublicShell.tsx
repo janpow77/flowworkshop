@@ -95,7 +95,13 @@ export default function PublicShell() {
         </div>
       </main>
       <footer className="relative z-10 border-t border-slate-200/60 bg-white/60 px-5 py-3 text-center text-[11px] text-slate-500 backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-950/40 dark:text-slate-400 lg:px-8">
-        Daten nach Art. 49 VO (EU) 2021/1060 · Sanktionslisten EU FSF / OFAC / OFSI · {dark ? 'Dark' : 'Hell'}-Modus aktiv
+        <span>
+          Daten nach Art. 49 VO (EU) 2021/1060 · Sanktionslisten EU FSF / OFAC / OFSI · {dark ? 'Dark' : 'Hell'}-Modus aktiv
+        </span>
+        <span className="mx-2">·</span>
+        <Link to="/impressum" className="hover:underline">Impressum</Link>
+        <span className="mx-2">·</span>
+        <Link to="/datenschutz" className="hover:underline">Datenschutz</Link>
       </footer>
     </div>
   );

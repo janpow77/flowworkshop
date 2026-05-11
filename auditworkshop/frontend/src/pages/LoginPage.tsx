@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { LogIn, UserPlus, Loader2, Eye, EyeOff, QrCode } from 'lucide-react';
 
 export default function LoginPage({ onLogin }: { onLogin: (token: string, user: { name: string; organization: string; role: string }) => void }) {
@@ -312,6 +312,11 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
 
         <p className="mt-8 text-center text-xs text-blue-200/50">
           Kontakt: <a href="mailto:jan.riener@vwvg.de" className="text-blue-300/70 hover:text-blue-200 underline transition-colors">jan.riener@vwvg.de</a>
+        </p>
+        <p className="mt-2 text-center text-[11px] text-blue-200/40">
+          <Link to="/impressum" className="hover:text-blue-200/70 hover:underline">Impressum</Link>
+          <span className="mx-2">·</span>
+          <Link to="/datenschutz" className="hover:text-blue-200/70 hover:underline">Datenschutz</Link>
         </p>
       </div>
     </div>

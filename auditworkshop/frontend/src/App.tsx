@@ -10,6 +10,8 @@ import AgendaPage from './pages/AgendaPage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import VorstellungsrundePage from './pages/VorstellungsrundePage';
+import ImpressumPage from './pages/ImpressumPage';
+import DatenschutzPage from './pages/DatenschutzPage';
 
 // Geschuetzte Routen (lazy loaded)
 const AgendaForumPage = lazy(() => import('./pages/AgendaForumPage'));
@@ -67,6 +69,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Rechtliche Pflichtseiten — immer erreichbar, eigene Layouts */}
+        <Route path="/impressum" element={<ImpressumPage />} />
+        <Route path="/datenschutz" element={<DatenschutzPage />} />
+
         {/* Oeffentliche Routen mit Workshop-Sidebar (Forum/Agenda) */}
         <Route element={<AppShell />}>
           <Route path="/agenda" element={
