@@ -491,9 +491,8 @@ class _RenderState:
 
 
 def _render_cover(state: _RenderState) -> None:
-    """Deckblatt (1 Seite): Titel, Anfrage, öffentlich zugängliche Quellen,
-    Methodik, KI-Hinweis, Rechtsblock, Kontakt. Auftraggeber/Prüfer werden
-    bewusst nicht ausgegeben."""
+    """Deckblatt (1 Seite): Titel, Anfrage, Auftraggeber/Bearbeiter, öffentlich
+    zugängliche Quellen, Methodik, KI-Hinweis, Rechtsblock, Kontakt."""
     data = state.data
     state.cursor_y = MARGIN + 30
     state.write_text("Cross-Register-Prüfbericht", size=20, bold=True, color=COL_HEADER)
@@ -512,6 +511,13 @@ def _render_cover(state: _RenderState) -> None:
         "Erstellt am:",
         data.issued_at.strftime("%Y-%m-%d %H:%M UTC") if data.issued_at else "—",
     )
+    # Auftraggeber/Bearbeiter werden im Cover gefuehrt (oben sichtbar). Der
+    # Footer bleibt davon unberuehrt. Beide Felder sind im Frontend optional,
+    # deshalb nur anzeigen wenn gesetzt.
+    if data.auftraggeber:
+        state.write_kv("Auftraggeber:", data.auftraggeber)
+    if data.pruefer_name:
+        state.write_kv("Bearbeiter:", data.pruefer_name)
 
     state.cursor_y += 4
 
