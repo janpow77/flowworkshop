@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.access_log import AccessLog
+from models.llm_call_log import LlmCallLog
 from models.registration import Registration
 from routers.auth import require_admin
 
@@ -322,6 +323,240 @@ def access_recent(
                 "ua_short": row.ua_short,
                 "referer_path": row.referer_path,
                 "response_size": row.response_size,
+            }
+            for row in rows
+        ],
+    }
+
+
+# ── LLM-Usage-Endpoints ──────────────────────────────────────────────────────
+#
+# Datenquelle: workshop_llm_call_log (ein Eintrag pro abgeschlossenem
+# LLM-Call, geschrieben aus services/ollama_service.py). Erfasst auch
+# SSE-Streams vollstaendig, im Gegensatz zur HTTP-Middleware.
+
+
+def _require_admin_or_pin(request: Request, pin: str | None, db: Session) -> None:
+    """Akzeptiert entweder Admin-Session (Bearer) oder PIN-Query-Param
+    (analog zu /api/event/admin/*). Wirft 403 bei Mismatch."""
+    # 1) Session-Token
+    try:
+        require_admin(request)
+        return
+    except Exception:
+        pass
+    # 2) PIN (wie /api/event/admin/*)
+    if pin:
+        from models.registration import WorkshopMeta
+        meta = db.query(WorkshopMeta).first()
+        if meta and meta.admin_pin and pin == meta.admin_pin:
+            return
+    from fastapi import HTTPException
+    raise HTTPException(403, "Admin-Session oder PIN erforderlich.")
+
+
+@router.get("/llm/summary")
+def llm_summary(
+    request: Request,
+    since_hours: int = Query(24, ge=1, le=24 * 30),
+    pin: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    _require_admin_or_pin(request, pin, db)
+    """LLM-Gesamtkennzahlen fuer ein Zeitfenster."""
+    since, until = _since_until(since_hours)
+    base = db.query(LlmCallLog).filter(LlmCallLog.created_at >= since)
+    total_calls = base.count()
+
+    agg = (
+        db.query(
+            sql_func.coalesce(sql_func.sum(LlmCallLog.prompt_tokens), 0).label("p_sum"),
+            sql_func.coalesce(sql_func.sum(LlmCallLog.completion_tokens), 0).label("c_sum"),
+            sql_func.coalesce(sql_func.avg(LlmCallLog.duration_ms), 0).label("avg_ms"),
+            sql_func.coalesce(_percentile_pg(LlmCallLog.duration_ms, 0.95), 0).label("p95_ms"),
+            sql_func.coalesce(sql_func.sum(LlmCallLog.duration_ms), 0).label("total_ms"),
+        )
+        .filter(LlmCallLog.created_at >= since)
+        .first()
+    )
+    by_status_rows = (
+        db.query(LlmCallLog.status, sql_func.count().label("c"))
+        .filter(LlmCallLog.created_at >= since)
+        .group_by(LlmCallLog.status)
+        .all()
+    )
+    by_status = {row.status or "ok": int(row.c) for row in by_status_rows}
+
+    return {
+        "since": since.isoformat() + "Z",
+        "until": until.isoformat() + "Z",
+        "since_hours": int(since_hours),
+        "total_calls": int(total_calls),
+        "prompt_tokens_sum": int(agg.p_sum or 0),
+        "completion_tokens_sum": int(agg.c_sum or 0),
+        "total_tokens": int((agg.p_sum or 0) + (agg.c_sum or 0)),
+        "avg_duration_ms": round(float(agg.avg_ms or 0), 1),
+        "p95_duration_ms": round(float(agg.p95_ms or 0), 1),
+        "total_duration_ms": int(agg.total_ms or 0),
+        "by_status": by_status,
+    }
+
+
+@router.get("/llm/by-model")
+def llm_by_model(
+    request: Request,
+    since_hours: int = Query(24, ge=1, le=24 * 30),
+    pin: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Nutzung pro Modell — Counts, Tokens, durchschnittliche Latenz."""
+    _require_admin_or_pin(request, pin, db)
+    since, _until = _since_until(since_hours)
+    rows = (
+        db.query(
+            LlmCallLog.model,
+            LlmCallLog.backend,
+            sql_func.count().label("calls"),
+            sql_func.coalesce(sql_func.sum(LlmCallLog.prompt_tokens), 0).label("p_sum"),
+            sql_func.coalesce(sql_func.sum(LlmCallLog.completion_tokens), 0).label("c_sum"),
+            sql_func.coalesce(sql_func.avg(LlmCallLog.duration_ms), 0).label("avg_ms"),
+            sql_func.coalesce(_percentile_pg(LlmCallLog.duration_ms, 0.95), 0).label("p95_ms"),
+            sql_func.sum(
+                sql_func.case((LlmCallLog.status != "ok", 1), else_=0)
+            ).label("errors"),
+        )
+        .filter(LlmCallLog.created_at >= since)
+        .group_by(LlmCallLog.model, LlmCallLog.backend)
+        .order_by(desc("calls"))
+        .all()
+    )
+    return {
+        "since_hours": int(since_hours),
+        "items": [
+            {
+                "model": row.model,
+                "backend": row.backend,
+                "calls": int(row.calls or 0),
+                "prompt_tokens_sum": int(row.p_sum or 0),
+                "completion_tokens_sum": int(row.c_sum or 0),
+                "avg_duration_ms": round(float(row.avg_ms or 0), 1),
+                "p95_duration_ms": round(float(row.p95_ms or 0), 1),
+                "errors": int(row.errors or 0),
+            }
+            for row in rows
+        ],
+    }
+
+
+@router.get("/llm/by-route")
+def llm_by_route(
+    request: Request,
+    since_hours: int = Query(24, ge=1, le=24 * 30),
+    limit: int = Query(30, ge=1, le=200),
+    pin: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """LLM-Nutzung pro Endpoint (Route-Template). Zeigt welche Endpoints
+    die meisten Tokens verbrennen — fuer gezielte Prompt-Optimierung."""
+    _require_admin_or_pin(request, pin, db)
+    since, _until = _since_until(since_hours)
+    rows = (
+        db.query(
+            LlmCallLog.route,
+            sql_func.count().label("calls"),
+            sql_func.coalesce(sql_func.sum(LlmCallLog.prompt_tokens), 0).label("p_sum"),
+            sql_func.coalesce(sql_func.sum(LlmCallLog.completion_tokens), 0).label("c_sum"),
+            sql_func.coalesce(sql_func.avg(LlmCallLog.duration_ms), 0).label("avg_ms"),
+            sql_func.coalesce(_percentile_pg(LlmCallLog.duration_ms, 0.95), 0).label("p95_ms"),
+        )
+        .filter(LlmCallLog.created_at >= since)
+        .group_by(LlmCallLog.route)
+        .order_by(desc("calls"))
+        .limit(limit)
+        .all()
+    )
+    return {
+        "since_hours": int(since_hours),
+        "items": [
+            {
+                "route": row.route or "(unknown)",
+                "calls": int(row.calls or 0),
+                "prompt_tokens_sum": int(row.p_sum or 0),
+                "completion_tokens_sum": int(row.c_sum or 0),
+                "total_tokens": int((row.p_sum or 0) + (row.c_sum or 0)),
+                "avg_duration_ms": round(float(row.avg_ms or 0), 1),
+                "p95_duration_ms": round(float(row.p95_ms or 0), 1),
+            }
+            for row in rows
+        ],
+    }
+
+
+@router.get("/llm/latency-buckets")
+def llm_latency_buckets(
+    request: Request,
+    since_hours: int = Query(24, ge=1, le=24 * 30),
+    pin: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Histogramm der LLM-Latenz in Buckets."""
+    _require_admin_or_pin(request, pin, db)
+    since, _until = _since_until(since_hours)
+    bucket_defs = [
+        ("<100ms", 0, 100),
+        ("100-500ms", 100, 500),
+        ("500ms-2s", 500, 2_000),
+        ("2-10s", 2_000, 10_000),
+        ("10-60s", 10_000, 60_000),
+        (">60s", 60_000, 10**12),
+    ]
+    items = []
+    for label, lo, hi in bucket_defs:
+        c = (
+            db.query(sql_func.count())
+            .filter(
+                LlmCallLog.created_at >= since,
+                LlmCallLog.duration_ms >= lo,
+                LlmCallLog.duration_ms < hi,
+            )
+            .scalar()
+            or 0
+        )
+        items.append({"label": label, "count": int(c)})
+    return {"since_hours": int(since_hours), "buckets": items}
+
+
+@router.get("/llm/recent")
+def llm_recent(
+    request: Request,
+    limit: int = Query(100, ge=1, le=500),
+    route: str | None = Query(None, description="Substring-Filter auf route"),
+    model: str | None = Query(None, description="Exakter Modell-Filter"),
+    pin: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Letzte LLM-Calls (Drilldown)."""
+    _require_admin_or_pin(request, pin, db)
+    q = db.query(LlmCallLog).order_by(desc(LlmCallLog.id))
+    if route:
+        q = q.filter(LlmCallLog.route.ilike(f"%{route}%"))
+    if model:
+        q = q.filter(LlmCallLog.model == model)
+    rows = q.limit(limit).all()
+    return {
+        "count": len(rows),
+        "items": [
+            {
+                "id": row.id,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "route": row.route,
+                "model": row.model,
+                "backend": row.backend,
+                "prompt_tokens": row.prompt_tokens,
+                "completion_tokens": row.completion_tokens,
+                "duration_ms": row.duration_ms,
+                "status": row.status,
+                "error": row.error,
             }
             for row in rows
         ],

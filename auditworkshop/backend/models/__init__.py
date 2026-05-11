@@ -43,6 +43,7 @@ from models.state_aid import (  # noqa: F401
 from models.state_aid_validation import StateAidValidationRun  # noqa: F401
 from models.state_aid_audit import AuditReportLog  # noqa: F401
 from models.access_log import AccessLog  # noqa: F401
+from models.llm_call_log import LlmCallLog  # noqa: F401
 from models.corporate_lookup_cache import CorporateLookupCache  # noqa: F401
 from models.beneficiary_records import (  # noqa: F401
     BeneficiaryRecord, BeneficiaryHarvestRun,

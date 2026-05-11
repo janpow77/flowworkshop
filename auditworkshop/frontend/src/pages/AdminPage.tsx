@@ -4,9 +4,11 @@ import {
   Lock, Settings, ListOrdered, QrCode, Users, MessageSquare,
   Plus, Trash2, ArrowUp, ArrowDown, Save, Loader2, Download, Pencil, X, Check,
   Calendar, Clock, MapPin, Building2, Image, CheckCircle, Shield, Archive,
+  BarChart3,
 } from 'lucide-react';
 import AdminUsersPanel from '../components/admin/AdminUsersPanel';
 import PhaseTogglePanel from '../components/admin/PhaseTogglePanel';
+import AdminUsagePanel from '../components/admin/AdminUsagePanel';
 
 interface Meta {
   title: string; subtitle: string; date: string; time: string;
@@ -19,7 +21,7 @@ interface AgendaItem {
   title: string; speaker: string | null; note: string | null; page_url: string | null; sort_order: number;
 }
 
-type Tab = 'agenda' | 'meta' | 'qr' | 'registrations' | 'topics' | 'users' | 'phase';
+type Tab = 'agenda' | 'meta' | 'qr' | 'registrations' | 'topics' | 'users' | 'phase' | 'usage';
 
 export default function AdminPage() {
   const [pin, setPin] = useState('');
@@ -195,6 +197,7 @@ export default function AdminPage() {
     { key: 'topics', label: `Themen (${topics.length})`, icon: MessageSquare },
     { key: 'users', label: 'Benutzer', icon: Shield },
     { key: 'phase', label: 'Modus', icon: Archive },
+    { key: 'usage', label: 'Nutzung', icon: BarChart3 },
   ];
 
   return (
@@ -453,6 +456,7 @@ export default function AdminPage() {
 
       {tab === 'users' && <AdminUsersPanel />}
       {tab === 'phase' && <PhaseTogglePanel />}
+      {tab === 'usage' && <AdminUsagePanel pin={pin} />}
     </div>
   );
 }

@@ -297,6 +297,67 @@ async def lifespan(app: FastAPI):
                     "State-Aid expected_total-Migration fehlgeschlagen: %s", e,
                 )
 
+            # workshop_llm_call_log wird per Base.metadata.create_all
+            # angelegt; nichts mehr zu tun (idempotent).
+
+            # Access-Log: LLM-Telemetrie-Spalten (llm_model, prompt/completion
+            # tokens, llm_duration_ms, llm_call_count). Idempotent.
+            try:
+                access_cols = [
+                    c["name"] for c in inspector.get_columns(
+                        "workshop_access_log",
+                    )
+                ]
+                access_migrations = {
+                    "llm_model": (
+                        "ALTER TABLE workshop_access_log "
+                        "ADD COLUMN llm_model VARCHAR(80)"
+                    ),
+                    "llm_prompt_tokens": (
+                        "ALTER TABLE workshop_access_log "
+                        "ADD COLUMN llm_prompt_tokens INTEGER"
+                    ),
+                    "llm_completion_tokens": (
+                        "ALTER TABLE workshop_access_log "
+                        "ADD COLUMN llm_completion_tokens INTEGER"
+                    ),
+                    "llm_duration_ms": (
+                        "ALTER TABLE workshop_access_log "
+                        "ADD COLUMN llm_duration_ms INTEGER"
+                    ),
+                    "llm_call_count": (
+                        "ALTER TABLE workshop_access_log "
+                        "ADD COLUMN llm_call_count INTEGER"
+                    ),
+                }
+                for col, ddl in access_migrations.items():
+                    if col not in access_cols:
+                        conn.execute(text(ddl))
+                        conn.commit()
+                        log.info(
+                            "Spalte %s zu workshop_access_log hinzugefuegt.",
+                            col,
+                        )
+                access_idx = [
+                    i["name"] for i in inspector.get_indexes(
+                        "workshop_access_log",
+                    )
+                ]
+                if "ix_access_log_model_time" not in access_idx:
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_access_log_model_time "
+                        "ON workshop_access_log (llm_model, created_at)"
+                    ))
+                    conn.commit()
+                    log.info(
+                        "Index ix_access_log_model_time auf "
+                        "workshop_access_log angelegt.",
+                    )
+            except Exception as e:
+                log.warning(
+                    "Access-Log LLM-Telemetrie-Migration fehlgeschlagen: %s", e,
+                )
+
             # Sanctions Multi-Source: Migration der neuen Spalten
             # (sources, parameters JSON) auf workshop_sanctions_refresh.
             # Idempotent.

@@ -246,6 +246,20 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         if _should_skip(path, ua):
             return await call_next(request)
 
+        # LLM-Telemetrie-Accumulator initialisieren — ollama_service
+        # schreibt in den ContextVar, wir lesen ihn im finally.
+        # Plus: aktuelle Route fuer den Direct-Write in workshop_llm_call_log
+        # vorlaeufig auf den Path setzen (Template ist erst nach Routing da).
+        try:
+            from services.llm_usage_context import (
+                set_current_route as _set_route,
+                start_request as _start_usage,
+            )
+            _start_usage()
+            _set_route(path)
+        except Exception:  # noqa: BLE001
+            _set_route = None  # type: ignore[assignment]
+
         start = time.perf_counter()
         status_code = 500
         response_size: int | None = None
@@ -253,6 +267,14 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             status_code = response.status_code
+            # Nach Routing das Path-Template kennen — fuer SSE-Calls, die
+            # erst beim Body-Streaming spaeter passieren, ist das die
+            # genauere Route-Bezeichnung.
+            try:
+                if _set_route is not None:
+                    _set_route(_path_template(request) or path)
+            except Exception:  # noqa: BLE001
+                pass
             # Content-Length auswerten, falls vorhanden
             try:
                 cl = response.headers.get("content-length")
@@ -267,6 +289,26 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 user_id, role = _resolve_user_from_request(request)
             except Exception:  # noqa: BLE001
                 user_id, role = None, "anon"
+
+            # LLM-Telemetrie einsammeln (oder None, wenn keine LLM-Calls)
+            llm_model: str | None = None
+            llm_prompt_tokens: int | None = None
+            llm_completion_tokens: int | None = None
+            llm_duration_ms: int | None = None
+            llm_call_count: int | None = None
+            try:
+                from services.llm_usage_context import collect as _collect_usage
+                usage = _collect_usage()
+                if usage is not None:
+                    llm_model = (usage.model or None)
+                    if llm_model:
+                        llm_model = llm_model[:80]
+                    llm_prompt_tokens = usage.prompt_tokens or None
+                    llm_completion_tokens = usage.completion_tokens or None
+                    llm_duration_ms = usage.duration_ms or None
+                    llm_call_count = usage.call_count or None
+            except Exception:  # noqa: BLE001
+                pass
 
             payload = {
                 # tz-naive UTC fuer Spalten vom Typ DateTime ohne TZ.
@@ -283,6 +325,11 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 "ua_short": _short_user_agent(ua),
                 "referer_path": _referer_path(request),
                 "response_size": response_size,
+                "llm_model": llm_model,
+                "llm_prompt_tokens": llm_prompt_tokens,
+                "llm_completion_tokens": llm_completion_tokens,
+                "llm_duration_ms": llm_duration_ms,
+                "llm_call_count": llm_call_count,
             }
 
             # Background-Insert: vermeidet Blocking im Hot-Path.
