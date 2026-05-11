@@ -108,11 +108,6 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
         </div>
       </div>
 
-      {/* Jumping Fish */}
-      <div className="absolute bottom-20 left-1/2 -ml-16 z-20 w-32 h-20 animate-fish-jump pointer-events-none">
-        <img src="/auditlogo.png" alt="" className="w-full h-full object-contain" />
-      </div>
-
       {/* Decorative Bubbles */}
       <div className="absolute bottom-40 left-1/4 w-3 h-3 bg-blue-300/30 rounded-full animate-bounce pointer-events-none" style={{ animationDelay: '0s', animationDuration: '3s' }} />
       <div className="absolute bottom-52 left-1/3 w-2 h-2 bg-blue-200/20 rounded-full animate-bounce pointer-events-none" style={{ animationDelay: '1s', animationDuration: '4s' }} />
