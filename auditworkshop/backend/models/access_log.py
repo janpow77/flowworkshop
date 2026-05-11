@@ -9,6 +9,10 @@ Speichert pro /api/*-Request eine Zeile mit:
 - ip_hash (SHA256 ueber IP + Salt) — kein Klartext-IP
 - ua_short (gekuerzter User-Agent + grobe Browser-Kategorie)
 - referer_path (nur Pfad, keine Query)
+- LLM-Telemetrie (wenn der Request einen oder mehrere Ollama-Calls
+  ausgeloest hat): Modell, kumulierte Prompt-/Completion-Tokens,
+  kumulierte LLM-Dauer, Anzahl LLM-Calls. Wird ueber einen ContextVar
+  in services/ollama_service.py gefuellt und in der Middleware geerntet.
 
 Sensible Endpoints werden nur ueber path/query_string erfasst — niemals der
 Body. Query-Parameter wie ``password``, ``token``, ``api_key`` werden vor dem
@@ -49,7 +53,18 @@ class AccessLog(Base):
     referer_path = Column(String(255), nullable=True)
     response_size = Column(Integer, nullable=True)
 
+    # LLM-Telemetrie pro Request (NULL wenn keine LLM-Calls).
+    # Mehrere LLM-Calls pro Request werden summiert; bei wechselnden
+    # Modellen wird das zuletzt verwendete Modell gespeichert (haeufigster
+    # Fall: ein Request verwendet ein einziges Modell).
+    llm_model = Column(String(80), nullable=True, index=True)
+    llm_prompt_tokens = Column(Integer, nullable=True)
+    llm_completion_tokens = Column(Integer, nullable=True)
+    llm_duration_ms = Column(Integer, nullable=True)
+    llm_call_count = Column(Integer, nullable=True)
+
     __table_args__ = (
         Index("ix_access_log_user_time", "user_id", "created_at"),
         Index("ix_access_log_path_time", "path_template", "created_at"),
+        Index("ix_access_log_model_time", "llm_model", "created_at"),
     )

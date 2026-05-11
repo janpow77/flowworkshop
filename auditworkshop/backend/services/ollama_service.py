@@ -25,8 +25,98 @@ from config import (
     MODEL_NAME,
     OLLAMA_URL,
 )
+from services.llm_usage_context import (
+    get_current_route as _get_current_route,
+    record_call as _record_llm_call,
+)
 
 log = logging.getLogger(__name__)
+
+
+def _persist_llm_call(payload: dict) -> None:
+    """Synchroner DB-Insert in workshop_llm_call_log. Wird via
+    run_in_executor aus _safe_record aufgerufen."""
+    try:
+        from database import SessionLocal
+        from models.llm_call_log import LlmCallLog
+    except Exception:
+        log.exception("LlmCallLog-Import fehlgeschlagen")
+        return
+
+    db = SessionLocal()
+    try:
+        db.add(LlmCallLog(**payload))
+        db.commit()
+    except Exception:
+        log.exception("LlmCallLog-Insert fehlgeschlagen")
+        try:
+            db.rollback()
+        except Exception:  # noqa: BLE001
+            pass
+    finally:
+        try:
+            db.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _safe_record(
+    *,
+    model: str | None,
+    backend: str,
+    prompt_tokens: int | None,
+    completion_tokens: int | None,
+    t_start: float,
+    status: str = "ok",
+    error: str | None = None,
+) -> None:
+    """Erfasst LLM-Telemetrie zweifach:
+
+    1. ContextVar (LlmUsage) — wird in der Middleware fuer non-SSE-Endpoints
+       eingesammelt und in workshop_access_log geschrieben.
+    2. Direct-Write in workshop_llm_call_log via Background-Executor —
+       erfasst auch SSE-Streams, die der Middleware durchrutschen.
+
+    Jeder Schritt ist exception-safe — Logging-Fehler beeintraechtigen
+    den LLM-Hot-Path nicht.
+    """
+    duration_ms = int((time.monotonic() - t_start) * 1000)
+    # 1) ContextVar
+    try:
+        _record_llm_call(
+            model=model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            duration_ms=duration_ms,
+        )
+    except Exception:  # noqa: BLE001
+        log.debug("LLM-Usage-ContextVar-Record fehlgeschlagen", exc_info=True)
+
+    # 2) Direct-Write
+    try:
+        route = None
+        try:
+            route = _get_current_route()
+        except Exception:  # noqa: BLE001
+            pass
+        payload = {
+            "route": (route or "")[:255] or None,
+            "user_id": None,  # ContextVar fuer user_id koennte spaeter ergaenzt werden
+            "model": (model or "")[:80] or None,
+            "backend": backend[:20] if backend else None,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "duration_ms": duration_ms,
+            "status": status[:16],
+            "error": (error or "")[:255] or None,
+        }
+        try:
+            loop = asyncio.get_running_loop()
+            loop.run_in_executor(None, _persist_llm_call, payload)
+        except RuntimeError:
+            _persist_llm_call(payload)
+    except Exception:  # noqa: BLE001
+        log.debug("LLM-Call-Log-Schedule fehlgeschlagen", exc_info=True)
 
 FALLBACK_MODELS = [MODEL_NAME, "mistral:7b", "qwen3:8b", "llama3.1:8b"]
 
@@ -456,6 +546,13 @@ async def _stream_via_gateway(
                     }
                 )
                 yield f"data: {done_data}\n\n"
+                _safe_record(
+                    model=model_name,
+                    backend="gateway",
+                    prompt_tokens=None,  # Gateway-Path liefert prompt_tokens nicht zuverlaessig
+                    completion_tokens=token_count,
+                    t_start=t_start,
+                )
                 return
         except asyncio.CancelledError:
             # Codex-Audit #1: Client hat SSE-Tab geschlossen — KEIN Retry,
@@ -574,6 +671,15 @@ async def stream(
                                 }
                             )
                             yield f"data: {done_data}\n\n"
+                            _safe_record(
+                                model=model,
+                                backend="ollama",
+                                prompt_tokens=data.get("prompt_eval_count"),
+                                completion_tokens=(
+                                    data.get("eval_count") or token_count
+                                ),
+                                t_start=t_start,
+                            )
                             await resp.aclose()  # Codex-Audit #1
                             return
             return
