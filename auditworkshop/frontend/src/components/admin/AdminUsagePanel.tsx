@@ -12,7 +12,7 @@
  *   GET /api/admin/access/llm/latency-buckets?pin=...&since_hours=24
  *   GET /api/admin/access/llm/recent?pin=...&limit=100
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Loader2, RefreshCw, Cpu, Clock, Hash, AlertTriangle } from 'lucide-react';
 
 interface Summary {
@@ -93,7 +93,7 @@ export default function AdminUsagePanel({ pin }: Props) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
     const qs = `pin=${encodeURIComponent(pin)}&since_hours=${sinceHours}`;
@@ -116,9 +116,9 @@ export default function AdminUsagePanel({ pin }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pin, sinceHours]);
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [sinceHours]);
+  useEffect(() => { void load(); }, [load]);
 
   const maxBucket = Math.max(1, ...buckets.map((b) => b.count));
 
