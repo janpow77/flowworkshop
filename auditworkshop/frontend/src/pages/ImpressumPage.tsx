@@ -132,6 +132,10 @@ export default function ImpressumPage() {
             </p>
           </Section>
 
+          <Section title="Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV">
+            <p>Jan Riener, Am Vogelgesang 20, 65817 Eppstein</p>
+          </Section>
+
           <Section title="Datenschutz">
             <p>
               Informationen zur Verarbeitung personenbezogener Daten finden sich in der

@@ -41,6 +41,9 @@ export default function DatenschutzPage() {
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Stand: Mai 2026
           </p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Diese Informationen werden gemäß Art. 13 DSGVO bereitgestellt.
+          </p>
 
           <Section title="1. Verantwortlicher">
             <p>
