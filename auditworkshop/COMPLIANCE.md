@@ -55,7 +55,7 @@ Stichtag: Mai 2026, Branch `claude/add-legal-compliance-QGM6a`.
 
 | # | Befund | Datei / Stelle | Bewertung | Empfohlene Maßnahme |
 |---|---|---|---|---|
-| 1 | Google Fonts (Fraunces, IBM Plex Sans) werden direkt vom Google-CDN geladen | `frontend/index.html` Z. 9–11 | **mittel** — IP-Adresse des Endnutzers wird an Google übertragen | Schriftarten lokal hosten (WOFF2 unter `frontend/public/fonts/`, `@font-face` in `index.css`) oder durch Systemschriftarten ersetzen |
+| 1 | ~~Google Fonts (Fraunces, IBM Plex Sans) werden direkt vom Google-CDN geladen~~ — **behoben** mit Commit, der Fontsource-Pakete (`@fontsource-variable/fraunces`, `@fontsource/ibm-plex-sans`) lokal hostet | `frontend/src/main.tsx`, `frontend/index.html` | **erledigt** | — |
 | 2 | OpenStreetMap-Tiles werden vom Browser direkt abgerufen | `frontend/src/components/workshop/BeneficiaryMap.tsx`, `frontend/src/components/state_aid/StateAidMap.tsx` | **niedrig** — Endnutzer-IP an `tile.openstreetmap.org`; in Datenschutzerklärung Abschnitt 8 transparent gemacht | Falls erforderlich: Opt-in-Banner vor Map-Anzeige oder lokaler Tile-Proxy |
 | 3 | Geocoding via Nominatim | `backend/services/geocoding_service.py:837` | **niedrig** — Server-IP an Nominatim, **kein** Endnutzerbezug; Cache mit 3.177 Einträgen mildert | Bestehender Cache reicht aus; `ALLOW_REMOTE_GEOCODING` bewusst konfigurieren |
 | 4 | `localStorage` für Auth-Token (`workshop_token`) und Rolle (`workshop_role`) | `frontend/src/App.tsx` | **funktional erforderlich** — durch Art. 25 Abs. 2 TTDSG gedeckt | Sicherstellen, dass Logout den Token entfernt (bereits implementiert) |
@@ -93,8 +93,9 @@ dienstrechtlich) erledigt werden müssen oder periodisch zu prüfen sind:
   digital prüfen und ablegen (Art. 28 DSGVO).
 - [ ] **Dienstrechtliche Nebentätigkeitsanzeige** beim Dienstherrn einreichen
   (Betrieb der Plattform als private Nebentätigkeit).
-- [ ] Google Fonts in `frontend/index.html` Z. 9–11 lokal hosten oder durch
-  Systemschriftarten ersetzen (Audit-Befund #1).
+- [x] ~~Google Fonts in `frontend/index.html` Z. 9–11 lokal hosten oder durch
+  Systemschriftarten ersetzen (Audit-Befund #1).~~ Umgesetzt durch
+  Fontsource-Pakete; `index.html` enthält keine externen Font-Referenzen mehr.
 - [ ] `WORKSHOP_ACCESS_LOG_TTL_DAYS` in der Produktiv-Konfiguration prüfen
   und auf ≤ 30 Tage setzen (Audit-Befund #6).
 - [ ] Bei den OSM-Map-Komponenten klären, ob ein Opt-in-Banner oder ein lokaler
