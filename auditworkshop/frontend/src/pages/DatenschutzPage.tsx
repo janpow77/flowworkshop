@@ -120,7 +120,23 @@ export default function DatenschutzPage() {
             </p>
           </Section>
 
-          <Section title="5. Aggregation öffentlicher Datenquellen">
+          <Section title="5. Eingaben in Suchfelder">
+            <p>
+              Eingaben in Suchfelder (z. B. Begünstigten- oder Firmensuche) werden
+              ausschließlich zur unmittelbaren Beantwortung der Anfrage gegen öffentliche
+              Quell-Systeme bzw. die interne Datenbank verwendet. Eine persistente Speicherung
+              der Suchbegriffe im Browser (Local Storage, Cookies) oder im server­seitigen
+              Anwendungs-Log findet nicht statt; lediglich technische Zugriffslogs (siehe
+              Abschnitt 2) enthalten URL und Statuscode.
+            </p>
+            <p>
+              Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der
+              Bereitstellung der Recherchefunktion). Betroffene können der Verarbeitung gemäß
+              Art. 21 DSGVO widersprechen.
+            </p>
+          </Section>
+
+          <Section title="6. Aggregation öffentlicher Datenquellen">
             <p>
               Die Plattform aggregiert Informationen aus öffentlich zugänglichen Quellen
               (siehe{' '}
@@ -141,11 +157,11 @@ export default function DatenschutzPage() {
             </p>
             <p>
               Betroffene Personen können jederzeit Auskunft, Berichtigung oder Löschung der
-              auf dieser Plattform sichtbaren Datensätze verlangen — siehe Abschnitt 9.
+              auf dieser Plattform sichtbaren Datensätze verlangen — siehe Abschnitt 10.
             </p>
           </Section>
 
-          <Section title="6. KI-gestützte Auswertungen">
+          <Section title="7. KI-gestützte Auswertungen">
             <p>
               Die Plattform setzt zur Demonstration ein <strong>lokal betriebenes
               Sprachmodell</strong> ein. Sämtliche KI-Auswertungen erfolgen auf der eigenen
@@ -159,7 +175,7 @@ export default function DatenschutzPage() {
             </p>
           </Section>
 
-          <Section title="7. Karten und Geokodierung">
+          <Section title="8. Karten und Geokodierung">
             <p>
               Für Kartendarstellungen werden Kacheln von OpenStreetMap-Servern bezogen sowie
               Geokodierungs-Anfragen an Nominatim gesendet. Bei diesen Anfragen wird
@@ -168,7 +184,7 @@ export default function DatenschutzPage() {
             </p>
           </Section>
 
-          <Section title="8. Backups">
+          <Section title="9. Backups">
             <p>
               Verschlüsselte Backups (age-Verschlüsselung) der Anwendungsdaten werden auf
               einer Hetzner Storage Box (Standort Falkenstein, Deutschland) sowie optional
@@ -178,7 +194,7 @@ export default function DatenschutzPage() {
             </p>
           </Section>
 
-          <Section title="9. Rechte der betroffenen Personen">
+          <Section title="10. Rechte der betroffenen Personen">
             <p>Sie haben jederzeit das Recht auf:</p>
             <ul className="ml-5 list-disc space-y-1">
               <li>Auskunft über die zu Ihrer Person gespeicherten Daten (Art. 15 DSGVO)</li>
@@ -198,7 +214,7 @@ export default function DatenschutzPage() {
             </p>
           </Section>
 
-          <Section title="10. Beschwerderecht bei der Aufsichtsbehörde">
+          <Section title="11. Beschwerderecht bei der Aufsichtsbehörde">
             <p>
               Unbeschadet anderweitiger Rechtsbehelfe steht Ihnen ein Beschwerderecht bei
               einer Datenschutz-Aufsichtsbehörde zu, insbesondere beim Hessischen Beauftragten
@@ -206,7 +222,7 @@ export default function DatenschutzPage() {
             </p>
           </Section>
 
-          <Section title="11. Änderungen dieser Datenschutzerklärung">
+          <Section title="12. Änderungen dieser Datenschutzerklärung">
             <p>
               Diese Datenschutzerklärung kann angepasst werden, sobald sich die
               Verarbeitungstätigkeiten ändern oder rechtliche Vorgaben dies erfordern. Die
