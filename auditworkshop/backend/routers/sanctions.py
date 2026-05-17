@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from routers.auth import require_admin
+from routers.auth import require_admin, require_session
 from services.sanctions_service import (
     DEFAULT_SANCTIONS_SOURCES,
     get_index,
@@ -327,13 +327,13 @@ class SearchResponse(BaseModel):
 
 
 @router.get("/lists", response_model=SanctionsListResponse)
-def get_lists() -> SanctionsListResponse:
+def get_lists(_session: dict = Depends(require_session)) -> SanctionsListResponse:
     """Statische Uebersicht aller im Workshop dokumentierten Sanktionslisten."""
     return SanctionsListResponse(count=len(_SANCTIONS_LISTS), lists=_SANCTIONS_LISTS)
 
 
 @router.get("/sources", response_model=SanctionsSourcesResponse)
-def get_sources() -> SanctionsSourcesResponse:
+def get_sources(_session: dict = Depends(require_session)) -> SanctionsSourcesResponse:
     """Status aller lokal indexierten Sanctions-Quellen mit Per-Source-Stats.
 
     Liefert pro Quelle Lade-Status, Eintragszahlen, License und Download-URL —
@@ -367,13 +367,13 @@ def get_sources() -> SanctionsSourcesResponse:
 
 
 @router.get("/method")
-def get_method() -> dict:
+def get_method(_session: dict = Depends(require_session)) -> dict:
     """Methodische Erlaeuterung der Fuzzy-Suche (fuer die Erklaer-Card)."""
     return method_explanation()
 
 
 @router.get("/stats")
-def get_stats() -> dict:
+def get_stats(_session: dict = Depends(require_session)) -> dict:
     """Aggregierte Index-Statistik mit Per-Source-Breakdown.
 
     Backward-Compat: Felder `total_entries`, `persons`, `organizations` werden
@@ -405,6 +405,7 @@ def search_get(
             "Default: alle aktivierten Quellen."
         ),
     ),
+    _session: dict = Depends(require_session),
 ) -> SearchResponse:
     """Multi-Source-Fuzzy-Suche gegen alle indexierten Sanctions-Listen.
 
@@ -533,6 +534,7 @@ def export_sanctions_search(
             "Default: alle aktivierten Quellen."
         ),
     ),
+    _session: dict = Depends(require_session),
 ):
     """Export der Sanctions-Suche in CSV / XLSX / PDF.
 

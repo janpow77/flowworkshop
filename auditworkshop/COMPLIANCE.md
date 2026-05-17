@@ -35,8 +35,10 @@ Stand: Mai 2026
     Suchanfragen)
   - **Art. 6 Abs. 1 lit. b DSGVO** — Vertragsdurchführung (Registrierung)
   - **Art. 6 Abs. 1 lit. a DSGVO** — Einwilligung (Registrierung)
-  - **Art. 6 Abs. 1 lit. e und f DSGVO i. V. m. Art. 85 DSGVO** — öffentliches
-    Interesse / Demonstrationszweck (Aggregation öffentlicher Quellen)
+  - **Art. 6 Abs. 1 lit. b und f DSGVO** — Workshop-Teilnahmevertrag bzw.
+    berechtigtes Interesse an Schulungsmaterial für den geschlossenen
+    Teilnehmerkreis (Aggregation öffentlicher Quellen; vormals lit. e + Art. 85,
+    seit Iteration 2 umgestellt — siehe Abschnitt 4)
   - **Art. 25 Abs. 2 TTDSG** — technisch erforderlicher localStorage
   - **Art. 28 DSGVO** — Auftragsverarbeitungsvertrag mit Hetzner Online GmbH
     (Standort Falkenstein/Frankfurt, Deutschland)
@@ -109,3 +111,132 @@ dienstrechtlich) erledigt werden müssen oder periodisch zu prüfen sind:
   bei größeren Frontend-/Backend-Releases.
 - [ ] Platzhalter im Impressum prüfen, sobald sich die Anschrift, der
   Verantwortliche oder die E-Mail-Adresse ändert (`ImpressumPage.tsx`).
+
+---
+
+## 4. Iteration 2 — Privatisierung sensibler Routen + Mail-Versand
+
+Stichtag: Mai 2026. Adressiert die materiellen Compliance-Risiken (Sanktions-
+daten, Begünstigtenverzeichnis, State-Aid-Register), die formal von Iteration 1
+unberührt waren.
+
+### 4.1 Login-Gating sensibler Routen (Option A)
+
+Sämtliche Datenrouten, die personenbezogene oder personenbeziehbare Daten
+liefern, sind nicht mehr anonym aufrufbar:
+
+| Modul | Endpunkte | Schutz |
+|---|---|---|
+| Sanctions | `GET /api/sanctions/lists`, `/sources`, `/method`, `/stats`, `/search`, `/export` | `Depends(require_session)` (`backend/routers/sanctions.py`) |
+| Beneficiaries | `GET /api/beneficiaries/countries`, `/sources`, `/map`, `/search`, `/analytics`, `/nuts`, `/nuts-geojson`, `/choropleth`, `/export` | `Depends(require_session)` (`backend/routers/beneficiaries.py`) |
+| State-Aid | `GET /status`, `/sources`, `/search`, `/award/{id}`, `/map`, `/stats`, `/stats/export`, `/company-dossier`, `/export`, `/corporate-group`, `/audit-report`; `POST /ask`, `/audit-report/pdf` | `Depends(require_session)` (`backend/routers/state_aid.py`) |
+
+Frontend (`frontend/src/App.tsx`): Der bisherige `!authToken`-Block
+(öffentliche `PublicShell`-Routen für `/scenario/6`, `/begünstigte`,
+`/sanktionslisten`, `/beihilfen`, `/audit-report`) wurde entfernt. Nicht
+authentifizierte Aufrufe landen über den Catch-all `*` auf der `LoginPage`.
+Die ungenutzte `PublicShell.tsx` wurde gelöscht.
+
+`/api/state-aid/validation/last` bleibt bewusst offen — es liefert nur einen
+JSON-Status (Anzahl Findings, keine personenbezogenen Daten) und wird vom UI
+für ein Status-Banner gepollt.
+
+### 4.2 Rechtsgrundlagen-Umstellung
+
+Die Datenschutzerklärung (`frontend/src/pages/DatenschutzPage.tsx`,
+Abschnitt 6) stützt sich nicht mehr auf Art. 6 Abs. 1 lit. e + Art. 85 DSGVO,
+sondern auf:
+
+- **Art. 6 Abs. 1 lit. b DSGVO** — Durchführung des Workshop-Teilnahmevertrags
+  gegenüber angemeldeten Nutzern
+- **Art. 6 Abs. 1 lit. f DSGVO** — berechtigtes Interesse an der Bereitstellung
+  von Schulungsmaterial für einen geschlossenen Teilnehmerkreis
+
+Die Begründung „Demonstrations- und Schulungszweck im öffentlichen Interesse"
+ist juristisch ehrlicher nicht mehr haltbar (lit. e setzt hoheitliche Befugnis
+voraus, Art. 85 setzt redaktionell-journalistische Tätigkeit voraus — beides
+für eine Privatperson nicht gegeben).
+
+### 4.3 Rate-Limiting auf authentifizierten Endpunkten
+
+`backend/routers/state_aid.py` (`_RATE_LIMIT_WINDOWS`):
+
+| Bucket | Limit | Begründung |
+|---|---|---|
+| `ask` | 6 / 60 s | Bereits vorhanden; zwei LLM-Calls pro Request |
+| `search` | 60 / 60 s | Bereits vorhanden |
+| `export` | 10 / 60 s | Neu — schützt vor Bulk-Scraping durch authentifizierte Sessions |
+| `audit-report` | 10 / 60 s | Neu — schützt LLM-/PDF-Render-Last bei Cross-Register-Bericht |
+
+Aktiv genutzt im State-Aid-Modul. Sanctions- und Beneficiaries-Exporte sind
+durch `require_session` ohnehin nicht mehr anonym verfügbar; ein erweiterter
+Rate-Limiter dafür ist ein separater Schritt (würde Auslagern von
+`_check_rate_limit` in ein gemeinsames Service-Modul erfordern).
+
+### 4.4 Benutzer-Freischaltung durch Admin + Transaktions-Mails
+
+Das User-Modell (`backend/models/registration.py`) und der Login-Flow
+(`backend/routers/auth.py`) implementieren bereits einen Approval-Workflow:
+Selbstregistrierung → `status='pending_approval'` → Admin schaltet frei
+(`POST /api/auth/users/{id}/approve`) → `status='active'` → Login möglich.
+Iteration 2 ergänzt dazu den **automatisierten E-Mail-Versand** über einen
+neuen Service `backend/services/mail_service.py` (stdlib `smtplib`, kein neues
+Drittpaket).
+
+| Auslöser | Empfänger | Funktion |
+|---|---|---|
+| `POST /signup` | Neuer Nutzer | `send_signup_confirmation` — Eingangsbestätigung mit Hinweis auf ausstehende Freischaltung |
+| `POST /signup` | Alle `role=admin` Nutzer | `send_admin_new_signup` — Liste der Registrierungsdaten + Link auf `/admin` |
+| `POST /users/{id}/approve` | Betroffener Nutzer | `send_approval_notification` — Freischaltungs-Bestätigung |
+| `POST /users/{id}/reject` | Betroffener Nutzer | `send_rejection_notification` — Absage inkl. optionaler Begründung |
+| `POST /users/{id}/reset-token` | Betroffener Nutzer | `send_setup_link` — Setup-/Reset-Link mit 24 h Gültigkeit |
+
+Konfiguration (`backend/config.py`, Env-Vars in `/etc/auditworkshop/env`):
+
+| Variable | Default | Bemerkung |
+|---|---|---|
+| `MAIL_ENABLED` | `true` | `false` unterdrückt sämtlichen Versand (Tests/Dev) |
+| `SMTP_HOST` | `mail.your-server.de` | Hetzner-Postfach |
+| `SMTP_PORT` | `465` | SSL implizit, alternativ `587` mit `SMTP_STARTTLS=true` |
+| `SMTP_USER` | `""` | Hetzner-Postfach-Adresse |
+| `SMTP_PASSWORD` | `""` | Hetzner-Postfach-Passwort |
+| `SMTP_USE_SSL` | `true` | Bei Port 465 |
+| `SMTP_STARTTLS` | `false` | Bei Port 587 auf `true` |
+| `SMTP_TIMEOUT` | `20` | Sekunden |
+| `MAIL_FROM` | `""` | Absender-Adresse; falls leer wird `SMTP_USER` verwendet |
+| `MAIL_FROM_NAME` | `FlowAudit Workshop` | Anzeigename im `From:`-Header |
+| `PUBLIC_BASE_URL` | `https://workshop.flowaudit.de` | Wird in Mail-Links eingesetzt |
+
+Fehler beim Versand werden protokolliert, blockieren aber niemals die
+aufrufenden API-Endpunkte (Mail ist additive Information, nicht
+transaktionskritisch).
+
+### 4.5 Datenschutz-rechtliche Implikationen
+
+- **Empfänger der Mail** sind ausschließlich registrierte Nutzer (Eigenadresse)
+  bzw. Admins (Funktionsadressen). Keine externen Empfänger.
+- **Übermittlung** an Hetzner Online GmbH (gleicher AVV-Vertrag wie das
+  bestehende Hosting). EU-Standort, keine Drittstaaten-Übermittlung.
+- **Inhalte** der Mails enthalten Namen, E-Mail-Adresse, Organisation und
+  optional die Registrierungs-Begründung des neuen Nutzers (Admin-Benachr.).
+  Keine besonderen Kategorien (Art. 9), keine Sanktions-/Audit-Inhalte.
+- **Rechtsgrundlagen:** Bestätigungs- und Status-Mails an den Nutzer beruhen
+  auf Art. 6 Abs. 1 lit. b DSGVO (Vertragsdurchführung). Admin-Benachrichtigung
+  beruht auf Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der
+  Abwicklung der Anmelde-Workflows).
+
+### 4.6 Offene Punkte aus Iteration 2
+
+- [ ] DSFA-Skeleton anlegen (`auditworkshop/DSFA.md`) — vorläufige
+  Selbsteinschätzung, vor produktiver Nutzung von einem Datenschutzbeauftragten
+  finalisieren lassen.
+- [x] ~~Datenschutzerklärung um einen kurzen Abschnitt zum Versand von
+  Transaktionsmails (Bestätigung, Approval, Reset) ergänzen.~~ Umgesetzt in
+  `DatenschutzPage.tsx` Abschnitt 4.
+- [ ] SMTP-Zugang (Postfach + Passwort) auf Hetzner einrichten und in
+  `/etc/auditworkshop/env` hinterlegen, dann ersten End-to-End-Test laufen
+  lassen.
+- [ ] Anpassen des Smoke-Tests (`scripts/workshop_smoke.sh`): bisher öffentlich
+  geprüfte Endpunkte (Sanctions/Beneficiaries/State-Aid) brauchen jetzt einen
+  Token oder müssen mit erwartetem 401-Status laufen.
+- [ ] Periodische Wiederholung des Code-Audits in 6 Monaten.

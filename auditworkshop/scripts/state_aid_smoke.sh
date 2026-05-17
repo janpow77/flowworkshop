@@ -11,16 +11,33 @@
 set -euo pipefail
 
 BACKEND_BASE="${BACKEND_BASE:-http://localhost:8000}"
+SMOKE_EMAIL="${SMOKE_EMAIL:-jan.riener@wirtschaft.hessen.de}"
 
 pass=0
 fail=0
 warn=0
 failures=()
 
+# Iteration 2 / Option A: State-Aid-Endpunkte sind authentifiziert. Token vorab
+# besorgen und als Bearer-Header in alle Calls einbauen.
+TOKEN=$(
+  curl -s -X POST "$BACKEND_BASE/api/auth/login" \
+    -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$SMOKE_EMAIL\"}" \
+    | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))" \
+    2>/dev/null || true
+)
+AUTH_ARGS=()
+if [[ -n "$TOKEN" ]]; then
+  AUTH_ARGS=(-H "Authorization: Bearer $TOKEN")
+else
+  printf 'WARN  Kein Token erhalten — Endpunkte werden anonym aufgerufen und liefern 401.\n'
+fi
+
 # ── Hilfen ────────────────────────────────────────────────────────────────────
 
 http_status() {
-  curl -s -o /dev/null -w '%{http_code}' "$@"
+  curl -s -o /dev/null -w '%{http_code}' "${AUTH_ARGS[@]}" "$@"
 }
 
 check_status() {
@@ -42,7 +59,7 @@ assert_json_min_count() {
   # assert_json_min_count <label> <url> <jq-path> <min>
   local label="$1"; local url="$2"; local path="$3"; local min="$4"
   local body
-  body=$(curl -s -m 30 "$url" || true)
+  body=$(curl -s -m 30 "${AUTH_ARGS[@]}" "$url" || true)
   if [[ -z "$body" ]]; then
     printf 'FAIL  [empty body] %s\n' "$label"
     fail=$((fail + 1))
@@ -87,7 +104,7 @@ assert_json_field() {
   # assert_json_field <label> <url> <jq-path> <expected_substring>
   local label="$1"; local url="$2"; local path="$3"; local expected="$4"
   local body
-  body=$(curl -s -m 30 "$url" || true)
+  body=$(curl -s -m 30 "${AUTH_ARGS[@]}" "$url" || true)
   local val
   val=$(printf '%s' "$body" | python3 -c "
 import sys, json
@@ -148,7 +165,7 @@ assert_json_min_count 'map level=1 (DE) Punkte >= 5'      "$BACKEND_BASE/api/sta
 
 # Erst mal eine ID via Suche holen, dann den Detail-Endpoint pruefen.
 AWARD_ID=$(
-  curl -s -m 15 "$BACKEND_BASE/api/state-aid/search?q=Fraunhofer&limit=1" \
+  curl -s -m 15 "${AUTH_ARGS[@]}" "$BACKEND_BASE/api/state-aid/search?q=Fraunhofer&limit=1" \
     | python3 -c "
 import sys, json
 try:

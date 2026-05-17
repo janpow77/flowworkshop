@@ -23,6 +23,13 @@ from models.audit_log import AuditLog
 from models.session import WorkshopSession
 from config import AUTH_TOKEN_SECRET, WORKER_API_TOKEN
 from services.country_profiles import REGIONS_FLAT
+from services.mail_service import (
+    send_admin_new_signup,
+    send_approval_notification,
+    send_rejection_notification,
+    send_setup_link,
+    send_signup_confirmation,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 log = logging.getLogger(__name__)
@@ -220,6 +227,26 @@ def require_moderator_or_worker(request: Request) -> dict:
             "role": "worker",
         }
     return require_moderator(request)
+
+
+def require_session_or_worker(request: Request) -> dict:
+    """Erlaubt jede angemeldete Workshop-Session ODER den internen Worker.
+
+    Wird auf Endpunkten verwendet, die einerseits von angemeldeten Nutzern im
+    UI aufgerufen werden und andererseits von Backfill-/Harvest-Skripten
+    serverseitig getriggert werden (z.B. /api/beneficiaries/map als
+    Geocoding-Trigger).
+    """
+    worker_token = request.headers.get("X-Worker-Token", "").strip()
+    if worker_token and hmac.compare_digest(worker_token, WORKER_API_TOKEN):
+        return {
+            "user_id": "system-worker",
+            "email": "system-worker@local",
+            "name": "System Worker",
+            "organization": "Auditworkshop",
+            "role": "worker",
+        }
+    return require_session(request)
 
 
 def require_admin(request: Request) -> dict:
@@ -554,6 +581,7 @@ def signup(body: SignupRequest, request: Request, db: Session = Depends(get_db))
     log.info("Signup: %s wartet auf Admin-Approval (id=%s)", email, new.id)
 
     # Notification an alle Admins (Plan v3.2 §6 — internes Bell-Icon)
+    admins: list[Registration] = []
     try:
         from routers.notifications import push_notification
         admins = db.query(Registration).filter(Registration.role == "admin").all()
@@ -567,12 +595,31 @@ def signup(body: SignupRequest, request: Request, db: Session = Depends(get_db))
             )
     except Exception:
         log.exception("Admin-Pending-Notification fehlgeschlagen")
+
+    # Transaktions-Mails: Bestaetigung an Nutzer + Hinweis an alle Admins.
+    send_signup_confirmation(to=new.email, first_name=new.first_name)
+    if not admins:
+        admins = db.query(Registration).filter(Registration.role == "admin").all()
+    for adm in admins:
+        if not adm.email:
+            continue
+        send_admin_new_signup(
+            to=adm.email,
+            new_user_name=f"{new.first_name} {new.last_name}",
+            new_user_email=new.email,
+            new_user_organization=new.organization,
+            new_user_bundesland=new.bundesland,
+            new_user_function=new.function_role,
+            new_user_reason=new.signup_reason,
+        )
+
     return SignupResponse(
         status="pending_approval",
         message=(
-            "Anmeldung eingegangen. Nach Freischaltung durch den Admin "
-            "können Sie sich mit Ihrer E-Mail-Adresse und dem von Ihnen "
-            "vergebenen Passwort einloggen."
+            "Anmeldung eingegangen. Sie erhalten in Kürze eine "
+            "Bestätigungs-E-Mail. Sobald ein Admin Ihr Konto freigeschaltet "
+            "hat, bekommen Sie eine weitere E-Mail und können sich mit Ihrer "
+            "E-Mail-Adresse und dem von Ihnen vergebenen Passwort einloggen."
         ),
     )
 
@@ -650,6 +697,8 @@ def admin_approve_user(user_id: str, request: Request, db: Session = Depends(get
     u.approved_by_id = actor.get("user_id")
     db.commit()
     log.info("admin_approve_user: %s durch %s", u.email, actor.get("email"))
+    if u.email:
+        send_approval_notification(to=u.email, first_name=u.first_name)
     return UserActionResponse(status="approved", user=_user_to_entry(u))
 
 
@@ -669,6 +718,10 @@ def admin_reject_user(
     u.rejection_reason = (body.reason or "").strip()[:1000] or None
     db.commit()
     log.info("admin_reject_user: %s durch %s", u.email, actor.get("email"))
+    if u.email:
+        send_rejection_notification(
+            to=u.email, first_name=u.first_name, reason=u.rejection_reason
+        )
     return UserActionResponse(status="rejected", user=_user_to_entry(u))
 
 
@@ -741,11 +794,21 @@ def admin_create_reset_token(
     )
     db.add(rt)
     db.commit()
+    setup_path = f"/account/setup-password?token={raw}"
+    expires_iso = expires.isoformat()
     log.info("reset-token erstellt für %s durch %s", u.email, actor.get("email"))
+    if u.email:
+        send_setup_link(
+            to=u.email,
+            first_name=u.first_name,
+            setup_path=setup_path,
+            expires_iso=expires_iso,
+            purpose=rt.purpose,
+        )
     return ResetTokenResponse(
         token=raw,
-        expires_at=expires.isoformat(),
-        setup_url=f"/account/setup-password?token={raw}",
+        expires_at=expires_iso,
+        setup_url=setup_path,
         user_email=u.email,
     )
 

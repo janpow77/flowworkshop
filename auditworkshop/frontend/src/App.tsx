@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
-import PublicShell from './components/layout/PublicShell';
 import EuLoader from './components/layout/EuLoader';
 import ErrorBoundary from './components/layout/ErrorBoundary';
 
@@ -93,19 +92,12 @@ export default function App() {
         <Route path="/signup" element={<LazyPage><SignUpPage /></LazyPage>} />
         <Route path="/account/setup-password" element={<LazyPage><SetupPasswordPage /></LazyPage>} />
 
-        {/* Plan v3.2 §5.5: Public-Tools nach Art. 49 / 73 VO (EU) 2021/1060
-            mit eigener PublicShell ohne Workshop-Sidebar.
-            Nur fuer nicht-eingeloggte Nutzer; eingeloggte sehen die Routes
-            in der AppShell weiter unten. */}
-        {!authToken && (
-          <Route element={<PublicShell />}>
-            <Route path="/scenario/6" element={<LazyPage><ScenarioPage /></LazyPage>} />
-            <Route path="/begünstigte" element={<LazyPage><ScenarioPage /></LazyPage>} />
-            <Route path="/sanktionslisten" element={<LazyPage><SanktionslistenPage /></LazyPage>} />
-            <Route path="/beihilfen" element={<LazyPage><StateAidRegisterPage /></LazyPage>} />
-            <Route path="/audit-report" element={<LazyPage><StateAidAuditReportPage /></LazyPage>} />
-          </Route>
-        )}
+        {/* Iteration 2 / Option A: Sensible Daten-Routen sind nicht mehr
+            anonym zugaenglich. Workshop-Plattform ist hinter Login geschuetzt,
+            Rechtsgrundlage wechselt auf Art. 6 Abs. 1 lit. b/f DSGVO
+            (Workshop-Teilnahmevertrag mit geschlossenem Nutzerkreis).
+            Unauthentifizierte Aufrufe sensibler Pfade landen via Catch-All
+            auf der LoginPage. */}
 
         {authToken ? (
           <Route element={<AppShell />}>

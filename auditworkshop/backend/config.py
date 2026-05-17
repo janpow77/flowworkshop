@@ -39,6 +39,23 @@ ALLOW_REMOTE_TILES = os.getenv("ALLOW_REMOTE_TILES", "true").lower() == "true"
 AUTH_TOKEN_SECRET = os.getenv("AUTH_TOKEN_SECRET", "workshop-dev-auth-secret-change-me")
 WORKER_API_TOKEN = os.getenv("WORKER_API_TOKEN", AUTH_TOKEN_SECRET)
 
+# ── E-Mail-Versand (Hetzner SMTP) ──────────────────────────────────────────
+# Transaktions-Mails fuer Signup-Bestaetigung, Admin-Benachrichtigung,
+# Approval/Reject-Mitteilung und Passwort-Reset-Link.
+# Default-Werte zielen auf Hetzner-Postfach (mail.your-server.de:465 SSL).
+# MAIL_ENABLED=false unterdrueckt den Versand komplett (Tests/Dev).
+MAIL_ENABLED   = os.getenv("MAIL_ENABLED", "true").lower() == "true"
+SMTP_HOST      = os.getenv("SMTP_HOST", "mail.your-server.de")
+SMTP_PORT      = int(os.getenv("SMTP_PORT", "465"))
+SMTP_USER      = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD  = os.getenv("SMTP_PASSWORD", "")
+SMTP_USE_SSL   = os.getenv("SMTP_USE_SSL", "true").lower() == "true"
+SMTP_STARTTLS  = os.getenv("SMTP_STARTTLS", "false").lower() == "true"
+SMTP_TIMEOUT   = int(os.getenv("SMTP_TIMEOUT", "20"))
+MAIL_FROM      = os.getenv("MAIL_FROM", "")
+MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "FlowAudit Workshop")
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://workshop.flowaudit.de").rstrip("/")
+
 # ── Embedding ──────────────────────────────────────────────────────────────
 EMBEDDING_BACKEND = os.getenv(
     "EMBEDDING_BACKEND",

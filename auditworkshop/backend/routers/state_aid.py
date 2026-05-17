@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.state_aid import StateAidAward, StateAidHarvestRun, StateAidSource
-from routers.auth import require_admin
+from routers.auth import require_admin, require_session
 from services.state_aid_harvester import HarvestParams, run_harvest, _default_source_key
 from services.state_aid_llm import (
     HitStats,
@@ -68,6 +68,10 @@ _RATE_LIMIT_WINDOWS: dict[str, tuple[int, float]] = {
     # endpoint -> (max_calls, window_seconds)
     "ask": (6, 60.0),
     "search": (60, 60.0),
+    # Iteration 2 / Option A: Schutz auch fuer authentifizierte Nutzer gegen
+    # Massen-Export oder Scraping durch missbrauchte Sessions.
+    "export": (10, 60.0),
+    "audit-report": (10, 60.0),
 }
 
 
@@ -346,8 +350,11 @@ class HarvestRequest(BaseModel):
 
 
 @router.get("/status")
-def get_status(db: Session = Depends(get_db)) -> dict:
-    """Index-Statistik (Plan §10). Oeffentlich."""
+def get_status(
+    db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
+) -> dict:
+    """Index-Statistik (Plan §10). Nur fuer authentifizierte Workshop-Teilnehmer."""
     total_awards = db.query(sql_func.count(StateAidAward.id)).scalar() or 0
     total_runs = db.query(sql_func.count(StateAidHarvestRun.id)).scalar() or 0
     sources_enabled = (
@@ -440,7 +447,10 @@ def post_validation_run(
 
 
 @router.get("/sources")
-def list_sources(db: Session = Depends(get_db)) -> dict:
+def list_sources(
+    db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
+) -> dict:
     """Alle StateAidSource-Eintraege — Konfiguration und Abdeckungsstand."""
     rows = (
         db.query(StateAidSource)
@@ -527,6 +537,7 @@ def search(
         ),
     ),
     db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
 ) -> dict:
     """Plan §10 — Fuzzy-Suche mit zusaetzlichen Filtern.
 
@@ -718,7 +729,11 @@ def _filters_applied_dict(**kwargs) -> dict:
 
 
 @router.get("/award/{award_id}")
-def get_award(award_id: str, db: Session = Depends(get_db)) -> dict:
+def get_award(
+    award_id: str,
+    db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
+) -> dict:
     """Einzelner Award als JSON. 404 wenn nicht da."""
     award = db.query(StateAidAward).filter(StateAidAward.id == award_id).first()
     if not award:
@@ -733,6 +748,7 @@ def get_map(
     until: date | None = Query(None),
     level: int = Query(1, ge=0, le=3, description="0=Land, 1=Bundesland (Default), 2=Regierungsbezirk, 3=Kreis"),
     db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
 ) -> dict:
     """Plan §8 — NUTS-Aggregat fuer Karte (keine Adressen)."""
     cc = country_code.upper() if country_code else None
@@ -755,6 +771,7 @@ def get_stats(
     source_key: str | None = Query(None, max_length=64),
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
 ) -> dict:
     """Aggregat-Statistiken: Top-N-Listen + Verteilungen pro Jahr/Land."""
     cc = country_code.upper() if country_code else None
@@ -890,6 +907,7 @@ def export_stats(
     source_key: str | None = Query(None, max_length=64),
     limit: int = Query(20, ge=1, le=200),
     db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
 ):
     """Auswertungs-Export — Top-Listen + Jahresverteilung als Multi-Sheet-XLSX.
 
@@ -1026,6 +1044,7 @@ def company_dossier(
     q: str = Query(..., min_length=2, max_length=200, description="Firmenname / Beguenstigter."),
     country_code: str | None = Query(None, max_length=3),
     db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
 ) -> dict:
     """Plan §7.3 — Cross-Register-Dossier fuer einen Firmennamen.
 
@@ -1372,9 +1391,13 @@ def export_awards(
     source_key: str | None = Query(None, max_length=64),
     limit: int = Query(500, ge=1, le=5000),
     min_score: float = Query(70.0, ge=40.0, le=100.0),
+    request: Request = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
 ):
     """Export-Endpoint (CSV oder PDF, Plan §13)."""
+    if request is not None:
+        _check_rate_limit("export", request)
     cc = country_code.upper() if country_code else None
     awards = _query_for_export(
         db, q,
@@ -1629,6 +1652,7 @@ async def ask(
     req: AskRequest,
     request: Request,
     db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
 ):
     """Klartext-Frage -> Filter-JSON -> SQL -> Klartext-Zusammenfassung (Plan §11.5).
 
@@ -1940,12 +1964,16 @@ def get_audit_report_json(
     ),
     db: Session = Depends(get_db),
     request: Request = None,  # type: ignore[assignment]
+    _session: dict = Depends(require_session),
 ) -> dict:
     """Cross-Register-Pruefbericht als JSON (UI-Live-Vorschau).
 
     Aggregiert State-Aid + Beneficiaries + Sanctions zu einem strukturierten
-    Bericht. Faktisch, ohne Bewertung. Oeffentlich (Plan §13).
+    Bericht. Faktisch, ohne Bewertung. Nur fuer authentifizierte Workshop-
+    Teilnehmer (Iteration 2 / Option A).
     """
+    if request is not None:
+        _check_rate_limit("audit-report", request)
     from services.state_aid_audit_report import build_audit_report
 
     cc = country_code.upper() if country_code else None
@@ -1982,6 +2010,7 @@ def get_corporate_group(
     max_children: int = Query(50, ge=0, le=500),
     timeout_seconds: float = Query(30.0, ge=5.0, le=60.0),
     db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
 ) -> dict:
     """Standalone Konzernverbund-Lookup (Item 2 / Mai 2026).
 
@@ -2021,13 +2050,15 @@ def post_audit_report_pdf(
     body: AuditReportPdfRequest,
     request: Request,
     db: Session = Depends(get_db),
+    _session: dict = Depends(require_session),
 ):
     """Cross-Register-Pruefbericht als PDF.
 
     Persistiert die Anfrage in `workshop_audit_report_log` (Audit-Trail).
     Liefert das PDF als Stream mit Content-Disposition: attachment.
-    Oeffentlich (Plan §13) — alle Daten stammen aus oeffentlichen Quellen.
+    Nur fuer authentifizierte Workshop-Teilnehmer (Iteration 2 / Option A).
     """
+    _check_rate_limit("audit-report", request)
     import hashlib
     import re as _re
 

@@ -34,7 +34,12 @@ from services.country_profiles import (
     get_region_label,
     list_country_codes,
 )
-from routers.auth import require_moderator, require_moderator_or_worker, require_session
+from routers.auth import (
+    require_moderator,
+    require_moderator_or_worker,
+    require_session,
+    require_session_or_worker,
+)
 
 # Plan v3.2 §5.5: Karten- und Quellen-Daten sind nach Art. 49 VO (EU)
 # 2021/1060 öffentlich. Daher kein require_session auf Router-Ebene —
@@ -56,7 +61,7 @@ def _normalize_country_code(country_code: str | None) -> str | None:
 
 
 @router.get("/countries")
-def list_countries():
+def list_countries(_session: dict = Depends(require_session)):
     """Liefert die verfuegbaren Laender-Profile (DE/AT) inkl. Region-Listen."""
     return {
         "countries": [
@@ -251,7 +256,10 @@ async def upload_beneficiary_list(
 
 
 @router.get("/sources")
-def list_sources(country_code: str | None = Query(None, description="Optional Filter DE oder AT")):
+def list_sources(
+    country_code: str | None = Query(None, description="Optional Filter DE oder AT"),
+    _session: dict = Depends(require_session),
+):
     """Alle erkannten Begünstigtenverzeichnisse mit Metadaten (optional pro Land)."""
     cc = _normalize_country_code(country_code)
     sources = get_beneficiary_sources(country_code=cc)
@@ -263,7 +271,10 @@ def list_sources(country_code: str | None = Query(None, description="Optional Fi
 
 
 @router.get("/map")
-def get_map_data(country_code: str | None = Query(None, description="Optional Filter DE oder AT")):
+def get_map_data(
+    country_code: str | None = Query(None, description="Optional Filter DE oder AT"),
+    _session: dict = Depends(require_session_or_worker),
+):
     """
     Kartendaten für die eingelesenen Begünstigtenverzeichnisse.
     Wenn country_code gesetzt ist, werden nur Quellen dieses Landes aggregiert,
@@ -325,6 +336,7 @@ def search_beneficiaries(
             "konsistent mit /api/state-aid/search."
         ),
     ),
+    _session: dict = Depends(require_session),
 ):
     cc = _normalize_country_code(country_code)
     try:
@@ -353,6 +365,7 @@ def analyze_beneficiaries(
     min_cost: float | None = Query(None, ge=0),
     limit: int = Query(10, ge=1, le=100),
     country_code: str | None = Query(None, description="Optional Filter DE oder AT"),
+    _session: dict = Depends(require_session),
 ):
     cc = _normalize_country_code(country_code)
     try:
@@ -370,7 +383,7 @@ def analyze_beneficiaries(
 
 
 @router.get("/nuts")
-def get_nuts_regions():
+def get_nuts_regions(_session: dict = Depends(require_session)):
     """Gibt alle deutschen NUTS-3 Regionen zurueck."""
     from services.geocoding_service import _load_nuts
     nuts = _load_nuts()
@@ -400,6 +413,7 @@ _GEOJSON_PATHS: dict[tuple[str, int], _Path] = {
 def get_nuts_geojson(
     country_code: str = Query("DE", description="DE oder AT"),
     level: int = Query(1, ge=1, le=3, description="1 = Bundesland (NUTS-1/-2), 3 = Kreis (NUTS-3)"),
+    _session: dict = Depends(require_session),
 ):
     """Liefert das NUTS-Polygon-GeoJSON fuer die Choropleth-Karte.
 
@@ -469,6 +483,7 @@ def get_choropleth(
     country_code: str = Query("DE", description="DE oder AT"),
     level: int = Query(1, ge=1, le=3, description="1 = Bundesland (NUTS-1/-2), 3 = Kreis (NUTS-3)"),
     metric: str = Query("count", description="count = Anzahl Vorhaben, value = Gesamtkosten"),
+    _session: dict = Depends(require_session),
 ):
     """Aggregierte Werte pro NUTS-Region fuer eine Choropleth-Karte.
 
@@ -644,6 +659,7 @@ def export_beneficiaries(
         None, ge=40.0, le=100.0,
         description="Fuzzy-Schwellwert (0..100). Default adaptiv aus Query-Laenge.",
     ),
+    _session: dict = Depends(require_session),
 ):
     """Beneficiary-Search-Export — alle gefundenen Records als CSV / XLSX / PDF.
 

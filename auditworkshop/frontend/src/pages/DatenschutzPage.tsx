@@ -118,6 +118,15 @@ export default function DatenschutzPage() {
               jederzeit gelöscht werden. Nutzer werden bei der Registrierung ausdrücklich
               darauf hingewiesen, keine personenbezogenen Daten Dritter hochzuladen.
             </p>
+            <p>
+              Im Rahmen der Registrierung und Konto-Verwaltung werden Transaktions-E-Mails
+              versendet: Eingangsbestätigung nach der Anmeldung, Mitteilung über die
+              Freischaltung oder Ablehnung durch den Admin, sowie Passwort-Setup- bzw.
+              Reset-Links. Der E-Mail-Versand erfolgt über das beim Hosting-Anbieter
+              (Hetzner Online GmbH) gehostete Postfach; Standort des Mail-Servers ist
+              Deutschland. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO
+              (Vertragsdurchführung gegenüber dem registrierten Nutzer).
+            </p>
           </Section>
 
           <Section title="5. Eingaben in Suchfelder">
@@ -151,9 +160,14 @@ export default function DatenschutzPage() {
             <p>
               Die aggregierten Datensätze können personenbezogene Daten enthalten, soweit die
               Quellen diese rechtmäßig und öffentlich bereitstellen (z. B. Veröffentlichungs-
-              pflichten nach Art. 49 VO (EU) 2021/1060). Rechtsgrundlage der Verarbeitung
-              durch diese Plattform ist Art. 6 Abs. 1 lit. e und f DSGVO i. V. m.
-              Art. 85 DSGVO (Demonstrations- und Schulungszweck im öffentlichen Interesse).
+              pflichten nach Art. 49 VO (EU) 2021/1060 oder Art. 9 VO (EU) 651/2014). Die
+              Anzeige dieser Datensätze auf dieser Plattform ist nicht öffentlich zugänglich
+              und erfolgt ausschließlich gegenüber angemeldeten Workshop-Teilnehmern.
+              Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Durchführung des
+              Workshop-Teilnahmevertrags) sowie Art. 6 Abs. 1 lit. f DSGVO (berechtigtes
+              Interesse an der Bereitstellung von Schulungsmaterial für einen geschlossenen
+              Teilnehmerkreis). Eine Verarbeitung auf Grundlage von Art. 6 Abs. 1 lit. e
+              oder Art. 85 DSGVO findet ausdrücklich nicht statt.
             </p>
             <p>
               Betroffene Personen können jederzeit Auskunft, Berichtigung oder Löschung der
