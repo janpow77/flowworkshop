@@ -60,15 +60,37 @@ export default function DatenschutzPage() {
             </p>
           </Section>
 
-          <Section title="2. Hosting und Server-Logfiles">
+          <Section title="2. Hosting, Verarbeitungsorte und Server-Logfiles">
             <p>
-              Diese Plattform wird auf einem Cloud-Server der Hetzner Online GmbH,
-              Industriestr. 25, 91710 Gunzenhausen, Deutschland, betrieben (Standort
-              Falkenstein). Es besteht ein Auftragsverarbeitungsvertrag nach Art. 28 DSGVO.
+              Die Web-Anwendung (Frontend, Backend, Datenbank, Reverse-Proxy) wird auf einem
+              Cloud-Server der Hetzner Online GmbH, Industriestr. 25, 91710 Gunzenhausen,
+              Deutschland, betrieben (Standort Falkenstein, FSN1). Mit Hetzner besteht ein
+              Auftragsverarbeitungsvertrag nach Art. 28 DSGVO. Sämtliche Nutzersitzungen,
+              Registrierungsdaten, hochgeladenen Dokumente und aggregierten öffentlichen
+              Datenbestände werden ausschließlich dort gespeichert.
             </p>
             <p>
-              Beim Aufruf der Plattform werden durch den Reverse-Proxy (Caddy) folgende Daten
-              verarbeitet:
+              Die KI-Inferenz (siehe Abschnitt 6) erfolgt <strong>nicht</strong> auf dem
+              Hetzner-Server, sondern auf zwei vom Verantwortlichen selbst betriebenen
+              GPU-Geräten am Standort Eppstein (Privatadresse des Verantwortlichen, siehe
+              Abschnitt 1). Die Geräte sind ausschließlich für die Modell-Ausführung zuständig
+              und speichern Anfragen nicht persistent.
+            </p>
+            <p>
+              Die Verbindung zwischen dem Hetzner-Server und den Inferenz-Geräten erfolgt
+              über ein privates WireGuard-basiertes Mesh-Netzwerk der Tailscale Inc.,
+              100 Spear Street, Suite 1850, San Francisco, CA 94105, USA. Tailscale vermittelt
+              ausschließlich verschlüsselte Punkt-zu-Punkt-Verbindungen (Coordination Plane);
+              die transportierten Inhalte werden Ende-zu-Ende zwischen den Endpunkten
+              verschlüsselt und sind für Tailscale technisch nicht einsehbar. Für die
+              Übermittlung von Verbindungs-Metadaten in die USA besteht ein
+              Auftragsverarbeitungsvertrag nach Art. 28 DSGVO sowie eine Übermittlung auf
+              Grundlage des EU-US Data Privacy Framework (Angemessenheitsbeschluss vom
+              10. Juli 2023, Art. 45 DSGVO).
+            </p>
+            <p>
+              Beim Aufruf der Plattform werden durch den Reverse-Proxy (Caddy) auf dem
+              Hetzner-Server folgende Daten verarbeitet:
             </p>
             <ul className="ml-5 list-disc space-y-1">
               <li>IP-Adresse des aufrufenden Endgeräts</li>
@@ -102,7 +124,7 @@ export default function DatenschutzPage() {
             </p>
           </Section>
 
-          <Section title="4. Registrierung und Nutzerkonto">
+          <Section title="4. Registrierung, Nutzerkonto und E-Mail-Versand">
             <p>
               Für den Zugriff auf den geschützten Bereich ist eine Registrierung erforderlich.
               Dabei werden Name, Organisation, dienstliche Rolle und E-Mail-Adresse
@@ -110,10 +132,28 @@ export default function DatenschutzPage() {
               Art. 6 Abs. 1 lit. a DSGVO — Einwilligung).
             </p>
             <p>
-              Optional hochgeladene Dokumente werden ausschließlich auf dem Server der
-              Plattform verarbeitet, nicht an Dritte übermittelt und können vom Nutzer
-              jederzeit gelöscht werden. Nutzer werden bei der Registrierung ausdrücklich
-              darauf hingewiesen, keine personenbezogenen Daten Dritter hochzuladen.
+              Optional hochgeladene Dokumente werden auf dem Hetzner-Server gespeichert
+              (siehe Abschnitt 2) und nicht an Dritte übermittelt. Für die Aufbereitung
+              (OCR, Vektor-Embeddings, KI-Auswertung) werden Inhalte in die in Abschnitt 6
+              beschriebene KI-Pipeline gegeben; sie verlässt die selbst betriebene
+              Infrastruktur des Verantwortlichen nicht. Uploads können vom Nutzer jederzeit
+              gelöscht werden. Nutzer werden bei der Registrierung ausdrücklich darauf
+              hingewiesen, keine personenbezogenen Daten Dritter hochzuladen.
+            </p>
+            <p>
+              Nach erfolgreicher Anmeldung versendet die Plattform eine
+              Anmeldebestätigung an die angegebene E-Mail-Adresse sowie eine
+              Benachrichtigung an den Veranstalter. Auf Wunsch (separate, freiwillige
+              Einwilligung im Anmeldeformular) wird die Bestätigungsmail um einen kurzen,
+              vom selbst betriebenen Sprachmodell erzeugten Personalisierungs-Absatz
+              ergänzt; ohne diese Einwilligung wird ausschließlich der statische
+              Standardtext versandt. Der Versand erfolgt über den SMTP-Dienst der
+              <strong> 1&1 IONOS SE</strong>, Elgendorfer Straße 57, 56410 Montabaur,
+              Deutschland (Mailbox <code>jan.riener@vwvg.de</code>). Mit IONOS besteht
+              ein Auftragsverarbeitungsvertrag nach Art. 28 DSGVO. Rechtsgrundlage ist
+              Art. 6 Abs. 1 lit. b DSGVO (Vertragsdurchführung) sowie hinsichtlich der
+              KI-Personalisierung Art. 6 Abs. 1 lit. a DSGVO (Einwilligung), jederzeit
+              widerruflich mit Wirkung für die Zukunft.
             </p>
           </Section>
 
@@ -144,10 +184,20 @@ export default function DatenschutzPage() {
 
           <Section title="6. KI-gestützte Auswertungen">
             <p>
-              Die Plattform setzt zur Demonstration ein <strong>lokal betriebenes
-              Sprachmodell</strong> ein. Sämtliche KI-Auswertungen erfolgen auf der eigenen
-              Infrastruktur. Es werden <strong>keine Inhalte an externe LLM-Anbieter</strong>
-              {' '}(z. B. OpenAI, Anthropic, Google) übermittelt.
+              Die Plattform setzt zur Demonstration ausschließlich <strong>selbst betriebene,
+              quelloffene Sprachmodelle</strong> ein (u. a. Qwen-Familie, BGE-Embeddings).
+              Diese laufen auf den in Abschnitt 2 beschriebenen GPU-Geräten am Standort
+              Eppstein und werden vom Hetzner-Server über das Tailscale-Mesh angesprochen.
+              Es werden <strong>keine Inhalte an externe LLM-Anbieter</strong> (z. B. OpenAI,
+              Anthropic, Google) übermittelt.
+            </p>
+            <p>
+              Vom KI-Pfad umfasst sind: Textgenerierung (LLM), Vektor-Embeddings für die
+              Wissens­suche, optische Zeichenerkennung (OCR) bei PDF-Uploads sowie das
+              Re-Ranking von Suchtreffern. Anfragen werden auf den Inferenz-Geräten nur
+              flüchtig im Arbeitsspeicher verarbeitet und nicht protokolliert oder
+              persistiert; eine Auswertung dieser Inhalte zu Trainingszwecken findet nicht
+              statt.
             </p>
             <p>
               Erzeugte Texte, Risiko-Indikatoren oder Bewertungen sind technische

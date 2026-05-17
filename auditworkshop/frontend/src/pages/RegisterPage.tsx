@@ -39,7 +39,7 @@ export default function RegisterPage() {
   const [visibility, setVisibility] = useState<'public' | 'moderation'>('public');
   const [anonymous, setAnonymous] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [anthropicConsent, setAnthropicConsent] = useState(false);
+  const [aiConfirmationConsent, setAiConfirmationConsent] = useState(false);
   const [error, setError] = useState('');
 
   // Datei-Upload (in Step 2)
@@ -105,8 +105,10 @@ export default function RegisterPage() {
     setUploadError('');
   };
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
   const canProceed = (s: Step): boolean => {
-    if (s === 1) return !!(firstName && lastName && email && email.includes('@'));
+    if (s === 1) return !!(firstName.trim() && lastName.trim() && EMAIL_RE.test(email.trim()));
     if (s === 2) return true;
     if (s === 3) return privacyAccepted;
     return true;
@@ -129,7 +131,7 @@ export default function RegisterPage() {
           department: department || null,
           fund: null,
           privacy_accepted: privacyAccepted,
-          anthropic_consent: anthropicConsent,
+          ai_confirmation_consent: aiConfirmationConsent,
         }),
       });
       const regData = await regRes.json();
@@ -362,14 +364,24 @@ export default function RegisterPage() {
                   Verantwortlich: Pr&uuml;fbeh&ouml;rde EFRE Hessen. Bei Fragen wenden Sie sich an{' '}
                   <a href="mailto:Jan.Riener@vwvg.de" className="text-indigo-600 underline dark:text-indigo-400">Jan.Riener@vwvg.de</a>.
                 </p>
+                <p className="mt-2">
+                  Die vollst&auml;ndige Datenschutzerkl&auml;rung &mdash; mit Angaben zu
+                  Hosting, KI-Inferenz und Auftragsverarbeitern &mdash; finden Sie unter{' '}
+                  <Link to="/datenschutz" target="_blank" className="text-indigo-600 underline dark:text-indigo-400">
+                    /datenschutz
+                  </Link>{' '}und das{' '}
+                  <Link to="/impressum" target="_blank" className="text-indigo-600 underline dark:text-indigo-400">
+                    Impressum
+                  </Link>.
+                </p>
               </div>
               <label className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
                 <input type="checkbox" checked={privacyAccepted} onChange={(e) => setPrivacyAccepted(e.target.checked)} className="mt-0.5" />
                 <span>Ich habe den Datenschutzhinweis zur Kenntnis genommen und best&auml;tige, dass meine hochgeladenen Dokumente keine personenbezogenen Daten enthalten. <strong>(Pflicht)</strong></span>
               </label>
               <label className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
-                <input type="checkbox" checked={anthropicConsent} onChange={(e) => setAnthropicConsent(e.target.checked)} className="mt-0.5" />
-                <span>Ich stimme zu, dass nach dem Absenden eine KI-generierte Best&auml;tigungsnachricht erzeugt werden darf. <em>(Freiwillig)</em></span>
+                <input type="checkbox" checked={aiConfirmationConsent} onChange={(e) => setAiConfirmationConsent(e.target.checked)} className="mt-0.5" />
+                <span>Ich stimme zu, dass die Bestätigungsmail einen kurzen, KI-personalisierten Absatz enthalten darf (erzeugt vom selbst betriebenen Sprachmodell, kein externer Anbieter). <em>(Freiwillig)</em></span>
               </label>
             </div>
           </div>
@@ -387,6 +399,14 @@ export default function RegisterPage() {
               {uploadFiles.length > 0 ? ` ${uploadFiles.length} Dokument${uploadFiles.length > 1 ? 'e' : ''} hochgeladen.` : ''}
               {' '}Sie k&ouml;nnen sich jetzt mit Ihrer E-Mail-Adresse einloggen.
             </p>
+            <div className="mx-auto max-w-md rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 text-xs leading-5 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+              <p className="font-medium">Best&auml;tigung per E-Mail</p>
+              <p className="mt-1">
+                Eine Best&auml;tigungsnachricht ist an <strong>{email}</strong> unterwegs.
+                Falls sie nicht innerhalb weniger Minuten ankommt, pr&uuml;fen Sie bitte
+                den Spam-Ordner.
+              </p>
+            </div>
             <div className="flex justify-center gap-3 pt-2">
               <Link to="/" className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-800 dark:bg-indigo-500 dark:hover:bg-indigo-400">
                 Zum Login

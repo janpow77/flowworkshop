@@ -184,3 +184,26 @@ dort angegebenen Betrag und die Vorhabenzahl und erkläre die
 Namensauflösung in einem Halbsatz. Findest du keinen passenden
 Kandidaten, sage das ehrlich.""",
 }
+
+# ── E-Mail-Versand ─────────────────────────────────────────────────────────
+# SMTP-Konfiguration für Anmeldebestätigungen und Admin-Benachrichtigungen.
+# Default: IONOS-SMTP (Mailbox jan.riener@vwvg.de). Versand ist nur aktiv,
+# wenn EMAIL_ENABLED=true UND SMTP_HOST + SMTP_USER + SMTP_PASSWORD gesetzt.
+EMAIL_ENABLED      = os.getenv("EMAIL_ENABLED", "false").lower() == "true"
+SMTP_HOST          = os.getenv("SMTP_HOST", "smtp.ionos.de")
+SMTP_PORT          = int(os.getenv("SMTP_PORT", "587"))
+SMTP_STARTTLS      = os.getenv("SMTP_STARTTLS", "true").lower() == "true"
+SMTP_USER          = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD      = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM          = os.getenv("SMTP_FROM", "jan.riener@vwvg.de")
+SMTP_FROM_NAME     = os.getenv("SMTP_FROM_NAME", "Prüferworkshop EFRE Hessen")
+ADMIN_NOTIFY_EMAIL = os.getenv("ADMIN_NOTIFY_EMAIL", "jan.riener@vwvg.de")
+EMAIL_TIMEOUT_S    = int(os.getenv("EMAIL_TIMEOUT_S", "20"))
+# Public-URL für Links in Mails (Login, Tagesordnung)
+EMAIL_PUBLIC_URL   = os.getenv("EMAIL_PUBLIC_URL", "https://workshop.flowaudit.de")
+# LLM darf einen kurzen personalisierten Absatz erzeugen, sofern der
+# Teilnehmer dem zugestimmt hat (ai_confirmation_consent).
+EMAIL_AI_PERSONALIZE = os.getenv("EMAIL_AI_PERSONALIZE", "true").lower() == "true"
+EMAIL_AI_MAX_TOKENS  = int(os.getenv("EMAIL_AI_MAX_TOKENS", "180"))
+EMAIL_AI_TIMEOUT_S   = int(os.getenv("EMAIL_AI_TIMEOUT_S", "25"))
+

@@ -405,8 +405,14 @@ def search_get(
             "Default: alle aktivierten Quellen."
         ),
     ),
+    _actor: dict = Depends(require_admin),
 ) -> SearchResponse:
     """Multi-Source-Fuzzy-Suche gegen alle indexierten Sanctions-Listen.
+
+    Aus DSGVO-Gründen Admin-Only: die Fuzzy-Schwelle 65 % produziert in einer
+    Demo-Plattform leicht False-Positives für unbeteiligte Namensvettern, und
+    die Verarbeitung von Personennamen Dritter ist außerhalb der eigentlichen
+    Prüfung nicht durch die Zweckbindung (Art. 5 Abs. 1 lit. b DSGVO) gedeckt.
 
     Default sind alle aktivierten Quellen. Mit dem `sources`-Parameter kann
     auf einzelne Listen eingeschraenkt werden (Komma-Liste).
@@ -533,8 +539,11 @@ def export_sanctions_search(
             "Default: alle aktivierten Quellen."
         ),
     ),
+    _actor: dict = Depends(require_admin),
 ):
     """Export der Sanctions-Suche in CSV / XLSX / PDF.
+
+    Aus DSGVO-Gründen Admin-Only — siehe Erläuterung bei /search.
 
     Selbe Filter-Parameter wie GET /search. Pflichthinweis und Datenstand pro
     Quelle werden in den Export aufgenommen (CSV als Kommentarzeilen, XLSX in
