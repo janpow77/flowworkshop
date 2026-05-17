@@ -6,8 +6,8 @@ import hashlib
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile, File
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -114,7 +114,17 @@ class RegistrationCreate(BaseModel):
     department: str | None = None
     fund: str | None = None
     privacy_accepted: bool = True
-    anthropic_consent: bool = False
+    # Einwilligung in KI-personalisierten Absatz der Bestätigungsmail.
+    ai_confirmation_consent: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_legacy_anthropic_consent(cls, data):
+        # Frontends, die noch das frühere Feld `anthropic_consent` senden,
+        # werden während der Übergangszeit weiter akzeptiert.
+        if isinstance(data, dict) and "anthropic_consent" in data and "ai_confirmation_consent" not in data:
+            data["ai_confirmation_consent"] = bool(data.get("anthropic_consent"))
+        return data
 
 class InviteOut(BaseModel):
     first_name: str
@@ -391,9 +401,34 @@ def get_invite(token: str, db: Session = Depends(get_db)):
 # ── Public: Anmeldung ────────────────────────────────────────────────────────
 
 @router.post("/register", status_code=201)
-def register(data: RegistrationCreate, token: str | None = None, db: Session = Depends(get_db)):
+def register(
+    data: RegistrationCreate,
+    background: BackgroundTasks,
+    token: str | None = None,
+    db: Session = Depends(get_db),
+):
     if not data.privacy_accepted:
         raise HTTPException(400, "Datenschutzhinweis muss akzeptiert werden.")
+
+    def _enqueue_emails(reg_obj: Registration, is_new: bool) -> None:
+        # Mailversand asynchron, damit die HTTP-Response nicht blockiert.
+        # Update einer bestehenden Registrierung erzeugt KEINE neue Bestätigung.
+        if not is_new:
+            return
+        from services.email_service import send_registration_emails, is_configured
+        if not is_configured():
+            return
+        background.add_task(
+            send_registration_emails,
+            registration_id=reg_obj.id,
+            first_name=reg_obj.first_name,
+            last_name=reg_obj.last_name,
+            email=reg_obj.email,
+            organization=reg_obj.organization,
+            department=reg_obj.department,
+            fund=reg_obj.fund,
+            ai_consent=bool(reg_obj.ai_confirmation_consent),
+        )
 
     # Bei Einladungslink: bestehende Registrierung aktualisieren
     if token:
@@ -401,7 +436,7 @@ def register(data: RegistrationCreate, token: str | None = None, db: Session = D
         reg = db.query(Registration).filter(Registration.invite_token == token).first()
         if reg:
             reg.privacy_accepted = data.privacy_accepted
-            reg.anthropic_consent = data.anthropic_consent
+            reg.ai_confirmation_consent = data.ai_confirmation_consent
             if data.department:
                 reg.department = data.department
             db.commit()
@@ -412,7 +447,7 @@ def register(data: RegistrationCreate, token: str | None = None, db: Session = D
     existing = db.query(Registration).filter(Registration.email.ilike(data.email.strip())).first()
     if existing:
         existing.privacy_accepted = data.privacy_accepted
-        existing.anthropic_consent = data.anthropic_consent
+        existing.ai_confirmation_consent = data.ai_confirmation_consent
         if data.department:
             existing.department = data.department
         if data.fund:
@@ -431,12 +466,13 @@ def register(data: RegistrationCreate, token: str | None = None, db: Session = D
         department=data.department,
         fund=data.fund,
         privacy_accepted=data.privacy_accepted,
-        anthropic_consent=data.anthropic_consent,
+        ai_confirmation_consent=data.ai_confirmation_consent,
         invite_token=_make_invite_token(data.email),
     )
     db.add(reg)
     db.commit()
     db.refresh(reg)
+    _enqueue_emails(reg, is_new=True)
     return {"status": "registered", "registration_id": reg.id}
 
 
@@ -742,6 +778,44 @@ def admin_auth(body: AdminAuth, request: Request, db: Session = Depends(get_db))
     if body.pin != meta.admin_pin:
         raise HTTPException(403, "Falscher PIN.")
     return {"status": "ok"}
+
+
+# ── Admin: Mail-Versand-Test ──────────────────────────────────────────────────
+
+class MailTestRequest(BaseModel):
+    to: str = Field(..., min_length=5, description="Empfänger-E-Mail für die Testmail")
+    with_ai: bool = Field(default=False, description="Optional: KI-personalisierten Absatz erzeugen")
+
+
+@router.post("/admin/mail-test")
+async def admin_mail_test(body: MailTestRequest, request: Request):
+    """Admin-Werkzeug: schickt eine Bestätigungs-Test-Mail.
+
+    Prüft, ob der SMTP-Pfad funktioniert, ohne eine echte Registrierung
+    anlegen zu müssen. Nur für Admins.
+    """
+    from routers.auth import require_admin
+    require_admin(request)
+
+    from services.email_service import is_configured, send_registration_confirmation
+    if not is_configured():
+        raise HTTPException(
+            503,
+            "E-Mail-Versand ist nicht konfiguriert (EMAIL_ENABLED / SMTP_HOST / SMTP_USER / SMTP_PASSWORD prüfen).",
+        )
+    ok = await send_registration_confirmation(
+        first_name="Test",
+        last_name="Empfänger",
+        email=body.to,
+        organization="Prüfbehörde EFRE Hessen",
+        department="(Mail-Versand-Test)",
+        fund=None,
+        ai_consent=body.with_ai,
+        workshop_title="Prüferworkshop EFRE Hessen 2026 — Testmail",
+    )
+    if not ok:
+        raise HTTPException(502, "Versand fehlgeschlagen. Backend-Logs prüfen.")
+    return {"status": "sent", "to": body.to, "with_ai": body.with_ai}
 
 
 # ── Admin: Meta ───────────────────────────────────────────────────────────────

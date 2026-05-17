@@ -75,7 +75,10 @@ export default function ImpressumPage() {
               <li>
                 EFRE-/ESF-/JTF-Transparenzlisten der Länder gemäß Art. 49 VO (EU) 2021/1060
               </li>
-              <li>EU Financial Sanctions File (EU FSF), OFAC, OFSI</li>
+              <li>
+                Konsolidierte Sanktionslisten (EU FSF, UN SC, OFAC SDN, UK OFSI, SECO),
+                bezogen über OpenSanctions (opensanctions.org)
+              </li>
               <li>OpenStreetMap / Nominatim für Geokodierung und Kartendarstellung</li>
               <li>NUTS-Klassifikation und Postleitzahl-Open-Data</li>
             </ul>
@@ -113,6 +116,16 @@ export default function ImpressumPage() {
               Demonstrationen</strong> und <strong>keine</strong> abschließenden
               Prüfungsfeststellungen, Risikoeinstufungen im Rechtssinne oder verbindlichen
               Aussagen über Personen oder Unternehmen.
+            </p>
+          </Section>
+
+          <Section title="Sanktionsprüfung">
+            <p>
+              Die Plattform dokumentiert die einschlägigen Sanktionslisten und verlinkt die
+              offiziellen Suchmasken der Herausgeber. Eine eigene Fuzzy-Suche über die lokal
+              indexierten Listen ist aus Datenschutzgründen <strong>nicht freigeschaltet</strong> —
+              für die offizielle sanktionsrechtliche Prüfung sind ausschließlich die
+              verlinkten Original-Suchmasken zu verwenden.
             </p>
           </Section>
 

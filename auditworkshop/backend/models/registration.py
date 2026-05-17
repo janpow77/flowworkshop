@@ -111,7 +111,11 @@ class Registration(Base):
     qr_secret_rotated_at = Column(DateTime, nullable=True)
     invite_token = Column(String(64), nullable=True, unique=True)
     privacy_accepted = Column(Boolean, default=False)
-    anthropic_consent = Column(Boolean, default=False)
+    # Einwilligung in einen KI-personalisierten Absatz in der Anmeldebestätigung.
+    # Früher anthropic_consent — der Name war irreführend, weil im KI-Pfad
+    # ausschließlich selbst betriebene Modelle (Qwen/BGE) auf eigener Hardware
+    # verwendet werden. Idempotenter Rename via Lifespan-Migration in main.py.
+    ai_confirmation_consent = Column(Boolean, default=False)
     filename = Column(String(255), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 

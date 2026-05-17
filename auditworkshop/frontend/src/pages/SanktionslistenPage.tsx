@@ -576,7 +576,49 @@ export default function SanktionslistenPage() {
         </div>
       </section>
 
+      {/* ── DSGVO-Hinweis: Suche nur fuer Admins ──────────────────── */}
+      {!isAdmin && (
+        <section
+          id="suche"
+          className="rounded-[34px] border border-amber-300/70 bg-gradient-to-br from-amber-50 via-white to-amber-50/40 p-6 shadow-sm dark:border-amber-500/30 dark:from-amber-950/30 dark:via-slate-900 dark:to-amber-950/10 lg:p-8"
+        >
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/30">
+              <ShieldAlert size={22} />
+            </div>
+            <div className="space-y-3 text-sm leading-6 text-slate-700 dark:text-slate-200">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                Sanktionssuche aus Datenschutzgründen deaktiviert
+              </h2>
+              <p>
+                Die Fuzzy-Suche über die unten dokumentierten Sanktionslisten ist auf dieser
+                Schulungs- und Demonstrationsplattform <strong>nicht freigeschaltet</strong>.
+                Die Listen enthalten personenbezogene Daten, und die hier eingesetzte
+                Ähnlichkeitssuche (Schwelle 65 %) erzeugt nicht selten Treffer für unbeteiligte
+                Namensvettern. Eine Verarbeitung dieser Daten außerhalb einer konkreten,
+                rechtlich gestützten Sanktionsprüfung wäre nicht durch die Zweckbindung nach
+                Art. 5 Abs. 1 lit. b DSGVO gedeckt.
+              </p>
+              <p>
+                Die offiziellen Listen können jederzeit direkt bei den Herausgebern recherchiert
+                werden — die Verlinkungen finden Sie weiter unten unter „Sanktionslisten im
+                Überblick". Für die offizielle sanktionsrechtliche Prüfung im Rahmen einer
+                Verwaltungskontrolle nutzen Sie bitte ausschließlich die dort verlinkten
+                Original-Suchmasken der Herausgeber.
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Details zur Datenverarbeitung in der{' '}
+                <Link to="/datenschutz" className="text-rose-700 underline-offset-4 hover:underline dark:text-rose-300">
+                  Datenschutzerklärung
+                </Link>.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* ── Suche ──────────────────────────────────────────────────── */}
+      {isAdmin && (
       <section id="suche" className="rounded-[34px] border border-rose-200/60 bg-gradient-to-br from-white via-rose-50/60 to-white p-6 shadow-[0_24px_80px_-50px_rgba(190,18,60,0.45)] dark:border-rose-500/20 dark:from-slate-900 dark:via-rose-950/20 dark:to-slate-900 lg:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <div className="lg:w-1/3">
@@ -799,6 +841,7 @@ export default function SanktionslistenPage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* ── Methode ────────────────────────────────────────────────── */}
       <section id="methode" className="rounded-[34px] border border-slate-200/70 bg-gradient-to-br from-slate-50 via-white to-cyan-50/30 p-6 shadow-[0_24px_80px_-50px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-cyan-950/20 lg:p-8">

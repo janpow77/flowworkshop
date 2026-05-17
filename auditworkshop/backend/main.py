@@ -115,6 +115,25 @@ async def lifespan(app: FastAPI):
                     conn.commit()
                     log.info("Spalte %s zu workshop_registrations hinzugefuegt.", col)
 
+            # Rename anthropic_consent → ai_confirmation_consent (idempotent).
+            # Der frühere Feldname war irreführend, weil im KI-Pfad
+            # ausschließlich selbst betriebene Modelle (Qwen/BGE) verwendet
+            # werden — kein Anthropic-Endpoint im Spiel.
+            if "anthropic_consent" in reg_cols and "ai_confirmation_consent" not in reg_cols:
+                conn.execute(text(
+                    "ALTER TABLE workshop_registrations "
+                    "RENAME COLUMN anthropic_consent TO ai_confirmation_consent"
+                ))
+                conn.commit()
+                log.info("workshop_registrations: anthropic_consent → ai_confirmation_consent umbenannt.")
+            elif "ai_confirmation_consent" not in reg_cols:
+                conn.execute(text(
+                    "ALTER TABLE workshop_registrations "
+                    "ADD COLUMN ai_confirmation_consent BOOLEAN DEFAULT FALSE"
+                ))
+                conn.commit()
+                log.info("Spalte ai_confirmation_consent zu workshop_registrations hinzugefuegt.")
+
             # Spalte edit_count: Default-Backfill, falls Migration aus
             # früherem Run schon lief, aber server_default fehlte
             try:
