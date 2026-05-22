@@ -84,6 +84,77 @@ KI-Personalisierung    : {{ 'aktiviert' if ai_consent else 'abgelehnt' }}
 Admin-Bereich: {{ public_url }}/admin
 """
 
+# Einladungsmail mit Setup-Link für den initialen Passwort-Login.
+# Bewusst transparent über Trägerschaft (Privatperson, nicht Prüfbehörde) und
+# über die LLM-Verarbeitung (lokal auf EVO-X2, keine Cloud-AI). Wird vom
+# Admin-Endpoint `POST /api/auth/users/{id}/send-invite` gerendert.
+_INVITE_TEXT = """\
+Guten Tag {{ first_name }} {{ last_name }},
+
+Sie sind eingeladen, an dem Workshop „KI und LLM für Prüfbehörden"
+teilzunehmen. Die Plattform ist ab sofort für Sie freigeschaltet.
+
+Bitte legen Sie über den folgenden Link Ihr persönliches Passwort fest
+(gültig 24 Stunden, einmalig nutzbar):
+
+  {{ setup_url }}
+
+Anschließend erreichen Sie die Workshop-Plattform jederzeit unter
+{{ public_url }}/login mit Ihrer E-Mail-Adresse und Ihrem gewählten Passwort.
+
+
+Was Sie auf der Plattform erwartet
+──────────────────────────────────
+Sechs Live-Szenarien, in denen ein selbst betriebenes Sprachmodell (Qwen3
+auf einer privaten EVO-X2 in Deutschland — kein OpenAI, kein Cloud-LLM)
+typische Prüfertätigkeiten unterstützt: Dokumente analysieren, Checklisten
+ergänzen, Halluzinationen demonstrieren, Berichtspassagen entwerfen, eigene
+Belege durchsuchen, Begünstigtenverzeichnisse auswerten. Daneben ein Forum,
+in dem die Teilnehmenden Themen einreichen und diskutieren können.
+
+
+Wichtiger Hinweis zur Trägerschaft
+──────────────────────────────────
+Dieser Workshop ist ein **privates, nicht-kommerzielles Angebot** von
+Jan Riener als Privatperson. Die Hessische Prüfbehörde EFRE ist weder
+Veranstalterin noch Verantwortliche und tritt auch nicht als
+Datenverarbeiterin auf. Inhalte und Plattform stehen in keinem
+dienstlichen Zusammenhang.
+
+Bitte geben Sie auf der Plattform **keine echten produktiven
+Vorhabens- oder Begünstigtendaten** ein — die Demo-Datensätze in der
+Anwendung sind ausreichend.
+
+
+Datenschutz, Auswertung und Widerruf
+────────────────────────────────────
+Verantwortlich i.S.d. Art. 4 Nr. 7 DSGVO: Jan Riener, administration@vwvg.de.
+
+Verarbeitet werden ausschließlich die Daten, die Sie selbst eingeben
+(Name, E-Mail, Behörde, Bundesland, Funktion, ggf. eingegebene Texte und
+Forum-Beiträge). Server-/LLM-Aufrufe werden zu Zwecken der Workshop-
+Auswertung pseudonymisiert protokolliert; die LLM-Verarbeitung selbst
+geschieht ausschließlich auf privater Hardware (EVO-X2 in DE), nicht in
+einer Cloud.
+
+Sie können Ihre Einwilligung jederzeit widerrufen und die Löschung Ihres
+Kontos verlangen — formlos per E-Mail an administration@vwvg.de. Weitere
+Details (Speicherdauern, Empfänger, Ihre Rechte) finden Sie unter
+{{ public_url }}/datenschutz, Impressum unter {{ public_url }}/impressum.
+
+
+Sollten Sie diese Mail unerwartet erhalten haben oder am Workshop nicht
+mehr teilnehmen wollen, antworten Sie einfach auf diese Nachricht — ich
+lösche das Konto dann umgehend.
+
+Mit freundlichen Grüßen
+Jan Riener
+
+—
+Diese Nachricht wurde automatisch erzeugt, der Absender ist privat. Bei
+technischen Rückfragen: administration@vwvg.de.
+"""
+
 _jinja = Environment(
     loader=BaseLoader(),
     autoescape=select_autoescape(disabled_extensions=("txt",), default=False),
@@ -253,6 +324,36 @@ async def send_registration_confirmation(
     msg = _build_message(
         to_addr=email,
         subject=f"Bestätigung Ihrer Anmeldung — {workshop_title}",
+        body_text=body,
+        reply_to=config.SMTP_FROM,
+    )
+    return await _send_message(msg)
+
+
+async def send_account_invite(
+    *,
+    first_name: str,
+    last_name: str,
+    email: str,
+    setup_url: str,
+) -> bool:
+    """Sendet die Einladungsmail mit Setup-Link.
+
+    `setup_url` ist die vollständige absolute URL inkl. Token-Query,
+    z.B. https://workshop.flowaudit.de/account/setup-password?token=…
+    """
+    if not is_configured():
+        return False
+
+    body = _jinja.from_string(_INVITE_TEXT).render(
+        first_name=first_name,
+        last_name=last_name,
+        setup_url=setup_url,
+        public_url=config.EMAIL_PUBLIC_URL.rstrip("/"),
+    )
+    msg = _build_message(
+        to_addr=email,
+        subject="Ihr Zugang zum Workshop „KI und LLM für Prüfbehörden\"",
         body_text=body,
         reply_to=config.SMTP_FROM,
     )
