@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, UserCheck, UserX, Ban, KeyRound, Copy, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Loader2, UserCheck, UserX, Ban, KeyRound, Copy, RefreshCw, ShieldCheck, Mail, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { getWorkshopAuthHeaders } from '../../lib/api';
 
 interface User {
@@ -31,6 +31,8 @@ export default function AdminUsersPanel() {
   const [filter, setFilter] = useState<'pending_approval' | 'all' | 'active'>('pending_approval');
   const [error, setError] = useState('');
   const [resetModal, setResetModal] = useState<{ user: User; token: string; setupUrl: string } | null>(null);
+  const [inviteSending, setInviteSending] = useState<Record<string, boolean>>({});
+  const [inviteResult, setInviteResult] = useState<{ user: User; mailSent: boolean; setupUrl: string; expiresAt: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -94,6 +96,34 @@ export default function AdminUsersPanel() {
     const d = await r.json();
     const fullUrl = `${window.location.origin}${d.setup_url}`;
     setResetModal({ user, token: d.token, setupUrl: fullUrl });
+  };
+
+  const sendInvite = async (user: User) => {
+    if (!confirm(`Einladung mit Setup-Link per E-Mail an ${user.email} senden?`)) return;
+    setError('');
+    setInviteSending((prev) => ({ ...prev, [user.id]: true }));
+    try {
+      const r = await fetch(`/api/auth/users/${user.id}/send-invite`, {
+        method: 'POST',
+        headers: getWorkshopAuthHeaders(),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setError(d.detail || 'Einladung konnte nicht versendet werden.');
+        return;
+      }
+      const d = await r.json();
+      setInviteResult({
+        user,
+        mailSent: !!d.mail_sent,
+        setupUrl: d.setup_url,
+        expiresAt: d.expires_at,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Verbindungsfehler beim Mailversand.');
+    } finally {
+      setInviteSending((prev) => ({ ...prev, [user.id]: false }));
+    }
   };
 
   return (
@@ -191,11 +221,24 @@ export default function AdminUsersPanel() {
                           </button>
                         </>
                       )}
+                      {(u.status === 'active' || u.status === 'pending_approval') && (
+                        <button
+                          onClick={() => sendInvite(u)}
+                          disabled={!!inviteSending[u.id]}
+                          title="Einladungs-Mail mit Setup-Link senden"
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-cyan-300 text-cyan-700 hover:bg-cyan-50 disabled:opacity-50 dark:border-cyan-700 dark:text-cyan-300"
+                        >
+                          {inviteSending[u.id]
+                            ? <Loader2 size={12} className="animate-spin" />
+                            : <Mail size={12} />}
+                          Mail senden
+                        </button>
+                      )}
                       {u.status === 'active' && (
                         <>
                           <button onClick={() => generateResetToken(u)}
                             className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">
-                            <KeyRound size={12} />Reset-Link
+                            <KeyRound size={12} />Link kopieren
                           </button>
                           <button onClick={() => {
                             if (confirm(`${u.email} suspendieren?`)) action(u.id, 'suspend');
@@ -213,6 +256,47 @@ export default function AdminUsersPanel() {
           </table>
         </div>
       </div>
+
+      {/* Versand-Ergebnis-Modal */}
+      {inviteResult && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 px-4">
+          <div className="max-w-lg w-full rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+            <div className="flex items-center gap-2 mb-2">
+              {inviteResult.mailSent
+                ? <CheckCircle2 size={18} className="text-emerald-500" />
+                : <AlertTriangle size={18} className="text-amber-500" />}
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                {inviteResult.mailSent ? 'Einladung versendet' : 'Token erzeugt — Mailversand fehlgeschlagen'}
+              </h3>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              {inviteResult.mailSent ? (
+                <>Die Einladungs-Mail wurde an <strong>{inviteResult.user.email}</strong> gesendet. Gültig bis <strong>{inviteResult.expiresAt.replace('T', ' ').slice(0, 16)}</strong>.</>
+              ) : (
+                <>SMTP-Versand schlug fehl. Der Setup-Link wurde dennoch erzeugt — bitte manuell an <strong>{inviteResult.user.email}</strong> weiterleiten.</>
+              )}
+            </p>
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+              <code className="block text-xs break-all text-slate-700 dark:text-slate-300">
+                {inviteResult.setupUrl}
+              </code>
+            </div>
+            <div className="mt-3 flex gap-2 justify-end">
+              <button onClick={() => navigator.clipboard.writeText(inviteResult.setupUrl)}
+                className="inline-flex items-center gap-1 text-sm px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                <Copy size={14} />Link kopieren
+              </button>
+              <button onClick={() => setInviteResult(null)}
+                className="text-sm px-3 py-1.5 rounded bg-cyan-600 text-white hover:bg-cyan-700">
+                Schließen
+              </button>
+            </div>
+            <p className="mt-3 text-[11px] text-slate-400">
+              Gültig 24 Stunden, einmalig nutzbar.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Reset-Token-Modal */}
       {resetModal && (

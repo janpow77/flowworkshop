@@ -7,6 +7,7 @@ Admin loggt sich mit PIN ein.
 import base64
 import hashlib
 import hmac
+import os
 import uuid
 import logging
 import secrets
@@ -747,6 +748,83 @@ def admin_create_reset_token(
         expires_at=expires.isoformat(),
         setup_url=f"/account/setup-password?token={raw}",
         user_email=u.email,
+    )
+
+
+class InviteResponse(BaseModel):
+    status: str
+    user_email: str
+    setup_url: str
+    expires_at: str
+    mail_sent: bool
+
+
+@router.post("/users/{user_id}/send-invite", response_model=InviteResponse)
+async def admin_send_invite(
+    user_id: str, request: Request, db: Session = Depends(get_db),
+):
+    """Admin: erzeugt einmaligen Setup-Token und schickt ihn dem User per Mail.
+
+    Kombiniert reset-token + send_account_invite, damit der Admin nicht den
+    Token kopieren und manuell verschicken muss. Wenn SMTP nicht konfiguriert
+    ist, wird der Token trotzdem erstellt und in der Response zurückgegeben,
+    damit der Admin auf den manuellen Pfad zurückfallen kann.
+    """
+    actor = require_admin(request)
+    u = db.query(Registration).filter(Registration.id == user_id).first()
+    if not u:
+        raise HTTPException(404, "User nicht gefunden.")
+    if u.status not in ("active", "pending_approval"):
+        raise HTTPException(
+            409,
+            f"Einladung nicht versendbar — Status ist {u.status}.",
+        )
+
+    raw = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    expires = _utcnow().replace(tzinfo=None) + timedelta(hours=24)
+    rt = PasswordResetToken(
+        user_id=u.id,
+        token_hash=token_hash,
+        purpose="setup" if not u.password_hash else "reset",
+        expires_at=expires,
+        created_by_id=actor.get("user_id"),
+    )
+    db.add(rt)
+    db.commit()
+
+    from services.email_service import is_configured, send_account_invite
+
+    public_base = (
+        os.getenv("EMAIL_PUBLIC_URL")
+        or "https://workshop.flowaudit.de"
+    ).rstrip("/")
+    relative = f"/account/setup-password?token={raw}"
+    full_setup_url = f"{public_base}{relative}"
+
+    mail_sent = False
+    if is_configured():
+        try:
+            mail_sent = await send_account_invite(
+                first_name=u.first_name,
+                last_name=u.last_name,
+                email=u.email,
+                setup_url=full_setup_url,
+            )
+        except Exception:  # noqa: BLE001 — Mailfehler darf den Endpoint nicht killen
+            log.exception("send_account_invite fehlgeschlagen für %s", u.email)
+            mail_sent = False
+
+    log.info(
+        "send-invite: user=%s mail_sent=%s actor=%s",
+        u.email, mail_sent, actor.get("email"),
+    )
+    return InviteResponse(
+        status="sent" if mail_sent else "token_only",
+        user_email=u.email,
+        setup_url=full_setup_url,
+        expires_at=expires.isoformat(),
+        mail_sent=mail_sent,
     )
 
 
