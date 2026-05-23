@@ -16,7 +16,7 @@ from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
 from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum, automation
-from routers import docs as docs_router, notifications, state_aid, admin_access
+from routers import docs as docs_router, notifications, state_aid, admin_access, mail_templates
 from routers import beneficiaries_sources
 from routers import entities as entities_router
 from routers import embeddings as embeddings_router
@@ -893,6 +893,7 @@ app.include_router(docs_router.router)
 app.include_router(notifications.router)
 app.include_router(state_aid.router)
 app.include_router(admin_access.router)
+app.include_router(mail_templates.router)
 app.include_router(beneficiaries_sources.router)
 # Phase 6d: Entity-Resolution (Master-Tabelle + Admin-Rebuild).
 app.include_router(entities_router.router)

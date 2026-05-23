@@ -4,11 +4,12 @@ import {
   Lock, Settings, ListOrdered, QrCode, Users, MessageSquare,
   Plus, Trash2, ArrowUp, ArrowDown, Save, Loader2, Download, Pencil, X, Check,
   Calendar, Clock, MapPin, Building2, Image, CheckCircle, Shield, Archive,
-  BarChart3,
+  BarChart3, Mail,
 } from 'lucide-react';
 import AdminUsersPanel from '../components/admin/AdminUsersPanel';
 import PhaseTogglePanel from '../components/admin/PhaseTogglePanel';
 import AdminUsagePanel from '../components/admin/AdminUsagePanel';
+import AdminMailTemplatesPanel from '../components/admin/AdminMailTemplatesPanel';
 
 interface Meta {
   title: string; subtitle: string; date: string; time: string;
@@ -21,7 +22,7 @@ interface AgendaItem {
   title: string; speaker: string | null; note: string | null; page_url: string | null; sort_order: number;
 }
 
-type Tab = 'agenda' | 'meta' | 'qr' | 'registrations' | 'topics' | 'users' | 'phase' | 'usage';
+type Tab = 'agenda' | 'meta' | 'qr' | 'registrations' | 'topics' | 'users' | 'phase' | 'usage' | 'mail';
 
 export default function AdminPage() {
   const [pin, setPin] = useState('');
@@ -198,6 +199,7 @@ export default function AdminPage() {
     { key: 'users', label: 'Benutzer', icon: Shield },
     { key: 'phase', label: 'Modus', icon: Archive },
     { key: 'usage', label: 'Nutzung', icon: BarChart3 },
+    { key: 'mail', label: 'Mail-Vorlagen', icon: Mail },
   ];
 
   return (
@@ -457,6 +459,7 @@ export default function AdminPage() {
       {tab === 'users' && <AdminUsersPanel />}
       {tab === 'phase' && <PhaseTogglePanel />}
       {tab === 'usage' && <AdminUsagePanel pin={pin} />}
+      {tab === 'mail' && <AdminMailTemplatesPanel />}
     </div>
   );
 }

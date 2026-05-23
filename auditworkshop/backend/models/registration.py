@@ -228,3 +228,21 @@ class TopicSubmission(Base):
     votes = Column(Integer, default=0)
     filename = Column(String(255), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
+
+
+class EmailTemplate(Base):
+    """Bearbeitbare Mail-Vorlagen.
+
+    Schluessel sind feste Strings (invite, confirmation, admin_notify,
+    signup_alert), die der email_service zur Laufzeit aus der DB laedt.
+    Faellt ein Lookup leer aus, nutzt der Service hartcodierte
+    Python-Konstanten als Sicherheitsnetz.
+    """
+    __tablename__ = "workshop_email_templates"
+
+    key = Column(String(40), primary_key=True)
+    subject = Column(String(255), nullable=False)
+    body = Column(Text, nullable=False)
+    description = Column(String(255), nullable=True)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_by_id = Column(String(36), nullable=True)

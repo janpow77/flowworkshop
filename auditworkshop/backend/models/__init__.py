@@ -24,7 +24,7 @@ from models.registration import (  # noqa: F401
     AgendaForumPost,
 )
 from models.session import WorkshopSession  # noqa: F401
-from models.registration import PasswordResetToken, SecurityAuditLog  # noqa: F401
+from models.registration import PasswordResetToken, SecurityAuditLog, EmailTemplate  # noqa: F401
 from models.forum import (  # noqa: F401
     ForumCategory, ForumThread, ForumPost, ForumReaction,
     ForumTag, ForumThreadTag, ForumReadState,
