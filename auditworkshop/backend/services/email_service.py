@@ -91,68 +91,99 @@ Admin-Bereich: {{ public_url }}/admin
 _INVITE_TEXT = """\
 Guten Tag {{ first_name }} {{ last_name }},
 
-Sie sind eingeladen, an dem Workshop „KI und LLM für Prüfbehörden"
-teilzunehmen. Die Plattform ist ab sofort für Sie freigeschaltet.
+ich möchte Sie gerne auf die neuen Recherche- und Auswertungsbereiche der
+Plattform „KI und LLM für Prüfbehörden" aufmerksam machen. Sie haben sich
+auf der Plattform angemeldet und werden hiermit freigeschaltet. Im Nachgang
+zum Prüferworkshop 2026 in Hannover habe ich die Anwendung um mehrere
+offene Recherchefunktionen erweitert und freue mich, wenn Sie diese in der
+Praxis erproben.
+
+
+Ihr Zugang zur Plattform
+========================
 
 Bitte legen Sie über den folgenden Link Ihr persönliches Passwort fest
-(gültig 24 Stunden, einmalig nutzbar):
+(der Link ist 24 Stunden gültig und einmalig nutzbar):
 
   {{ setup_url }}
 
-Anschließend erreichen Sie die Workshop-Plattform jederzeit unter
-{{ public_url }}/login mit Ihrer E-Mail-Adresse und Ihrem gewählten Passwort.
+Nach der Einrichtung erreichen Sie die Plattform jederzeit unter
+{{ public_url }}/login mit Ihrer E-Mail-Adresse und Ihrem gewählten
+Passwort.
 
 
-Was Sie auf der Plattform erwartet
-──────────────────────────────────
-Sechs Live-Szenarien, in denen ein selbst betriebenes Sprachmodell (Qwen3
-auf einer privaten EVO-X2 in Deutschland — kein OpenAI, kein Cloud-LLM)
-typische Prüfertätigkeiten unterstützt: Dokumente analysieren, Checklisten
-ergänzen, Halluzinationen demonstrieren, Berichtspassagen entwerfen, eigene
-Belege durchsuchen, Begünstigtenverzeichnisse auswerten. Daneben ein Forum,
-in dem die Teilnehmenden Themen einreichen und diskutieren können.
+Die Auswertungsbereiche im Überblick
+====================================
+
+• Begünstigtenverzeichnisse: Intelligente Suche und Karten-Visualisierung
+  innerhalb der öffentlich zugänglichen EFRE-/ESF-/JTF-Begünstigtenlisten.
+
+• EU-Beihilfe-Register: Gezielte Recherche in den veröffentlichten
+  Beihilfedaten (Empfänger, Beträge, Beihilfeinstrumente, Regionen,
+  Behörden und Förderziele).
+
+• Sanktionslisten: Lokaler Abgleich gegen mehrere Datenquellen (u. a.
+  EU FSF und OFAC). Hinweis: Dies versteht sich als strukturierte
+  Recherchehilfe; es ersetzt keine abschließende rechtliche Prüfung,
+  liefert jedoch wertvolle erste Hinweise auf Namens- oder
+  Organisationsübereinstimmungen. Aus Datenschutzgründen (DSGVO) ist
+  eine Fuzzy-/Ähnlichkeitssuche bewusst deaktiviert; gesucht wird
+  ausschließlich auf exakte Treffer.
+
+Zusätzlich finden Sie auf der Plattform praxisnahe Beispiele für den
+Einsatz eines lokal betriebenen Sprachmodells (LLM) in typischen
+Prüfungssituationen (u. a. Dokumentenanalyse, Checklistenarbeit,
+Berichtsentwürfe, Halluzinations-Demonstration und das Durchsuchen
+eigener Belege).
 
 
 Wichtiger Hinweis zur Trägerschaft
-──────────────────────────────────
-Dieser Workshop ist ein **privates, nicht-kommerzielles Angebot** von
+==================================
+
+Dieses Angebot ist ein rein privates, nicht-kommerzielles Vorhaben von
 Jan Riener als Privatperson. Die Hessische Prüfbehörde EFRE ist weder
-Veranstalterin noch Verantwortliche und tritt auch nicht als
-Datenverarbeiterin auf. Inhalte und Plattform stehen in keinem
+Veranstalterin noch Verantwortliche und tritt nicht als
+Datenverarbeiterin auf. Die Inhalte und die Plattform stehen in keinem
 dienstlichen Zusammenhang.
 
-Bitte geben Sie auf der Plattform **keine echten produktiven
-Vorhabens- oder Begünstigtendaten** ein — die Demo-Datensätze in der
-Anwendung sind ausreichend.
+Datensicherheit: Bitte geben Sie auf der Plattform keine echten
+produktiven Vorhabens- oder Begünstigtendaten ein. Alle Recherchen
+arbeiten ausschließlich mit öffentlich zugänglichen Datenquellen.
 
 
 Datenschutz, Auswertung und Widerruf
-────────────────────────────────────
-Verantwortlich i.S.d. Art. 4 Nr. 7 DSGVO: Jan Riener, administration@vwvg.de.
+====================================
 
-Verarbeitet werden ausschließlich die Daten, die Sie selbst eingeben
-(Name, E-Mail, Behörde, Bundesland, Funktion, ggf. eingegebene Texte und
-Forum-Beiträge). Server-/LLM-Aufrufe werden zu Zwecken der Workshop-
-Auswertung pseudonymisiert protokolliert; die LLM-Verarbeitung selbst
-geschieht ausschließlich auf privater Hardware (EVO-X2 in DE), nicht in
-einer Cloud.
+Verantwortlicher (i.S.d. Art. 4 Nr. 7 DSGVO): Jan Riener,
+administration@vwvg.de.
 
-Sie können Ihre Einwilligung jederzeit widerrufen und die Löschung Ihres
-Kontos verlangen — formlos per E-Mail an administration@vwvg.de. Weitere
-Details (Speicherdauern, Empfänger, Ihre Rechte) finden Sie unter
-{{ public_url }}/datenschutz, Impressum unter {{ public_url }}/impressum.
+Datenverarbeitung: Verarbeitet werden ausschließlich die von Ihnen selbst
+eingegebenen Daten (Name, E-Mail, Behörde, Bundesland, Funktion sowie ggf.
+eingegebene Texte).
+
+Infrastruktur: Server- und LLM-Aufrufe werden zu Auswertungszwecken
+pseudonymisiert protokolliert. Die LLM-Verarbeitung selbst erfolgt
+ausschließlich auf privater Hardware (EVO-X2 in Deutschland) und explizit
+nicht in einer Cloud.
+
+Widerruf: Sie können Ihre Einwilligung jederzeit widerrufen und die
+Löschung Ihres Kontos verlangen — formlos per E-Mail an
+administration@vwvg.de.
+
+Weitere Details unter {{ public_url }}/datenschutz und
+{{ public_url }}/impressum.
 
 
-Sollten Sie diese Mail unerwartet erhalten haben oder am Workshop nicht
-mehr teilnehmen wollen, antworten Sie einfach auf diese Nachricht — ich
-lösche das Konto dann umgehend.
+Sollten Sie diese E-Mail unerwartet erhalten haben oder die Plattform
+nicht nutzen wollen, antworten Sie einfach auf diese Nachricht — ich
+werde Ihr Konto dann umgehend löschen.
 
 Mit freundlichen Grüßen
 Jan Riener
 
 —
-Diese Nachricht wurde automatisch erzeugt, der Absender ist privat. Bei
-technischen Rückfragen: administration@vwvg.de.
+Diese Nachricht wurde automatisch erzeugt, der Absender ist privat.
+Bei technischen Rückfragen: administration@vwvg.de.
 """
 
 _jinja = Environment(
@@ -353,7 +384,7 @@ async def send_account_invite(
     )
     msg = _build_message(
         to_addr=email,
-        subject="Ihr Zugang zum Workshop „KI und LLM für Prüfbehörden\"",
+        subject="Erweiterte Recherche- und Auswertungsbereiche der Plattform „KI und LLM für Prüfbehörden\"",
         body_text=body,
         reply_to=config.SMTP_FROM,
     )
