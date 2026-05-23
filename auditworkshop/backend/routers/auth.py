@@ -13,7 +13,7 @@ import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -507,7 +507,12 @@ def _validate_password_strength(pw: str) -> str | None:
 
 
 @router.post("/signup", response_model=SignupResponse, status_code=201)
-def signup(body: SignupRequest, request: Request, db: Session = Depends(get_db)):
+def signup(
+    body: SignupRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """Selbstregistrierung — kein Mail-Verify, Account ist `pending_approval`,
     Admin schaltet später frei. Pflichtfelder gemäß Plan v3.2 §3.4.
     """
@@ -568,6 +573,25 @@ def signup(body: SignupRequest, request: Request, db: Session = Depends(get_db))
             )
     except Exception:
         log.exception("Admin-Pending-Notification fehlgeschlagen")
+
+    # E-Mail-Benachrichtigung an ADMIN_NOTIFY_EMAIL (Background-Task, damit
+    # SMTP-Latenz die Signup-Response nicht verzögert)
+    try:
+        from services.email_service import send_signup_alert
+        background_tasks.add_task(
+            send_signup_alert,
+            user_id=new.id,
+            first_name=new.first_name,
+            last_name=new.last_name,
+            email=new.email,
+            organization=new.organization,
+            bundesland=new.bundesland,
+            function_role=new.function_role,
+            signup_reason=new.signup_reason,
+        )
+    except Exception:  # noqa: BLE001 — Mailfehler darf Signup nicht killen
+        log.exception("send_signup_alert konnte nicht eingereiht werden")
+
     return SignupResponse(
         status="pending_approval",
         message=(

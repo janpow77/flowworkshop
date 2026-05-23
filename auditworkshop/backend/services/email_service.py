@@ -5,18 +5,22 @@ E-Mail-Versand für die Workshop-Plattform.
 
 Use-Cases:
 - Anmeldebestätigung an Teilnehmer nach erfolgreicher Registrierung
+  (alter Pfad /api/event/register ohne Passwort)
 - Admin-Benachrichtigung an den Veranstalter bei neuer Anmeldung
+- Einladung mit Setup-Link für Setup-Token (Admin-Workflow)
+- Signup-Alert bei Selbst-Registrierung (/api/auth/signup, pending_approval)
 
-Versand über SMTP (Default: IONOS smtp.ionos.de:587 STARTTLS) mit der
-in config.SMTP_FROM hinterlegten Absenderadresse. Inhalte werden aus
-Jinja2-Templates gerendert; optional erzeugt das selbst betriebene LLM
-einen kurzen personalisierten Absatz, sofern der Teilnehmer dem zugestimmt
-hat (ai_confirmation_consent).
+Inhalte werden aus Jinja2-Templates gerendert. Pro Template gibt es:
+1. Einen hartcodierten Default in `DEFAULT_TEMPLATES` (subject + body).
+2. Eine optionale Override-Zeile in der DB-Tabelle workshop_email_templates,
+   die der Admin im AdminPage-Tab "Mail-Vorlagen" bearbeiten kann.
+DB-Lookup hat Vorrang, Default ist das Sicherheitsnetz.
 
-Versand wird nur durchgeführt, wenn config.EMAIL_ENABLED=true UND
-SMTP_HOST + SMTP_USER + SMTP_PASSWORD gesetzt sind. Fehler werden geloggt,
-aber nie an die HTTP-Anfrage durchgereicht — die Registrierung darf nicht
-am Mailversand scheitern.
+Versand über SMTP (Default: IONOS smtp.ionos.de:587 STARTTLS) mit der in
+config.SMTP_FROM hinterlegten Absenderadresse. Versand ist nur aktiv, wenn
+config.EMAIL_ENABLED=true UND SMTP_HOST + SMTP_USER + SMTP_PASSWORD gesetzt.
+Fehler werden geloggt, aber nie an die HTTP-Anfrage durchgereicht — die
+Registrierung darf nicht am Mailversand scheitern.
 """
 
 from __future__ import annotations
@@ -35,9 +39,21 @@ import config
 log = logging.getLogger(__name__)
 
 
-# ── Jinja2-Templates (inline, da nur zwei Mails) ────────────────────────────
+# ── Default-Templates (Single Source of Truth für Seed + Fallback) ──────────
 
-_CONFIRM_TEXT = """\
+DEFAULT_TEMPLATES: dict[str, dict[str, str | list[str]]] = {
+    "confirmation": {
+        "description": (
+            "Anmeldebestätigung an Teilnehmer nach Selbst-Registrierung "
+            "über /register (alter Pfad, ohne Passwort)."
+        ),
+        "subject": "Bestätigung Ihrer Anmeldung — {{ workshop_title }}",
+        "placeholders": [
+            "first_name", "last_name", "email", "organization", "department",
+            "fund", "ai_paragraph", "workshop_title", "public_url",
+            "reply_to", "organizer",
+        ],
+        "body": """\
 Guten Tag {{ first_name }} {{ last_name }},
 
 vielen Dank für Ihre Anmeldung zum {{ workshop_title }}.
@@ -66,9 +82,21 @@ Mit freundlichen Grüßen
 Hinweis: Diese Nachricht wurde automatisch erzeugt. Datenschutz­erklärung
 und Impressum finden Sie unter {{ public_url }}/datenschutz bzw.
 {{ public_url }}/impressum.
-"""
+""",
+    },
 
-_ADMIN_NOTIFY_TEXT = """\
+    "admin_notify": {
+        "description": (
+            "Admin-Benachrichtigung an ADMIN_NOTIFY_EMAIL nach einer "
+            "Registrierung über /register (alter Pfad)."
+        ),
+        "subject": "Neue Workshop-Anmeldung: {{ first_name }} {{ last_name }}",
+        "placeholders": [
+            "first_name", "last_name", "email", "organization", "department",
+            "fund", "registration_id", "confirmation_sent", "ai_consent",
+            "public_url",
+        ],
+        "body": """\
 Neue Workshop-Anmeldung
 
 Name        : {{ first_name }} {{ last_name }}
@@ -82,13 +110,20 @@ Bestätigungsmail gesendet: {{ 'ja' if confirmation_sent else 'nein' }}
 KI-Personalisierung    : {{ 'aktiviert' if ai_consent else 'abgelehnt' }}
 
 Admin-Bereich: {{ public_url }}/admin
-"""
+""",
+    },
 
-# Einladungsmail mit Setup-Link für den initialen Passwort-Login.
-# Bewusst transparent über Trägerschaft (Privatperson, nicht Prüfbehörde) und
-# über die LLM-Verarbeitung (lokal auf EVO-X2, keine Cloud-AI). Wird vom
-# Admin-Endpoint `POST /api/auth/users/{id}/send-invite` gerendert.
-_INVITE_TEXT = """\
+    "invite": {
+        "description": (
+            "Einladung mit Setup-Link für Selbst-Passwort-Vergabe. Wird vom "
+            "Admin-Button \"Mail senden\" im AdminUsersPanel ausgelöst."
+        ),
+        "subject": (
+            "Erweiterte Recherche- und Auswertungsbereiche der Plattform "
+            "„KI und LLM für Prüfbehörden\""
+        ),
+        "placeholders": ["first_name", "last_name", "setup_url", "public_url"],
+        "body": """\
 Guten Tag {{ first_name }} {{ last_name }},
 
 ich möchte Sie gerne auf die neuen Recherche- und Auswertungsbereiche der
@@ -184,7 +219,40 @@ Jan Riener
 —
 Diese Nachricht wurde automatisch erzeugt, der Absender ist privat.
 Bei technischen Rückfragen: administration@vwvg.de.
-"""
+""",
+    },
+
+    "signup_alert": {
+        "description": (
+            "Benachrichtigung an ADMIN_NOTIFY_EMAIL bei Selbst-Registrierung "
+            "über /api/auth/signup (Status pending_approval). Der Admin muss "
+            "den Account anschließend im AdminPanel freischalten."
+        ),
+        "subject": "Neue Selbst-Anmeldung: {{ first_name }} {{ last_name }} ({{ organization }})",
+        "placeholders": [
+            "first_name", "last_name", "email", "organization", "bundesland",
+            "function_role", "signup_reason", "user_id", "public_url",
+        ],
+        "body": """\
+Neue Selbst-Anmeldung — wartet auf Freischaltung
+
+Name        : {{ first_name }} {{ last_name }}
+E-Mail      : {{ email }}
+Organisation: {{ organization or '–' }}
+Bundesland  : {{ bundesland or '–' }}
+Funktion    : {{ function_role or '–' }}
+{% if signup_reason %}
+Begründung der/des Anmeldenden:
+{{ signup_reason }}
+{% endif %}
+Registrierungs-ID: {{ user_id }}
+
+Bitte im Admin-Bereich prüfen und freischalten:
+{{ public_url }}/admin (Tab „Benutzer", Filter „Wartet auf Freigabe")
+""",
+    },
+}
+
 
 _jinja = Environment(
     loader=BaseLoader(),
@@ -204,6 +272,33 @@ def is_configured() -> bool:
         and config.SMTP_PASSWORD
         and config.SMTP_FROM
     )
+
+
+# ── Template-Lookup (DB-Override mit Default-Fallback) ──────────────────────
+
+def get_template(key: str) -> tuple[str, str]:
+    """Liefert (subject, body) aus der DB, fällt sonst auf DEFAULT_TEMPLATES.
+
+    Wirft KeyError, falls der Key auch im Default unbekannt ist — das ist ein
+    Programmfehler, kein Laufzeit-Fall.
+    """
+    default = DEFAULT_TEMPLATES.get(key)
+    if not default:
+        raise KeyError(f"Unbekanntes Mail-Template: {key!r}")
+
+    # DB-Lookup: best-effort, eine Fehlermeldung darf den Mailversand nicht
+    # killen. Bei Lookup-Fehler nutzen wir den Default.
+    try:
+        from database import SessionLocal
+        from models.registration import EmailTemplate
+        with SessionLocal() as db:
+            row = db.query(EmailTemplate).filter(EmailTemplate.key == key).first()
+            if row and row.subject and row.body:
+                return row.subject, row.body
+    except Exception:  # noqa: BLE001 — DB-Hiccup darf Mailversand nicht blocken
+        log.exception("DB-Lookup für Mail-Template %r fehlgeschlagen — fahre mit Default fort.", key)
+
+    return str(default["subject"]), str(default["body"])
 
 
 # ── LLM-Personalisierung (optional, non-streaming) ──────────────────────────
@@ -314,6 +409,14 @@ def _build_message(
     return msg
 
 
+def _render(key: str, context: dict) -> tuple[str, str]:
+    """Lädt (subject, body) für `key` und rendert beide mit `context`."""
+    subject_tmpl, body_tmpl = get_template(key)
+    subject = _jinja.from_string(subject_tmpl).render(**context).strip()
+    body = _jinja.from_string(body_tmpl).render(**context)
+    return subject, body
+
+
 # ── Öffentliche API ─────────────────────────────────────────────────────────
 
 async def send_registration_confirmation(
@@ -339,22 +442,22 @@ async def send_registration_confirmation(
     if ai_consent and config.EMAIL_AI_PERSONALIZE:
         ai_paragraph = await _generate_ai_paragraph(first_name, organization, fund)
 
-    body = _jinja.from_string(_CONFIRM_TEXT).render(
-        first_name=first_name,
-        last_name=last_name,
-        email=email,
-        organization=organization,
-        department=department,
-        fund=fund,
-        ai_paragraph=ai_paragraph,
-        workshop_title=workshop_title,
-        public_url=config.EMAIL_PUBLIC_URL.rstrip("/"),
-        reply_to=config.SMTP_FROM,
-        organizer=config.SMTP_FROM_NAME,
-    )
+    subject, body = _render("confirmation", {
+        "first_name": first_name,
+        "last_name": last_name,
+        "email": email,
+        "organization": organization,
+        "department": department,
+        "fund": fund,
+        "ai_paragraph": ai_paragraph,
+        "workshop_title": workshop_title,
+        "public_url": config.EMAIL_PUBLIC_URL.rstrip("/"),
+        "reply_to": config.SMTP_FROM,
+        "organizer": config.SMTP_FROM_NAME,
+    })
     msg = _build_message(
         to_addr=email,
-        subject=f"Bestätigung Ihrer Anmeldung — {workshop_title}",
+        subject=subject,
         body_text=body,
         reply_to=config.SMTP_FROM,
     )
@@ -376,15 +479,15 @@ async def send_account_invite(
     if not is_configured():
         return False
 
-    body = _jinja.from_string(_INVITE_TEXT).render(
-        first_name=first_name,
-        last_name=last_name,
-        setup_url=setup_url,
-        public_url=config.EMAIL_PUBLIC_URL.rstrip("/"),
-    )
+    subject, body = _render("invite", {
+        "first_name": first_name,
+        "last_name": last_name,
+        "setup_url": setup_url,
+        "public_url": config.EMAIL_PUBLIC_URL.rstrip("/"),
+    })
     msg = _build_message(
         to_addr=email,
-        subject="Erweiterte Recherche- und Auswertungsbereiche der Plattform „KI und LLM für Prüfbehörden\"",
+        subject=subject,
         body_text=body,
         reply_to=config.SMTP_FROM,
     )
@@ -407,21 +510,58 @@ async def send_admin_notification(
     if not is_configured() or not config.ADMIN_NOTIFY_EMAIL:
         return False
 
-    body = _jinja.from_string(_ADMIN_NOTIFY_TEXT).render(
-        registration_id=registration_id,
-        first_name=first_name,
-        last_name=last_name,
-        email=email,
-        organization=organization,
-        department=department,
-        fund=fund,
-        confirmation_sent=confirmation_sent,
-        ai_consent=ai_consent,
-        public_url=config.EMAIL_PUBLIC_URL.rstrip("/"),
-    )
+    subject, body = _render("admin_notify", {
+        "registration_id": registration_id,
+        "first_name": first_name,
+        "last_name": last_name,
+        "email": email,
+        "organization": organization,
+        "department": department,
+        "fund": fund,
+        "confirmation_sent": confirmation_sent,
+        "ai_consent": ai_consent,
+        "public_url": config.EMAIL_PUBLIC_URL.rstrip("/"),
+    })
     msg = _build_message(
         to_addr=config.ADMIN_NOTIFY_EMAIL,
-        subject=f"Neue Workshop-Anmeldung: {first_name} {last_name}",
+        subject=subject,
+        body_text=body,
+        reply_to=email,
+    )
+    return await _send_message(msg)
+
+
+async def send_signup_alert(
+    *,
+    user_id: str,
+    first_name: str,
+    last_name: str,
+    email: str,
+    organization: str | None,
+    bundesland: str | None,
+    function_role: str | None,
+    signup_reason: str | None,
+) -> bool:
+    """Benachrichtigt ADMIN_NOTIFY_EMAIL über eine Selbst-Anmeldung
+    (pending_approval). Wird vom /api/auth/signup-Endpoint aufgerufen.
+    """
+    if not is_configured() or not config.ADMIN_NOTIFY_EMAIL:
+        return False
+
+    subject, body = _render("signup_alert", {
+        "user_id": user_id,
+        "first_name": first_name,
+        "last_name": last_name,
+        "email": email,
+        "organization": organization,
+        "bundesland": bundesland,
+        "function_role": function_role,
+        "signup_reason": signup_reason,
+        "public_url": config.EMAIL_PUBLIC_URL.rstrip("/"),
+    })
+    msg = _build_message(
+        to_addr=config.ADMIN_NOTIFY_EMAIL,
+        subject=subject,
         body_text=body,
         reply_to=email,
     )
