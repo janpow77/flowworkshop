@@ -60,3 +60,15 @@ auditworkshop/frontend/test-results/
 # Runtime-Daten (User-Uploads)
 auditworkshop/backend/data/documents/
 auditworkshop/backend/data/uploads/
+
+# Lose Arbeitsnotizen, Status-Berichte, Teilnehmer-/Korrespondenz-Dateien im
+# Repo-Root — bleiben lokal (DSGVO: enthalten Klarnamen/E-Mail-Adressen realer
+# Teilnehmer; Status-Notizen enthalten Infrastruktur-IDs). Nicht versionieren.
+/*_STATUS.md
+/CHECKLIST_MIGRATION_PREPARED.md
+/email_*.txt
+/*_einladung.txt
+/workshop_teilnehmer_emails.txt
+/workshop_dankesmail_entwurf.md
+/gdrive_aufraeum_protokoll_*.md
+/docs/workshop_funktionen_und_dsgvo.md
