@@ -16,11 +16,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, Search, ChevronsDownUp, ChevronsUpDown, ListChecks, Tags,
-  Loader2, AlertCircle, FolderTree, RefreshCw,
+  Loader2, AlertCircle, FolderTree, RefreshCw, History, Languages, CheckCircle2,
 } from 'lucide-react';
 import {
   acquireNodeLock, createChecklistNode, deleteChecklistNode, getChecklistTree,
-  moveChecklistNode, releaseNodeLock, updateChecklistNode,
+  moveChecklistNode, releaseNodeLock, updateChecklistNode, translateChecklist,
   LockConflictError,
   type ChecklistAnswerSet, type ChecklistNode, type ChecklistNodeTree,
   type ChecklistTemplateCategory, type CollabLockConflict,
@@ -32,6 +32,8 @@ import AnswerSetManager from './AnswerSetManager';
 import CategoryManager from './CategoryManager';
 import NodeContextMenu from './NodeContextMenu';
 import PresenceBar from './PresenceBar';
+import HistoryPanel from './HistoryPanel';
+import ExportMenu from './ExportMenu';
 import { useChecklistCollab, type RemoteNodeEvent } from './useChecklistCollab';
 import {
   allNodeIds, countNodes, findContext, findNode, insertNode, isDescendantOrSelf,
@@ -77,6 +79,11 @@ export default function TreeEditor({
   const [busy, setBusy] = useState(false);
   const [showAnswerSets, setShowAnswerSets] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  // Bestaetigender Hinweis (gruen), z. B. nach erfolgreicher Uebersetzung/Restore.
+  const [success, setSuccess] = useState('');
+  const successTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [drag, setDrag] = useState<DragState>(EMPTY_DRAG);
   // Snapshot des aktuellen Baums fuer die Zyklenpruefung waehrend des Ziehens.
@@ -155,6 +162,13 @@ export default function TreeEditor({
     noticeTimer.current = setTimeout(() => setNotice(''), 4000);
   };
 
+  /** Zeigt eine kurze Erfolgsmeldung (gruener Toast). */
+  const flashSuccess = (msg: string) => {
+    setSuccess(msg);
+    if (successTimer.current) clearTimeout(successTimer.current);
+    successTimer.current = setTimeout(() => setSuccess(''), 4000);
+  };
+
   /** Vollstaendiges (Erst-)Laden des Baums — nur initial bzw. auf Wunsch. */
   const loadTree = async (preserveSelection = true) => {
     try {
@@ -174,9 +188,39 @@ export default function TreeEditor({
 
   useEffect(() => {
     loadTree();
-    return () => { if (noticeTimer.current) clearTimeout(noticeTimer.current); };
+    return () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+      if (successTimer.current) clearTimeout(successTimer.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId]);
+
+  /** Bulk-Uebersetzung (EN→DE) ueber das LLM; danach Baum neu laden. */
+  const handleTranslate = async () => {
+    if (!canEdit || translating) return;
+    if (!confirm('Englischsprachige Knoten ins Deutsche übersetzen? Originaltexte bleiben gesichert.')) return;
+    setTranslating(true);
+    try {
+      const res = await translateChecklist(templateId);
+      await loadTree();
+      if (res.translated_count > 0) {
+        flashSuccess(
+          `${res.translated_count} Knoten übersetzt`
+          + (res.failed_count ? ` · ${res.failed_count} fehlgeschlagen` : ''),
+        );
+      } else if (res.failed_count > 0) {
+        flashNotice(`${res.failed_count} Knoten konnten nicht übersetzt werden.`);
+      } else {
+        flashSuccess('Keine englischsprachigen Knoten gefunden.');
+      }
+    } catch (e) {
+      flashNotice(String(e).includes('503')
+        ? 'LLM aktuell nicht erreichbar — bitte später erneut versuchen.'
+        : 'Übersetzung fehlgeschlagen.');
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   // ── Lock-Lebenszyklus: solange ein Knoten zum Bearbeiten ausgewaehlt ist ─────
   // Beim Auswaehlen Lock erwerben; alle ~40s erneuern (gegen 60s-TTL); beim
@@ -540,6 +584,14 @@ export default function TreeEditor({
           <AlertCircle size={16} /> {notice}
         </div>
       )}
+      {success && (
+        <div
+          role="status"
+          className="animate-slide-up fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 shadow-lg dark:border-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-200"
+        >
+          <CheckCircle2 size={16} /> {success}
+        </div>
+      )}
 
       {/* Editor-Header: Presence-Leiste (wer ist gerade hier) */}
       <div className="flex flex-wrap items-center justify-between gap-2 lg:col-span-2">
@@ -608,6 +660,26 @@ export default function TreeEditor({
           >
             <Tags size={14} /> Kategorien
           </button>
+          <button
+            type="button"
+            onClick={() => setShowHistory(true)}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <History size={14} /> Verlauf
+          </button>
+          <ExportMenu templateId={templateId} onError={flashNotice} />
+          {canEdit && (
+            <button
+              type="button"
+              onClick={handleTranslate}
+              disabled={translating}
+              title="Englischsprachige Knoten ins Deutsche übersetzen (LLM)"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-60 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              {translating ? <Loader2 size={14} className="animate-spin" /> : <Languages size={14} />}
+              Übersetzen (EN→DE)
+            </button>
+          )}
           <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-slate-400">
             {busy && <Loader2 size={13} className="animate-spin" />}
             {total} Knoten
@@ -737,6 +809,14 @@ export default function TreeEditor({
           canEdit={canEdit}
           onChanged={setCategories}
           onClose={() => setShowCategories(false)}
+        />
+      )}
+      {showHistory && (
+        <HistoryPanel
+          templateId={templateId}
+          canRestore={canEdit}
+          onClose={() => setShowHistory(false)}
+          onRestored={(msg) => { flashSuccess(msg); void loadTree(); }}
         />
       )}
     </div>

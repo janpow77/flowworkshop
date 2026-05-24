@@ -505,6 +505,80 @@ export interface ChecklistTemplateDetail extends ChecklistTemplate {
   answer_sets: ChecklistAnswerSet[];
 }
 
+// ── Versionierung / Verlauf (ChecklistNodeHistory) ───────────────────────────
+
+/** Aenderungsart eines Verlaufseintrags (server-seitige Enum-Werte). */
+export type NodeChangeType =
+  | 'created' | 'updated' | 'deleted' | 'moved'
+  | 'duplicated' | 'restored' | 'translated' | 'reviewed';
+
+/** Ein Verlaufseintrag in der Commit-artigen Listenansicht. */
+export interface HistoryEntry {
+  id: string;
+  template_id: string;
+  node_id: string;
+  node_version: number;
+  change_type: NodeChangeType | string;
+  change_reason: string | null;
+  summary: string;
+  changed_by_id: string | null;
+  changed_by_name: string | null;
+  created_at: string | null;
+}
+
+/** Ein einzelnes Feld-Diff: alter und neuer Wert. */
+export interface HistoryFieldChange {
+  old: unknown;
+  new: unknown;
+}
+
+/** Detail eines Verlaufseintrags inkl. Voll-Snapshot und Feld-Diff. */
+export interface HistoryDetail extends HistoryEntry {
+  node_snapshot: Record<string, unknown> | null;
+  changed_fields: Record<string, HistoryFieldChange> | null;
+  old_parent_id: string | null;
+  new_parent_id: string | null;
+  old_position: number | null;
+  new_position: number | null;
+}
+
+/** Ergebnis einer Wiederherstellung. */
+export interface RestoreResult {
+  status: string; // "restored" | "recreated"
+  node_id: string;
+  new_version: number;
+  history_id: string;
+}
+
+/** Bulk-Ergebnis einer Uebersetzung (EN→DE). */
+export interface TranslateResult {
+  template_id: string;
+  translated_count: number;
+  skipped_count: number;
+  failed_count: number;
+  nodes: Array<{
+    id: string;
+    source_text_en: string | null;
+    title: string | null;
+    ok: boolean;
+    error: string | null;
+  }>;
+}
+
+/** Ergebnis einer Einzel-Uebersetzung. */
+export interface TranslatedNode {
+  id: string;
+  source_text_en: string | null;
+  title: string | null;
+  ok: boolean;
+  error: string | null;
+}
+
+/** Exportformate des Checklisten-Designers. */
+export type ExportFormat = 'word' | 'excel' | 'pdf';
+/** Exportmodus: leere Felder vs. befuellte Daten. */
+export type ExportMode = 'blank' | 'filled';
+
 // ── Kollaboration (Presence + Node-Locking + Live-Updates via SSE) ───────────
 
 /** Aktuell ueber den SSE-Stream verbundener Nutzer (Presence-Registry). */
@@ -623,6 +697,112 @@ export const moveChecklistNode = (
 // Mitglieder (angereichert) — fuer Rollen-Anzeige
 export const listChecklistMembers = (id: string) =>
   request<ChecklistTemplateMemberDetail[]>(`/checklist-templates/${id}/members`);
+
+// ── Versionierung / Verlauf ───────────────────────────────────────────────────
+
+/** Commit-artiger Gesamtverlauf einer Checkliste (neueste zuerst, paginiert). */
+export const getChecklistHistory = (
+  id: string,
+  opts?: { limit?: number; offset?: number; nodeId?: string },
+) => {
+  const query = new URLSearchParams();
+  if (typeof opts?.limit === 'number') query.set('limit', String(opts.limit));
+  if (typeof opts?.offset === 'number') query.set('offset', String(opts.offset));
+  if (opts?.nodeId) query.set('node_id', opts.nodeId);
+  const suffix = query.toString();
+  return request<HistoryEntry[]>(`/checklist-templates/${id}/history${suffix ? `?${suffix}` : ''}`);
+};
+
+/** Vollstaendiger Verlauf eines einzelnen Knotens (neueste zuerst). */
+export const getNodeHistory = (id: string, nodeId: string) =>
+  request<HistoryEntry[]>(`/checklist-templates/${id}/nodes/${nodeId}/history`);
+
+/** Detail eines Verlaufseintrags inkl. Snapshot + Feld-Diff. */
+export const getHistoryDetail = (id: string, historyId: string) =>
+  request<HistoryDetail>(`/checklist-templates/${id}/history/${historyId}`);
+
+/** Setzt einen Knoten auf den Snapshot eines Verlaufseintrags zurueck (editor+). */
+export const restoreHistory = (id: string, historyId: string, changeReason?: string) =>
+  request<RestoreResult>(`/checklist-templates/${id}/history/${historyId}/restore`, {
+    method: 'POST',
+    body: JSON.stringify({ change_reason: changeReason ?? null }),
+  });
+
+// ── Export (DOCX/XLSX/PDF) ────────────────────────────────────────────────────
+
+const EXPORT_ENDPOINT: Record<ExportFormat, string> = {
+  word: 'export-word',
+  excel: 'export-excel',
+  pdf: 'export-pdf',
+};
+
+const EXPORT_FALLBACK_EXT: Record<ExportFormat, string> = {
+  word: 'docx',
+  excel: 'xlsx',
+  pdf: 'pdf',
+};
+
+/**
+ * Laedt einen Checklisten-Export als Blob und stoesst den Browser-Download ueber
+ * einen temporaeren ``<a>``-Link an (keine zusaetzliche Abhaengigkeit). Der
+ * Dateiname wird — falls vorhanden — aus dem ``Content-Disposition``-Header
+ * uebernommen, sonst aus Titel/Format gebildet.
+ */
+export async function exportChecklist(
+  id: string,
+  format: ExportFormat,
+  mode: ExportMode = 'blank',
+): Promise<void> {
+  const endpoint = EXPORT_ENDPOINT[format];
+  const res = await fetch(
+    `${BASE}/checklist-templates/${id}/${endpoint}?mode=${encodeURIComponent(mode)}`,
+    { headers: { ...getWorkshopAuthHeaders() } },
+  );
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+
+  // Dateinamen aus Content-Disposition extrahieren (filename="...").
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  const filename = match
+    ? decodeURIComponent(match[1])
+    : `Pruefcheckliste.${EXPORT_FALLBACK_EXT[format]}`;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Object-URL nach kurzem Tick freigeben (Safari/Firefox-sicher).
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Uebersetzung (EN→DE via LLM) ──────────────────────────────────────────────
+
+/**
+ * Uebersetzt englischsprachige Knoten eines Templates ins Deutsche (editor+).
+ * Ohne ``nodeIds`` werden alle EN-Knoten betrachtet. Bei nicht erreichbarem
+ * LLM-Backend wirft der Server HTTP 503 (vom Aufrufer abzufangen).
+ */
+export const translateChecklist = (id: string, nodeIds?: string[]) =>
+  request<TranslateResult>(`/checklist-templates/${id}/translate`, {
+    method: 'POST',
+    body: JSON.stringify(nodeIds && nodeIds.length ? { node_ids: nodeIds } : {}),
+  });
+
+/** Uebersetzt einen einzelnen Knoten-Titel EN→DE (editor+). */
+export const translateNode = (id: string, nodeId: string) =>
+  request<TranslatedNode>(`/checklist-templates/${id}/nodes/${nodeId}/translate`, {
+    method: 'POST',
+  });
 
 // ── Kollaboration: SSE-Stream, Node-Locks, Presence ──────────────────────────
 

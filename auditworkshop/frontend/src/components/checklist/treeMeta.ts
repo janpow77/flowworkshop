@@ -6,6 +6,7 @@
  */
 import {
   Heading, HelpCircle, GitBranch, Info,
+  Plus, Pencil, Trash2, MoveRight, Copy, RotateCcw, Languages, CheckCircle2,
   type LucideIcon,
 } from 'lucide-react';
 import type {
@@ -114,3 +115,62 @@ export const EINGABETYP_OPTIONS: Array<{ value: number; label: string }> = [
   { value: 2, label: '2 · Betrag' },
   { value: 4, label: '4 · Datum' },
 ];
+
+// ── Versionierung / Verlauf ─────────────────────────────────────────────────
+
+export interface ChangeTypeMeta {
+  label: string;
+  icon: LucideIcon;
+  /** Akzentfarbe fuer das Icon (Text-Klasse). */
+  accent: string;
+}
+
+/** Metadaten je Aenderungsart (Label + Icon + Akzentfarbe). */
+export const CHANGE_TYPE_META: Record<string, ChangeTypeMeta> = {
+  created: { label: 'Angelegt', icon: Plus, accent: 'text-emerald-600 dark:text-emerald-400' },
+  updated: { label: 'Bearbeitet', icon: Pencil, accent: 'text-sky-600 dark:text-sky-400' },
+  deleted: { label: 'Gelöscht', icon: Trash2, accent: 'text-red-600 dark:text-red-400' },
+  moved: { label: 'Verschoben', icon: MoveRight, accent: 'text-violet-600 dark:text-violet-400' },
+  duplicated: { label: 'Dupliziert', icon: Copy, accent: 'text-cyan-600 dark:text-cyan-400' },
+  restored: { label: 'Wiederhergestellt', icon: RotateCcw, accent: 'text-amber-600 dark:text-amber-400' },
+  translated: { label: 'Übersetzt', icon: Languages, accent: 'text-teal-600 dark:text-teal-400' },
+  reviewed: { label: 'Geprüft', icon: CheckCircle2, accent: 'text-green-600 dark:text-green-400' },
+};
+
+export function changeTypeMeta(type: string): ChangeTypeMeta {
+  return CHANGE_TYPE_META[type] ?? { label: type, icon: Info, accent: 'text-slate-500 dark:text-slate-400' };
+}
+
+/** Deutsche Feldbeschriftungen fuer die Diff-/Snapshot-Anzeige. */
+export const FIELD_LABELS: Record<string, string> = {
+  parent_id: 'Übergeordneter Knoten',
+  node_type: 'Knotentyp',
+  branch: 'Zweig',
+  ja_label: 'Ja-Beschriftung',
+  nein_label: 'Nein-Beschriftung',
+  decision_parent_id: 'Entscheidungs-Elternknoten',
+  sort_order: 'Sortierung',
+  title: 'Titel',
+  public_remark: 'Öffentliche Bemerkung',
+  remark_snippets_json: 'Bemerkungsbausteine',
+  eingabetyp: 'Eingabetyp',
+  answer_type: 'Antworttyp',
+  answer_set_id: 'Antwortset',
+  category_id: 'Kategorie',
+  legal_reference: 'Rechtsgrundlage',
+  relevant_documents_json: 'Relevante Dokumente',
+  is_header_field: 'Kopffeld',
+  source_text_en: 'Quelltext (EN)',
+  translated_text_de: 'Übersetzung (DE)',
+};
+
+/** Datum/Uhrzeit fuer die Verlaufsliste formatieren (de-DE). */
+export function formatHistoryDate(iso: string | null): string {
+  if (!iso) return '–';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '–';
+  return d.toLocaleString('de-DE', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}

@@ -18,6 +18,7 @@ from routers import workshop, knowledge, system
 from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum, automation
 from routers import checklist_templates
 from routers import checklist_collab
+from routers import checklist_history, checklist_export, checklist_translate
 from routers import docs as docs_router, notifications, state_aid, admin_access, mail_templates
 from routers import beneficiaries_sources
 from routers import entities as entities_router
@@ -899,6 +900,10 @@ app.include_router(checklists.router)
 app.include_router(checklist_templates.router)
 # Hybrid-Kollaboration: Presence + Node-Locking + Live-Updates via SSE
 app.include_router(checklist_collab.router)
+# Versionierung (History/Diff/Restore), Export (DOCX/XLSX/PDF), LLM-Uebersetzung
+app.include_router(checklist_history.router)
+app.include_router(checklist_export.router)
+app.include_router(checklist_translate.router)
 app.include_router(assessment.router)
 app.include_router(demo_data.router)
 app.include_router(dataframes.router)

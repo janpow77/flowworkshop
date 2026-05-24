@@ -122,14 +122,12 @@ export default function App() {
         {authToken ? (
           <Route element={<AppShell />}>
             {/* Startseite je nach Phase */}
-            <Route index element={
-              phase === 'post'
-                ? <LazyPage><HubPage /></LazyPage>
-                : <LazyPage><HomePage /></LazyPage>
-            } />
-            {/* Stabile Kachel-Uebersicht (Hub) — unabhaengig von der Phase,
-                Ziel der "Zurueck zur Uebersicht"-Links aus dem Checklisten-Designer. */}
+            {/* Startseite = Kachel-Uebersicht (Hub). Der Workshop ist vorbei;
+                die Seite dient jetzt als dauerhafte Info-/Austausch-Plattform. */}
+            <Route index element={<LazyPage><HubPage /></LazyPage>} />
             <Route path="/hub" element={<LazyPage><HubPage /></LazyPage>} />
+            {/* Alte Workshop-Startseite (Hero/Anmeldung) weiterhin erreichbar */}
+            <Route path="/willkommen" element={<LazyPage><HomePage /></LazyPage>} />
             <Route path="/account" element={<LazyPage><AccountPage /></LazyPage>} />
             <Route path="/scenario/:id" element={<LazyPage><ScenarioPage /></LazyPage>} />
             <Route path="/projects" element={<LazyPage><ProjectsPage /></LazyPage>} />
