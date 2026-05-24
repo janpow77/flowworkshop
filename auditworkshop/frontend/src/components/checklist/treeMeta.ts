@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type {
-  MemberRoleName, NodeType, TemplateAnswerType,
+  MemberRoleName, NodeStatus, NodeType, TemplateAnswerType,
 } from '../../lib/api';
 
 // ── Rollen / Rechte ───────────────────────────────────────────────────────────
@@ -60,13 +60,15 @@ export interface NodeTypeMeta {
   iconBg: string;
 }
 
+// Farbwelt analog audit_designer: HEADING=blue, QUESTION=blue/sky,
+// DECISION=violet/purple, HINT=amber/yellow.
 export const NODE_TYPE_META: Record<NodeType, NodeTypeMeta> = {
   HEADING: {
     label: 'Überschrift',
     icon: Heading,
-    accent: 'text-emerald-600 dark:text-emerald-400',
-    iconBg: 'bg-emerald-50 dark:bg-emerald-900/30',
-    badge: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+    accent: 'text-blue-600 dark:text-blue-400',
+    iconBg: 'bg-blue-50 dark:bg-blue-900/30',
+    badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
   },
   QUESTION: {
     label: 'Frage',
@@ -92,6 +94,37 @@ export const NODE_TYPE_META: Record<NodeType, NodeTypeMeta> = {
 };
 
 export const NODE_TYPE_ORDER: NodeType[] = ['HEADING', 'QUESTION', 'DECISION', 'HINT'];
+
+// ── Knoten-Status (Team-Workflow) ─────────────────────────────────────────────
+
+export interface NodeStatusMeta {
+  label: string;
+  /** Tailwind-Klasse fuer den farbigen Status-Punkt im Baum. */
+  dot: string;
+  /** Aktiv-Hervorhebung des Status-Buttons in der Team-Zone. */
+  activeBtn: string;
+}
+
+/** Metadaten je Knoten-Status: pending=grau, in_progress=gelb, resolved=grün. */
+export const NODE_STATUS_META: Record<NodeStatus, NodeStatusMeta> = {
+  pending: {
+    label: 'Offen',
+    dot: 'bg-slate-300 dark:bg-slate-600',
+    activeBtn: 'bg-slate-200 text-slate-700 ring-1 ring-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:ring-slate-600',
+  },
+  in_progress: {
+    label: 'In Bearbeitung',
+    dot: 'bg-yellow-400 dark:bg-yellow-500',
+    activeBtn: 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-300 dark:bg-yellow-900/40 dark:text-yellow-200 dark:ring-yellow-700',
+  },
+  resolved: {
+    label: 'Erledigt',
+    dot: 'bg-green-500 dark:bg-green-400',
+    activeBtn: 'bg-green-100 text-green-800 ring-1 ring-green-300 dark:bg-green-900/40 dark:text-green-200 dark:ring-green-700',
+  },
+};
+
+export const NODE_STATUS_ORDER: NodeStatus[] = ['pending', 'in_progress', 'resolved'];
 
 // ── Antworttypen ──────────────────────────────────────────────────────────────
 
@@ -127,7 +160,7 @@ export interface ChangeTypeMeta {
 
 /** Metadaten je Aenderungsart (Label + Icon + Akzentfarbe). */
 export const CHANGE_TYPE_META: Record<string, ChangeTypeMeta> = {
-  created: { label: 'Angelegt', icon: Plus, accent: 'text-emerald-600 dark:text-emerald-400' },
+  created: { label: 'Angelegt', icon: Plus, accent: 'text-blue-600 dark:text-blue-400' },
   updated: { label: 'Bearbeitet', icon: Pencil, accent: 'text-sky-600 dark:text-sky-400' },
   deleted: { label: 'Gelöscht', icon: Trash2, accent: 'text-red-600 dark:text-red-400' },
   moved: { label: 'Verschoben', icon: MoveRight, accent: 'text-violet-600 dark:text-violet-400' },
@@ -145,6 +178,7 @@ export function changeTypeMeta(type: string): ChangeTypeMeta {
 export const FIELD_LABELS: Record<string, string> = {
   parent_id: 'Übergeordneter Knoten',
   node_type: 'Knotentyp',
+  status: 'Bearbeitungsstatus',
   branch: 'Zweig',
   ja_label: 'Ja-Beschriftung',
   nein_label: 'Nein-Beschriftung',

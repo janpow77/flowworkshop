@@ -22,6 +22,10 @@ from models.checklist_template import (  # noqa: F401
     ChecklistMember,
     ChecklistInvite,
     ChecklistNodeLock,
+    ChecklistNodeComment,
+    ChecklistNoteRead,
+    ChecklistTemplateVersion,
+    ChecklistNodeReferenceDoc,
 )
 from models.document import ProjectDocument  # noqa: F401
 from models.audit_log import AuditLog  # noqa: F401

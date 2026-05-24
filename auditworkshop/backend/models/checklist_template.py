@@ -123,12 +123,19 @@ class ChecklistTemplate(Base):
     properties_json = Column(JSONB, nullable=True)
     statistics_json = Column(JSONB, nullable=True)
     status = Column(String(16), nullable=False, server_default="draft", index=True)
+    # Aktuell freigegebene/aktive Versionsnummer (Verweis auf
+    # ChecklistTemplateVersion.version_number); NULL = noch keine Version gesetzt.
+    current_version = Column(String(40), nullable=True)
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     nodes = relationship(
         "ChecklistTemplateNode", back_populates="template",
+        cascade="all, delete-orphan",
+    )
+    versions = relationship(
+        "ChecklistTemplateVersion", back_populates="template",
         cascade="all, delete-orphan",
     )
     answer_sets = relationship(
@@ -168,6 +175,9 @@ class ChecklistTemplateNode(Base):
         nullable=True, index=True,
     )
     node_type = Column(String(16), nullable=False, server_default="QUESTION")
+    # Bearbeitungsstatus des Knotens im Team-Workflow:
+    # pending = offen, in_progress = in Bearbeitung, resolved = erledigt.
+    status = Column(String(16), nullable=False, server_default="pending")
     # Zweig unter einem DECISION-Knoten: "JA"/"NEIN"/NULL
     branch = Column(String(8), nullable=True)
     ja_label = Column(Text, nullable=True)    # Aussagesatz JA-Zweig (DECISION)
@@ -393,3 +403,113 @@ class ChecklistNodeLock(Base):
     )
     locked_at = Column(DateTime, server_default=func.now())
     expires_at = Column(DateTime, nullable=False, index=True)
+
+
+# ── Team-Diskussion / Kommentar-Threads je Knoten ─────────────────────────────
+
+class ChecklistNodeComment(Base):
+    """Kommentar/Diskussionsbeitrag an einem Knoten für die Team-Abstimmung.
+
+    Unterstützt eine flache Antwort-Ebene über ``parent_comment_id`` (Self-Ref
+    als plain FK-Spalte, ohne ORM-relationship — Abfrage erfolgt per FK). Löschen
+    erfolgt soft über ``deleted_at``, damit Threads erhalten bleiben.
+    """
+    __tablename__ = "workshop_checklist_node_comments"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    template_id = Column(
+        String(36),
+        ForeignKey("workshop_checklist_templates.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    node_id = Column(
+        String(36),
+        ForeignKey("workshop_checklist_nodes.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    author_id = Column(
+        String(36),
+        ForeignKey("workshop_registrations.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
+    message = Column(Text, nullable=False)
+    # Self-Referenz für eine Antwort-Ebene (Threading); bewusst ohne relationship.
+    parent_comment_id = Column(String(36), nullable=True, index=True)
+
+    created_at = Column(DateTime, server_default=func.now())
+    edited_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+
+# ── Unread-Tracking für Kommentare (Lesebestätigungen) ────────────────────────
+
+class ChecklistNoteRead(Base):
+    """Lesebestätigung eines Nutzers für einen Kommentar (Unread-Zähler).
+
+    Ein Eintrag je (Nutzer, Kommentar); fehlt der Eintrag, gilt der Kommentar
+    für diesen Nutzer als ungelesen. Bewusst nur plain FK-Spalten ohne
+    relationship, um Mapper-Verflechtungen zu vermeiden.
+    """
+    __tablename__ = "workshop_checklist_note_reads"
+    __table_args__ = (
+        UniqueConstraint("user_id", "comment_id", name="uq_cl_note_read"),
+    )
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), nullable=False, index=True)
+    template_id = Column(String(36), nullable=False, index=True)
+    node_id = Column(String(36), nullable=False, index=True)
+    comment_id = Column(String(36), nullable=False, index=True)
+    read_at = Column(DateTime, server_default=func.now())
+
+
+# ── Ganz-Checklisten-Versionen (Snapshots des gesamten Baums) ─────────────────
+
+class ChecklistTemplateVersion(Base):
+    """Vollständiger Snapshot einer Checkliste als benannte Version.
+
+    Im Gegensatz zur node-level ``ChecklistNodeHistory`` hält dieses Modell den
+    kompletten Baum (``tree_snapshot``) als eingefrorene Gesamtversion fest —
+    z.B. für Freigaben/Releases. ``is_frozen`` markiert unveränderliche Stände,
+    ``status`` unterscheidet draft/released.
+    """
+    __tablename__ = "workshop_checklist_versions"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    template_id = Column(
+        String(36),
+        ForeignKey("workshop_checklist_templates.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    version_number = Column(String(40), nullable=False)
+    is_frozen = Column(Boolean, nullable=False, server_default="false")
+    status = Column(String(16), nullable=False, server_default="draft")  # draft/released
+    tree_snapshot = Column(JSONB, nullable=True)
+    created_by_id = Column(String(36), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    template = relationship("ChecklistTemplate", back_populates="versions")
+
+
+# ── Referenzdokumente je Knoten (Belegverweise) ───────────────────────────────
+
+class ChecklistNodeReferenceDoc(Base):
+    """Verknüpfung eines Knotens mit einem Referenzdokument/Beleg.
+
+    Hält Anzeigename, optionalen Pfad und optionalen Referenztext (z.B. zitierte
+    Passage). Bewusst nur plain FK-Spalten ohne relationship.
+    """
+    __tablename__ = "workshop_checklist_node_refdocs"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    template_id = Column(String(36), nullable=False, index=True)
+    node_id = Column(
+        String(36),
+        ForeignKey("workshop_checklist_nodes.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    document_name = Column(String(255), nullable=False)
+    document_path = Column(String(500), nullable=True)
+    reference_text = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())

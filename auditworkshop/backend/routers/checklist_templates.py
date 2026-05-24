@@ -49,7 +49,7 @@ from schemas.checklist_template import (
     CategoryCreate, CategoryUpdate, CategoryOut,
     MemberOut, InviteOut, InviteCreate, MemberRoleUpdate,
 )
-from routers.auth import require_session
+from routers.auth import require_session, ADMIN_EMAILS, MODERATOR_EMAILS
 from services.checklist_events import broker as _collab_broker
 
 router = APIRouter(
@@ -388,6 +388,32 @@ def list_templates(request: Request, db: Session = Depends(get_db)):
         .all()
     )
     return [_template_out(t, role_by_template.get(t.id)) for t in templates]
+
+
+# ── Globale Antwortset-Bibliothek ─────────────────────────────────────────────
+# WICHTIG: vor den /{template_id}-Routen definiert, sonst wuerde das literale
+# Segment "answer-sets" als template_id gematcht (FastAPI matcht in Reihenfolge).
+
+@router.get("/answer-sets", response_model=list[AnswerSetOut])
+def list_global_answer_sets(request: Request, db: Session = Depends(get_db)):
+    """Globale Antwortset-Bibliothek (template_id IS NULL) — fuer alle lesbar."""
+    require_session(request)
+    sets = (
+        db.query(ChecklistAnswerSet)
+        .filter(ChecklistAnswerSet.template_id.is_(None))
+        .order_by(ChecklistAnswerSet.sort_order, ChecklistAnswerSet.name)
+        .all()
+    )
+    return [AnswerSetOut.model_validate(s) for s in sets]
+
+
+@router.post("/answer-sets", response_model=AnswerSetOut, status_code=201)
+def create_global_answer_set(
+    data: AnswerSetCreate, request: Request, db: Session = Depends(get_db),
+):
+    """Legt ein globales Antwortset an (jeder angemeldete Nutzer)."""
+    require_session(request)
+    return _create_answer_set(None, data, db)
 
 
 @router.get("/{template_id}", response_model=TemplateDetailOut)
@@ -900,6 +926,39 @@ def _get_node(template_id: str, node_id: str, db: Session) -> ChecklistTemplateN
     return node
 
 
+def _validate_node_references(
+    template_id: str, answer_set_id: str | None, category_id: str | None, db: Session,
+) -> None:
+    """Stellt sicher, dass referenziertes Antwortset/Kategorie zum Template passen.
+
+    Verhindert IDOR ueber Fremd-IDs: ein ``answer_set_id`` muss entweder zum
+    selben Template gehoeren ODER ein globales Set sein (``template_id IS NULL``);
+    ein ``category_id`` muss zum selben Template gehoeren. Andernfalls 422."""
+    if answer_set_id:
+        aset = (
+            db.query(ChecklistAnswerSet)
+            .filter(ChecklistAnswerSet.id == answer_set_id)
+            .first()
+        )
+        if not aset or (aset.template_id is not None and aset.template_id != template_id):
+            raise HTTPException(
+                422, "Das zugewiesene Antwortset gehoert nicht zu dieser Checkliste."
+            )
+    if category_id:
+        cat = (
+            db.query(ChecklistQuestionCategory)
+            .filter(
+                ChecklistQuestionCategory.id == category_id,
+                ChecklistQuestionCategory.template_id == template_id,
+            )
+            .first()
+        )
+        if not cat:
+            raise HTTPException(
+                422, "Die zugewiesene Kategorie gehoert nicht zu dieser Checkliste."
+            )
+
+
 # ── Knoten-CRUD ───────────────────────────────────────────────────────────────
 
 @router.post("/{template_id}/nodes", response_model=NodeOut, status_code=201)
@@ -914,6 +973,8 @@ def create_node(
     # parent_id (falls gesetzt) muss zum selben Template gehoeren.
     if data.parent_id:
         _get_node(template_id, data.parent_id, db)
+    # Antwortset/Kategorie muessen zum Template passen (kein Fremd-Bezug).
+    _validate_node_references(template_id, data.answer_set_id, data.category_id, db)
 
     node = ChecklistTemplateNode(
         id=str(uuid.uuid4()),
@@ -982,6 +1043,14 @@ def update_node(
         if payload["parent_id"] == node_id:
             raise HTTPException(422, "Ein Knoten kann nicht sein eigener Elternknoten sein.")
         _get_node(template_id, payload["parent_id"], db)
+    # Geaenderte Antwortset-/Kategorie-Zuweisung muss zum Template passen.
+    if "answer_set_id" in payload or "category_id" in payload:
+        _validate_node_references(
+            template_id,
+            payload.get("answer_set_id", node.answer_set_id),
+            payload.get("category_id", node.category_id),
+            db,
+        )
 
     for key, val in payload.items():
         setattr(node, key, val)
@@ -1098,29 +1167,9 @@ def _is_descendant(
     return False
 
 
-# ── Antwortsets (global + checklistenspezifisch) ──────────────────────────────
-
-@router.get("/answer-sets", response_model=list[AnswerSetOut])
-def list_global_answer_sets(request: Request, db: Session = Depends(get_db)):
-    """Globale Antwortset-Bibliothek (template_id IS NULL) — fuer alle lesbar."""
-    require_session(request)
-    sets = (
-        db.query(ChecklistAnswerSet)
-        .filter(ChecklistAnswerSet.template_id.is_(None))
-        .order_by(ChecklistAnswerSet.sort_order, ChecklistAnswerSet.name)
-        .all()
-    )
-    return [AnswerSetOut.model_validate(s) for s in sets]
-
-
-@router.post("/answer-sets", response_model=AnswerSetOut, status_code=201)
-def create_global_answer_set(
-    data: AnswerSetCreate, request: Request, db: Session = Depends(get_db),
-):
-    """Legt ein globales Antwortset an (jeder angemeldete Nutzer)."""
-    require_session(request)
-    return _create_answer_set(None, data, db)
-
+# ── Antwortsets (checklistenspezifisch) ───────────────────────────────────────
+# Hinweis: die globalen /answer-sets-Routen sind weiter oben (vor /{template_id})
+# definiert, damit das literale Segment "answer-sets" nicht als template_id matcht.
 
 @router.get("/{template_id}/answer-sets", response_model=list[AnswerSetOut])
 def list_template_answer_sets(
@@ -1190,11 +1239,31 @@ def _load_answer_set(answer_set_id: str, db: Session) -> ChecklistAnswerSet:
     return aset
 
 
-def _authorize_answer_set_write(aset: ChecklistAnswerSet, user_id: str, db: Session) -> None:
-    """Globale Antwortsets darf jeder Angemeldete schreiben; templategebundene
-    erfordern editor-Rolle am zugehoerigen Template."""
+def _authorize_answer_set_write(
+    aset: ChecklistAnswerSet, session: dict, db: Session,
+) -> None:
+    """Autorisiert eine schreibende Aenderung an einem Antwortset.
+
+    Templategebundene Antwortsets erfordern die editor-Rolle am zugehoerigen
+    Template. Globale Antwortsets (``template_id IS NULL``) sind eine GETEILTE
+    Bibliothek, von der andere Checklisten abhaengen — sie duerfen daher nur von
+    Moderatoren/Admins veraendert/geloescht werden (Least Privilege; verhindert,
+    dass ein beliebiger Teilnehmer geteilte Bibliotheks-Eintraege manipuliert
+    oder loescht). Lesen und Anlegen bleibt fuer alle Angemeldeten erlaubt.
+    """
+    user_id = _session_user_id(session)
     if aset.template_id is not None:
         _require_role(aset.template_id, user_id, MemberRole.EDITOR, db)
+        return
+    role = str(session.get("role") or "").lower()
+    email = str(session.get("email") or "").lower()
+    if role in ("moderator", "admin") or email in MODERATOR_EMAILS or email in ADMIN_EMAILS:
+        return
+    raise HTTPException(
+        403,
+        "Globale Antwortsets gehoeren zur geteilten Bibliothek und koennen nur "
+        "von Moderatoren/Admins geaendert oder geloescht werden.",
+    )
 
 
 @router.put("/answer-sets/{answer_set_id}", response_model=AnswerSetOut)
@@ -1203,9 +1272,9 @@ def update_answer_set(
 ):
     """Aendert Metadaten eines Antwortsets (global oder templategebunden)."""
     session = require_session(request)
-    user_id = _session_user_id(session)
+    _session_user_id(session)
     aset = _load_answer_set(answer_set_id, db)
-    _authorize_answer_set_write(aset, user_id, db)
+    _authorize_answer_set_write(aset, session, db)
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(aset, key, val)
     db.commit()
@@ -1219,9 +1288,9 @@ def delete_answer_set(
 ):
     """Loescht ein Antwortset samt Optionen."""
     session = require_session(request)
-    user_id = _session_user_id(session)
+    _session_user_id(session)
     aset = _load_answer_set(answer_set_id, db)
-    _authorize_answer_set_write(aset, user_id, db)
+    _authorize_answer_set_write(aset, session, db)
     db.delete(aset)
     db.commit()
 
@@ -1235,9 +1304,9 @@ def add_answer_option(
 ):
     """Fuegt einem Antwortset eine Option hinzu."""
     session = require_session(request)
-    user_id = _session_user_id(session)
+    _session_user_id(session)
     aset = _load_answer_set(answer_set_id, db)
-    _authorize_answer_set_write(aset, user_id, db)
+    _authorize_answer_set_write(aset, session, db)
     opt = ChecklistAnswerOption(
         id=str(uuid.uuid4()),
         answer_set_id=answer_set_id,
@@ -1272,10 +1341,10 @@ def update_answer_option(
 ):
     """Aendert eine Antwortoption."""
     session = require_session(request)
-    user_id = _session_user_id(session)
+    _session_user_id(session)
     opt = _load_answer_option(option_id, db)
     aset = _load_answer_set(opt.answer_set_id, db)
-    _authorize_answer_set_write(aset, user_id, db)
+    _authorize_answer_set_write(aset, session, db)
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(opt, key, val)
     db.commit()
@@ -1289,10 +1358,10 @@ def delete_answer_option(
 ):
     """Loescht eine Antwortoption."""
     session = require_session(request)
-    user_id = _session_user_id(session)
+    _session_user_id(session)
     opt = _load_answer_option(option_id, db)
     aset = _load_answer_set(opt.answer_set_id, db)
-    _authorize_answer_set_write(aset, user_id, db)
+    _authorize_answer_set_write(aset, session, db)
     db.delete(opt)
     db.commit()
 

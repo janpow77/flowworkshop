@@ -99,7 +99,7 @@ export default function ChecklistDetailPage() {
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>
               <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-white">
-                <ClipboardCheck size={24} className="text-emerald-600 dark:text-emerald-400" />
+                <ClipboardCheck size={24} className="text-blue-600 dark:text-blue-400" />
                 {tpl.title}
               </h1>
               {tpl.description && (
@@ -140,7 +140,7 @@ export default function ChecklistDetailPage() {
                 <button
                   type="button"
                   onClick={() => { if (id) downloadSourceDocument(id).catch(() => {}); }}
-                  className="inline-flex max-w-full items-center gap-1.5 text-emerald-700 hover:underline dark:text-emerald-400"
+                  className="inline-flex max-w-full items-center gap-1.5 text-blue-700 hover:underline dark:text-blue-400"
                   title="Quelldokument herunterladen"
                 >
                   <FileText size={14} className="shrink-0" />

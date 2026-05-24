@@ -402,6 +402,8 @@ export interface ChecklistTemplateCategory {
 
 export type NodeType = 'HEADING' | 'QUESTION' | 'DECISION' | 'HINT';
 export type NodeBranch = 'JA' | 'NEIN';
+/** Team-Workflow-Status eines Knotens. */
+export type NodeStatus = 'pending' | 'in_progress' | 'resolved';
 export type TemplateAnswerType =
   | 'BOOLEAN' | 'BOOLEAN_JN' | 'CURRENCY' | 'DATE' | 'CUSTOM_ENUM' | 'TEXT';
 export type MemberRoleName = 'owner' | 'editor' | 'commenter' | 'viewer';
@@ -426,6 +428,8 @@ export interface ChecklistNode {
   legal_reference: string | null;
   relevant_documents_json: unknown | null;
   is_header_field: boolean;
+  /** Team-Workflow-Status des Knotens. */
+  status: NodeStatus | null;
   source_text_en: string | null;
   translated_text_de: string | null;
   review_text_de: string | null;
@@ -698,6 +702,95 @@ export const moveChecklistNode = (
 export const listChecklistMembers = (id: string) =>
   request<ChecklistTemplateMemberDetail[]>(`/checklist-templates/${id}/members`);
 
+// ── Team-Diskussion, Knoten-Status, Unread & Referenz-Dokumente ───────────────
+// Endpunkte: backend/routers/checklist_discussion.py
+
+/** Ein Diskussionsbeitrag eines Knotens (mit einer Antwort-Ebene). */
+export interface NodeComment {
+  id: string;
+  template_id: string;
+  node_id: string;
+  author_id: string | null;
+  author_name: string | null;
+  message: string;
+  parent_comment_id: string | null;
+  is_deleted: boolean;
+  created_at: string | null;
+  edited_at: string | null;
+  replies: NodeComment[];
+}
+
+/** Referenz-Dokument je Knoten (Belegverweis). */
+export interface NodeRefDoc {
+  id: string;
+  template_id: string;
+  node_id: string;
+  document_name: string;
+  document_path: string | null;
+  reference_text: string | null;
+  created_at: string | null;
+}
+
+export interface RefDocCreatePayload {
+  document_name: string;
+  document_path?: string | null;
+  reference_text?: string | null;
+}
+
+/** Setzt den Workflow-Status eines Knotens (editor+). */
+export const setNodeStatus = (id: string, nodeId: string, status: NodeStatus) =>
+  request<{ node_id: string; status: NodeStatus }>(
+    `/checklist-templates/${id}/nodes/${nodeId}/status`,
+    { method: 'PUT', body: JSON.stringify({ status }) },
+  );
+
+/** Liefert den Diskussions-Thread eines Knotens (Wurzeln mit Antworten). */
+export const getNodeComments = (id: string, nodeId: string) =>
+  request<NodeComment[]>(`/checklist-templates/${id}/nodes/${nodeId}/comments`);
+
+/** Legt einen Diskussionsbeitrag an (optional als Antwort). */
+export const addComment = (
+  id: string, nodeId: string, message: string, parentCommentId?: string | null,
+) =>
+  request<NodeComment>(`/checklist-templates/${id}/nodes/${nodeId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ message, parent_comment_id: parentCommentId ?? null }),
+  });
+
+/** Bearbeitet einen eigenen Kommentar. */
+export const editComment = (id: string, commentId: string, message: string) =>
+  request<NodeComment>(`/checklist-templates/${id}/comments/${commentId}`, {
+    method: 'PUT', body: JSON.stringify({ message }),
+  });
+
+/** Loescht einen Kommentar weich (Autor oder Owner). */
+export const deleteComment = (id: string, commentId: string) =>
+  request<void>(`/checklist-templates/${id}/comments/${commentId}`, { method: 'DELETE' });
+
+/** Anzahl ungelesener Kommentare je Knoten ({ node_id: anzahl }). */
+export const getUnreadCounts = (id: string) =>
+  request<Record<string, number>>(`/checklist-templates/${id}/unread-counts`);
+
+/** Markiert alle Kommentare eines Knotens als gelesen. */
+export const markNodeRead = (id: string, nodeId: string) =>
+  request<{ marked: number }>(
+    `/checklist-templates/${id}/nodes/${nodeId}/mark-read`, { method: 'POST' },
+  );
+
+/** Liefert die Referenz-Dokumente eines Knotens. */
+export const getNodeRefDocs = (id: string, nodeId: string) =>
+  request<NodeRefDoc[]>(`/checklist-templates/${id}/nodes/${nodeId}/refdocs`);
+
+/** Verknuepft ein Referenz-Dokument mit einem Knoten (editor+). */
+export const addNodeRefDoc = (id: string, nodeId: string, data: RefDocCreatePayload) =>
+  request<NodeRefDoc>(`/checklist-templates/${id}/nodes/${nodeId}/refdocs`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+
+/** Loescht ein Referenz-Dokument (editor+). */
+export const deleteNodeRefDoc = (id: string, refdocId: string) =>
+  request<void>(`/checklist-templates/${id}/refdocs/${refdocId}`, { method: 'DELETE' });
+
 // ── Versionierung / Verlauf ───────────────────────────────────────────────────
 
 /** Commit-artiger Gesamtverlauf einer Checkliste (neueste zuerst, paginiert). */
@@ -727,6 +820,126 @@ export const restoreHistory = (id: string, historyId: string, changeReason?: str
     method: 'POST',
     body: JSON.stringify({ change_reason: changeReason ?? null }),
   });
+
+// ── Ganz-Checklisten-Versionsverwaltung (ChecklistTemplateVersion) ────────────
+// Endpunkte: backend/routers/checklist_versions.py. Eine Version ist ein
+// eingefrorener JSONB-Snapshot des Knotenbaums; sie dient Freigaben/Releases und
+// der Wiederherstellung frueherer Staende.
+
+/** Release-Status einer Gesamtversion. */
+export type ChecklistVersionStatus = 'draft' | 'released';
+
+/** Ein Eintrag in der Versionsliste (ohne tree_snapshot). */
+export interface ChecklistVersion {
+  id: string;
+  template_id: string;
+  version_number: string;
+  is_frozen: boolean;
+  status: ChecklistVersionStatus | string;
+  notes: string | null;
+  node_count: number;
+  created_by_id: string | null;
+  created_by_name: string | null;
+  created_at: string | null;
+}
+
+/** Vollstaendige Version inkl. eingefrorenem Baum-Snapshot. */
+export interface ChecklistVersionDetail extends ChecklistVersion {
+  tree_snapshot: {
+    root_ids?: string[];
+    nodes?: Record<string, Record<string, unknown>>;
+  } | null;
+}
+
+/** Kurz-Beschreibung eines hinzugefuegten/entfernten Knotens im Diff. */
+export interface VersionDiffNodeBrief {
+  node_id: string;
+  node_type: string | null;
+  title: string | null;
+}
+
+/** Ein einzelnes Feld-Diff im Versionsvergleich: alter und neuer Wert. */
+export interface VersionDiffFieldChange {
+  old: unknown;
+  new: unknown;
+}
+
+/** Ein geaenderter Knoten mit field-level {old, new}-Diff. */
+export interface VersionDiffChangedNode {
+  node_id: string;
+  node_type: string | null;
+  title: string | null;
+  fields: Record<string, VersionDiffFieldChange>;
+}
+
+/** Metadaten einer verglichenen Version (Kopf der Compare-Antwort). */
+export interface VersionDiffVersionInfo {
+  id: string;
+  version_number: string;
+  status: ChecklistVersionStatus | string;
+  is_frozen: boolean;
+  node_count: number;
+  created_at: string | null;
+}
+
+/** Ergebnis des field-level Diffs zweier Versions-Snapshots. */
+export interface VersionDiff {
+  version_a: VersionDiffVersionInfo;
+  version_b: VersionDiffVersionInfo;
+  summary: {
+    added: number;
+    removed: number;
+    changed: number;
+    unchanged: number;
+  };
+  added: VersionDiffNodeBrief[];
+  removed: VersionDiffNodeBrief[];
+  changed: VersionDiffChangedNode[];
+}
+
+/** Ergebnis einer Versions-Wiederherstellung. */
+export interface VersionRestoreResult {
+  template_id: string;
+  version_id: string;
+  version_number: string;
+  restored_node_count: number;
+  deleted_node_count: number;
+}
+
+/** Listet alle Gesamtversionen einer Checkliste (neueste zuerst). */
+export const listChecklistVersions = (id: string) =>
+  request<ChecklistVersion[]>(`/checklist-templates/${id}/versions`);
+
+/** Friert die aktuelle Arbeitskopie als neue Gesamtversion ein (editor+). */
+export const createChecklistVersion = (
+  id: string, data: { version_number: string; notes?: string | null },
+) =>
+  request<ChecklistVersionDetail>(`/checklist-templates/${id}/versions`, {
+    method: 'POST',
+    body: JSON.stringify({ version_number: data.version_number, notes: data.notes ?? null }),
+  });
+
+/** Liefert eine einzelne Version inkl. eingefrorenem ``tree_snapshot``. */
+export const getChecklistVersion = (id: string, versionId: string) =>
+  request<ChecklistVersionDetail>(`/checklist-templates/${id}/versions/${versionId}`);
+
+/** Friert eine Version ein und gibt sie frei (editor/owner). */
+export const freezeChecklistVersion = (id: string, versionId: string) =>
+  request<ChecklistVersionDetail>(
+    `/checklist-templates/${id}/versions/${versionId}/freeze`, { method: 'POST' },
+  );
+
+/** Vergleicht zwei Versions-Snapshots auf Knoten-Ebene (field-level Diff). */
+export const compareChecklistVersions = (id: string, versionAId: string, versionBId: string) => {
+  const query = new URLSearchParams({ version_a_id: versionAId, version_b_id: versionBId });
+  return request<VersionDiff>(`/checklist-templates/${id}/versions/compare?${query.toString()}`);
+};
+
+/** Stellt die Arbeitskopie aus einem Versions-Snapshot wieder her (editor/owner). */
+export const restoreChecklistVersion = (id: string, versionId: string) =>
+  request<VersionRestoreResult>(
+    `/checklist-templates/${id}/versions/${versionId}/restore`, { method: 'POST' },
+  );
 
 // ── Export (DOCX/XLSX/PDF) ────────────────────────────────────────────────────
 

@@ -8,8 +8,8 @@
  * Strukturaenderung per nativem HTML5-Drag&Drop und Rechtsklick-Kontextmenue.
  */
 import { ChevronRight, Scale, FileText, Lock } from 'lucide-react';
-import type { ChecklistNodeTree, CollabNodeLock, NodeBranch } from '../../lib/api';
-import { NODE_TYPE_META } from './treeMeta';
+import type { ChecklistNodeTree, CollabNodeLock, NodeBranch, NodeStatus } from '../../lib/api';
+import { NODE_STATUS_META, NODE_TYPE_META } from './treeMeta';
 
 export type DropPosition = 'before' | 'after' | 'inside';
 
@@ -49,6 +49,8 @@ interface TreeNodeProps extends TreeNodeActions {
   drag: DragState;
   /** node_id → Lock-Halter (NUR Locks ANDERER Nutzer). */
   locks: Map<string, CollabNodeLock>;
+  /** node_id → Anzahl ungelesener Kommentare (roter Badge). */
+  unreadCounts: Record<string, number>;
 }
 
 function matchesQuery(node: ChecklistNodeTree, q: string): boolean {
@@ -59,13 +61,16 @@ function matchesQuery(node: ChecklistNodeTree, q: string): boolean {
 
 export default function TreeNode(props: TreeNodeProps) {
   const {
-    node, depth, number, selectedId, expanded, query, canEdit, drag, locks,
+    node, depth, number, selectedId, expanded, query, canEdit, drag, locks, unreadCounts,
     onSelect, onToggle, onContextMenu,
     onDragStart, onDragOverNode, onDropNode, onDragEnd,
   } = props;
 
   // Lock eines ANDEREN Nutzers auf diesen Knoten (oder undefined).
   const lock = locks.get(node.id);
+  const unread = unreadCounts[node.id] ?? 0;
+  const statusMeta = NODE_STATUS_META[(node.status ?? 'pending') as NodeStatus]
+    ?? NODE_STATUS_META.pending;
 
   const meta = NODE_TYPE_META[node.node_type] ?? NODE_TYPE_META.QUESTION;
   const Icon = meta.icon;
@@ -84,9 +89,9 @@ export default function TreeNode(props: TreeNodeProps) {
     : node.children;
   const hasChildren = node.children.length > 0;
 
-  // Auswahl als linke Akzentkante statt Ring.
+  // Auswahl als linke Akzentkante statt Ring (Blau = primary).
   const rowBase = isSelected
-    ? 'bg-emerald-50 border-l-2 border-emerald-500 dark:bg-emerald-900/20'
+    ? 'bg-blue-50 border-l-2 border-blue-500 dark:bg-blue-900/20'
     : isHit
       ? 'bg-amber-50 border-l-2 border-transparent dark:bg-amber-950/20'
       : 'border-l-2 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60';
@@ -104,14 +109,14 @@ export default function TreeNode(props: TreeNodeProps) {
     <li>
       {/* Drop-Indicator „davor" */}
       <div
-        className={`h-0.5 rounded-full transition-colors ${showBefore ? 'bg-emerald-500' : 'bg-transparent'}`}
+        className={`h-0.5 rounded-full transition-colors ${showBefore ? 'bg-blue-500' : 'bg-transparent'}`}
         style={{ marginLeft: indent + 8 }}
         aria-hidden="true"
       />
 
       <div
         className={`group flex items-center gap-2 rounded-xl py-1.5 pr-2 transition-colors ${rowBase} ${
-          showInside ? 'ring-1 ring-emerald-400 dark:ring-emerald-600' : ''
+          showInside ? 'ring-1 ring-blue-400 dark:ring-blue-600' : ''
         } ${showInvalid ? 'ring-1 ring-red-400' : ''} ${
           drag.dragId === node.id ? 'opacity-40' : ''
         }`}
@@ -139,6 +144,13 @@ export default function TreeNode(props: TreeNodeProps) {
 
         {/* Hierarchische Nummer */}
         <span className="shrink-0 font-mono text-[10px] text-slate-400 tabular-nums">{number}</span>
+
+        {/* Status-Punkt (Team-Workflow): grau/gelb/grün */}
+        <span
+          className={`h-2 w-2 shrink-0 rounded-full ${statusMeta.dot}`}
+          title={`Status: ${statusMeta.label}`}
+          aria-label={`Status: ${statusMeta.label}`}
+        />
 
         {/* Icon-Chip pro Knotentyp */}
         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${meta.iconBg}`}>
@@ -170,10 +182,21 @@ export default function TreeNode(props: TreeNodeProps) {
           )}
         </button>
 
+        {/* Ungelesene Kommentare: roter Badge */}
+        {unread > 0 && (
+          <span
+            className="ml-auto inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white"
+            title={`${unread} ungelesene Kommentare`}
+            aria-label={`${unread} ungelesene Kommentare`}
+          >
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
+
         {/* Lock-Badge: wird von einer ANDEREN Person bearbeitet */}
         {lock && (
           <span
-            className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 ${unread > 0 ? 'ml-1.5' : 'ml-auto'}`}
             title={`Wird von ${lock.locked_by_name || 'einer anderen Person'} bearbeitet`}
             aria-label={`Wird von ${lock.locked_by_name || 'einer anderen Person'} bearbeitet`}
           >
@@ -248,10 +271,11 @@ function BranchArea(props: BranchAreaProps) {
     onDropBranch, onAddChildBranch,
   } = props;
   const isJa = branch === 'JA';
-  const edge = isJa ? 'border-emerald-400 dark:border-emerald-600' : 'border-red-400 dark:border-red-600';
-  const badgeBg = isJa ? 'bg-emerald-500' : 'bg-red-500';
+  // Branch-Farben: JA = grün, NEIN = rot (audit_designer-Palette).
+  const edge = isJa ? 'border-green-400 dark:border-green-600' : 'border-red-400 dark:border-red-600';
+  const badgeBg = isJa ? 'bg-green-500' : 'bg-red-500';
   const headTone = isJa
-    ? 'text-emerald-700 dark:text-emerald-400'
+    ? 'text-green-700 dark:text-green-400'
     : 'text-red-700 dark:text-red-400';
   const branchTag = isJa ? 'J' : 'N';
   const subNum = isJa ? `${parentNumber}.J` : `${parentNumber}.N`;
@@ -261,7 +285,7 @@ function BranchArea(props: BranchAreaProps) {
 
   return (
     <div
-      className={`rounded-r-xl border-l-2 pl-2 ${edge} ${dropHere ? 'bg-emerald-50/60 dark:bg-emerald-900/10' : ''}`}
+      className={`rounded-r-xl border-l-2 pl-2 ${edge} ${dropHere ? 'bg-green-50/60 dark:bg-green-900/10' : ''}`}
       onDragOver={(e) => { if (canEdit) { e.preventDefault(); } }}
       onDrop={(e) => onDropBranch(e, decision, branch)}
     >
@@ -292,7 +316,7 @@ function BranchArea(props: BranchAreaProps) {
         <button
           type="button"
           onClick={() => onAddChildBranch(decision, branch)}
-          className="mb-1 ml-1 mt-0.5 inline-flex items-center gap-1 rounded text-[11px] text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+          className="mb-1 ml-1 mt-0.5 inline-flex items-center gap-1 rounded text-[11px] text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
         >
           + Knoten im {isJa ? 'JA' : 'NEIN'}-Zweig
         </button>

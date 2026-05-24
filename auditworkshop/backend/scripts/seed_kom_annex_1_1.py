@@ -28,7 +28,7 @@ SOURCE_PATH = "checklist_sources/annex_1_1_selection_of_operations.docx"
 TITLE = "KOM — Auswahl der Vorhaben (KA2)"
 
 INSTRUCTION = (
-    "Hinweis für Prüfer: Die Checkliste dient der Beurteilung, ob das "
+    "Hinweis: Die Checkliste dient der Beurteilung, ob das "
     "Verwaltungs- und Kontrollsystem (VKS) und die Vorhaben den Anforderungen "
     "an die Auswahl der Vorhaben entsprechen. Idealerweise wird sie für "
     "aussagekräftige Prüfungen sowohl ausgewählter als auch — in mindestens "
@@ -330,7 +330,7 @@ def run():
                 )
                 if note:
                     add_node(node_type="HINT", parent_id=q.id,
-                             title=f"Hinweis für Prüfer: {note}")
+                             title=f"Hinweis: {note}")
 
         # Schlussfolgerung
         h_concl = add_node(node_type="HEADING", title="Schlussfolgerung")

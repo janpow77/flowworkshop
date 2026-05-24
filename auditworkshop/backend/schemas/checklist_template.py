@@ -23,8 +23,13 @@ from models.checklist_template import (
     TemplateAnswerType,
     TemplateStatus,
     MemberRole,
-    InviteStatus,
 )
+
+# Obergrenzen fuer Freitext-/Text-Felder (Text-Spalten ohne DB-Limit). Verhindern
+# unbeschraenkten Speicherverbrauch (Storage-DoS) durch ueberlange Eingaben; die
+# Werte sind fuer fachliche Checklisten-Inhalte grosszuegig bemessen.
+_MAX_TITLE_LEN = 4_000
+_MAX_TEXT_LEN = 20_000
 
 
 # ── Antwortoptionen ───────────────────────────────────────────────────────────
@@ -115,47 +120,47 @@ class CategoryOut(BaseModel):
 # ── Knoten ────────────────────────────────────────────────────────────────────
 
 class NodeCreate(BaseModel):
-    parent_id: str | None = None
+    parent_id: str | None = Field(default=None, max_length=36)
     node_type: NodeType = NodeType.QUESTION
     branch: NodeBranch | None = None
-    ja_label: str | None = None
-    nein_label: str | None = None
-    decision_parent_id: str | None = None
+    ja_label: str | None = Field(default=None, max_length=_MAX_TEXT_LEN)
+    nein_label: str | None = Field(default=None, max_length=_MAX_TEXT_LEN)
+    decision_parent_id: str | None = Field(default=None, max_length=36)
     sort_order: int = 0
 
-    title: str | None = None
-    public_remark: str | None = None
+    title: str | None = Field(default=None, max_length=_MAX_TITLE_LEN)
+    public_remark: str | None = Field(default=None, max_length=_MAX_TEXT_LEN)
     remark_snippets_json: Any | None = None
 
     eingabetyp: int | None = None  # 0=Auswahl,1=Freitext,2=Betrag,4=Datum
     answer_type: TemplateAnswerType | None = None
-    answer_set_id: str | None = None
-    category_id: str | None = None
+    answer_set_id: str | None = Field(default=None, max_length=36)
+    category_id: str | None = Field(default=None, max_length=36)
 
-    legal_reference: str | None = None
+    legal_reference: str | None = Field(default=None, max_length=_MAX_TEXT_LEN)
     relevant_documents_json: Any | None = None
     is_header_field: bool = False
 
 
 class NodeUpdate(BaseModel):
-    parent_id: str | None = None
+    parent_id: str | None = Field(default=None, max_length=36)
     node_type: NodeType | None = None
     branch: NodeBranch | None = None
-    ja_label: str | None = None
-    nein_label: str | None = None
-    decision_parent_id: str | None = None
+    ja_label: str | None = Field(default=None, max_length=_MAX_TEXT_LEN)
+    nein_label: str | None = Field(default=None, max_length=_MAX_TEXT_LEN)
+    decision_parent_id: str | None = Field(default=None, max_length=36)
     sort_order: int | None = None
 
-    title: str | None = None
-    public_remark: str | None = None
+    title: str | None = Field(default=None, max_length=_MAX_TITLE_LEN)
+    public_remark: str | None = Field(default=None, max_length=_MAX_TEXT_LEN)
     remark_snippets_json: Any | None = None
 
     eingabetyp: int | None = None
     answer_type: TemplateAnswerType | None = None
-    answer_set_id: str | None = None
-    category_id: str | None = None
+    answer_set_id: str | None = Field(default=None, max_length=36)
+    category_id: str | None = Field(default=None, max_length=36)
 
-    legal_reference: str | None = None
+    legal_reference: str | None = Field(default=None, max_length=_MAX_TEXT_LEN)
     relevant_documents_json: Any | None = None
     is_header_field: bool | None = None
 
@@ -189,6 +194,9 @@ class NodeOut(BaseModel):
     legal_reference: str | None = None
     relevant_documents_json: Any | None = None
     is_header_field: bool = False
+
+    # Team-Workflow-Status des Knotens (pending/in_progress/resolved)
+    status: str | None = None
 
     # Uebersetzungsfelder (nur Lese-Ausgabe; Pflege erfolgt in Phase 9)
     source_text_en: str | None = None
@@ -272,7 +280,7 @@ class MemberRoleUpdate(BaseModel):
 
 class TemplateCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=_MAX_TEXT_LEN)
     source_language: str = Field("en", max_length=8)
     target_language: str = Field("de", max_length=8)
     source_document_name: str | None = Field(None, max_length=255)
@@ -282,7 +290,7 @@ class TemplateCreate(BaseModel):
 
 class TemplateUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=_MAX_TEXT_LEN)
     source_language: str | None = Field(None, max_length=8)
     target_language: str | None = Field(None, max_length=8)
     source_document_name: str | None = Field(None, max_length=255)

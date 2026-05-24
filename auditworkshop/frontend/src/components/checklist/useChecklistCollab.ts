@@ -37,6 +37,18 @@ export type RemoteNodeEvent =
       new_parent_id: string | null;
     };
 
+/**
+ * Live-Diskussions-/Referenz-Event aus dem SSE-Stream (von ANDEREN Nutzern).
+ * Der Inspector laedt bei diesen Events den betroffenen Knoten-Thread bzw. die
+ * Referenz-Dokumente neu. Eigene Events werden vom Hook herausgefiltert.
+ */
+export type RemoteDiscussionEvent =
+  | { type: 'comment_added'; node_id: string }
+  | { type: 'comment_updated'; node_id: string }
+  | { type: 'comment_deleted'; node_id: string }
+  | { type: 'refdoc_added'; node_id: string }
+  | { type: 'refdoc_deleted'; node_id: string };
+
 type ConnState = 'connecting' | 'open' | 'reconnecting';
 
 interface UseChecklistCollabOptions {
@@ -50,6 +62,11 @@ interface UseChecklistCollabOptions {
   enabled: boolean;
   /** Wird fuer FREMDE Knoten-Events aufgerufen (nicht fuer eigene). */
   onRemoteNode: (event: RemoteNodeEvent) => void;
+  /**
+   * Wird fuer FREMDE Diskussions-/Referenz-Events aufgerufen (nicht fuer eigene).
+   * Optional — der TreeEditor reicht es nur durch, wenn ein Knoten offen ist.
+   */
+  onRemoteDiscussion?: (event: RemoteDiscussionEvent) => void;
 }
 
 interface UseChecklistCollabResult {
@@ -91,6 +108,7 @@ export function useChecklistCollab({
   ownUserId,
   enabled,
   onRemoteNode,
+  onRemoteDiscussion,
 }: UseChecklistCollabOptions): UseChecklistCollabResult {
   const [presence, setPresence] = useState<CollabPresenceUser[]>([]);
   const [locks, setLocks] = useState<Map<string, CollabNodeLock>>(new Map());
@@ -100,9 +118,11 @@ export function useChecklistCollab({
   // aufgebaut wird (der TreeEditor reicht hier ggf. eine inline-Funktion durch).
   // Ref-Updates erfolgen in einem Effekt (nicht waehrend des Renderns).
   const onRemoteNodeRef = useRef(onRemoteNode);
+  const onRemoteDiscussionRef = useRef(onRemoteDiscussion);
   const ownUserIdRef = useRef(ownUserId);
   useEffect(() => {
     onRemoteNodeRef.current = onRemoteNode;
+    onRemoteDiscussionRef.current = onRemoteDiscussion;
     ownUserIdRef.current = ownUserId;
   });
 
@@ -190,6 +210,17 @@ export function useChecklistCollab({
           // bereits vor) — nur fremde Aenderungen durchreichen.
           if (e.user_id && e.user_id === ownUserIdRef.current) break;
           onRemoteNodeRef.current(e);
+          break;
+        }
+        case 'comment_added':
+        case 'comment_updated':
+        case 'comment_deleted':
+        case 'refdoc_added':
+        case 'refdoc_deleted': {
+          const e = data as { user_id?: string; node_id?: string } & RemoteDiscussionEvent;
+          // Eigene Diskussions-Events ueberspringen (lokal bereits angewandt).
+          if (e.user_id && e.user_id === ownUserIdRef.current) break;
+          if (e.node_id) onRemoteDiscussionRef.current?.(e);
           break;
         }
         default:
