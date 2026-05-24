@@ -12,7 +12,7 @@ Kindknoten). Englisches Original bleibt als source_document hinterlegt.
 Abschnitt 1 prüft die VKO-Methodik (faire/gerechte/nachprüfbare Methode,
 Entwurfsbudget, Unions-/mitgliedstaatliche Methoden, delegierter Rechtsakt,
 Stundensätze nach Art. 55 CPR). Abschnitt 2 prüft die Anwendung der Methodik
-auf Pauschalsätze, Einheitskosten und Pauschalbeträge.
+auf Pauschalsätze, Kosten je Einheit und Pauschalbeträge.
 
 Idempotent: vorhandener Seed (gleiche source_document_name oder Titel) wird
 zuvor entfernt.
@@ -96,16 +96,16 @@ PARTS = [
          "Sind die Feststellungen der Prüfbehörde relevant und hat die Verwaltungsbehörde sie nicht umgesetzt, ist eine Empfehlung an die Verwaltungsbehörde zu formulieren, die von der Prüfbehörde ausgesprochenen Empfehlungen nachzuverfolgen."),
         ("4", "KA4 BK4.3 / KA9 BK9.1 / KA13 BK13.3 · Art. 63 CPR · VKO-Leitfaden",
          "Sind die von der VKO abgedeckten Kostenkategorien klar definiert und förderfähig, auch bei vorgefertigten ('off the shelf') VKO?",
-         ["Dokument zur Festlegung der VKO-Methodik ('lower level')", "Anlage 1 zu Anhang V CPR ('upper level')", "Bei vorgefertigten VKO: nationale Regeln, operationelles Programm, Aufrufe zur Einreichung von Vorschlägen"],
-         "Da die VKO eine Erstattungsform ist, müssen die von der VKO abgedeckten und damit erstatteten Kostenkategorien in der VKO-Methodik bzw. — bei vorgefertigten Pauschalsätzen — in den nationalen Regeln, im Programm oder in den veröffentlichten Aufrufen klar definiert sein. Die vorgefertigten Pauschalsätze sind in der Dachverordnung bzw. der fondsspezifischen Verordnung definiert und am Ende dieser Checkliste aufgeführt. Die VKO darf nur förderfähige Kostenkategorien abdecken. Deckt die VKO eine nicht förderfähige Kostenkategorie ab, ist die Methodik zu ändern; der Prüfer prüft die in der Berechnungsmethodik berücksichtigten Kosten."),
+         ["Dokument zur Festlegung der VKO-Methodik ('lower level')", "Anlage 1 zu Anhang V CPR ('upper level')", "Bei vorgefertigten VKO: nationale Regeln, operationelles Programm, Aufforderungen zur Einreichung von Vorschlägen"],
+         "Da die VKO eine Erstattungsform ist, müssen die von der VKO abgedeckten und damit erstatteten Kostenkategorien in der VKO-Methodik bzw. — bei vorgefertigten Pauschalsätzen — in den nationalen Regeln, im Programm oder in den veröffentlichten Aufforderungen zur Einreichung von Vorschlägen klar definiert sein. Die vorgefertigten Pauschalsätze sind in der Dachverordnung bzw. der fondsspezifischen Verordnung definiert und am Ende dieser Checkliste aufgeführt. Die VKO darf nur förderfähige Kostenkategorien abdecken. Deckt die VKO eine nicht förderfähige Kostenkategorie ab, ist die Methodik zu ändern; der Prüfer prüft die in der Berechnungsmethodik berücksichtigten Kosten."),
         ("5", "KA4 BK4.3 / KA9 BK9.1 / KA13 BK13.3 · Art. 63 CPR · Beihilfevorschriften · VKO-Leitfaden",
          "Falls die Verwaltungsbehörde plant, die VKO in Vorhaben einzusetzen, die dem Beihilferecht unterliegen: Sind die von der VKO abgedeckten Kostenkategorien auch nach den auf die Vorhaben anwendbaren Beihilfevorschriften förderfähig?",
          ["Dokument zur Festlegung der VKO-Methodik ('lower level')", "Anlage 1 zu Anhang V CPR ('upper level')"],
-         "In einigen Fällen kann die Verwaltungsbehörde angeben, dass die VKO in Vorhaben verwendet wird, die dem Beihilferecht unterliegen (z. B. Einheitskosten für Personalkosten in Entwicklungs- und Innovationsprojekten von Unternehmen nach AGVO-Regelungen). Der Prüfer prüft dann, ob die in der VKO-Methodik genannten Kostenkategorien nach den spezifischen Beihilfevorschriften förderfähig sind. Beihilfevorschriften gelten nur für VKO zur Erstattung an Begünstigte ('lower level'). Sind die Kostenkategorien nach Beihilferecht nicht förderfähig, so darf die VKO entweder nicht in beihilferechtlich relevanten Vorhaben verwendet werden oder die Methodik ist beihilferechtskonform anzupassen."),
+         "In einigen Fällen kann die Verwaltungsbehörde angeben, dass die VKO in Vorhaben verwendet wird, die dem Beihilferecht unterliegen (z. B. Kosten je Einheit für Personalkosten in Entwicklungs- und Innovationsprojekten von Unternehmen nach AGVO-Regelungen). Der Prüfer prüft dann, ob die in der VKO-Methodik genannten Kostenkategorien nach den spezifischen Beihilfevorschriften förderfähig sind. Beihilfevorschriften gelten nur für VKO zur Erstattung an Begünstigte ('lower level'). Sind die Kostenkategorien nach Beihilferecht nicht förderfähig, so darf die VKO entweder nicht in beihilferechtlich relevanten Vorhaben verwendet werden oder die Methodik ist beihilferechtskonform anzupassen."),
         ("6", "KA4 BK4.3 / KA9 BK9.1 / KA13 BK13.3 · Art. 53 / Art. 94 CPR · VKO-Leitfaden",
          "Ist der die Erstattung auslösende Indikator und seine Maßeinheit klar beschrieben und für die festgelegte VKO relevant?",
          ["Dokument zur Festlegung der VKO-Methodik ('lower level')", "Anlage 1 zu Anhang V CPR ('upper level')"],
-         "Die VKO-Methodik muss den die Erstattung auslösenden Indikator angeben: bei Einheitskosten die Einheit, für die ein Wert festgelegt wurde, bei Pauschalbeträgen die Ergebnisse und bei Pauschalsätzen die Basiskosten. Indikator und Maßeinheit müssen für die Art der VKO sachgerecht sein (z. B. bei Einheitskosten für erfolgreiche Schulungsteilnehmer die Zahl der erfolgreich abgeschlossenen Teilnehmer). Bei vorgefertigten Pauschalsätzen löst die Geltendmachung der Basiskosten die Zahlung aus; eine weitere Definition ist nicht erforderlich."),
+         "Die VKO-Methodik muss den die Erstattung auslösenden Indikator angeben: bei Kosten je Einheit die Einheit, für die ein Wert festgelegt wurde, bei Pauschalbeträgen die Ergebnisse und bei Pauschalsätzen die Basiskosten. Indikator und Maßeinheit müssen für die Art der VKO sachgerecht sein (z. B. bei Kosten je Einheit für erfolgreiche Schulungsteilnehmer die Zahl der erfolgreich abgeschlossenen Teilnehmer). Bei vorgefertigten Pauschalsätzen löst die Geltendmachung der Basiskosten die Zahlung aus; eine weitere Definition ist nicht erforderlich."),
         ("7", "KA4 BK4.3 / KA9 BK9.1 / KA13 BK13.3 · Art. 63 CPR",
          "Sind die von der VKO abgedeckten Kostenkategorien klar angegeben und nicht in den als Realkosten geltend zu machenden Kosten doppelt enthalten?",
          ["Dokument zur Festlegung der VKO-Methodik ('lower level')", "Anlage 1 zu Anhang V CPR ('upper level')"],
@@ -117,11 +117,11 @@ PARTS = [
         ("9", "KA4 BK4.3 / KA9 BK9.1 · Art. 53 / Art. 94 CPR",
          "Sind in der VKO-Methodik Überprüfungen zur Erreichung der gelieferten Einheiten/erzielten Ergebnisse vorgesehen, die für die Maßeinheit relevant und für die festgelegte VKO sachgerecht sind?",
          ["Dokument zur Festlegung der VKO-Methodik ('lower level')", "Anlage 1 zu Anhang V CPR ('upper level')"],
-         "Die Verwaltungsbehörde sollte beschreiben, welche Dokumentation/welches System zur Überprüfung der Erreichung der gelieferten Einheiten/erzielten Ergebnisse verwendet wird. Beispiel: Für Einheitskosten für energetische Sanierungsarbeiten an einem Haus sieht die Methodik vor, dass die Einheit erreicht ist, wenn ein Mindestgewinn von 100 kWh/m²/Jahr Primärenergie vorliegt; die vorgesehenen Überprüfungen müssen je Einheit den Nachweis dieser Mindestbedingung umfassen."),
+         "Die Verwaltungsbehörde sollte beschreiben, welche Dokumentation/welches System zur Überprüfung der Erreichung der gelieferten Einheiten/erzielten Ergebnisse verwendet wird. Beispiel: Für Kosten je Einheit für energetische Sanierungsarbeiten an einem Haus sieht die Methodik vor, dass die Einheit erreicht ist, wenn ein Mindestgewinn von 100 kWh/m²/Jahr Primärenergie vorliegt; die vorgesehenen Überprüfungen müssen je Einheit den Nachweis dieser Mindestbedingung umfassen."),
         ("10", "KA5 BK5.1 / KA6 BK6.1 · Art. 53 / Art. 94 CPR",
          "Sind die Vorkehrungen zur Erhebung und Speicherung von Daten zum die Erstattung auslösenden Indikator beschrieben und angemessen?",
          ["Dokument zur Festlegung der VKO-Methodik ('lower level')", "Anlage 1 zu Anhang V CPR ('upper level')"],
-         "Diese Prüfung dient der Feststellung, dass die Verwaltungsbehörde die Erhebung und Speicherung VKO-spezifischer Daten (Erreichung der Ergebnisse / Lieferung der Einheitskosten) und das zu verwendende System vorsieht. Der Prüfer beurteilt, ob das vorgeschlagene System angemessen ist und eine ordnungsgemäße Erhebung und jederzeitige Verfügbarkeit der Daten bei Prüfungen ermöglicht. Ist die Erhebung und Speicherung der spezifischen Daten unmöglich, kann die Methodik nicht genehmigt werden; der Prüfer empfiehlt der Verwaltungsbehörde, geeignete Vorkehrungen zu treffen."),
+         "Diese Prüfung dient der Feststellung, dass die Verwaltungsbehörde die Erhebung und Speicherung VKO-spezifischer Daten (Erreichung der Ergebnisse / Lieferung der Kosten je Einheit) und das zu verwendende System vorsieht. Der Prüfer beurteilt, ob das vorgeschlagene System angemessen ist und eine ordnungsgemäße Erhebung und jederzeitige Verfügbarkeit der Daten bei Prüfungen ermöglicht. Ist die Erhebung und Speicherung der spezifischen Daten unmöglich, kann die Methodik nicht genehmigt werden; der Prüfer empfiehlt der Verwaltungsbehörde, geeignete Vorkehrungen zu treffen."),
         ("11", "KA4 BK4.3 / KA9 BK9.1 · Art. 53 / Art. 94 CPR",
          "Wird die VKO-Methodik aus früheren Förderperioden verwendet? Falls ja: Wurde die Methodik nach dem geltenden Rechtsrahmen festgelegt und bewertet?",
          ["VKO-Methodik", "Anlage 1 zu Anhang V CPR"],
@@ -139,11 +139,11 @@ PARTS = [
         ("12.3", "KA4 BK4.3 / KA9 BK9.1 · Art. 63 CPR · VKO-Leitfaden",
          "Sind die in den für die Berechnung der VKO verwendeten Daten enthaltenen Kosten förderfähig?",
          ["Für die Berechnung verwendete Datenbank"],
-         "Die zur Festlegung der VKO berücksichtigten Kosten müssen mit den einschlägigen nationalen und EU-Förderfähigkeitsregeln im Einklang stehen. Nach nationalem und EU-Recht nicht förderfähige Kosten dürfen den Berechnungsdaten nicht hinzugefügt werden. Wurden nicht förderfähige Kosten hinzugefügt, berechnet der Prüfer die VKO unter Ausschluss dieser Kosten neu und ermittelt den korrekten Wert der VKO (Einheitskosten, Pauschalbetrag oder Pauschalsatz)."),
+         "Die zur Festlegung der VKO berücksichtigten Kosten müssen mit den einschlägigen nationalen und EU-Förderfähigkeitsregeln im Einklang stehen. Nach nationalem und EU-Recht nicht förderfähige Kosten dürfen den Berechnungsdaten nicht hinzugefügt werden. Wurden nicht förderfähige Kosten hinzugefügt, berechnet der Prüfer die VKO unter Ausschluss dieser Kosten neu und ermittelt den korrekten Wert der VKO (Kosten je Einheit, Pauschalbetrag oder Pauschalsatz)."),
         ("12.4", "KA4 BK4.3 / KA9 BK9.1 · Art. 63 CPR · VKO-Leitfaden",
          "Sind die in den für die Berechnung verwendeten Daten enthaltenen Kosten für die von der VKO abgedeckten Kostenkategorien angemessen?",
          ["Datenbank und VKO-Methodik"],
-         "Die Berechnungsmethodik sollte nur die von der VKO abgedeckten Kosten berücksichtigen. Beispiel: Für die Bestimmung von Einheitskosten für Energieeffizienzarbeiten dürfen nicht alle Renovierungskosten früherer Vorhaben berücksichtigt werden, sondern nur die für die Steigerung der Energieeffizienz erforderlichen Arbeiten."),
+         "Die Berechnungsmethodik sollte nur die von der VKO abgedeckten Kosten berücksichtigen. Beispiel: Für die Bestimmung von Kosten je Einheit für Energieeffizienzarbeiten dürfen nicht alle Renovierungskosten früherer Vorhaben berücksichtigt werden, sondern nur die für die Steigerung der Energieeffizienz erforderlichen Arbeiten."),
         ("12.5", "KA4 BK4.3 / KA9 BK9.1 · Art. 63 CPR · VKO-Leitfaden",
          "Wurden Ausreißer aus den für die Berechnung verwendeten Daten ausgeschlossen? Falls ja: Ist der Ausschluss erläutert und angemessen?",
          ["Datenbank", "Arbeitsunterlagen"],
@@ -161,7 +161,7 @@ PARTS = [
         ("13.1", "KA4 BK4.3 / KA9 BK9.1 · Art. 53(3)(b) / 73(3) CPR · Art. 22 Interreg-VO",
          "Wurde das Entwurfsbudget ex ante von der das Vorhaben auswählenden Stelle analysiert und genehmigt? Falls ja: Ist die Beurteilung des Entwurfsbudgets korrekt?",
          ["Dokument zur Genehmigung des Entwurfsbudgets"],
-         "Das Entwurfsbudget wird von Förderantragstellern mit Belegen zur Rechtfertigung aller Budgetkosten eingereicht. Die Verwaltungsbehörde muss beurteilen, dass das Entwurfsbudget angemessen ist (Marktpreise, Marktstudien, Preise anderer Projekte) und eine VKO festlegen. Der Prüfer prüft die Beurteilung der Verwaltungsbehörde. Wurde das Entwurfsbudget vor Ausstellung des Dokuments mit den Förderbedingungen nicht beurteilt und genehmigt, ist die Methode nicht eingehalten und die VKO-Methodik nicht mit Art. 53(3)b vereinbar; der Prüfer kann die Verwaltungsbehörde zur Ex-post-Beurteilung auffordern und die VKO bei Angemessenheit akzeptieren, verbunden mit einer Empfehlung, künftig Art. 53(3)b einzuhalten."),
+         "Das Entwurfsbudget wird von Förderantragstellern mit Belegen zur Rechtfertigung aller Budgetkosten eingereicht. Die Verwaltungsbehörde muss beurteilen, dass das Entwurfsbudget angemessen ist (Marktpreise, Marktstudien, Preise anderer Projekte) und eine VKO festlegen. Der Prüfer prüft die Beurteilung der Verwaltungsbehörde. Wurde das Entwurfsbudget vor Ausstellung des Dokuments mit den Bedingungen für die Unterstützung nicht beurteilt und genehmigt, ist die Methode nicht eingehalten und die VKO-Methodik nicht mit Art. 53(3)b vereinbar; der Prüfer kann die Verwaltungsbehörde zur Ex-post-Beurteilung auffordern und die VKO bei Angemessenheit akzeptieren, verbunden mit einer Empfehlung, künftig Art. 53(3)b einzuhalten."),
         ("13.2", "KA4 BK4.3 / KA9 BK9.1 · Art. 63 CPR",
          "Enthält das Entwurfsbudget nur nach EU- und nationalen Regeln förderfähige Kosten?",
          ["Entwurfsbudget"],
@@ -185,31 +185,31 @@ PARTS = [
     ]),
     ("Abschnitt 1 · Teil 14 — VKO aus Unionspolitiken für ähnliche Vorhaben (Art. 53(3)c / 94(2)c CPR)", [
         ("14.1", "KA4 BK4.3 / KA9 BK9.1 · Art. 53(3)(c) / 94(2)(c) CPR",
-         "Wurde die VKO auf Grundlage der für entsprechende Einheitskosten, Pauschalbeträge und Pauschalsätze geltenden Regeln aus Unionspolitiken für ähnliche Vorhaben festgelegt?",
+         "Wurde die VKO auf Grundlage der für entsprechende Kosten je Einheit, Pauschalbeträge und Pauschalsätze geltenden Regeln aus Unionspolitiken für ähnliche Vorhaben festgelegt?",
          ["VKO-Methodik ('lower level')", "Anlage 1 zu Anhang V CPR ('upper level')"],
          "Die VKO-Methodik muss die Regeln aus Unionspolitiken darlegen, auf deren Grundlage die VKO festgelegt wurde. Die Verwaltungsbehörde muss nachweisen, dass die VKO für ähnliche Vorhaben verwendet wird; die Dachverordnung definiert ähnliche Vorhaben nicht — es obliegt der Verwaltungsbehörde, die Ähnlichkeit zu erläutern. Der Prüfer beurteilt die vorgelegte Begründung. Aus delegierten Rechtsakten der Förderperiode 2014-2020 übernommene VKO sind unter diesem Punkt zu behandeln."),
         ("14.2", "KA4 BK4.3 / KA9 BK9.1 · Art. 53(3)(c) / 94(2)(c) CPR",
-         "Waren die Regeln der entsprechenden Unionspolitik zum Zeitpunkt des Aufrufs ('lower level') bzw. zum Zeitpunkt der Einreichung der Programmänderung bei der Kommission ('upper level') noch anwendbar?",
+         "Waren die Regeln der entsprechenden Unionspolitik zum Zeitpunkt der Aufforderung zur Einreichung von Vorschlägen ('lower level') bzw. zum Zeitpunkt der Einreichung der Programmänderung bei der Kommission ('upper level') noch anwendbar?",
          ["Anwendbare Unionspolitik"],
-         "War die Unionspolitik, auf deren Grundlage die VKO festgelegt wurde, zum Zeitpunkt des Aufrufs ('lower level') bzw. der Einreichung der Programmänderung ('upper level') nicht in Kraft, darf die VKO dieser Politik nicht zur Festlegung einer VKO nach der Dachverordnung verwendet werden."),
+         "War die Unionspolitik, auf deren Grundlage die VKO festgelegt wurde, zum Zeitpunkt der Aufforderung zur Einreichung von Vorschlägen ('lower level') bzw. der Einreichung der Programmänderung ('upper level') nicht in Kraft, darf die VKO dieser Politik nicht zur Festlegung einer VKO nach der Dachverordnung verwendet werden."),
         ("14.3", "KA4 BK4.3 / KA9 BK9.1 · Art. 53(3)(c) / 94(2)(c) CPR",
          "Wurde die Methodik der VKO vollständig — einschließlich aller Bedingungen — übernommen?",
          ["Anwendbare Unionspolitik", "VKO-Methodik ('lower level')", "Anlage 1 zu Anhang V CPR ('upper level')"],
-         "Alle auf Ebene einer anderen Unionspolitik festgelegten Bedingungen sind in die VKO-Methodik zu übernehmen, um die korrekte Verwendung der VKO sicherzustellen. Besteht die VKO in Unionspolitiken aus mehreren klar getrennten Einheitskosten/Pauschalbeträgen/Pauschalsätzen, kann die Verwaltungsbehörde nur eines davon zur Festlegung einer VKO nach der Dachverordnung übernehmen (Beispiel: Marie-Skłodowska-Curie-Maßnahmen unter Horizont 2020 mit getrenntem Einheitskostensatz für Lebenshaltungs- und Mobilitätszulagen)."),
+         "Alle auf Ebene einer anderen Unionspolitik festgelegten Bedingungen sind in die VKO-Methodik zu übernehmen, um die korrekte Verwendung der VKO sicherzustellen. Besteht die VKO in Unionspolitiken aus mehreren klar getrennten Kosten je Einheit/Pauschalbeträgen/Pauschalsätzen, kann die Verwaltungsbehörde nur eines davon zur Festlegung einer VKO nach der Dachverordnung übernehmen (Beispiel: Marie-Skłodowska-Curie-Maßnahmen unter Horizont 2020 mit getrenntem Satz für Kosten je Einheit für Lebenshaltungs- und Mobilitätszulagen)."),
     ]),
     ("Abschnitt 1 · Teil 15 — VKO aus mitgliedstaatlichen Politiken für ähnliche Vorhaben (Art. 53(3)d / 94(2)d CPR)", [
         ("15.1", "KA4 BK4.3 / KA9 BK9.1 · Art. 53(3)(d) / 94(2)(d) CPR",
-         "Wurde die VKO auf Grundlage der für entsprechende Einheitskosten, Pauschalbeträge und Pauschalsätze geltenden Regeln aus mitgliedstaatlichen Politiken für ähnliche Vorhaben festgelegt?",
+         "Wurde die VKO auf Grundlage der für entsprechende Kosten je Einheit, Pauschalbeträge und Pauschalsätze geltenden Regeln aus mitgliedstaatlichen Politiken für ähnliche Vorhaben festgelegt?",
          ["VKO-Methodik ('lower level')", "Anlage 1 zu Anhang V CPR ('upper level')"],
          "Die VKO-Methodik muss die Regeln aus mitgliedstaatlichen Politiken darlegen, auf deren Grundlage die VKO festgelegt wurde. Die Verwaltungsbehörde muss nachweisen, dass die VKO für ähnliche Vorhaben verwendet wird. Der Betrag der VKO aus mitgliedstaatlichen Politiken muss nicht gerechtfertigt werden. In nationalen Gesetzen festgelegte Obergrenzen dürfen nicht als Grundlage zur Bestimmung einer VKO nach der Dachverordnung herangezogen werden."),
         ("15.2", "KA4 BK4.3 / KA9 BK9.1 · Art. 53(3)(d) / 94(2)(d) CPR",
-         "Waren die Regeln der entsprechenden mitgliedstaatlichen VKO zum Zeitpunkt des Aufrufs ('lower level') bzw. zum Zeitpunkt der Einreichung der Programmänderung bei der Kommission ('upper level') noch anwendbar?",
+         "Waren die Regeln der entsprechenden mitgliedstaatlichen VKO zum Zeitpunkt der Aufforderung zur Einreichung von Vorschlägen ('lower level') bzw. zum Zeitpunkt der Einreichung der Programmänderung bei der Kommission ('upper level') noch anwendbar?",
          ["Anwendbare mitgliedstaatliche Politik"],
          "War die mitgliedstaatliche Politik, auf deren Grundlage die VKO festgelegt wurde, zum maßgeblichen Zeitpunkt nicht in Kraft, darf die VKO dieser Politik nicht zur Festlegung einer VKO nach der Dachverordnung verwendet werden."),
         ("15.3", "KA4 BK4.3 / KA9 BK9.1 · Art. 53(3)(d) / 94(2)(d) CPR",
          "Wurde die Methodik vollständig — einschließlich aller Bedingungen — übernommen?",
          ["Anwendbare mitgliedstaatliche Politik", "VKO-Methodik ('lower level')", "Anlage 1 zu Anhang V CPR ('upper level')"],
-         "Alle auf Ebene einer anderen Politik festgelegten Bedingungen sind in die VKO-Methodik zu übernehmen. Besteht die VKO in mitgliedstaatlichen Politiken aus mehreren klar abgegrenzten Einheitskosten/Pauschalbeträgen/Pauschalsätzen, kann die Verwaltungsbehörde nur eines davon zur Festlegung einer VKO nach der Dachverordnung übernehmen."),
+         "Alle auf Ebene einer anderen Politik festgelegten Bedingungen sind in die VKO-Methodik zu übernehmen. Besteht die VKO in mitgliedstaatlichen Politiken aus mehreren klar abgegrenzten Kosten je Einheit/Pauschalbeträgen/Pauschalsätzen, kann die Verwaltungsbehörde nur eines davon zur Festlegung einer VKO nach der Dachverordnung übernehmen."),
         ("15.4", "KA4 BK4.3 / KA9 BK9.1 · Art. 53(3)(d) / 94(2)(d) CPR",
          "Wird die VKO-Methodik der nationalen Politik im Rahmen von ausschließlich vom Mitgliedstaat finanzierten Förderregelungen angewandt?",
          ["Belege"],
@@ -245,9 +245,9 @@ PARTS = [
     ]),
     ("Abschnitt 2 · Teil 1 — Anwendung: Pauschalsätze (Art. 73(3) CPR / Art. 22(6) Interreg-VO)", [
         ("2.1.2", "KA2 BK2.1 / KA3 BK3.3 · Art. 73(3) CPR · Art. 22(6) Interreg-VO",
-         "Ist die Verwendung des Pauschalsatzes im Aufruf zur Einreichung von Vorschlägen und im Dokument mit den Förderbedingungen vorgesehen?",
-         ["Aufruf zur Einreichung von Vorschlägen (oder gleichwertig)", "Dokument mit den Förderbedingungen"],
-         "Die Grundsätze der Transparenz und Gleichbehandlung sind sicherzustellen; alle potenziellen Begünstigten müssen Zugang zu den Informationen über die verwendete Erstattungsform haben. Daher ist die Verwendung des Pauschalsatzes im Aufruf (oder einem gleichwertigen Dokument, falls kein Aufruf veröffentlicht wurde) anzugeben und zusätzlich im Dokument mit den Förderbedingungen zu nennen. Wurden die Grundsätze nicht eingehalten, beurteilt der Prüfer die Auswirkungen und empfiehlt der Verwaltungsbehörde, sie bei künftigen Aufrufen/Vorhaben einzuhalten."),
+         "Ist die Verwendung des Pauschalsatzes in der Aufforderung zur Einreichung von Vorschlägen und im Dokument mit den Bedingungen für die Unterstützung vorgesehen?",
+         ["Aufforderung zur Einreichung von Vorschlägen (oder gleichwertig)", "Dokument mit den Bedingungen für die Unterstützung"],
+         "Die Grundsätze der Transparenz und Gleichbehandlung sind sicherzustellen; alle potenziellen Begünstigten müssen Zugang zu den Informationen über die verwendete Erstattungsform haben. Daher ist die Verwendung des Pauschalsatzes in der Aufforderung zur Einreichung von Vorschlägen (oder einem gleichwertigen Dokument, falls keine Aufforderung zur Einreichung von Vorschlägen veröffentlicht wurde) anzugeben und zusätzlich im Dokument mit den Bedingungen für die Unterstützung zu nennen. Wurden die Grundsätze nicht eingehalten, beurteilt der Prüfer die Auswirkungen und empfiehlt der Verwaltungsbehörde, sie bei künftigen Aufforderungen zur Einreichung von Vorschlägen/Vorhaben einzuhalten."),
         ("2.1.3", "KA4 BK4.3 / KA9 BK9.1 · Art. 63 CPR",
          "Sind die als Berechnungsgrundlage verwendeten Kosten (sogenannte 'Basiskosten') förderfähig, rechtmäßig und ordnungsgemäß?",
          ["Belege für die Basiskosten"],
@@ -267,7 +267,7 @@ PARTS = [
         ("2.1.7", "KA4 BK4.3 / KA9 BK9.1 · Art. 74(1)(a)(ii) CPR",
          "Hat die Verwaltungsbehörde bei der Auswahl beurteilt, dass die vom Pauschalsatz abgedeckten Kostenkategorien für die Durchführung des Vorhabens erforderlich sind und daher vom Begünstigten geltend gemacht werden können?",
          ["Arbeitsunterlagen"],
-         "In der Auswahlphase muss die Verwaltungsbehörde anhand der Angaben im Förderantrag und im Dokument mit den Förderbedingungen prüfen, ob die vom Pauschalsatz abgedeckten Kostenkategorien erforderlich sind. Geschah dies nicht bei der Auswahl, kann die Verwaltungsbehörde die erforderlichen Erläuterungen ex post nachreichen. Sind die abgedeckten Kostenkategorien für die Durchführung nicht erforderlich, kann der Prüfer schließen, dass der Pauschalsatz für das Vorhaben nicht verwendet werden kann."),
+         "In der Auswahlphase muss die Verwaltungsbehörde anhand der Angaben im Förderantrag und im Dokument mit den Bedingungen für die Unterstützung prüfen, ob die vom Pauschalsatz abgedeckten Kostenkategorien erforderlich sind. Geschah dies nicht bei der Auswahl, kann die Verwaltungsbehörde die erforderlichen Erläuterungen ex post nachreichen. Sind die abgedeckten Kostenkategorien für die Durchführung nicht erforderlich, kann der Prüfer schließen, dass der Pauschalsatz für das Vorhaben nicht verwendet werden kann."),
         ("2.1.8", "KA4 BK4.3 / KA9 BK9.1 · Art. 74(1)(a)(ii) CPR · anwendbare Beihilfevorschriften",
          "Sind Beihilfevorschriften anwendbar?",
          ["Arbeitsunterlagen (Beihilfeanalyse)", "erstattete Ausgaben"],
@@ -277,21 +277,21 @@ PARTS = [
          ["VKO-Methodik", "Anlage 1 zu Anhang V CPR"],
          "Die Methodik kann spezifische Bedingungen für die Verwendung der Pauschalsätze vorsehen. Zusätzliche Bedingungen in der VKO-Methodik sind unüblich, müssen aber, falls genannt, erfüllt sein, um die Erstattung auszulösen (z. B. bei einem Pauschalsatz für Personalkosten von Promovierenden die in der Methodik festgelegte Bedingung zum Bildungsniveau)."),
     ]),
-    ("Abschnitt 2 · Teil 2 — Anwendung: Einheitskosten (Standardeinheitskosten)", [
+    ("Abschnitt 2 · Teil 2 — Anwendung: Kosten je Einheit (standardisierte Kosten je Einheit)", [
         ("2.2.1", "KA2 BK2.1 / KA3 BK3.3 · Art. 73(3) CPR · Art. 22(6) Interreg-VO",
-         "Ist die Verwendung der Einheitskosten im Aufruf zur Einreichung von Vorschlägen und im Dokument mit den Förderbedingungen vorgesehen?",
-         ["Aufruf zur Einreichung von Vorschlägen (oder gleichwertig)", "Dokument mit den Förderbedingungen"],
-         "Die Grundsätze der Transparenz und Gleichbehandlung sind sicherzustellen; alle potenziellen Begünstigten müssen Zugang zu den Informationen über die verwendete Erstattungsform haben. Daher ist die Verwendung der Einheitskosten im Aufruf (oder einem gleichwertigen Dokument) anzugeben und zusätzlich im Dokument mit den Förderbedingungen zu nennen. Wurden die Grundsätze nicht eingehalten, beurteilt der Prüfer die Auswirkungen und empfiehlt der Verwaltungsbehörde, sie künftig einzuhalten."),
+         "Ist die Verwendung der Kosten je Einheit in der Aufforderung zur Einreichung von Vorschlägen und im Dokument mit den Bedingungen für die Unterstützung vorgesehen?",
+         ["Aufforderung zur Einreichung von Vorschlägen (oder gleichwertig)", "Dokument mit den Bedingungen für die Unterstützung"],
+         "Die Grundsätze der Transparenz und Gleichbehandlung sind sicherzustellen; alle potenziellen Begünstigten müssen Zugang zu den Informationen über die verwendete Erstattungsform haben. Daher ist die Verwendung der Kosten je Einheit in der Aufforderung zur Einreichung von Vorschlägen (oder einem gleichwertigen Dokument) anzugeben und zusätzlich im Dokument mit den Bedingungen für die Unterstützung zu nennen. Wurden die Grundsätze nicht eingehalten, beurteilt der Prüfer die Auswirkungen und empfiehlt der Verwaltungsbehörde, sie künftig einzuhalten."),
         ("2.2.2", "KA4 BK4.3 / KA9 BK9.1 · Art. 74(1)(a)(ii) CPR",
          "Wird die Anzahl der geltend gemachten Einheiten durch Belege in Übereinstimmung mit der Methodik gerechtfertigt?",
          ["VKO-Methodik", "Anlage 1 zu Anhang V CPR", "geltend gemachte Ausgaben"],
-         "Die vom Vorhaben gelieferten Einheiten im Sinne quantifizierter Inputs, Outputs oder Ergebnisse, die von den Einheitskosten abgedeckt sind, müssen dokumentiert, nachprüfbar und real sein. Einheitskosten für nicht erreichte Outputs/Ergebnisse dürfen nicht geltend gemacht werden. Der Prüfer prüft die Belege zum Nachweis der geltend gemachten Einheiten und empfiehlt der Verwaltungsbehörde/Prüfbehörde, bei nicht erreichten oder nicht belegten Einheiten die erforderlichen finanziellen Berichtigungen vorzunehmen."),
+         "Die vom Vorhaben gelieferten Einheiten im Sinne quantifizierter Inputs, Outputs oder Ergebnisse, die von den Kosten je Einheit abgedeckt sind, müssen dokumentiert, nachprüfbar und real sein. Kosten je Einheit für nicht erreichte Outputs/Ergebnisse dürfen nicht geltend gemacht werden. Der Prüfer prüft die Belege zum Nachweis der geltend gemachten Einheiten und empfiehlt der Verwaltungsbehörde/Prüfbehörde, bei nicht erreichten oder nicht belegten Einheiten die erforderlichen finanziellen Berichtigungen vorzunehmen."),
         ("2.2.3", "KA4 BK4.3 / KA9 BK9.1 · Art. 53 / Art. 94 CPR",
-         "Wurden die Einheitskosten mit der in der Methodik vorgesehenen Anpassungsmethode angepasst?",
+         "Wurden die Kosten je Einheit mit der in der Methodik vorgesehenen Anpassungsmethode angepasst?",
          ["VKO-Methodik", "Anlage 1 zu Anhang V CPR"],
-         "Im Falle einer Anpassung prüft der Prüfer, ob die in der VKO-Methodik vorgesehene Anpassungsmethode eingehalten wurde, und empfiehlt bei Unregelmäßigkeiten finanzielle Berichtigungen. War keine Anpassungsmethode vorgesehen, dürfen die Einheitskosten nicht geändert werden."),
+         "Im Falle einer Anpassung prüft der Prüfer, ob die in der VKO-Methodik vorgesehene Anpassungsmethode eingehalten wurde, und empfiehlt bei Unregelmäßigkeiten finanzielle Berichtigungen. War keine Anpassungsmethode vorgesehen, dürfen die Kosten je Einheit nicht geändert werden."),
         ("2.2.4", "KA4 BK4.3 / KA9 BK9.1 · Art. 74(1)(a)(ii) CPR",
-         "Entspricht der geltend gemachte Betrag den Einheitskosten multipliziert mit den tatsächlich gelieferten Einheiten?",
+         "Entspricht der geltend gemachte Betrag den Kosten je Einheit multipliziert mit den tatsächlich gelieferten Einheiten?",
          ["VKO-Methodik", "Anlage 1 zu Anhang V CPR", "geltend gemachte Ausgaben"],
          "Der Prüfer prüft die Berechnung der geltend gemachten Ausgaben und empfiehlt der Verwaltungsbehörde/Prüfbehörde bei Unregelmäßigkeiten die erforderlichen finanziellen Berichtigungen."),
         ("2.2.5", "KA4 BK4.3 / KA9 BK9.1 · Art. 74(1)(a)(ii) CPR · anwendbare Beihilfevorschriften",
@@ -301,13 +301,13 @@ PARTS = [
         ("2.2.6", "KA4 BK4.3 / KA9 BK9.1 · Art. 74(1)(a)(ii) / 94(3) CPR",
          "Falls zutreffend: Werden die in der Methodik festgelegten Bedingungen eingehalten?",
          ["VKO-Methodik", "Anlage 1 zu Anhang V CPR"],
-         "Die Methodik kann spezifische Bedingungen für die Verwendung der Einheitskosten vorsehen. Zusätzliche Bedingungen sind unüblich, müssen aber, falls genannt, erfüllt sein (z. B. bei Einheitskosten für ein Haus mit verbesserter Energieeffizienz von mindestens 100 kWh/m²/Jahr Primärenergie die einzuhaltende Mindestbedingung). Der Prüfer prüft die Erfüllung und empfiehlt andernfalls die erforderlichen Berichtigungen."),
+         "Die Methodik kann spezifische Bedingungen für die Verwendung der Kosten je Einheit vorsehen. Zusätzliche Bedingungen sind unüblich, müssen aber, falls genannt, erfüllt sein (z. B. bei Kosten je Einheit für ein Haus mit verbesserter Energieeffizienz von mindestens 100 kWh/m²/Jahr Primärenergie die einzuhaltende Mindestbedingung). Der Prüfer prüft die Erfüllung und empfiehlt andernfalls die erforderlichen Berichtigungen."),
     ]),
     ("Abschnitt 2 · Teil 3 — Anwendung: Pauschalbeträge", [
         ("2.3.1", "KA2 BK2.1 / KA3 BK3.3 · Art. 73(3) CPR · Art. 22(6) Interreg-VO",
-         "Ist die Verwendung des Pauschalbetrags im Aufruf zur Einreichung von Vorschlägen und im Dokument mit den Förderbedingungen vorgesehen?",
-         ["Aufruf zur Einreichung von Vorschlägen (oder gleichwertig)", "Dokument mit den Förderbedingungen"],
-         "Die Grundsätze der Transparenz und Gleichbehandlung sind sicherzustellen; alle potenziellen Begünstigten müssen Zugang zu den Informationen über die verwendete Erstattungsform haben. Daher ist die Verwendung des Pauschalbetrags im Aufruf (oder einem gleichwertigen Dokument) anzugeben und zusätzlich im Dokument mit den Förderbedingungen zu nennen. Wurden die Grundsätze nicht eingehalten, beurteilt der Prüfer die Auswirkungen und empfiehlt der Verwaltungsbehörde, sie künftig einzuhalten."),
+         "Ist die Verwendung des Pauschalbetrags in der Aufforderung zur Einreichung von Vorschlägen und im Dokument mit den Bedingungen für die Unterstützung vorgesehen?",
+         ["Aufforderung zur Einreichung von Vorschlägen (oder gleichwertig)", "Dokument mit den Bedingungen für die Unterstützung"],
+         "Die Grundsätze der Transparenz und Gleichbehandlung sind sicherzustellen; alle potenziellen Begünstigten müssen Zugang zu den Informationen über die verwendete Erstattungsform haben. Daher ist die Verwendung des Pauschalbetrags in der Aufforderung zur Einreichung von Vorschlägen (oder einem gleichwertigen Dokument) anzugeben und zusätzlich im Dokument mit den Bedingungen für die Unterstützung zu nennen. Wurden die Grundsätze nicht eingehalten, beurteilt der Prüfer die Auswirkungen und empfiehlt der Verwaltungsbehörde, sie künftig einzuhalten."),
         ("2.3.2", "KA4 BK4.3 / KA9 BK9.1 · Art. 74(1)(a)(ii) / 94(3) CPR",
          "Wurden die Leistungen (deliverables) in Übereinstimmung mit der VKO-Methodik erbracht?",
          ["erstattete Ausgaben", "Belege für erbrachte Leistungen"],
@@ -346,7 +346,7 @@ PARTS = [
 CONCLUSION = (
     "Schlussfolgerung: Entsprechen die VKO-Methodik und ihre Anwendung den "
     "regulatorischen Anforderungen? Die Prüfer schließen, ob die vereinfachten "
-    "Kostenoptionen (Pauschalsätze, Pauschalbeträge, Einheitskosten) nach einer "
+    "Kostenoptionen (Pauschalsätze, Pauschalbeträge, Kosten je Einheit) nach einer "
     "fairen, gerechten und nachprüfbaren Methode (Art. 53 CPR) festgelegt und "
     "rechtmäßig und ordnungsgemäß angewandt wurden (Hauptfeststellungen bitte "
     "angeben)."
@@ -388,7 +388,7 @@ def run():
                 "Abschnitt 1 bewertet die VKO-Methodik (faire, gerechte und "
                 "nachprüfbare Methode, Entwurfsbudget, Unions-/mitgliedstaatliche "
                 "Methoden, delegierter Rechtsakt, Stundensätze), Abschnitt 2 die "
-                "Anwendung auf Pauschalsätze, Einheitskosten und Pauschalbeträge. "
+                "Anwendung auf Pauschalsätze, Kosten je Einheit und Pauschalbeträge. "
                 "Englisches Original siehe Quelldokument."
             ),
             source_language="en",

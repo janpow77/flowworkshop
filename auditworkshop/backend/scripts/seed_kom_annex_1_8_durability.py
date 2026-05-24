@@ -70,7 +70,7 @@ PARTS = [
          "Der Prüfer sollte diesen Punkt anhand der beiden nachfolgenden Fragen beurteilen."),
         ("1.1.1", "KA2 BK2.4 · Art. 63(1) und 73(2) CPR",
          "Beruht das Vorhaben auf einer Machbarkeitsstudie (Planungen) / Bedarfsanalyse / Bedarfsermittlung, die nach den geltenden Rechtsvorschriften erstellt und genehmigt wurde?",
-         ["Aufruf zur Einreichung von Vorschlägen / Ausschreibungsunterlagen", "Projektantrag / Anlagen usw."],
+         ["Aufforderung zur Einreichung von Vorschlägen / Ausschreibungsunterlagen", "Projektantrag / Anlagen usw."],
          "Der Prüfer sollte überprüfen, ob die Verwaltungsbehörde / zwischengeschaltete Stelle festgestellt hat, welche spezifischen Vorschriften / Anforderungen auf das geprüfte Vorhaben / die geprüfte Investition anzuwenden sind, und ob diese eingehalten wurden."),
         ("1.1.2", "KA2 BK2.4 · Art. 63(1) CPR",
          "Wurden alle erforderlichen Genehmigungen eingeholt?",
@@ -86,7 +86,7 @@ PARTS = [
          "Der Prüfer sollte überprüfen, ob die Verwaltungsbehörde / zwischengeschaltete Stelle prüft, dass die Begünstigten über ausreichende technische und administrative Kapazitäten zur Durchführung und Aufrechterhaltung des Vorhabens verfügen (z. B. angemessene finanzielle Mittel / erforderliche Genehmigungen / Personal mit dem nötigen Fachwissen zur Aufrechterhaltung des Vorhabens nach dessen Durchführung). Stimmt der Prüfer der Bewertung zu?"),
         ("1.4", "KA2 BK2.2 · KA3 BK3.1 und BK3.3 · Art. 63, 65 und 73(3) CPR",
          "Enthält die Fördervereinbarung Auflagen zum Betrieb und zur Instandhaltung der Investitionen?",
-         ["Fördervereinbarung", "Vertrag", "sonstiges Dokument zu den Förderbedingungen usw."],
+         ["Fördervereinbarung", "Vertrag", "sonstiges Dokument zu den Bedingungen für die Unterstützung usw."],
          "Der Prüfer sollte überprüfen, ob die Anforderungen an die Dauerhaftigkeit in der Fördervereinbarung klar beschrieben sind. Bei Investitionen in Infrastruktur oder produktiven Investitionen muss die / der Begünstigte die Investition während 5 Jahren ab der Abschlusszahlung an die / den Begünstigten oder innerhalb der nach den Beihilfevorschriften festgelegten Frist (falls anwendbar) aufrechterhalten. Der Mitgliedstaat kann die im ersten Unterabsatz genannte Frist auf 3 Jahre verkürzen, wenn es um die Aufrechterhaltung von Investitionen oder von durch KMU geschaffenen Arbeitsplätzen geht. Aus dem ESF+ geförderte Vorhaben müssen die Förderung zurückzahlen, wenn sie nach den Beihilfevorschriften einer Verpflichtung zur Aufrechterhaltung der Investition unterliegen."),
     ]),
     ("Teil 2 — Qualität und Überwachung während der Durchführung", [

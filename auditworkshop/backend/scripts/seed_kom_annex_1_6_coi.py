@@ -324,7 +324,7 @@ PARTS = [
                      "Spezifikationen ähneln sehr stark dem Produkt oder den Leistungen des erfolgreichen Bieters, insbesondere wenn sie sehr spezifische Anforderungen enthalten, die nur wenige Bieter erfüllen könnten;",
                      "Beschränkungen und Kontrolle geschäftlicher oder NRO-Tätigkeiten vor und nach der Beschäftigung;",
                      "Begünstigter wurde unmittelbar vor der Antragstellung auf die Zuwendung gegründet;",
-                     "wenige Antragsteller oder weniger Antragsteller als erwartet bei einem Aufruf zur Einreichung von Vorschlägen/Angeboten;",
+                     "wenige Antragsteller oder weniger Antragsteller als erwartet bei einer Aufforderung zur Einreichung von Vorschlägen/Angeboten;",
                      "Fälle mit nur einem einzigen Bieter;",
                      "dasselbe Unternehmen gewinnt wiederholt aufeinanderfolgende Aufträge;",
                      "mangelhafte Vertragserfüllung führt nicht zur Anwendung von Vertragsstrafen oder zum Ausschluss des Auftragnehmers/Dienstleisters von weiteren Aufträgen;",
