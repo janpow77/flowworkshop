@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, ClipboardCheck, FileText, Languages, Users, AlertCircle, Wrench, Hash,
+  ArrowLeft, ClipboardCheck, FileText, Languages, Users, AlertCircle, Hash,
+  Eye, Pencil, MessageSquare,
 } from 'lucide-react';
 import { getChecklistTemplate, type ChecklistTemplateDetail } from '../lib/api';
 import { Skeleton } from '../components/ui/Skeleton';
+import TreeEditor from '../components/checklist/TreeEditor';
+import { canComment, canEdit, normRole, ROLE_LABEL } from '../components/checklist/treeMeta';
 
 function normStatus(raw: string): 'draft' | 'published' | 'archived' {
   const s = (raw || '').toLowerCase();
@@ -18,13 +21,6 @@ const STATUS_META: Record<'draft' | 'published' | 'archived', { label: string; c
   published: { label: 'Veröffentlicht', cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
   archived: { label: 'Archiviert', cls: 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300' },
 };
-
-function formatDate(value: string | null): string {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
 
 function Prop({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -52,8 +48,19 @@ export default function ChecklistDetailPage() {
     return () => { cancelled = true; };
   }, [id]);
 
+  const role = normRole(tpl?.my_role);
+  const editable = canEdit(role);
+  const commentable = canComment(role);
+
+  const RoleIcon = editable ? Pencil : commentable ? MessageSquare : Eye;
+  const roleHint = editable
+    ? 'Sie können Struktur und Inhalte bearbeiten.'
+    : commentable
+      ? 'Sie können nur öffentliche Bemerkungen pflegen.'
+      : 'Schreibgeschützte Ansicht.';
+
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <button
         type="button"
         onClick={() => navigate('/checklisten')}
@@ -69,6 +76,7 @@ export default function ChecklistDetailPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
           </div>
+          <Skeleton className="h-64 w-full" />
         </div>
       ) : error ? (
         <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">
@@ -80,19 +88,29 @@ export default function ChecklistDetailPage() {
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>
               <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-white">
-                <ClipboardCheck size={24} className="text-indigo-600 dark:text-indigo-400" />
+                <ClipboardCheck size={24} className="text-emerald-600 dark:text-emerald-400" />
                 {tpl.title}
               </h1>
               {tpl.description && (
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">{tpl.description}</p>
               )}
             </div>
-            <span className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_META[normStatus(tpl.status)].cls}`}>
-              {STATUS_META[normStatus(tpl.status)].label}
-            </span>
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_META[normStatus(tpl.status)].cls}`}>
+                {STATUS_META[normStatus(tpl.status)].label}
+              </span>
+              {role && (
+                <span
+                  title={roleHint}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  <RoleIcon size={13} /> {ROLE_LABEL[role]}
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Prop label="Quellsprache → Zielsprache">
               <span className="inline-flex items-center gap-1.5">
                 <Languages size={14} className="text-slate-400" />
@@ -111,6 +129,7 @@ export default function ChecklistDetailPage() {
                 {tpl.members.length}
               </span>
             </Prop>
+            <Prop label="Kategorien">{tpl.categories.length}</Prop>
             {tpl.source_document_name && (
               <Prop label="Quelldokument">
                 <span className="inline-flex items-center gap-1.5">
@@ -119,33 +138,41 @@ export default function ChecklistDetailPage() {
                 </span>
               </Prop>
             )}
-            {tpl.my_role && <Prop label="Meine Rolle">{tpl.my_role}</Prop>}
-            <Prop label="Kategorien">{tpl.categories.length}</Prop>
-            <Prop label="Erstellt">{formatDate(tpl.created_at)}</Prop>
-            <Prop label="Zuletzt geändert">{formatDate(tpl.updated_at)}</Prop>
           </div>
 
-          {tpl.categories.length > 0 && (
+          {tpl.members.length > 0 && (
             <div className="mb-6">
-              <h2 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Kategorien</h2>
+              <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                <Users size={15} /> Mitglieder &amp; Rollen
+              </h2>
               <div className="flex flex-wrap gap-2">
-                {tpl.categories.map((c) => (
-                  <span key={c.id} className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    {c.name}
-                  </span>
-                ))}
+                {tpl.members.map((m) => {
+                  const r = normRole(m.role);
+                  return (
+                    <span
+                      key={m.id}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                      title={[m.user_email, m.organization, m.bundesland].filter(Boolean).join(' · ')}
+                    >
+                      <span className="font-medium">{m.user_name || m.user_email || m.user_id}</span>
+                      <span className="text-slate-400">·</span>
+                      <span className="text-slate-500 dark:text-slate-400">{r ? ROLE_LABEL[r] : m.role}</span>
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          <div className="rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/50 px-5 py-8 text-center dark:border-indigo-900/50 dark:bg-indigo-950/20">
-            <Wrench size={32} className="mx-auto mb-3 text-indigo-400 dark:text-indigo-500" />
-            <p className="font-medium text-slate-700 dark:text-slate-200">Editor folgt</p>
-            <p className="mx-auto mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">
-              Der gemeinsame Treeview-Editor zum Bearbeiten und Diskutieren der Checklisten-Knoten
-              wird in einer späteren Ausbaustufe ergänzt.
-            </p>
-          </div>
+          {id && (
+            <TreeEditor
+              templateId={id}
+              canEdit={editable}
+              canComment={commentable}
+              initialAnswerSets={tpl.answer_sets}
+              initialCategories={tpl.categories}
+            />
+          )}
         </>
       ) : null}
     </div>

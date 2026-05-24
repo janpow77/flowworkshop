@@ -104,14 +104,14 @@ export default function ChecklistsPage() {
   }, [templates, statusFilter, langFilter, query, sortKey]);
 
   const selectCls =
-    'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200';
+    'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200';
 
   return (
     <div className="max-w-5xl mx-auto">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-white">
-            <ClipboardCheck size={24} className="text-indigo-600 dark:text-indigo-400" />
+            <ClipboardCheck size={24} className="text-emerald-600 dark:text-emerald-400" />
             Checklisten
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -129,7 +129,7 @@ export default function ChecklistsPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Titel oder Beschreibung suchen…"
             aria-label="Checklisten durchsuchen"
-            className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
           />
         </div>
 
@@ -211,10 +211,10 @@ export default function ChecklistsPage() {
               key={t.id}
               type="button"
               onClick={() => navigate(`/checklisten/${t.id}`)}
-              className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-5 text-left transition-colors hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-indigo-600"
+              className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-5 text-left transition-colors hover:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-600"
             >
               <div className="mb-2 flex items-start justify-between gap-3">
-                <h3 className="text-base font-semibold text-slate-900 group-hover:text-indigo-700 dark:text-white dark:group-hover:text-indigo-300">
+                <h3 className="text-base font-semibold text-slate-900 group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-300">
                   {t.title}
                 </h3>
                 <StatusBadge status={t.status} />

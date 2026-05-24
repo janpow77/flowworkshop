@@ -398,10 +398,111 @@ export interface ChecklistTemplateCategory {
   created_at: string | null;
 }
 
+// ── Knoten-Typen (rekursiver Baum) ────────────────────────────────────────────
+
+export type NodeType = 'HEADING' | 'QUESTION' | 'DECISION' | 'HINT';
+export type NodeBranch = 'JA' | 'NEIN';
+export type TemplateAnswerType =
+  | 'BOOLEAN' | 'BOOLEAN_JN' | 'CURRENCY' | 'DATE' | 'CUSTOM_ENUM' | 'TEXT';
+export type MemberRoleName = 'owner' | 'editor' | 'commenter' | 'viewer';
+
+export interface ChecklistNode {
+  id: string;
+  template_id: string;
+  parent_id: string | null;
+  node_type: NodeType;
+  branch: NodeBranch | null;
+  ja_label: string | null;
+  nein_label: string | null;
+  decision_parent_id: string | null;
+  sort_order: number;
+  title: string | null;
+  public_remark: string | null;
+  remark_snippets_json: unknown | null;
+  eingabetyp: number | null;
+  answer_type: TemplateAnswerType | null;
+  answer_set_id: string | null;
+  category_id: string | null;
+  legal_reference: string | null;
+  relevant_documents_json: unknown | null;
+  is_header_field: boolean;
+  source_text_en: string | null;
+  translated_text_de: string | null;
+  review_text_de: string | null;
+  translation_status: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ChecklistNodeTree extends ChecklistNode {
+  children: ChecklistNodeTree[];
+}
+
+export interface NodeCreatePayload {
+  parent_id?: string | null;
+  node_type?: NodeType;
+  branch?: NodeBranch | null;
+  ja_label?: string | null;
+  nein_label?: string | null;
+  decision_parent_id?: string | null;
+  sort_order?: number;
+  title?: string | null;
+  public_remark?: string | null;
+  eingabetyp?: number | null;
+  answer_type?: TemplateAnswerType | null;
+  answer_set_id?: string | null;
+  category_id?: string | null;
+  legal_reference?: string | null;
+  relevant_documents_json?: unknown | null;
+  is_header_field?: boolean;
+}
+
+export type NodeUpdatePayload = Partial<NodeCreatePayload>;
+
+export interface ChecklistAnswerOption {
+  id: string;
+  answer_set_id: string;
+  name: string;
+  sort_order: number;
+  is_standard: boolean;
+  is_entfaellt: boolean;
+  value_number: number | null;
+  threshold: number | null;
+  bemerkung: string | null;
+}
+
+export interface ChecklistAnswerSet {
+  id: string;
+  template_id: string | null;
+  name: string;
+  description: string | null;
+  sort_order: number;
+  created_at: string | null;
+  options: ChecklistAnswerOption[];
+}
+
+export interface AnswerOptionPayload {
+  name: string;
+  sort_order?: number;
+  is_standard?: boolean;
+  is_entfaellt?: boolean;
+  value_number?: number | null;
+  threshold?: number | null;
+  bemerkung?: string | null;
+}
+
+export interface ChecklistTemplateMemberDetail extends ChecklistTemplateMember {
+  user_name: string | null;
+  user_email: string | null;
+  organization: string | null;
+  bundesland: string | null;
+  function_role: string | null;
+}
+
 export interface ChecklistTemplateDetail extends ChecklistTemplate {
-  members: ChecklistTemplateMember[];
+  members: ChecklistTemplateMemberDetail[];
   categories: ChecklistTemplateCategory[];
-  answer_sets: unknown[];
+  answer_sets: ChecklistAnswerSet[];
 }
 
 // ── API-Funktionen ───────────────────────────────────────────────────────────
@@ -455,6 +556,74 @@ export const listChecklistTemplates = () =>
   request<ChecklistTemplate[]>('/checklist-templates/');
 export const getChecklistTemplate = (id: string) =>
   request<ChecklistTemplateDetail>(`/checklist-templates/${id}`);
+
+// Knoten-Baum + CRUD + Move
+export const getChecklistTree = (id: string) =>
+  request<ChecklistNodeTree[]>(`/checklist-templates/${id}/tree`);
+export const createChecklistNode = (id: string, data: NodeCreatePayload) =>
+  request<ChecklistNode>(`/checklist-templates/${id}/nodes`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+export const updateChecklistNode = (id: string, nodeId: string, data: NodeUpdatePayload) =>
+  request<ChecklistNode>(`/checklist-templates/${id}/nodes/${nodeId}`, {
+    method: 'PUT', body: JSON.stringify(data),
+  });
+export const deleteChecklistNode = (id: string, nodeId: string) =>
+  request<void>(`/checklist-templates/${id}/nodes/${nodeId}`, { method: 'DELETE' });
+export const moveChecklistNode = (
+  id: string, nodeId: string, data: { parent_id: string | null; sort_order: number },
+) =>
+  request<ChecklistNode>(`/checklist-templates/${id}/nodes/${nodeId}/move`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+
+// Mitglieder (angereichert) — fuer Rollen-Anzeige
+export const listChecklistMembers = (id: string) =>
+  request<ChecklistTemplateMemberDetail[]>(`/checklist-templates/${id}/members`);
+
+// Antwortsets: global + checklistenspezifisch
+export const listGlobalAnswerSets = () =>
+  request<ChecklistAnswerSet[]>('/checklist-templates/answer-sets');
+export const listTemplateAnswerSets = (id: string) =>
+  request<ChecklistAnswerSet[]>(`/checklist-templates/${id}/answer-sets`);
+export const createGlobalAnswerSet = (data: { name: string; description?: string | null; sort_order?: number; options?: AnswerOptionPayload[] }) =>
+  request<ChecklistAnswerSet>('/checklist-templates/answer-sets', {
+    method: 'POST', body: JSON.stringify(data),
+  });
+export const createTemplateAnswerSet = (id: string, data: { name: string; description?: string | null; sort_order?: number; options?: AnswerOptionPayload[] }) =>
+  request<ChecklistAnswerSet>(`/checklist-templates/${id}/answer-sets`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+export const updateAnswerSet = (setId: string, data: { name?: string; description?: string | null; sort_order?: number }) =>
+  request<ChecklistAnswerSet>(`/checklist-templates/answer-sets/${setId}`, {
+    method: 'PUT', body: JSON.stringify(data),
+  });
+export const deleteAnswerSet = (setId: string) =>
+  request<void>(`/checklist-templates/answer-sets/${setId}`, { method: 'DELETE' });
+export const addAnswerOption = (setId: string, data: AnswerOptionPayload) =>
+  request<ChecklistAnswerOption>(`/checklist-templates/answer-sets/${setId}/options`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+export const updateAnswerOption = (optionId: string, data: Partial<AnswerOptionPayload>) =>
+  request<ChecklistAnswerOption>(`/checklist-templates/answer-options/${optionId}`, {
+    method: 'PUT', body: JSON.stringify(data),
+  });
+export const deleteAnswerOption = (optionId: string) =>
+  request<void>(`/checklist-templates/answer-options/${optionId}`, { method: 'DELETE' });
+
+// Kategorien je Checkliste
+export const listChecklistCategories = (id: string) =>
+  request<ChecklistTemplateCategory[]>(`/checklist-templates/${id}/categories`);
+export const createChecklistCategory = (id: string, data: { name: string; sort_order?: number }) =>
+  request<ChecklistTemplateCategory>(`/checklist-templates/${id}/categories`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+export const updateChecklistCategory = (id: string, catId: string, data: { name?: string; sort_order?: number }) =>
+  request<ChecklistTemplateCategory>(`/checklist-templates/${id}/categories/${catId}`, {
+    method: 'PUT', body: JSON.stringify(data),
+  });
+export const deleteChecklistCategory = (id: string, catId: string) =>
+  request<void>(`/checklist-templates/${id}/categories/${catId}`, { method: 'DELETE' });
 
 // Knowledge
 export const getKnowledgeStats = () => request<KnowledgeStats>('/knowledge/stats');
