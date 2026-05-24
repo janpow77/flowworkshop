@@ -236,6 +236,24 @@ def _entry_out(entry: ChecklistNodeHistory, names: dict[str, str]) -> HistoryEnt
     )
 
 
+def _node_exists(template_id: str, node_id: str, db: Session) -> bool:
+    """Prueft, ob ein Knoten im Template (noch) existiert.
+
+    Wird beim Wiederanlegen eines geloeschten Knotens genutzt, um zu pruefen, ob
+    referenzierte Eltern-/Decision-Knoten noch vorhanden sind (F-005)."""
+    if not node_id:
+        return False
+    return (
+        db.query(ChecklistTemplateNode.id)
+        .filter(
+            ChecklistTemplateNode.id == node_id,
+            ChecklistTemplateNode.template_id == template_id,
+        )
+        .first()
+        is not None
+    )
+
+
 def _latest_node_version(template_id: str, node_id: str, db: Session) -> int:
     """Hoechste bisher vergebene node_version fuer einen Knoten (0 = keine)."""
     latest = (
@@ -435,6 +453,24 @@ def restore_history(
         for field in _NODE_TRACKED_FIELDS:
             if field in snapshot:
                 setattr(node, field, snapshot[field])
+        # F-005: Der im Snapshot hinterlegte parent_id kann auf einen inzwischen
+        # geloeschten Elternknoten zeigen. Der self-FK parent_id (ondelete=CASCADE)
+        # ist NICHT DEFERRABLE — PostgreSQL pruefte ihn schon beim INSERT und der
+        # Restore schluege mit FK-Verletzung (500) fehl. Existiert der Elternknoten
+        # nicht mehr, faellt der wiederhergestellte Knoten daher auf die Wurzel
+        # (parent_id=None) zurueck. Gleiches gilt fuer decision_parent_id, der
+        # ebenfalls auf einen Knoten desselben Templates verweist.
+        parent_id = getattr(node, "parent_id", None)
+        if parent_id and not _node_exists(template_id, parent_id, db):
+            log.warning(
+                "restore_history: Elternknoten %s fuer wiederhergestellten "
+                "Knoten %s existiert nicht mehr — faelt auf Wurzel zurueck.",
+                parent_id, entry.node_id,
+            )
+            node.parent_id = None
+        decision_parent_id = getattr(node, "decision_parent_id", None)
+        if decision_parent_id and not _node_exists(template_id, decision_parent_id, db):
+            node.decision_parent_id = None
         db.add(node)
         result_status = "recreated"
 

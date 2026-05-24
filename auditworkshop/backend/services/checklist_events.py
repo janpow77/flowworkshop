@@ -57,6 +57,13 @@ class ChecklistEventBroker:
         self._subscribers: dict[str, set[asyncio.Queue]] = {}
         # template_id → {user_id: {name, organization, bundesland, last_seen}}
         self._presence: dict[str, dict[str, dict]] = {}
+        # Verbindungs-Zaehler je (template_id, user_id). Ein Nutzer kann dieselbe
+        # Checkliste in mehreren Tabs/Geraeten offen haben — jede SSE-Verbindung
+        # zaehlt einzeln. Der Presence-Eintrag wird erst entfernt, wenn die
+        # LETZTE Verbindung schliesst (Zaehler faellt auf 0). Verhindert, dass das
+        # Schliessen eines von mehreren Tabs den Nutzer faelschlich verschwinden
+        # laesst (F-007).
+        self._conn_counts: dict[str, dict[str, int]] = {}
         # Referenz auf den Server-Event-Loop, gesetzt im Lifespan-Startup. Wird
         # fuer das threadsafe Einreihen aus Sync-Handlern benoetigt.
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -160,14 +167,44 @@ class ChecklistEventBroker:
         if entry is not None:
             entry["last_seen"] = _utcnow().isoformat()
 
-    def presence_leave(self, template_id: str, user_id: str) -> None:
-        """Entfernt einen Nutzer aus der Presence-Map."""
-        users = self._presence.get(template_id)
-        if not users:
-            return
-        users.pop(user_id, None)
-        if not users:
-            self._presence.pop(template_id, None)
+    def presence_connect(self, template_id: str, user_id: str) -> int:
+        """Registriert eine NEUE Verbindung (Tab/Geraet) des Nutzers.
+
+        Erhoeht den Verbindungs-Zaehler je ``(template_id, user_id)`` und liefert
+        den neuen Stand zurueck. Bei jedem SSE-Connect EINMAL aufrufen — die
+        Stammdaten werden weiterhin ueber ``presence_join`` gepflegt (idempotent).
+        """
+        counts = self._conn_counts.setdefault(template_id, {})
+        counts[user_id] = counts.get(user_id, 0) + 1
+        return counts[user_id]
+
+    def presence_leave(self, template_id: str, user_id: str) -> int:
+        """Meldet das Schliessen EINER Verbindung des Nutzers.
+
+        Verringert den Verbindungs-Zaehler. Erst wenn die letzte Verbindung
+        geschlossen wird (Zaehler 0), wird der Presence-Eintrag tatsaechlich
+        entfernt. So bleibt ein Nutzer praesent, solange noch mindestens ein Tab
+        offen ist (F-007). Liefert die Zahl der verbleibenden Verbindungen.
+        """
+        counts = self._conn_counts.get(template_id)
+        remaining = 0
+        if counts and user_id in counts:
+            remaining = counts[user_id] - 1
+            if remaining > 0:
+                counts[user_id] = remaining
+            else:
+                counts.pop(user_id, None)
+                if not counts:
+                    self._conn_counts.pop(template_id, None)
+
+        # Nur beim Schliessen der letzten Verbindung aus der Presence-Map nehmen.
+        if remaining <= 0:
+            users = self._presence.get(template_id)
+            if users:
+                users.pop(user_id, None)
+                if not users:
+                    self._presence.pop(template_id, None)
+        return max(remaining, 0)
 
     def presence_list(self, template_id: str) -> list[dict]:
         """Liefert die aktuell verbundenen Nutzer eines Templates als Liste."""

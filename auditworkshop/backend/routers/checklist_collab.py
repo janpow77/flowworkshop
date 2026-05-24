@@ -159,6 +159,10 @@ async def stream_events(
     # Zugriff pruefen (Mitglied oder veroeffentlichtes Template).
     _require_view_access(template_id, user_id, db)
 
+    # Neue Verbindung (Tab/Geraet) registrieren — Zaehler hoch. Der Presence-
+    # Eintrag bleibt bestehen, bis die letzte Verbindung schliesst (F-007).
+    broker.presence_connect(template_id, user_id)
+
     # Presence-Join mit Stammdaten aus der Session.
     broker.presence_join(
         template_id, user_id,

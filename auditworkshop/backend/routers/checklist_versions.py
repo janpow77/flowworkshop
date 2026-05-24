@@ -53,6 +53,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -60,8 +61,10 @@ from models.checklist_template import (
     ChecklistTemplate,
     ChecklistTemplateNode,
     ChecklistTemplateVersion,
+    ChecklistNodeHistory,
     ChecklistMember,
     MemberRole,
+    NodeChangeType,
     TemplateStatus,
 )
 from models.registration import Registration
@@ -610,6 +613,65 @@ def freeze_version(
 _RESTORE_FIELDS = _NODE_SNAPSHOT_FIELDS
 
 
+# Felder, die in den node-level Restore-Snapshot (ChecklistNodeHistory) eingehen.
+# Spiegelt die Tracked-Field-Liste der node-level CRUD-Pfade in
+# checklist_templates.py — bewusst lokal gehalten (keine Import-Kopplung). Quelle
+# der Wahrheit bleibt das Modell ChecklistTemplateNode.
+_HISTORY_SNAPSHOT_FIELDS = (
+    "parent_id", "node_type", "branch", "ja_label", "nein_label",
+    "decision_parent_id", "sort_order", "title", "public_remark",
+    "remark_snippets_json", "eingabetyp", "answer_type", "answer_set_id",
+    "category_id", "legal_reference", "relevant_documents_json", "is_header_field",
+)
+
+
+def _latest_node_versions(template_id: str, db: Session) -> dict[str, int]:
+    """Liefert je node_id die hoechste bisher vergebene node_version als Map.
+
+    Ein Aggregat-Query statt N Einzelabfragen, damit der Restore eines grossen
+    Baums nicht in ein N+1-Problem laeuft. Knoten ohne Historie fehlen in der
+    Map (gelten als 0)."""
+    rows = (
+        db.query(
+            ChecklistNodeHistory.node_id,
+            func.max(ChecklistNodeHistory.node_version),
+        )
+        .filter(ChecklistNodeHistory.template_id == template_id)
+        .group_by(ChecklistNodeHistory.node_id)
+        .all()
+    )
+    return {node_id: int(maxv or 0) for node_id, maxv in rows}
+
+
+def _write_restore_history(
+    *, db: Session, template_id: str, version: ChecklistTemplateVersion,
+    node: ChecklistTemplateNode, changed_by_id: str, node_version: int,
+) -> None:
+    """Schreibt einen node-level Verlaufseintrag ``restored`` fuer einen beim
+    Versions-Restore neu angelegten Knoten (F-009).
+
+    Macht den Ganz-Checklisten-Restore auf Knotenebene auditierbar — analog zu
+    den CREATED/UPDATED/DELETED-Eintraegen der node-level CRUD-Pfade. Wird in
+    derselben Transaktion wie der Restore committed."""
+    snapshot = {field: getattr(node, field, None) for field in _HISTORY_SNAPSHOT_FIELDS}
+    db.add(ChecklistNodeHistory(
+        id=str(uuid.uuid4()),
+        template_id=template_id,
+        node_id=node.id,
+        node_version=node_version,
+        change_type=NodeChangeType.RESTORED.value,
+        node_snapshot=snapshot,
+        changed_fields=None,
+        new_parent_id=getattr(node, "parent_id", None),
+        new_position=getattr(node, "sort_order", None),
+        changed_by_id=changed_by_id,
+        change_reason=(
+            f"Arbeitskopie aus Version {version.version_number} "
+            f"({version.id}) wiederhergestellt"
+        ),
+    ))
+
+
 class RestoreResult(BaseModel):
     """Ergebnis einer Wiederherstellung."""
     template_id: str
@@ -672,6 +734,11 @@ def restore_version(
         #    werden die Knoten hier explizit in Eltern-vor-Kind-Reihenfolge
         #    einsortiert. Nur Snapshot-Felder setzen, template_id erzwingen,
         #    fremde/unbekannte Felder ignorieren.
+        # Hoechste bisher vergebene node_version je Knoten EINMAL vorab laden
+        # (vor dem Loeschen der Knoten — die Historie bleibt erhalten), damit der
+        # Restore eines grossen Baums kein N+1-Problem erzeugt (F-009/F-011).
+        latest_versions = _latest_node_versions(template_id, db)
+
         ordered_ids = _topological_order(snapshot_nodes)
         restored = 0
         for nid in ordered_ids:
@@ -681,8 +748,15 @@ def restore_version(
             # node["id"]), template_id konsistent erzwingen.
             kwargs["id"] = nid
             kwargs["template_id"] = template_id
-            db.add(ChecklistTemplateNode(**kwargs))
+            new_node = ChecklistTemplateNode(**kwargs)
+            db.add(new_node)
             db.flush()  # FK je Knoten direkt pruefen — fail-fast bei Inkonsistenz
+            # F-009: node-level Verlaufseintrag 'restored' schreiben, damit der
+            # Ganz-Checklisten-Restore auf Knotenebene auditierbar ist.
+            _write_restore_history(
+                db=db, template_id=template_id, version=version, node=new_node,
+                changed_by_id=user_id, node_version=latest_versions.get(nid, 0) + 1,
+            )
             restored += 1
 
         tpl.current_version = version.version_number

@@ -205,7 +205,15 @@ def _invite_out(invite: ChecklistInvite, regs: dict[str, Registration]) -> Invit
 
 # ── Helfer: Serialisierung ────────────────────────────────────────────────────
 
-def _template_out(tpl: ChecklistTemplate, my_role: str | None) -> TemplateOut:
+def _template_out(
+    tpl: ChecklistTemplate, my_role: str | None, node_count: int | None = None,
+) -> TemplateOut:
+    """Serialisiert ein Template fuer die Ausgabe.
+
+    ``node_count`` kann von aussen vorgegeben werden (z.B. aus einer vorab
+    berechneten COUNT(*)-Aggregation in der Listenansicht, F-011); ohne Vorgabe
+    wird die Lazy-Beziehung ``tpl.nodes`` ausgewertet (Detailansicht, in der die
+    Knoten ohnehin geladen sind)."""
     return TemplateOut(
         id=tpl.id,
         owner_id=tpl.owner_id,
@@ -217,7 +225,7 @@ def _template_out(tpl: ChecklistTemplate, my_role: str | None) -> TemplateOut:
         properties_json=tpl.properties_json,
         statistics_json=tpl.statistics_json,
         status=tpl.status,
-        node_count=len(tpl.nodes),
+        node_count=node_count if node_count is not None else len(tpl.nodes),
         my_role=my_role,
         created_at=tpl.created_at,
         updated_at=tpl.updated_at,
@@ -387,7 +395,29 @@ def list_templates(request: Request, db: Session = Depends(get_db)):
         .order_by(ChecklistTemplate.updated_at.desc().nullslast())
         .all()
     )
-    return [_template_out(t, role_by_template.get(t.id)) for t in templates]
+
+    # F-011: Knotenzahl je Template per COUNT(*)-Aggregation in EINEM Query
+    # bestimmen, statt fuer jedes Template die komplette nodes-Beziehung zu laden
+    # (N+1 + grosse Ergebnismengen in der Uebersicht). Nur fuer die hier
+    # gelisteten Template-IDs.
+    template_ids = [t.id for t in templates]
+    node_counts: dict[str, int] = {}
+    if template_ids:
+        count_rows = (
+            db.query(
+                ChecklistTemplateNode.template_id,
+                func.count(ChecklistTemplateNode.id),
+            )
+            .filter(ChecklistTemplateNode.template_id.in_(template_ids))
+            .group_by(ChecklistTemplateNode.template_id)
+            .all()
+        )
+        node_counts = {tid: int(cnt or 0) for tid, cnt in count_rows}
+
+    return [
+        _template_out(t, role_by_template.get(t.id), node_count=node_counts.get(t.id, 0))
+        for t in templates
+    ]
 
 
 # ── Globale Antwortset-Bibliothek ─────────────────────────────────────────────
