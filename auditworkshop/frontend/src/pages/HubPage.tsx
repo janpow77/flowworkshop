@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   MessagesSquare, FolderArchive, CalendarDays, MapPin, ShieldAlert, BookOpen,
-  FlaskConical, Users, Bell,
+  FlaskConical, Users, Bell, ListChecks,
 } from 'lucide-react';
 
 interface HubStats {
@@ -61,6 +61,15 @@ const TILES = [
     href: '/sanktionslisten',
     gradient: 'from-rose-500/15 to-rose-500/5 border-rose-200 text-rose-700 dark:border-rose-900 dark:text-rose-200',
     indicator: (s: HubStats) => s.sanctions_updated ? `Stand ${s.sanctions_updated}` : 'EU FSF',
+  },
+  {
+    key: 'checklisten',
+    title: 'Checklisten',
+    description: 'Musterchecklisten verwalten, gemeinsam bearbeiten und diskutieren',
+    icon: ListChecks,
+    href: '/checklisten',
+    gradient: 'from-teal-500/15 to-teal-500/5 border-teal-200 text-teal-700 dark:border-teal-900 dark:text-teal-200',
+    indicator: () => 'Vorlagen',
   },
   {
     key: 'wissen',

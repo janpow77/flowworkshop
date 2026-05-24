@@ -360,6 +360,50 @@ export interface ReferenceRegistrySearchResponse {
   hits: ReferenceRegistryHit[];
 }
 
+// ── Checklisten-Templates (Designer) ──────────────────────────────────────────
+
+export type ChecklistTemplateStatus = 'draft' | 'published' | 'archived';
+
+export interface ChecklistTemplate {
+  id: string;
+  owner_id: string | null;
+  title: string;
+  description: string | null;
+  source_language: string;
+  target_language: string;
+  source_document_name: string | null;
+  properties_json: unknown | null;
+  statistics_json: unknown | null;
+  status: string;
+  node_count: number;
+  my_role: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ChecklistTemplateMember {
+  id: string;
+  template_id: string;
+  user_id: string;
+  role: string;
+  invited_by_id: string | null;
+  created_at: string | null;
+}
+
+export interface ChecklistTemplateCategory {
+  id: string;
+  template_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string | null;
+}
+
+export interface ChecklistTemplateDetail extends ChecklistTemplate {
+  members: ChecklistTemplateMember[];
+  categories: ChecklistTemplateCategory[];
+  answer_sets: unknown[];
+}
+
 // ── API-Funktionen ───────────────────────────────────────────────────────────
 
 // Projects
@@ -405,6 +449,12 @@ export const editRemark = (qId: string, remarkText: string) =>
     method: 'PUT',
     body: JSON.stringify({ remark_text: remarkText }),
   });
+
+// Checklisten-Templates (Designer)
+export const listChecklistTemplates = () =>
+  request<ChecklistTemplate[]>('/checklist-templates/');
+export const getChecklistTemplate = (id: string) =>
+  request<ChecklistTemplateDetail>(`/checklist-templates/${id}`);
 
 // Knowledge
 export const getKnowledgeStats = () => request<KnowledgeStats>('/knowledge/stats');

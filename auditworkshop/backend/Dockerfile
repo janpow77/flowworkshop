@@ -7,8 +7,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# --retries/--timeout: robust gegen instabile Verbindung (NUC/Wohnwagen).
+RUN pip install --no-cache-dir --retries 10 --timeout 300 -r requirements.txt
 
 COPY . .
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+RUN chmod +x /app/entrypoint.sh
+
+# Entrypoint wendet zuerst Alembic-Migrationen an (alembic upgrade head bzw.
+# stamp head bei bestehenden, noch nicht versionierten DBs) und startet dann
+# uvicorn. Siehe entrypoint.sh.
+ENTRYPOINT ["/app/entrypoint.sh"]

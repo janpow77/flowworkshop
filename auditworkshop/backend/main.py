@@ -16,6 +16,7 @@ from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
 from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum, automation
+from routers import checklist_templates
 from routers import docs as docs_router, notifications, state_aid, admin_access, mail_templates
 from routers import beneficiaries_sources
 from routers import entities as entities_router
@@ -48,10 +49,14 @@ async def lifespan(app: FastAPI):
     health_registry.mark_started()
     log.info("flowworkshop startet …")
 
-    # SQLAlchemy-Tabellen erstellen (workshop_*)
+    # Schema wird jetzt von Alembic verwaltet — entrypoint.sh fuehrt vor uvicorn
+    # `alembic upgrade head` aus (bzw. `stamp head` bei bestehenden, noch nicht
+    # versionierten DBs). Das fruehere `Base.metadata.create_all(bind=engine)`
+    # entfaellt damit. Die unten folgenden idempotenten ALTER-Bloecke sind auf
+    # korrektem Schema redundante No-ops und bleiben uebergangsweise als
+    # Sicherheitsnetz stehen (Cleanup: Seed-Init von Schema-Migration trennen).
     try:
-        Base.metadata.create_all(bind=engine)
-        log.info("SQLAlchemy-Tabellen erstellt/geprueft.")
+        log.info("Schema via Alembic verwaltet (create_all entfaellt).")
         # Access-Log: Behaltedauer-Hinweis (Pruning laeuft im Scheduler)
         from services.scheduler import WORKSHOP_ACCESS_LOG_TTL_DAYS as _ACL_TTL
         log.info(
@@ -878,6 +883,8 @@ app.include_router(system.router)
 # Neue CRUD + Assessment Router
 app.include_router(projects.router)
 app.include_router(checklists.router)
+# KOM-Checklisten-Template-Subsystem (Designer, projekt-ungebunden)
+app.include_router(checklist_templates.router)
 app.include_router(assessment.router)
 app.include_router(demo_data.router)
 app.include_router(dataframes.router)
