@@ -127,6 +127,9 @@ export default function App() {
                 ? <LazyPage><HubPage /></LazyPage>
                 : <LazyPage><HomePage /></LazyPage>
             } />
+            {/* Stabile Kachel-Uebersicht (Hub) — unabhaengig von der Phase,
+                Ziel der "Zurueck zur Uebersicht"-Links aus dem Checklisten-Designer. */}
+            <Route path="/hub" element={<LazyPage><HubPage /></LazyPage>} />
             <Route path="/account" element={<LazyPage><AccountPage /></LazyPage>} />
             <Route path="/scenario/:id" element={<LazyPage><ScenarioPage /></LazyPage>} />
             <Route path="/projects" element={<LazyPage><ProjectsPage /></LazyPage>} />

@@ -50,6 +50,7 @@ from schemas.checklist_template import (
     MemberOut, InviteOut, InviteCreate, MemberRoleUpdate,
 )
 from routers.auth import require_session
+from services.checklist_events import broker as _collab_broker
 
 router = APIRouter(
     prefix="/api/checklist-templates",
@@ -235,6 +236,14 @@ _NODE_TRACKED_FIELDS = (
 def _node_snapshot(node: ChecklistTemplateNode) -> dict:
     """Voll-Snapshot eines Knotens als JSON-faehiges Dict."""
     return {field: getattr(node, field) for field in _NODE_TRACKED_FIELDS}
+
+
+def _node_event_payload(node: ChecklistTemplateNode) -> dict:
+    """Kompakte, JSON-faehige Knoten-Darstellung fuer Live-Events (SSE).
+
+    Enthaelt id + template_id zusaetzlich zum Snapshot, damit das Frontend den
+    betroffenen Knoten eindeutig zuordnen kann."""
+    return {"id": node.id, "template_id": node.template_id, **_node_snapshot(node)}
 
 
 def _latest_node_version(template_id: str, node_id: str, db: Session) -> int:
@@ -937,6 +946,10 @@ def create_node(
     )
     db.commit()
     db.refresh(node)
+    # Live-Update an verbundene SSE-Clients.
+    _collab_broker.publish(template_id, {
+        "type": "node_created", "user_id": user_id, "node": _node_event_payload(node),
+    })
     return NodeOut.model_validate(node)
 
 
@@ -984,6 +997,12 @@ def update_node(
         )
     db.commit()
     db.refresh(node)
+    # Live-Update an verbundene SSE-Clients (nur wenn sich etwas geaendert hat).
+    if diff:
+        _collab_broker.publish(template_id, {
+            "type": "node_updated", "user_id": user_id,
+            "node": _node_event_payload(node), "changed_fields": list(diff.keys()),
+        })
     return NodeOut.model_validate(node)
 
 
@@ -1009,6 +1028,11 @@ def delete_node(
     )
     db.delete(node)
     db.commit()
+    # Live-Update an verbundene SSE-Clients.
+    _collab_broker.publish(template_id, {
+        "type": "node_deleted", "user_id": user_id, "node_id": node_id,
+        "template_id": template_id,
+    })
 
 
 @router.post("/{template_id}/nodes/{node_id}/move", response_model=NodeOut)
@@ -1046,6 +1070,11 @@ def move_node(
     )
     db.commit()
     db.refresh(node)
+    # Live-Update an verbundene SSE-Clients.
+    _collab_broker.publish(template_id, {
+        "type": "node_moved", "user_id": user_id, "node": _node_event_payload(node),
+        "old_parent_id": old_parent, "new_parent_id": node.parent_id,
+    })
     return NodeOut.model_validate(node)
 
 

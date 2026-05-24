@@ -6,10 +6,10 @@
  * schreibgeschuetzt. Speichern via PUT (update_node).
  */
 import { useEffect, useState } from 'react';
-import { Save, X, Loader2, AlertCircle } from 'lucide-react';
+import { Save, X, Loader2, AlertCircle, Lock } from 'lucide-react';
 import type {
   ChecklistAnswerSet, ChecklistNodeTree, ChecklistTemplateCategory,
-  NodeType, NodeUpdatePayload, TemplateAnswerType,
+  CollabLockConflict, NodeType, NodeUpdatePayload, TemplateAnswerType,
 } from '../../lib/api';
 import {
   ANSWER_TYPE_LABEL, ANSWER_TYPE_ORDER, EINGABETYP_OPTIONS,
@@ -24,6 +24,14 @@ interface NodeInspectorProps {
   canComment: boolean;
   onSave: (nodeId: string, patch: NodeUpdatePayload) => Promise<void>;
   onClose: () => void;
+  /**
+   * Belegt, wenn der Knoten gerade von einer ANDEREN Person bearbeitet wird
+   * (Lock konnte nicht erworben werden). Dann ist das Formular schreibgeschuetzt
+   * und das Speichern blockiert.
+   */
+  lockedByOther?: CollabLockConflict | null;
+  /** True, solange der Lock erworben/geprueft wird (kurzes Sperren des Speichern-Buttons). */
+  lockPending?: boolean;
 }
 
 interface FormState {
@@ -65,7 +73,10 @@ const labelCls =
   'mb-1 block text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500';
 
 export default function NodeInspector(props: NodeInspectorProps) {
-  const { node, answerSets, categories, canEdit, canComment, onSave, onClose } = props;
+  const {
+    node, answerSets, categories, canEdit, canComment, onSave, onClose,
+    lockedByOther, lockPending,
+  } = props;
   const [form, setForm] = useState<FormState>(() => toForm(node));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -82,9 +93,13 @@ export default function NodeInspector(props: NodeInspectorProps) {
     setDirty(true);
   };
 
+  // Lock eines anderen Nutzers macht das Formular vollstaendig schreibgeschuetzt.
+  const locked = !!lockedByOther;
   // Kommentator darf nur die oeffentliche Bemerkung aendern.
-  const remarkOnly = canComment && !canEdit;
-  const readOnly = !canEdit && !canComment;
+  const remarkOnly = canComment && !canEdit && !locked;
+  const readOnly = (!canEdit && !canComment) || locked;
+  // Effektives „darf Strukturfelder bearbeiten" — durch Lock blockierbar.
+  const fieldsEditable = canEdit && !locked;
   const isDecision = form.node_type === 'DECISION';
 
   const handleSave = async () => {
@@ -147,7 +162,13 @@ export default function NodeInspector(props: NodeInspectorProps) {
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-        {readOnly && (
+        {locked && (
+          <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            <Lock size={14} />
+            Wird gerade von {lockedByOther?.locked_by_name || 'einer anderen Person'} bearbeitet — schreibgeschützt.
+          </div>
+        )}
+        {readOnly && !locked && (
           <div className="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <AlertCircle size={14} /> Nur-Lese-Ansicht — Ihre Rolle erlaubt keine Änderungen.
           </div>
@@ -165,7 +186,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
             rows={2}
             className={fieldCls}
             value={form.title}
-            disabled={!canEdit}
+            disabled={!fieldsEditable}
             onChange={(e) => set('title', e.target.value)}
           />
         </div>
@@ -177,7 +198,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
               id="ni-type"
               className={fieldCls}
               value={form.node_type}
-              disabled={!canEdit}
+              disabled={!fieldsEditable}
               onChange={(e) => set('node_type', e.target.value as NodeType)}
             >
               {NODE_TYPE_ORDER.map((t) => (
@@ -191,7 +212,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
               id="ni-answertype"
               className={fieldCls}
               value={form.answer_type}
-              disabled={!canEdit}
+              disabled={!fieldsEditable}
               onChange={(e) => set('answer_type', e.target.value as TemplateAnswerType | '')}
             >
               <option value="">—</option>
@@ -209,7 +230,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
               id="ni-eingabetyp"
               className={fieldCls}
               value={form.eingabetyp}
-              disabled={!canEdit}
+              disabled={!fieldsEditable}
               onChange={(e) => set('eingabetyp', e.target.value === '' ? '' : Number(e.target.value))}
             >
               <option value="">—</option>
@@ -224,7 +245,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
               id="ni-answerset"
               className={fieldCls}
               value={form.answer_set_id}
-              disabled={!canEdit}
+              disabled={!fieldsEditable}
               onChange={(e) => set('answer_set_id', e.target.value)}
             >
               <option value="">— keines —</option>
@@ -243,7 +264,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
             id="ni-category"
             className={fieldCls}
             value={form.category_id}
-            disabled={!canEdit}
+            disabled={!fieldsEditable}
             onChange={(e) => set('category_id', e.target.value)}
           >
             <option value="">— keine —</option>
@@ -262,7 +283,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
                 rows={2}
                 className={fieldCls}
                 value={form.ja_label}
-                disabled={!canEdit}
+                disabled={!fieldsEditable}
                 onChange={(e) => set('ja_label', e.target.value)}
               />
             </div>
@@ -273,7 +294,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
                 rows={2}
                 className={fieldCls}
                 value={form.nein_label}
-                disabled={!canEdit}
+                disabled={!fieldsEditable}
                 onChange={(e) => set('nein_label', e.target.value)}
               />
             </div>
@@ -287,7 +308,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
             rows={2}
             className={fieldCls}
             value={form.legal_reference}
-            disabled={!canEdit}
+            disabled={!fieldsEditable}
             placeholder="z. B. Art. 74 Abs. 2 lit. a VO (EU) 2021/1060"
             onChange={(e) => set('legal_reference', e.target.value)}
           />
@@ -300,7 +321,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
             rows={3}
             className={fieldCls}
             value={form.relevant_documents}
-            disabled={!canEdit}
+            disabled={!fieldsEditable}
             placeholder={'Förderbescheid\nVerwendungsnachweis\n…'}
             onChange={(e) => set('relevant_documents', e.target.value)}
           />
@@ -326,10 +347,15 @@ export default function NodeInspector(props: NodeInspectorProps) {
               <AlertCircle size={14} /> {error}
             </div>
           )}
+          {lockPending && (
+            <div className="mb-2 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <Loader2 size={14} className="animate-spin" /> Bearbeitungssperre wird gesetzt…
+            </div>
+          )}
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving || !dirty}
+            disabled={saving || !dirty || lockPending}
             className="flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:bg-slate-300 dark:disabled:bg-slate-700"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}

@@ -7,8 +7,8 @@
  * Kinder werden nach Zweig (JA/NEIN) in farbig umrandete Bereiche gruppiert.
  * Strukturaenderung per nativem HTML5-Drag&Drop und Rechtsklick-Kontextmenue.
  */
-import { ChevronRight, Scale, FileText } from 'lucide-react';
-import type { ChecklistNodeTree, NodeBranch } from '../../lib/api';
+import { ChevronRight, Scale, FileText, Lock } from 'lucide-react';
+import type { ChecklistNodeTree, CollabNodeLock, NodeBranch } from '../../lib/api';
 import { NODE_TYPE_META } from './treeMeta';
 
 export type DropPosition = 'before' | 'after' | 'inside';
@@ -47,6 +47,8 @@ interface TreeNodeProps extends TreeNodeActions {
   query: string;
   canEdit: boolean;
   drag: DragState;
+  /** node_id → Lock-Halter (NUR Locks ANDERER Nutzer). */
+  locks: Map<string, CollabNodeLock>;
 }
 
 function matchesQuery(node: ChecklistNodeTree, q: string): boolean {
@@ -57,10 +59,13 @@ function matchesQuery(node: ChecklistNodeTree, q: string): boolean {
 
 export default function TreeNode(props: TreeNodeProps) {
   const {
-    node, depth, number, selectedId, expanded, query, canEdit, drag,
+    node, depth, number, selectedId, expanded, query, canEdit, drag, locks,
     onSelect, onToggle, onContextMenu,
     onDragStart, onDragOverNode, onDropNode, onDragEnd,
   } = props;
+
+  // Lock eines ANDEREN Nutzers auf diesen Knoten (oder undefined).
+  const lock = locks.get(node.id);
 
   const meta = NODE_TYPE_META[node.node_type] ?? NODE_TYPE_META.QUESTION;
   const Icon = meta.icon;
@@ -164,6 +169,18 @@ export default function TreeNode(props: TreeNodeProps) {
             <FileText size={12} className="hidden shrink-0 text-slate-400 lg:inline" aria-label="Belege hinterlegt" />
           )}
         </button>
+
+        {/* Lock-Badge: wird von einer ANDEREN Person bearbeitet */}
+        {lock && (
+          <span
+            className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+            title={`Wird von ${lock.locked_by_name || 'einer anderen Person'} bearbeitet`}
+            aria-label={`Wird von ${lock.locked_by_name || 'einer anderen Person'} bearbeitet`}
+          >
+            <Lock size={11} />
+            <span className="hidden max-w-[120px] truncate sm:inline">{lock.locked_by_name || 'gesperrt'}</span>
+          </span>
+        )}
       </div>
 
       {/* Drop-Indicator „danach" */}

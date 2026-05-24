@@ -13,15 +13,17 @@
  *  - Natives HTML5-Drag&Drop verschiebt Knoten (vor/nach/hinein) mit Drop-
  *    Indikatoren; Zyklen (Drop auf eigene Nachfahren) werden verhindert.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, Search, ChevronsDownUp, ChevronsUpDown, ListChecks, Tags,
   Loader2, AlertCircle, FolderTree, RefreshCw,
 } from 'lucide-react';
 import {
-  createChecklistNode, deleteChecklistNode, getChecklistTree, moveChecklistNode,
-  updateChecklistNode,
-  type ChecklistAnswerSet, type ChecklistNodeTree, type ChecklistTemplateCategory,
+  acquireNodeLock, createChecklistNode, deleteChecklistNode, getChecklistTree,
+  moveChecklistNode, releaseNodeLock, updateChecklistNode,
+  LockConflictError,
+  type ChecklistAnswerSet, type ChecklistNode, type ChecklistNodeTree,
+  type ChecklistTemplateCategory, type CollabLockConflict,
   type NodeBranch, type NodeCreatePayload, type NodeType, type NodeUpdatePayload,
 } from '../../lib/api';
 import TreeNode, { type DragState, type DropPosition } from './TreeNode';
@@ -29,6 +31,8 @@ import NodeInspector from './NodeInspector';
 import AnswerSetManager from './AnswerSetManager';
 import CategoryManager from './CategoryManager';
 import NodeContextMenu from './NodeContextMenu';
+import PresenceBar from './PresenceBar';
+import { useChecklistCollab, type RemoteNodeEvent } from './useChecklistCollab';
 import {
   allNodeIds, countNodes, findContext, findNode, insertNode, isDescendantOrSelf,
   moveNodeLocal, nextSortOrder, removeNode, replaceNode,
@@ -39,9 +43,14 @@ interface TreeEditorProps {
   templateId: string;
   canEdit: boolean;
   canComment: boolean;
+  /** Eigene Nutzerkennung — fuer Presence-Markierung und Event-Filterung. */
+  ownUserId: string | null;
   initialAnswerSets: ChecklistAnswerSet[];
   initialCategories: ChecklistTemplateCategory[];
 }
+
+// Lock-Erneuerung: alle 40s, sicher unterhalb der 60s-TTL des Backends.
+const LOCK_RENEW_MS = 40000;
 
 interface MenuState {
   node: ChecklistNodeTree;
@@ -52,7 +61,7 @@ interface MenuState {
 const EMPTY_DRAG: DragState = { dragId: null, overId: null, position: 'before', invalid: false };
 
 export default function TreeEditor({
-  templateId, canEdit, canComment, initialAnswerSets, initialCategories,
+  templateId, canEdit, canComment, ownUserId, initialAnswerSets, initialCategories,
 }: TreeEditorProps) {
   const [tree, setTree] = useState<ChecklistNodeTree[]>([]);
   const [answerSets, setAnswerSets] = useState<ChecklistAnswerSet[]>(initialAnswerSets);
@@ -74,6 +83,70 @@ export default function TreeEditor({
   const treeRef = useRef<ChecklistNodeTree[]>([]);
   treeRef.current = tree;
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Kollaboration: Lock-Zustand fuer den geoeffneten Inspector ───────────────
+  // Konflikt-Infos, wenn der ausgewaehlte Knoten von einer anderen Person
+  // gelockt ist (Inspector wird dann read-only). lockPending = Erwerb laeuft.
+  const [lockConflict, setLockConflict] = useState<CollabLockConflict | null>(null);
+  const [lockPending, setLockPending] = useState(false);
+  // node_id, fuer den wir aktuell selbst einen Lock halten (zum Freigeben).
+  const heldLockRef = useRef<string | null>(null);
+
+  /**
+   * Wendet ein FREMDES Knoten-Event auf den lokalen Baum an. Idempotent: ein
+   * bereits vorhandener Knoten wird bei node_created nicht dupliziert. Eigene
+   * Events filtert bereits der Hook (user_id == ownUserId) heraus.
+   */
+  const applyRemoteNode = useCallback((ev: RemoteNodeEvent) => {
+    setTree((prev) => {
+      switch (ev.type) {
+        case 'node_created': {
+          const n = ev.node as ChecklistNode;
+          if (findNode(prev, n.id)) {
+            // Schon vorhanden (z. B. doppelt zugestellt) — nur Felder angleichen.
+            return replaceNode(prev, n.id, n as Partial<ChecklistNodeTree>);
+          }
+          const tn: ChecklistNodeTree = { ...n, children: [] };
+          return insertNode(prev, n.parent_id ?? null, tn);
+        }
+        case 'node_updated': {
+          const n = ev.node as ChecklistNode;
+          if (!findNode(prev, n.id)) return prev;
+          // Kinder bewusst NICHT ueberschreiben (Event traegt keine children).
+          const { ...patch } = n;
+          return replaceNode(prev, n.id, patch as Partial<ChecklistNodeTree>);
+        }
+        case 'node_moved': {
+          const n = ev.node as ChecklistNode;
+          if (!findNode(prev, n.id)) return prev;
+          if (n.parent_id) {
+            setExpanded((exp) => (exp.has(n.parent_id!) ? exp : new Set(exp).add(n.parent_id!)));
+          }
+          return moveNodeLocal(prev, n.id, {
+            parent_id: n.parent_id ?? null,
+            sort_order: n.sort_order ?? 0,
+            branch: n.branch,
+            decision_parent_id: n.decision_parent_id ?? null,
+          });
+        }
+        case 'node_deleted': {
+          if (!findNode(prev, ev.node_id)) return prev;
+          return removeNode(prev, ev.node_id);
+        }
+        default:
+          return prev;
+      }
+    });
+  }, []);
+
+  // SSE-Verbindung: erst aktiv, wenn die eigene Nutzerkennung geladen ist (damit
+  // eigene Events korrekt gefiltert werden koennen).
+  const { presence, locks, conn } = useChecklistCollab({
+    templateId,
+    ownUserId,
+    enabled: !!ownUserId,
+    onRemoteNode: applyRemoteNode,
+  });
 
   /** Zeigt einen kurzen, selbst-verschwindenden Hinweis (Fehler-Rollback). */
   const flashNotice = (msg: string) => {
@@ -105,12 +178,99 @@ export default function TreeEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId]);
 
+  // ── Lock-Lebenszyklus: solange ein Knoten zum Bearbeiten ausgewaehlt ist ─────
+  // Beim Auswaehlen Lock erwerben; alle ~40s erneuern (gegen 60s-TTL); beim
+  // Abwaehlen/Unmount best-effort freigeben. Viewer/Kommentatoren locken nicht.
+  useEffect(() => {
+    // Konflikt-/Pending-Anzeige bei jedem Wechsel zuruecksetzen.
+    setLockConflict(null);
+    setLockPending(false);
+
+    if (!selectedId || !canEdit || !ownUserId) {
+      return;
+    }
+    const nodeId = selectedId;
+    let cancelled = false;
+    let renewTimer: ReturnType<typeof setInterval> | null = null;
+
+    const acquire = async (initial: boolean) => {
+      try {
+        await acquireNodeLock(templateId, nodeId);
+        if (cancelled) return;
+        heldLockRef.current = nodeId;
+        setLockConflict(null);
+      } catch (e) {
+        if (cancelled) return;
+        if (e instanceof LockConflictError) {
+          // Ein anderer haelt den Lock — Inspector read-only. Das Renew-Intervall
+          // laeuft bewusst WEITER und versucht den Erwerb periodisch erneut; gibt
+          // der andere frei, wird der Knoten wieder bearbeitbar (Lock + Renewal).
+          setLockConflict(e.conflict);
+          heldLockRef.current = null;
+        } else if (initial) {
+          // Andere Fehler (Netz/Recht) leise hinnehmen — read-only-Fallback ohne
+          // explizite Sperre; Speichern scheitert dann serverseitig kontrolliert.
+          heldLockRef.current = null;
+        }
+      } finally {
+        if (!cancelled && initial) setLockPending(false);
+      }
+    };
+
+    setLockPending(true);
+    void acquire(true);
+    renewTimer = setInterval(() => void acquire(false), LOCK_RENEW_MS);
+
+    return () => {
+      cancelled = true;
+      if (renewTimer) clearInterval(renewTimer);
+      // Best-effort-Freigabe (auch bei Unmount/Navigation).
+      if (heldLockRef.current === nodeId) {
+        heldLockRef.current = null;
+        void releaseNodeLock(templateId, nodeId).catch(() => { /* idempotent */ });
+      }
+    };
+  }, [selectedId, canEdit, ownUserId, templateId]);
+
+  // Wurde der Lock vom anderen Nutzer per lock_released-Event freigegeben (er
+  // verschwindet aus der Live-Lock-Map), versuchen wir den Erwerb erneut, damit
+  // der Inspector ohne Neuauswahl wieder bearbeitbar wird.
+  useEffect(() => {
+    if (!lockConflict || !selectedId || !canEdit || !ownUserId) return;
+    if (locks.has(selectedId)) return; // anderer haelt den Lock weiterhin
+    let cancelled = false;
+    setLockPending(true);
+    acquireNodeLock(templateId, selectedId)
+      .then(() => { if (!cancelled) { heldLockRef.current = selectedId; setLockConflict(null); } })
+      .catch((e) => { if (!cancelled && e instanceof LockConflictError) setLockConflict(e.conflict); })
+      .finally(() => { if (!cancelled) setLockPending(false); });
+    return () => { cancelled = true; };
+  }, [locks, lockConflict, selectedId, canEdit, ownUserId, templateId]);
+
   const q = query.trim().toLowerCase();
   const selectedNode = useMemo(
     () => (selectedId ? findNode(tree, selectedId) : null),
     [tree, selectedId],
   );
   const total = useMemo(() => countNodes(tree), [tree]);
+
+  // Effektiver Lock-Konflikt fuer den geoeffneten Knoten: entweder aus dem
+  // fehlgeschlagenen Lock-Erwerb (409) oder aus einem live eingetroffenen
+  // lock_acquired-Event eines anderen Nutzers in der Lock-Map.
+  const selectedConflict: CollabLockConflict | null = useMemo(() => {
+    if (lockConflict) return lockConflict;
+    if (!selectedId) return null;
+    const lk = locks.get(selectedId);
+    if (!lk) return null;
+    return {
+      message: 'Knoten wird gerade von einer anderen Person bearbeitet.',
+      locked_by_id: lk.locked_by_id,
+      locked_by_name: lk.locked_by_name,
+      organization: lk.organization ?? null,
+      bundesland: lk.bundesland ?? null,
+      expires_at: lk.expires_at,
+    };
+  }, [lockConflict, selectedId, locks]);
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
@@ -381,6 +541,11 @@ export default function TreeEditor({
         </div>
       )}
 
+      {/* Editor-Header: Presence-Leiste (wer ist gerade hier) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 lg:col-span-2">
+        <PresenceBar users={presence} ownUserId={ownUserId} conn={conn} />
+      </div>
+
       {/* Baum-Spalte */}
       <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
@@ -485,6 +650,7 @@ export default function TreeEditor({
                   query={q}
                   canEdit={canEdit}
                   drag={drag}
+                  locks={locks}
                   {...nodeActions}
                 />
               ))}
@@ -505,6 +671,8 @@ export default function TreeEditor({
             canComment={canComment}
             onSave={handleSaveNode}
             onClose={() => setSelectedId(null)}
+            lockedByOther={selectedConflict}
+            lockPending={lockPending}
           />
         ) : (
           <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center text-slate-400">
@@ -533,6 +701,8 @@ export default function TreeEditor({
               canComment={canComment}
               onSave={handleSaveNode}
               onClose={() => setSelectedId(null)}
+              lockedByOther={selectedConflict}
+              lockPending={lockPending}
             />
           </div>
         </div>

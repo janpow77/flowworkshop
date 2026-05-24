@@ -89,10 +89,10 @@ export default function ChecklistLayout() {
 
           <div className="flex items-center gap-2">
             <Link
-              to="/"
+              to="/hub"
               className="hidden items-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-800 sm:inline-flex"
             >
-              <ArrowLeft size={14} /> Zum Workshop
+              <ArrowLeft size={14} /> Zur Übersicht
             </Link>
             <button
               onClick={() => setDark(!dark)}
@@ -177,10 +177,10 @@ function ChecklistNav({
     <aside className={aside} aria-label="Checklisten-Navigation">
       <div className="flex items-center justify-between px-4 py-3">
         <Link
-          to="/"
+          to="/hub"
           className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
         >
-          <ArrowLeft size={13} /> Zurück zum Workshop
+          <ArrowLeft size={13} /> Zurück zur Übersicht
         </Link>
       </div>
       <div className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">

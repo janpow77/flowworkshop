@@ -17,6 +17,7 @@ from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
 from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum, automation
 from routers import checklist_templates
+from routers import checklist_collab
 from routers import docs as docs_router, notifications, state_aid, admin_access, mail_templates
 from routers import beneficiaries_sources
 from routers import entities as entities_router
@@ -48,6 +49,17 @@ async def lifespan(app: FastAPI):
     # ── Startup ────────────────────────────────────────────
     health_registry.mark_started()
     log.info("flowworkshop startet …")
+
+    # Checklisten-Kollaborations-Broker an den laufenden Event-Loop binden,
+    # damit synchrone Request-Handler ueber call_soon_threadsafe publizieren
+    # koennen (siehe services/checklist_events.py).
+    try:
+        import asyncio as _asyncio_bind
+        from services.checklist_events import broker as _checklist_broker
+        _checklist_broker.bind_loop(_asyncio_bind.get_running_loop())
+        log.info("Checklisten-Event-Broker an Event-Loop gebunden.")
+    except Exception as e:  # noqa: BLE001
+        log.warning("Checklisten-Event-Broker-Bindung fehlgeschlagen: %s", e)
 
     # Schema wird jetzt von Alembic verwaltet — entrypoint.sh fuehrt vor uvicorn
     # `alembic upgrade head` aus (bzw. `stamp head` bei bestehenden, noch nicht
@@ -885,6 +897,8 @@ app.include_router(projects.router)
 app.include_router(checklists.router)
 # KOM-Checklisten-Template-Subsystem (Designer, projekt-ungebunden)
 app.include_router(checklist_templates.router)
+# Hybrid-Kollaboration: Presence + Node-Locking + Live-Updates via SSE
+app.include_router(checklist_collab.router)
 app.include_router(assessment.router)
 app.include_router(demo_data.router)
 app.include_router(dataframes.router)

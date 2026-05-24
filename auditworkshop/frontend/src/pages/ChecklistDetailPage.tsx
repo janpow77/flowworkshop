@@ -4,7 +4,7 @@ import {
   ArrowLeft, ClipboardCheck, FileText, Users, AlertCircle, Hash,
   Eye, Pencil, MessageSquare,
 } from 'lucide-react';
-import { getChecklistTemplate, type ChecklistTemplateDetail } from '../lib/api';
+import { getChecklistTemplate, getMe, type ChecklistTemplateDetail } from '../lib/api';
 import { Skeleton } from '../components/ui/Skeleton';
 import TreeEditor from '../components/checklist/TreeEditor';
 import { canComment, canEdit, normRole, ROLE_LABEL } from '../components/checklist/treeMeta';
@@ -35,6 +35,7 @@ export default function ChecklistDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [tpl, setTpl] = useState<ChecklistTemplateDetail | null>(null);
+  const [ownUserId, setOwnUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -47,6 +48,16 @@ export default function ChecklistDetailPage() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [id]);
+
+  // Eigene Nutzerkennung — fuer Presence-Markierung und Filterung eigener
+  // SSE-Events (verhindert doppelte Anwendung optimistischer Updates).
+  useEffect(() => {
+    let cancelled = false;
+    getMe()
+      .then((s) => { if (!cancelled) setOwnUserId(s.user_id); })
+      .catch(() => { if (!cancelled) setOwnUserId(null); });
+    return () => { cancelled = true; };
+  }, []);
 
   const role = normRole(tpl?.my_role);
   const editable = canEdit(role);
@@ -163,6 +174,7 @@ export default function ChecklistDetailPage() {
               templateId={id}
               canEdit={editable}
               canComment={commentable}
+              ownUserId={ownUserId}
               initialAnswerSets={tpl.answer_sets}
               initialCategories={tpl.categories}
             />

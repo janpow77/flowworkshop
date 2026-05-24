@@ -505,6 +505,49 @@ export interface ChecklistTemplateDetail extends ChecklistTemplate {
   answer_sets: ChecklistAnswerSet[];
 }
 
+// ── Kollaboration (Presence + Node-Locking + Live-Updates via SSE) ───────────
+
+/** Aktuell ueber den SSE-Stream verbundener Nutzer (Presence-Registry). */
+export interface CollabPresenceUser {
+  user_id: string;
+  name: string | null;
+  organization: string | null;
+  bundesland: string | null;
+  last_seen: string | null;
+}
+
+/** Aktiver Bearbeitungs-Lock auf einen Knoten inkl. Halter-Stammdaten. */
+export interface CollabNodeLock {
+  node_id: string;
+  template_id?: string;
+  locked_by_id: string;
+  locked_by_name: string | null;
+  organization?: string | null;
+  bundesland?: string | null;
+  locked_at?: string | null;
+  expires_at: string | null;
+}
+
+/** Halter-Infos im 409-Body, wenn ein anderer Nutzer den Lock haelt. */
+export interface CollabLockConflict {
+  message: string;
+  locked_by_id: string;
+  locked_by_name: string | null;
+  organization: string | null;
+  bundesland: string | null;
+  expires_at: string | null;
+}
+
+/** Eigene Sitzungsinfos (Nutzerkennung + Anzeigename). */
+export interface SessionInfo {
+  user_id: string;
+  email: string | null;
+  name: string | null;
+  organization: string | null;
+  role: string | null;
+  created_at?: string | null;
+}
+
 // ── API-Funktionen ───────────────────────────────────────────────────────────
 
 // Projects
@@ -580,6 +623,81 @@ export const moveChecklistNode = (
 // Mitglieder (angereichert) — fuer Rollen-Anzeige
 export const listChecklistMembers = (id: string) =>
   request<ChecklistTemplateMemberDetail[]>(`/checklist-templates/${id}/members`);
+
+// ── Kollaboration: SSE-Stream, Node-Locks, Presence ──────────────────────────
+
+/**
+ * Oeffnet den SSE-Stream einer Checkliste. ``EventSource`` kann keine
+ * Authorization-Header setzen, daher wird der Workshop-Token als Query-Parameter
+ * uebergeben (Backend validiert ihn ueber ``?token=...``). Liefert die
+ * EventSource-Instanz; der Aufrufer haengt ``onmessage``/``onerror`` an und ruft
+ * ``close()`` beim Verlassen der Seite.
+ */
+export function openChecklistEvents(id: string): EventSource {
+  const token = getWorkshopAuthToken() ?? '';
+  const url = `${BASE}/checklist-templates/${id}/events?token=${encodeURIComponent(token)}`;
+  return new EventSource(url);
+}
+
+/**
+ * Fehler beim Lock-Erwerb. Bei HTTP 409 (anderer Nutzer haelt den Lock) liegt in
+ * ``conflict`` der Halter-Datensatz vor; der Aufrufer kann den Inspector dann
+ * schreibgeschuetzt mit Halter-Hinweis darstellen.
+ */
+export class LockConflictError extends Error {
+  status: number;
+  conflict: CollabLockConflict | null;
+  constructor(status: number, conflict: CollabLockConflict | null, message: string) {
+    super(message);
+    this.name = 'LockConflictError';
+    this.status = status;
+    this.conflict = conflict;
+  }
+}
+
+/**
+ * Erwirbt/erneuert einen Bearbeitungs-Lock auf einen Knoten. Bei 409 wird ein
+ * ``LockConflictError`` mit den Halter-Infos geworfen, sonst der eigene Lock
+ * zurueckgegeben.
+ */
+export async function acquireNodeLock(id: string, nodeId: string): Promise<CollabNodeLock> {
+  const res = await fetch(`${BASE}/checklist-templates/${id}/nodes/${nodeId}/lock`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getWorkshopAuthHeaders() },
+  });
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
+  if (res.status === 409) {
+    let conflict: CollabLockConflict | null = null;
+    try {
+      const body = await res.json();
+      // FastAPI verpackt HTTPException(detail=...) in {detail: ...}.
+      conflict = (body?.detail ?? body) as CollabLockConflict;
+    } catch { /* kein JSON-Body */ }
+    throw new LockConflictError(409, conflict, conflict?.message ?? 'Knoten ist gesperrt.');
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+  return res.json() as Promise<CollabNodeLock>;
+}
+
+/** Gibt den eigenen Lock auf einen Knoten frei (idempotent). */
+export const releaseNodeLock = (id: string, nodeId: string) =>
+  request<void>(`/checklist-templates/${id}/nodes/${nodeId}/lock`, { method: 'DELETE' });
+
+/** Listet die aktiven (nicht abgelaufenen) Locks einer Checkliste. */
+export const listLocks = (id: string) =>
+  request<CollabNodeLock[]>(`/checklist-templates/${id}/locks`);
+
+/** Liefert die aktuell ueber SSE verbundenen Nutzer einer Checkliste. */
+export const listPresence = (id: string) =>
+  request<CollabPresenceUser[]>(`/checklist-templates/${id}/presence`);
+
+/** Eigene Sitzungsinfos (Nutzerkennung + Anzeigename) — fuer „eigener Nutzer". */
+export const getMe = () => request<SessionInfo>('/auth/me');
 
 // Antwortsets: global + checklistenspezifisch
 export const listGlobalAnswerSets = () =>
