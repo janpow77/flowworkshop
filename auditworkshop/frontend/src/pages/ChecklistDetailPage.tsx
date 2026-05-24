@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, ClipboardCheck, FileText, Users, AlertCircle, Hash,
-  Eye, Pencil, MessageSquare,
+  Eye, Pencil, MessageSquare, Download,
 } from 'lucide-react';
-import { getChecklistTemplate, getMe, type ChecklistTemplateDetail } from '../lib/api';
+import { getChecklistTemplate, getMe, downloadSourceDocument, type ChecklistTemplateDetail } from '../lib/api';
 import { Skeleton } from '../components/ui/Skeleton';
 import TreeEditor from '../components/checklist/TreeEditor';
 import { canComment, canEdit, normRole, ROLE_LABEL } from '../components/checklist/treeMeta';
@@ -137,10 +137,16 @@ export default function ChecklistDetailPage() {
             <Prop label="Kategorien">{tpl.categories.length}</Prop>
             {tpl.source_document_name && (
               <Prop label="Quelldokument">
-                <span className="inline-flex items-center gap-1.5">
-                  <FileText size={14} className="text-slate-400" />
+                <button
+                  type="button"
+                  onClick={() => { if (id) downloadSourceDocument(id).catch(() => {}); }}
+                  className="inline-flex max-w-full items-center gap-1.5 text-emerald-700 hover:underline dark:text-emerald-400"
+                  title="Quelldokument herunterladen"
+                >
+                  <FileText size={14} className="shrink-0" />
                   <span className="truncate">{tpl.source_document_name}</span>
-                </span>
+                  <Download size={13} className="shrink-0" />
+                </button>
               </Prop>
             )}
           </div>

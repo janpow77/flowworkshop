@@ -17,6 +17,7 @@ eine lokale, schlanke Rechtepruefung (_require_member) prueft Mitgliedschaft
 ODER veroeffentlichten Status, ohne die Helfer der CRUD-Datei zu importieren.
 """
 import logging
+import os
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
@@ -188,3 +189,32 @@ def export_pdf(
     filename = _safe_filename(tpl.title, "pdf")
     log.info("Checklisten-Export PDF: %s (mode=%s, %d Knoten)", template_id, mode, len(nodes))
     return Response(content=data, media_type=PDF_MEDIA, headers=_content_disposition(filename))
+
+
+# Daten-Basisverzeichnis (gemountetes Volume); Quelldokumente liegen darunter.
+DATA_DIR = "/app/data"
+
+
+@router.get("/{template_id}/source-document")
+def download_source_document(
+    template_id: str, request: Request, db: Session = Depends(get_db),
+):
+    """Liefert das hinterlegte Quelldokument (z. B. das englische KOM-Original)
+    zum Download. Pfad-Traversal wird verhindert — die Datei muss unterhalb von
+    DATA_DIR liegen."""
+    tpl = _require_member(template_id, request, db)
+    rel = (tpl.source_document_path or "").strip()
+    if not rel:
+        raise HTTPException(status_code=404, detail="Kein Quelldokument hinterlegt.")
+    abs_path = os.path.normpath(os.path.join(DATA_DIR, rel))
+    if not abs_path.startswith(DATA_DIR + os.sep) or not os.path.isfile(abs_path):
+        raise HTTPException(status_code=404, detail="Quelldokument nicht gefunden.")
+    with open(abs_path, "rb") as fh:
+        data = fh.read()
+    filename = tpl.source_document_name or os.path.basename(abs_path)
+    ext = os.path.splitext(abs_path)[1].lower()
+    media = {".docx": DOCX_MEDIA, ".xlsx": XLSX_MEDIA, ".pdf": PDF_MEDIA}.get(
+        ext, "application/octet-stream"
+    )
+    log.info("Quelldokument-Download: %s (%s)", template_id, filename)
+    return Response(content=data, media_type=media, headers=_content_disposition(filename))

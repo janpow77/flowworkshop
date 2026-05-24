@@ -785,6 +785,35 @@ export async function exportChecklist(
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/**
+ * Laedt das hinterlegte Quelldokument (z. B. das englische KOM-Original) herunter.
+ */
+export async function downloadSourceDocument(id: string): Promise<void> {
+  const res = await fetch(
+    `${BASE}/checklist-templates/${id}/source-document`,
+    { headers: { ...getWorkshopAuthHeaders() } },
+  );
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  const filename = match ? decodeURIComponent(match[1]) : 'Quelldokument';
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // ── Uebersetzung (EN→DE via LLM) ──────────────────────────────────────────────
 
 /**

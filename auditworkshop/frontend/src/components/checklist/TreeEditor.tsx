@@ -16,11 +16,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, Search, ChevronsDownUp, ChevronsUpDown, ListChecks, Tags,
-  Loader2, AlertCircle, FolderTree, RefreshCw, History, Languages, CheckCircle2,
+  Loader2, AlertCircle, FolderTree, RefreshCw, History, CheckCircle2,
 } from 'lucide-react';
 import {
   acquireNodeLock, createChecklistNode, deleteChecklistNode, getChecklistTree,
-  moveChecklistNode, releaseNodeLock, updateChecklistNode, translateChecklist,
+  moveChecklistNode, releaseNodeLock, updateChecklistNode,
   LockConflictError,
   type ChecklistAnswerSet, type ChecklistNode, type ChecklistNodeTree,
   type ChecklistTemplateCategory, type CollabLockConflict,
@@ -80,7 +80,6 @@ export default function TreeEditor({
   const [showAnswerSets, setShowAnswerSets] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [translating, setTranslating] = useState(false);
   // Bestaetigender Hinweis (gruen), z. B. nach erfolgreicher Uebersetzung/Restore.
   const [success, setSuccess] = useState('');
   const successTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -194,33 +193,6 @@ export default function TreeEditor({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId]);
-
-  /** Bulk-Uebersetzung (EN→DE) ueber das LLM; danach Baum neu laden. */
-  const handleTranslate = async () => {
-    if (!canEdit || translating) return;
-    if (!confirm('Englischsprachige Knoten ins Deutsche übersetzen? Originaltexte bleiben gesichert.')) return;
-    setTranslating(true);
-    try {
-      const res = await translateChecklist(templateId);
-      await loadTree();
-      if (res.translated_count > 0) {
-        flashSuccess(
-          `${res.translated_count} Knoten übersetzt`
-          + (res.failed_count ? ` · ${res.failed_count} fehlgeschlagen` : ''),
-        );
-      } else if (res.failed_count > 0) {
-        flashNotice(`${res.failed_count} Knoten konnten nicht übersetzt werden.`);
-      } else {
-        flashSuccess('Keine englischsprachigen Knoten gefunden.');
-      }
-    } catch (e) {
-      flashNotice(String(e).includes('503')
-        ? 'LLM aktuell nicht erreichbar — bitte später erneut versuchen.'
-        : 'Übersetzung fehlgeschlagen.');
-    } finally {
-      setTranslating(false);
-    }
-  };
 
   // ── Lock-Lebenszyklus: solange ein Knoten zum Bearbeiten ausgewaehlt ist ─────
   // Beim Auswaehlen Lock erwerben; alle ~40s erneuern (gegen 60s-TTL); beim
@@ -668,18 +640,6 @@ export default function TreeEditor({
             <History size={14} /> Verlauf
           </button>
           <ExportMenu templateId={templateId} onError={flashNotice} />
-          {canEdit && (
-            <button
-              type="button"
-              onClick={handleTranslate}
-              disabled={translating}
-              title="Englischsprachige Knoten ins Deutsche übersetzen (LLM)"
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-60 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              {translating ? <Loader2 size={14} className="animate-spin" /> : <Languages size={14} />}
-              Übersetzen (EN→DE)
-            </button>
-          )}
           <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-slate-400">
             {busy && <Loader2 size={13} className="animate-spin" />}
             {total} Knoten
