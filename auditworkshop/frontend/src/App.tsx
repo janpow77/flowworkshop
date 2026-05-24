@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
 import PublicShell from './components/layout/PublicShell';
+import ChecklistLayout from './components/checklist/ChecklistLayout';
 import EuLoader from './components/layout/EuLoader';
 import ErrorBoundary from './components/layout/ErrorBoundary';
 
@@ -109,6 +110,15 @@ export default function App() {
           </Route>
         )}
 
+        {/* Checklisten-Designer — eigenstaendiges Layout OHNE Workshop-Navigation.
+            Nur fuer eingeloggte Nutzer (API braucht den Bearer-Token). */}
+        {authToken && (
+          <Route element={<ChecklistLayout />}>
+            <Route path="/checklisten" element={<LazyPage><ChecklistsPage /></LazyPage>} />
+            <Route path="/checklisten/:id" element={<LazyPage><ChecklistDetailPage /></LazyPage>} />
+          </Route>
+        )}
+
         {authToken ? (
           <Route element={<AppShell />}>
             {/* Startseite je nach Phase */}
@@ -122,8 +132,6 @@ export default function App() {
             <Route path="/projects" element={<LazyPage><ProjectsPage /></LazyPage>} />
             <Route path="/projects/:projectId" element={<LazyPage><ProjectDetailPage /></LazyPage>} />
             <Route path="/projects/:projectId/checklists/:checklistId" element={<LazyPage><ChecklistPage /></LazyPage>} />
-            <Route path="/checklisten" element={<LazyPage><ChecklistsPage /></LazyPage>} />
-            <Route path="/checklisten/:id" element={<LazyPage><ChecklistDetailPage /></LazyPage>} />
             <Route path="/knowledge" element={<LazyPage><KnowledgePage /></LazyPage>} />
             <Route path="/dataframes" element={<LazyPage><DataFramePage /></LazyPage>} />
             <Route path="/company-search" element={<LazyPage><CompanySearchPage /></LazyPage>} />

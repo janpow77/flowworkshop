@@ -128,3 +128,103 @@ export function isDescendantOrSelf(
   if (!node) return false;
   return descendantIds(node).has(targetId);
 }
+
+// ── Optimistische, unveraenderliche Baum-Mutationen ─────────────────────────────
+// Diese Funktionen liefern eine NEUE Baum-Referenz zurueck, ohne den Eingangsbaum
+// zu mutieren. So lassen sich Aktionen sofort im lokalen State darstellen, waehrend
+// der API-Call im Hintergrund laeuft (audit_designer-Muster).
+
+/** Sortiert eine Geschwisterliste stabil nach sort_order. */
+function sortSiblings(list: ChecklistNodeTree[]): ChecklistNodeTree[] {
+  return [...list].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+}
+
+/** Fuegt einen Knoten unter dem angegebenen Elternknoten (oder Wurzel) ein. */
+export function insertNode(
+  roots: ChecklistNodeTree[],
+  parentId: string | null,
+  node: ChecklistNodeTree,
+): ChecklistNodeTree[] {
+  if (parentId === null) {
+    return sortSiblings([...roots, node]);
+  }
+  const walk = (list: ChecklistNodeTree[]): ChecklistNodeTree[] =>
+    list.map((n) => {
+      if (n.id === parentId) {
+        return { ...n, children: sortSiblings([...n.children, node]) };
+      }
+      if (n.children.length) {
+        return { ...n, children: walk(n.children) };
+      }
+      return n;
+    });
+  return walk(roots);
+}
+
+/** Ersetzt einen Knoten anhand seiner ID (Kinder bleiben erhalten, sofern nicht uebergeben). */
+export function replaceNode(
+  roots: ChecklistNodeTree[],
+  nodeId: string,
+  patch: Partial<ChecklistNodeTree>,
+): ChecklistNodeTree[] {
+  const walk = (list: ChecklistNodeTree[]): ChecklistNodeTree[] =>
+    list.map((n) => {
+      if (n.id === nodeId) {
+        return { ...n, ...patch, children: patch.children ?? n.children };
+      }
+      if (n.children.length) {
+        return { ...n, children: walk(n.children) };
+      }
+      return n;
+    });
+  return walk(roots);
+}
+
+/** Entfernt einen Knoten (samt Unterbaum) und liefert den neuen Baum. */
+export function removeNode(
+  roots: ChecklistNodeTree[],
+  nodeId: string,
+): ChecklistNodeTree[] {
+  const walk = (list: ChecklistNodeTree[]): ChecklistNodeTree[] =>
+    list
+      .filter((n) => n.id !== nodeId)
+      .map((n) => (n.children.length ? { ...n, children: walk(n.children) } : n));
+  return walk(roots);
+}
+
+/** Loest einen Knoten aus dem Baum heraus und gibt ihn samt Restbaum zurueck. */
+export function detachNode(
+  roots: ChecklistNodeTree[],
+  nodeId: string,
+): { node: ChecklistNodeTree | null; tree: ChecklistNodeTree[] } {
+  const node = findNode(roots, nodeId);
+  if (!node) return { node: null, tree: roots };
+  return { node, tree: removeNode(roots, nodeId) };
+}
+
+/**
+ * Verschiebt einen Knoten optimistisch an ein neues Ziel. Setzt parent_id,
+ * sort_order sowie optional branch/decision_parent_id und sortiert die Zielebene.
+ */
+export function moveNodeLocal(
+  roots: ChecklistNodeTree[],
+  nodeId: string,
+  target: {
+    parent_id: string | null;
+    sort_order: number;
+    branch?: ChecklistNodeTree['branch'];
+    decision_parent_id?: string | null;
+  },
+): ChecklistNodeTree[] {
+  const { node, tree } = detachNode(roots, nodeId);
+  if (!node) return roots;
+  const moved: ChecklistNodeTree = {
+    ...node,
+    parent_id: target.parent_id,
+    sort_order: target.sort_order,
+    branch: target.branch !== undefined ? target.branch : node.branch,
+    decision_parent_id:
+      target.decision_parent_id !== undefined ? target.decision_parent_id : node.decision_parent_id,
+  };
+  return insertNode(tree, target.parent_id, moved);
+}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, ClipboardCheck, FileText, Languages, Users, AlertCircle, Hash,
+  ArrowLeft, ClipboardCheck, FileText, Users, AlertCircle, Hash,
   Eye, Pencil, MessageSquare,
 } from 'lucide-react';
 import { getChecklistTemplate, type ChecklistTemplateDetail } from '../lib/api';
@@ -110,13 +110,7 @@ export default function ChecklistDetailPage() {
             </div>
           </div>
 
-          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Prop label="Quellsprache → Zielsprache">
-              <span className="inline-flex items-center gap-1.5">
-                <Languages size={14} className="text-slate-400" />
-                {(tpl.source_language || '–').toUpperCase()} → {(tpl.target_language || '–').toUpperCase()}
-              </span>
-            </Prop>
+          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Prop label="Knoten">
               <span className="inline-flex items-center gap-1.5">
                 <Hash size={14} className="text-slate-400" />

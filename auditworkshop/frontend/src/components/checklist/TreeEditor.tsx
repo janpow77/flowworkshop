@@ -30,7 +30,8 @@ import AnswerSetManager from './AnswerSetManager';
 import CategoryManager from './CategoryManager';
 import NodeContextMenu from './NodeContextMenu';
 import {
-  allNodeIds, countNodes, findContext, findNode, isDescendantOrSelf, nextSortOrder,
+  allNodeIds, countNodes, findContext, findNode, insertNode, isDescendantOrSelf,
+  moveNodeLocal, nextSortOrder, removeNode, replaceNode,
 } from './treeOps';
 import { NODE_TYPE_META, NODE_TYPE_ORDER } from './treeMeta';
 
@@ -58,6 +59,8 @@ export default function TreeEditor({
   const [categories, setCategories] = useState<ChecklistTemplateCategory[]>(initialCategories);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Transienter Hinweis (z. B. nach Rollback einer optimistischen Aktion).
+  const [notice, setNotice] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
@@ -70,7 +73,16 @@ export default function TreeEditor({
   // Snapshot des aktuellen Baums fuer die Zyklenpruefung waehrend des Ziehens.
   const treeRef = useRef<ChecklistNodeTree[]>([]);
   treeRef.current = tree;
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /** Zeigt einen kurzen, selbst-verschwindenden Hinweis (Fehler-Rollback). */
+  const flashNotice = (msg: string) => {
+    setNotice(msg);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(''), 4000);
+  };
+
+  /** Vollstaendiges (Erst-)Laden des Baums — nur initial bzw. auf Wunsch. */
   const loadTree = async (preserveSelection = true) => {
     try {
       const data = await getChecklistTree(templateId);
@@ -89,6 +101,7 @@ export default function TreeEditor({
 
   useEffect(() => {
     loadTree();
+    return () => { if (noticeTimer.current) clearTimeout(noticeTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId]);
 
@@ -115,12 +128,15 @@ export default function TreeEditor({
     if (!canEdit) return;
     setBusy(true);
     try {
+      // Der API-Call liefert den fertigen Knoten zurueck — wir fuegen ihn
+      // optimistisch in den lokalen Baum ein, ohne den ganzen Baum neu zu laden.
       const created = await createChecklistNode(templateId, payload);
+      const node: ChecklistNodeTree = { ...created, children: [] };
+      setTree((prev) => insertNode(prev, payload.parent_id ?? null, node));
       if (expandParent) setExpanded((prev) => new Set(prev).add(expandParent));
-      await loadTree();
       setSelectedId(created.id);
     } catch {
-      setError('Knoten konnte nicht angelegt werden.');
+      flashNotice('Knoten konnte nicht angelegt werden.');
     } finally {
       setBusy(false);
     }
@@ -184,21 +200,34 @@ export default function TreeEditor({
       ? `Knoten „${node.title || '(ohne Titel)'}" und ${kids} untergeordnete Knoten löschen?`
       : `Knoten „${node.title || '(ohne Titel)'}" löschen?`;
     if (!confirm(msg)) return;
+    // Optimistisch entfernen, bei Fehler den vorherigen Baum wiederherstellen.
+    const snapshot = treeRef.current;
     setBusy(true);
+    setTree((prev) => removeNode(prev, node.id));
+    if (selectedId === node.id) setSelectedId(null);
     try {
       await deleteChecklistNode(templateId, node.id);
-      if (selectedId === node.id) setSelectedId(null);
-      await loadTree();
     } catch {
-      setError('Knoten konnte nicht gelöscht werden.');
+      setTree(snapshot);
+      flashNotice('Knoten konnte nicht gelöscht werden — Änderung zurückgenommen.');
     } finally {
       setBusy(false);
     }
   };
 
   const handleSaveNode = async (nodeId: string, patch: NodeUpdatePayload) => {
-    await updateChecklistNode(templateId, nodeId, patch);
-    await loadTree();
+    // Optimistisch im lokalen Baum patchen; der API-Call liefert den
+    // kanonischen Knoten zurueck, mit dem wir den Eintrag final ersetzen.
+    const snapshot = treeRef.current;
+    setTree((prev) => replaceNode(prev, nodeId, patch as Partial<ChecklistNodeTree>));
+    try {
+      const updated = await updateChecklistNode(templateId, nodeId, patch);
+      setTree((prev) => replaceNode(prev, nodeId, updated as Partial<ChecklistNodeTree>));
+    } catch (e) {
+      setTree(snapshot);
+      flashNotice('Änderung konnte nicht gespeichert werden — zurückgenommen.');
+      throw e; // NodeInspector zeigt den Fehler im Formular an
+    }
   };
 
   // ── Drag & Drop (nativ HTML5) ──────────────────────────────────────────────────
@@ -287,7 +316,16 @@ export default function TreeEditor({
     nodeId: string,
     target: { parent_id: string | null; sort_order: number; branch: NodeBranch | null; decision_parent_id: string | null },
   ) => {
+    // Optimistisch sofort verschieben; bei Fehler den Schnappschuss zuruecksetzen.
+    const snapshot = treeRef.current;
     setBusy(true);
+    setTree((prev) => moveNodeLocal(prev, nodeId, {
+      parent_id: target.parent_id,
+      sort_order: target.sort_order,
+      branch: target.branch,
+      decision_parent_id: target.decision_parent_id,
+    }));
+    if (target.parent_id) setExpanded((prev) => new Set(prev).add(target.parent_id!));
     try {
       // branch/decision_parent_id via update setzen (move kennt nur parent/sort).
       if (target.branch !== undefined) {
@@ -300,10 +338,9 @@ export default function TreeEditor({
         parent_id: target.parent_id,
         sort_order: target.sort_order,
       });
-      if (target.parent_id) setExpanded((prev) => new Set(prev).add(target.parent_id!));
-      await loadTree();
     } catch {
-      setError('Verschieben fehlgeschlagen.');
+      setTree(snapshot);
+      flashNotice('Verschieben fehlgeschlagen — Änderung zurückgenommen.');
     } finally {
       setBusy(false);
     }
@@ -333,7 +370,17 @@ export default function TreeEditor({
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+    <div className="relative grid gap-4 lg:grid-cols-[1fr_360px]">
+      {/* Transienter Rollback-Hinweis (selbst-verschwindend) */}
+      {notice && (
+        <div
+          role="status"
+          className="animate-slide-up fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 shadow-lg dark:border-amber-800 dark:bg-amber-950/80 dark:text-amber-200"
+        >
+          <AlertCircle size={16} /> {notice}
+        </div>
+      )}
+
       {/* Baum-Spalte */}
       <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
@@ -446,8 +493,8 @@ export default function TreeEditor({
         </div>
       </div>
 
-      {/* Inspector-Spalte */}
-      <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 lg:min-h-[400px]">
+      {/* Inspector — Desktop: zweite Spalte. */}
+      <div className="hidden rounded-xl border border-slate-200 bg-white transition-shadow dark:border-slate-700 dark:bg-slate-900 lg:block lg:min-h-[400px]">
         {selectedNode ? (
           <NodeInspector
             key={selectedNode.id}
@@ -466,6 +513,30 @@ export default function TreeEditor({
           </div>
         )}
       </div>
+
+      {/* Inspector — schmaler Viewport: Off-Canvas-Drawer von rechts. */}
+      {selectedNode && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            type="button"
+            aria-label="Inspector schließen"
+            onClick={() => setSelectedId(null)}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+          />
+          <div className="absolute right-0 top-0 flex h-full w-[92%] max-w-md animate-slide-in flex-col overflow-y-auto border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <NodeInspector
+              key={selectedNode.id}
+              node={selectedNode}
+              answerSets={answerSets}
+              categories={categories}
+              canEdit={canEdit}
+              canComment={canComment}
+              onSave={handleSaveNode}
+              onClose={() => setSelectedId(null)}
+            />
+          </div>
+        </div>
+      )}
 
       {menu && (
         <NodeContextMenu

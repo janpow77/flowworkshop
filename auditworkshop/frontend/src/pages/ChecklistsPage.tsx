@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ClipboardCheck, Search, FileText, AlertCircle, Users, Languages,
+  ClipboardCheck, Search, FileText, AlertCircle, Users,
 } from 'lucide-react';
 import { listChecklistTemplates, type ChecklistTemplate } from '../lib/api';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -55,7 +55,6 @@ export default function ChecklistsPage() {
   const [error, setError] = useState('');
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [langFilter, setLangFilter] = useState<string>('all');
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('updated');
 
@@ -68,18 +67,10 @@ export default function ChecklistsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // Verfügbare Quellsprachen aus den geladenen Templates
-  const languages = useMemo(() => {
-    const set = new Set<string>();
-    templates.forEach((t) => { if (t.source_language) set.add(t.source_language.toLowerCase()); });
-    return Array.from(set).sort();
-  }, [templates]);
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const result = templates.filter((t) => {
       if (statusFilter !== 'all' && normStatus(t.status) !== statusFilter) return false;
-      if (langFilter !== 'all' && (t.source_language || '').toLowerCase() !== langFilter) return false;
       if (q) {
         const hay = `${t.title} ${t.description ?? ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -101,7 +92,7 @@ export default function ChecklistsPage() {
       });
     }
     return sorted;
-  }, [templates, statusFilter, langFilter, query, sortKey]);
+  }, [templates, statusFilter, query, sortKey]);
 
   const selectCls =
     'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200';
@@ -143,18 +134,6 @@ export default function ChecklistsPage() {
           <option value="draft">Entwurf</option>
           <option value="published">Veröffentlicht</option>
           <option value="archived">Archiviert</option>
-        </select>
-
-        <select
-          value={langFilter}
-          onChange={(e) => setLangFilter(e.target.value)}
-          aria-label="Quellsprache filtern"
-          className={selectCls}
-        >
-          <option value="all">Alle Sprachen</option>
-          {languages.map((l) => (
-            <option key={l} value={l}>{l.toUpperCase()}</option>
-          ))}
         </select>
 
         <select
@@ -231,10 +210,6 @@ export default function ChecklistsPage() {
                     <span className="max-w-[140px] truncate">{t.source_document_name}</span>
                   </span>
                 )}
-                <span className="inline-flex items-center gap-1">
-                  <Languages size={13} />
-                  {(t.source_language || '–').toUpperCase()} → {(t.target_language || '–').toUpperCase()}
-                </span>
                 {t.node_count > 0 && (
                   <span className="inline-flex items-center gap-1">
                     <ClipboardCheck size={13} />
