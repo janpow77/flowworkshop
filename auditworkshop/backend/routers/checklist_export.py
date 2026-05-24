@@ -28,8 +28,10 @@ from models.checklist_template import (
     ChecklistTemplateNode,
     ChecklistAnswerSet,
     ChecklistMember,
+    ChecklistNodeComment,
     TemplateStatus,
 )
+from models.registration import Registration
 from routers.auth import require_session
 from services import checklist_export_service as export_svc
 
@@ -118,6 +120,23 @@ def _load_export_data(
     return nodes, answer_sets
 
 
+def _load_comment_names(comments: list[ChecklistNodeComment], db: Session) -> dict[str, str | None]:
+    """Map Autor-Kennung → Anzeigename fuer die gegebenen Kommentare.
+
+    Schlanke Duplikation der Namens-Aufloesung aus checklist_discussion.py
+    (bewusst kein Import, um die Kopplung gering zu halten): Registration-Join
+    ueber author_id; fehlende/geloeschte Nutzer fehlen schlicht in der Map."""
+    ids = {c.author_id for c in comments if c.author_id}
+    if not ids:
+        return {}
+    rows = db.query(Registration).filter(Registration.id.in_(ids)).all()
+    out: dict[str, str | None] = {}
+    for r in rows:
+        name = f"{r.first_name or ''} {r.last_name or ''}".strip()
+        out[r.id] = name or None
+    return out
+
+
 def _normalize_mode(mode: str) -> str:
     """Validiert den Modus; faellt bei unbekanntem Wert auf ``blank`` zurueck."""
     m = (mode or "blank").strip().lower()
@@ -189,6 +208,58 @@ def export_pdf(
     filename = _safe_filename(tpl.title, "pdf")
     log.info("Checklisten-Export PDF: %s (mode=%s, %d Knoten)", template_id, mode, len(nodes))
     return Response(content=data, media_type=PDF_MEDIA, headers=_content_disposition(filename))
+
+
+@router.get("/{template_id}/export-discussion")
+def export_discussion(
+    template_id: str, request: Request, format: str = "docx",
+    db: Session = Depends(get_db),
+):
+    """Exportiert das Diskussionsprotokoll der Checkliste als DOCX (Default) oder PDF.
+
+    Enthaelt nur Knoten mit Kommentaren in Baum-Reihenfolge, je mit Status,
+    Rechtsgrundlage und den threaded Kommentaren. Existieren keine Kommentare,
+    wird trotzdem eine gueltige Datei mit Hinweis erzeugt (kein 404)."""
+    tpl = _require_member(template_id, request, db)
+
+    fmt = (format or "docx").strip().lower()
+    if fmt not in ("docx", "pdf"):
+        fmt = "docx"
+
+    nodes = (
+        db.query(ChecklistTemplateNode)
+        .filter(ChecklistTemplateNode.template_id == template_id)
+        .all()
+    )
+    comments = (
+        db.query(ChecklistNodeComment)
+        .filter(
+            ChecklistNodeComment.template_id == template_id,
+            ChecklistNodeComment.deleted_at.is_(None),
+        )
+        .order_by(ChecklistNodeComment.created_at.asc())
+        .all()
+    )
+    names = _load_comment_names(comments, db)
+
+    base = (tpl.title or "Checkliste").strip()
+    safe = "".join(c if (c.isalnum() or c in " ._-") else "_" for c in base)
+    safe = "_".join(safe.split()) or "Checkliste"
+
+    if fmt == "pdf":
+        data = export_svc.export_discussion_pdf(tpl, nodes, comments, names)
+        media = PDF_MEDIA
+        filename = f"Diskussionsprotokoll_{safe[:80]}.pdf"
+    else:
+        data = export_svc.export_discussion_docx(tpl, nodes, comments, names)
+        media = DOCX_MEDIA
+        filename = f"Diskussionsprotokoll_{safe[:80]}.docx"
+
+    log.info(
+        "Diskussions-Export %s: %s (%d Knoten, %d Kommentare)",
+        fmt.upper(), template_id, len(nodes), len(comments),
+    )
+    return Response(content=data, media_type=media, headers=_content_disposition(filename))
 
 
 # Daten-Basisverzeichnis (gemountetes Volume); Quelldokumente liegen darunter.

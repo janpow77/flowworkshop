@@ -10,9 +10,11 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import {
-  Download, FileText, FileType, Loader2, Sheet,
+  Download, FileText, FileType, Loader2, MessagesSquare, Sheet,
 } from 'lucide-react';
-import { exportChecklist, type ExportFormat, type ExportMode } from '../../lib/api';
+import { exportChecklist, exportDiscussion, type ExportFormat, type ExportMode } from '../../lib/api';
+
+type DiscussionFormat = 'docx' | 'pdf';
 
 interface ExportMenuProps {
   templateId: string;
@@ -26,11 +28,19 @@ const FORMATS: Array<{ format: ExportFormat; label: string; icon: typeof FileTex
   { format: 'pdf', label: 'PDF (.pdf)', icon: FileType },
 ];
 
+const DISCUSSION_FORMATS: Array<{ format: DiscussionFormat; label: string; icon: typeof FileText }> = [
+  { format: 'docx', label: 'Diskussion als Word (.docx)', icon: FileText },
+  { format: 'pdf', label: 'Diskussion als PDF (.pdf)', icon: FileType },
+];
+
 export default function ExportMenu({ templateId, onError }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<ExportMode>('blank');
   const [busyFormat, setBusyFormat] = useState<ExportFormat | null>(null);
+  const [busyDiscussion, setBusyDiscussion] = useState<DiscussionFormat | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+
+  const busy = busyFormat !== null || busyDiscussion !== null;
 
   useEffect(() => {
     if (!open) return;
@@ -55,6 +65,18 @@ export default function ExportMenu({ templateId, onError }: ExportMenuProps) {
       onError?.('Export fehlgeschlagen — bitte erneut versuchen.');
     } finally {
       setBusyFormat(null);
+    }
+  };
+
+  const handleDiscussionExport = async (format: DiscussionFormat) => {
+    setBusyDiscussion(format);
+    try {
+      await exportDiscussion(templateId, format);
+      setOpen(false);
+    } catch {
+      onError?.('Diskussionsprotokoll-Export fehlgeschlagen — bitte erneut versuchen.');
+    } finally {
+      setBusyDiscussion(null);
     }
   };
 
@@ -100,12 +122,36 @@ export default function ExportMenu({ templateId, onError }: ExportMenuProps) {
                   type="button"
                   role="menuitem"
                   onClick={() => handleExport(format)}
-                  disabled={busyFormat !== null}
+                  disabled={busy}
                   className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-60 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   {busyFormat === format
                     ? <Loader2 size={15} className="animate-spin text-emerald-500" />
                     : <Icon size={15} className="text-emerald-500" />}
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {/* Abgesetzter Abschnitt: Diskussionsprotokoll */}
+          <div className="my-2 border-t border-slate-200 dark:border-slate-700" />
+          <div className="mb-1 flex items-center gap-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <MessagesSquare size={12} /> Diskussionsprotokoll
+          </div>
+          <ul className="space-y-0.5">
+            {DISCUSSION_FORMATS.map(({ format, label, icon: Icon }) => (
+              <li key={format}>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleDiscussionExport(format)}
+                  disabled={busy}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-60 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  {busyDiscussion === format
+                    ? <Loader2 size={15} className="animate-spin text-indigo-500" />
+                    : <Icon size={15} className="text-indigo-500" />}
                   {label}
                 </button>
               </li>

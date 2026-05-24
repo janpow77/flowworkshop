@@ -999,6 +999,48 @@ export async function exportChecklist(
 }
 
 /**
+ * Laedt das Diskussionsprotokoll des Checklisten-Designers als Blob (DOCX oder
+ * PDF) und stoesst den Browser-Download ueber einen temporaeren ``<a>``-Link an
+ * (gleiches Muster wie ``exportChecklist``, keine zusaetzliche Abhaengigkeit).
+ * Der Dateiname wird — falls vorhanden — aus dem ``Content-Disposition``-Header
+ * uebernommen, sonst auf ``Diskussionsprotokoll.${format}`` zurueckgefallen.
+ */
+export async function exportDiscussion(
+  templateId: string,
+  format: 'docx' | 'pdf',
+): Promise<void> {
+  const res = await fetch(
+    `${BASE}/checklist-templates/${templateId}/export-discussion?format=${encodeURIComponent(format)}`,
+    { headers: { ...getWorkshopAuthHeaders() } },
+  );
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+
+  // Dateinamen aus Content-Disposition extrahieren (filename="...").
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  const filename = match
+    ? decodeURIComponent(match[1])
+    : `Diskussionsprotokoll.${format}`;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Object-URL nach kurzem Tick freigeben (Safari/Firefox-sicher).
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
  * Laedt das hinterlegte Quelldokument (z. B. das englische KOM-Original) herunter.
  */
 export async function downloadSourceDocument(id: string): Promise<void> {

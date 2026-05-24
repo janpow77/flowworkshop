@@ -39,8 +39,12 @@ from typing import Any
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
+from docx.oxml.ns import nsmap, qn
 from docx.shared import Cm, Pt, RGBColor
+
+# w14-Namespace (Word 2010) registrieren, damit qn('w14:checkbox') aufloesbar ist.
+# Wird fuer echte, anklickbare Word-Checkbox-Inhaltssteuerelemente benoetigt.
+nsmap.setdefault("w14", "http://schemas.microsoft.com/office/word/2010/wordml")
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -495,18 +499,89 @@ def _add_sdt_text(paragraph, placeholder: str = "", italic: bool = False) -> Non
     paragraph._p.append(sdt)
 
 
+# Globaler, monoton steigender Zaehler fuer eindeutige w:sdt-Checkbox-IDs.
+_checkbox_id_counter = 0
+
+
+def _add_checkbox_option(paragraph, label: str, checked: bool = False) -> None:
+    """Fuegt dem Paragraphen ein echtes, in Word anklickbares Checkbox-
+    Inhaltssteuerelement (``w14:checkbox``) gefolgt von der Beschriftung hinzu.
+
+    Die Box laesst sich nach dem Export in Word per Klick zwischen ☐ und ☒
+    umschalten. Erzeugt folgende OOXML-Struktur:
+
+        <w:sdt>
+          <w:sdtPr>
+            <w14:checkbox>
+              <w14:checked w14:val="0|1"/>
+              <w14:checkedState w14:val="2612" w14:font="MS Gothic"/>
+              <w14:uncheckedState w14:val="2610" w14:font="MS Gothic"/>
+            </w14:checkbox>
+          </w:sdtPr>
+          <w:sdtContent><w:r>…☐/☒…</w:r></w:sdtContent>
+        </w:sdt>
+
+    Danach folgt im selben Paragraphen ein normaler Run " {label}"."""
+    global _checkbox_id_counter
+    _checkbox_id_counter += 1
+
+    sdt = OxmlElement("w:sdt")
+
+    sdt_pr = OxmlElement("w:sdtPr")
+    sdt_id = OxmlElement("w:id")
+    sdt_id.set(qn("w:val"), str(_checkbox_id_counter))
+    sdt_pr.append(sdt_id)
+
+    checkbox = OxmlElement("w14:checkbox")
+    checked_el = OxmlElement("w14:checked")
+    checked_el.set(qn("w14:val"), "1" if checked else "0")
+    checkbox.append(checked_el)
+    checked_state = OxmlElement("w14:checkedState")
+    checked_state.set(qn("w14:val"), "2612")
+    checked_state.set(qn("w14:font"), "MS Gothic")
+    checkbox.append(checked_state)
+    unchecked_state = OxmlElement("w14:uncheckedState")
+    unchecked_state.set(qn("w14:val"), "2610")
+    unchecked_state.set(qn("w14:font"), "MS Gothic")
+    checkbox.append(unchecked_state)
+    sdt_pr.append(checkbox)
+    sdt.append(sdt_pr)
+
+    sdt_content = OxmlElement("w:sdtContent")
+    run = OxmlElement("w:r")
+    rpr = OxmlElement("w:rPr")
+    rfonts = OxmlElement("w:rFonts")
+    rfonts.set(qn("w:ascii"), "MS Gothic")
+    rfonts.set(qn("w:hAnsi"), "MS Gothic")
+    rfonts.set(qn("w:eastAsia"), "MS Gothic")
+    rpr.append(rfonts)
+    run.append(rpr)
+    text_el = OxmlElement("w:t")
+    text_el.set(qn("xml:space"), "preserve")
+    text_el.text = BOX_CHECK if checked else BOX_EMPTY
+    run.append(text_el)
+    sdt_content.append(run)
+    sdt.append(sdt_content)
+
+    paragraph._p.append(sdt)
+
+    # Beschriftung als normaler Run im selben Paragraphen.
+    label_run = paragraph.add_run(f" {label}")
+    label_run.font.size = Pt(9)
+
+
 def _docx_answer_cell(cell, row: dict, mode: str) -> None:
-    """Fuellt die Antwort-Zelle: Ankreuz-Optionen ODER ausfuellbares Leerfeld."""
+    """Fuellt die Antwort-Zelle: anklickbare Checkbox-Optionen ODER ausfuellbares
+    Leerfeld (echte Word-Inhaltssteuerelemente)."""
     cell.paragraphs[0].clear()
     options = row.get("options") or []
     freitext = row.get("freitext_hint") or ""
 
     if options:
-        # Erste Option in die vorhandene (geleerte) Zeile, weitere als neue Zeilen.
+        # Pro Option eine Zeile mit echter, anklickbarer Word-Checkbox.
         for idx, opt in enumerate(options):
             target = cell.paragraphs[0] if idx == 0 else cell.add_paragraph()
-            run = target.add_run(f"{BOX_EMPTY} {opt}")
-            run.font.size = Pt(9)
+            _add_checkbox_option(target, opt, checked=False)
     elif freitext:
         p = cell.paragraphs[0]
         run = p.add_run("")
@@ -839,8 +914,53 @@ def export_pdf(
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
     from reportlab.platypus import (
-        PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+        Flowable, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
     )
+
+    # ── Custom Flowables: echte AcroForm-Felder ───────────────────────────────
+    class _AcroCheckbox(Flowable):
+        """Anklickbare AcroForm-Checkbox (/Btn) als Flowable fester Groesse."""
+
+        def __init__(self, name: str, size: float = 10):
+            super().__init__()
+            self._name = name
+            self._size = size
+
+        def wrap(self, *_args):
+            self.width = self._size
+            self.height = self._size
+            return self.width, self.height
+
+        def draw(self):
+            self.canv.acroForm.checkbox(
+                name=self._name, x=0, y=0, size=self._size,
+                borderWidth=0.5, checked=False, relative=True,
+            )
+
+    class _AcroTextField(Flowable):
+        """Ausfuellbares AcroForm-Textfeld (/Tx) als Flowable."""
+
+        def __init__(self, name: str, width: float, height: float):
+            super().__init__()
+            self._name = name
+            self.width = width
+            self.height = height
+
+        def wrap(self, *_args):
+            return self.width, self.height
+
+        def draw(self):
+            self.canv.acroForm.textfield(
+                name=self._name, x=0, y=0, width=self.width, height=self.height,
+                borderWidth=0.5, fontSize=8, relative=True,
+            )
+
+    # Eindeutige Feldnamen ueber einen laufenden Zaehler.
+    field_counter = {"n": 0}
+
+    def _next(prefix: str) -> str:
+        field_counter["n"] += 1
+        return f"{prefix}_{field_counter['n']}"
 
     kopf, chapters = _prepare(template, nodes, answer_sets, mode)
 
@@ -976,12 +1096,31 @@ def export_pdf(
                 style_cmds.append(("BACKGROUND", (0, ri), (-1, ri), bg))
                 continue
 
+            # Antwort-Zelle: echte anklickbare AcroForm-Checkboxen je Option,
+            # bei Freitext/Betrag/Datum ein AcroForm-Textfeld.
+            answer_col_w = col_widths[3]
             if row["options"]:
-                ans = "<br/>".join(f"{BOX_EMPTY} {_esc(o)}" for o in row["options"])
+                opt_rows: list[list[Any]] = []
+                for opt in row["options"]:
+                    opt_rows.append([
+                        _AcroCheckbox(_next("ans"), size=10),
+                        Paragraph(_esc(opt), styles["Cell"]),
+                    ])
+                ans_cell: Any = Table(opt_rows, colWidths=[5 * mm, answer_col_w - 5 * mm])
+                ans_cell.setStyle(TableStyle([
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 1),
+                    ("TOPPADDING", (0, 0), (-1, -1), 1),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+                ]))
             elif row.get("freitext_hint"):
-                ans = _esc(row["freitext_hint"])
+                ans_cell = _AcroTextField(_next("ans"), width=answer_col_w - 3 * mm, height=5 * mm)
             else:
-                ans = "________"
+                ans_cell = _AcroTextField(_next("ans"), width=answer_col_w - 3 * mm, height=5 * mm)
+
+            # Bemerkungs-Zelle: ausfuellbares AcroForm-Textfeld.
+            remark_cell = _AcroTextField(_next("rmk"), width=col_widths[4] - 3 * mm, height=5 * mm)
 
             q_text = f"{indent}{_esc(row['question'])}"
             q_style = styles["CellBold"] if row_type == "decision" else styles["Cell"]
@@ -989,8 +1128,8 @@ def export_pdf(
                 Paragraph(_esc(row["nr"]), styles["Cell"]),
                 Paragraph(_esc(row["legal"]), styles["Cell"]),
                 Paragraph(q_text, q_style),
-                Paragraph(ans, styles["Cell"]),
-                Paragraph(_esc(row.get("remark", "")) or "&nbsp;", styles["Cell"]),
+                ans_cell,
+                remark_cell,
                 Paragraph(_esc(row.get("documents", "")).replace("\n", "<br/>"), styles["Cell"]),
             ])
             if row_type == "decision":
@@ -1000,6 +1139,312 @@ def export_pdf(
         table.setStyle(TableStyle(style_cmds))
         story.append(table)
         story.append(Spacer(1, 4 * mm))
+
+    doc_template.build(story, onFirstPage=add_header_footer, onLaterPages=add_header_footer)
+    return output.getvalue()
+
+
+# ── Diskussions-Export (Diskussionsprotokoll) ──────────────────────────────────
+
+# Anzeige-Labels fuer den Team-Workflow-Status eines Knotens.
+NODE_STATUS_LABELS = {
+    "pending": "Offen",
+    "in_progress": "In Bearbeitung",
+    "resolved": "Erledigt",
+}
+
+
+def _format_dt(dt: datetime | None) -> str:
+    """Formatiert einen Zeitstempel deutsch (oder leerer String)."""
+    if not dt:
+        return ""
+    try:
+        return dt.strftime("%d.%m.%Y %H:%M")
+    except Exception:  # noqa: BLE001 — defensiv bei untypischen Werten
+        return str(dt)
+
+
+def _comment_meta(comment, names: dict[str, str | None]) -> str:
+    """Baut die Kopfzeile eines Diskussionsbeitrags: Autor · Datum (· bearbeitet)."""
+    author = names.get(getattr(comment, "author_id", None) or "") or "Unbekannt"
+    created = _format_dt(getattr(comment, "created_at", None))
+    meta = f"{author}"
+    if created:
+        meta += f" · {created}"
+    if getattr(comment, "edited_at", None):
+        meta += " · bearbeitet"
+    return meta
+
+
+def _threaded_comments(comments: list) -> list[tuple[Any, int]]:
+    """Ordnet die (zeitlich sortierten) Kommentare als Thread:
+    Wurzelkommentare auf Ebene 0, direkte Antworten auf Ebene 1.
+
+    Rueckgabe: Liste von (comment, depth) in Anzeige-Reihenfolge.
+    """
+    by_parent: dict[str | None, list] = {}
+    ids = {getattr(c, "id", None) for c in comments}
+    for c in comments:
+        parent = getattr(c, "parent_comment_id", None)
+        if parent not in ids:
+            parent = None
+        by_parent.setdefault(parent, []).append(c)
+
+    ordered: list[tuple[Any, int]] = []
+
+    def _emit(parent_id, depth: int) -> None:
+        for c in by_parent.get(parent_id, []):
+            ordered.append((c, depth))
+            # Genau eine Antwort-Ebene; tiefere Antworten haengen unter der Wurzel.
+            _emit(getattr(c, "id", None), min(depth + 1, 1))
+
+    _emit(None, 0)
+    return ordered
+
+
+def _discussion_nodes_in_order(
+    nodes: list[ChecklistTemplateNode],
+    comments_by_node: dict[str, list],
+) -> list[tuple[str, ChecklistTemplateNode]]:
+    """Liefert die Knoten MIT Kommentaren in Baum-Reihenfolge inkl. Nummerierung.
+
+    Nutzt _build_node_tree fuer Reihenfolge und hierarchische Nummern. Knoten
+    ohne Kommentare werden uebersprungen (aber ihre Nummerierungsposition bleibt
+    in der Baum-Logik erhalten)."""
+    by_id, roots = _build_node_tree(nodes)
+    result: list[tuple[str, ChecklistTemplateNode]] = []
+
+    def _walk(node_id: str, prefix: list[int]) -> None:
+        entry = by_id.get(node_id)
+        if not entry:
+            return
+        node: ChecklistTemplateNode = entry["node"]
+        node_type = (node.node_type or "QUESTION").upper()
+        children = entry["children"]
+        nr = ".".join(str(p) for p in prefix) if prefix else ""
+        if node_type != "HEADING" and comments_by_node.get(node_id):
+            result.append((nr, node))
+        counter = 0
+        for child_id in children:
+            counter += 1
+            _walk(child_id, prefix + [counter])
+
+    counter = 0
+    for root_id in roots:
+        counter += 1
+        _walk(root_id, [counter])
+    return result
+
+
+def export_discussion_docx(
+    template: ChecklistTemplate,
+    nodes: list[ChecklistTemplateNode],
+    comments: list,
+    names: dict[str, str | None],
+) -> bytes:
+    """Erzeugt das Diskussionsprotokoll als DOCX (Bytes).
+
+    Nur Knoten mit Kommentaren, in Baum-Reihenfolge. Je Knoten: Nummer, Titel,
+    Status-Label, Rechtsgrundlage; darunter die Kommentare threaded (Antworten
+    eingerueckt). Soft-geloeschte Beitraege erscheinen als ``[gelöscht]``."""
+    # Kommentare je Knoten gruppieren (Eingangsreihenfolge = created_at asc).
+    comments_by_node: dict[str, list] = {}
+    for c in comments:
+        comments_by_node.setdefault(c.node_id, []).append(c)
+
+    ordered_nodes = _discussion_nodes_in_order(nodes, comments_by_node)
+
+    doc = Document()
+    style = doc.styles["Normal"]
+    style.font.name = "Arial"
+    style.font.size = Pt(10)
+    style.paragraph_format.space_after = Pt(4)
+
+    # ── Kopfblock ──
+    header_table = doc.add_table(rows=1, cols=1)
+    header_cell = header_table.rows[0].cells[0]
+    _set_cell_shading(header_cell, HEADER_BG)
+    title_para = header_cell.paragraphs[0]
+    title_run = title_para.add_run("Diskussionsprotokoll")
+    title_run.bold = True
+    title_run.font.size = Pt(22)
+    title_run.font.color.rgb = RGBColor(255, 255, 255)
+    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_para.paragraph_format.space_before = Pt(14)
+    sub_para = header_cell.add_paragraph()
+    sub_run = sub_para.add_run(template.title or "")
+    sub_run.font.size = Pt(13)
+    sub_run.font.color.rgb = RGBColor(255, 255, 255)
+    sub_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    sub_para.paragraph_format.space_after = Pt(12)
+
+    doc.add_paragraph()
+    gen = doc.add_paragraph()
+    gen_run = gen.add_run(f"Erzeugt am {datetime.now().strftime('%d.%m.%Y %H:%M')}")
+    gen_run.font.size = Pt(8)
+    gen_run.font.color.rgb = RGBColor(120, 120, 120)
+    doc.add_paragraph()
+
+    if not ordered_nodes:
+        info = doc.add_paragraph()
+        info.add_run("Keine Diskussionsbeiträge vorhanden.").italic = True
+        buf = io.BytesIO()
+        doc.save(buf)
+        return buf.getvalue()
+
+    for nr, node in ordered_nodes:
+        title = _node_title(node)
+        status_label = NODE_STATUS_LABELS.get((node.status or "").lower(), "")
+        heading_text = f"{nr} {title}".strip()
+        h = doc.add_heading(heading_text or "Knoten", level=2)
+        for run in h.runs:
+            run.font.color.rgb = RGBColor(14, 124, 92)
+
+        meta_para = doc.add_paragraph()
+        meta_bits = []
+        if status_label:
+            meta_bits.append(f"Status: {status_label}")
+        if (node.legal_reference or "").strip():
+            meta_bits.append(f"Rechtsgrundlage: {node.legal_reference.strip()}")
+        if meta_bits:
+            mr = meta_para.add_run("   ·   ".join(meta_bits))
+            mr.font.size = Pt(8)
+            mr.font.color.rgb = RGBColor(107, 114, 128)
+
+        for comment, depth in _threaded_comments(comments_by_node.get(node.id, [])):
+            indent = Cm(0.6 * depth)
+            deleted = getattr(comment, "deleted_at", None) is not None
+
+            meta_p = doc.add_paragraph()
+            meta_p.paragraph_format.left_indent = indent
+            meta_p.paragraph_format.space_after = Pt(1)
+            mrun = meta_p.add_run(_comment_meta(comment, names))
+            mrun.bold = True
+            mrun.font.size = Pt(9)
+
+            msg_p = doc.add_paragraph()
+            msg_p.paragraph_format.left_indent = indent
+            msg_p.paragraph_format.space_after = Pt(6)
+            text = "[gelöscht]" if deleted else (comment.message or "")
+            trun = msg_p.add_run(text)
+            trun.font.size = Pt(10)
+            if deleted:
+                trun.italic = True
+                trun.font.color.rgb = RGBColor(150, 150, 150)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def export_discussion_pdf(
+    template: ChecklistTemplate,
+    nodes: list[ChecklistTemplateNode],
+    comments: list,
+    names: dict[str, str | None],
+) -> bytes:
+    """Erzeugt das Diskussionsprotokoll als PDF (Bytes, reportlab)."""
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+    )
+
+    comments_by_node: dict[str, list] = {}
+    for c in comments:
+        comments_by_node.setdefault(c.node_id, []).append(c)
+    ordered_nodes = _discussion_nodes_in_order(nodes, comments_by_node)
+
+    output = io.BytesIO()
+    page_width, page_height = A4
+    proto_title = template.title or "Diskussionsprotokoll"
+
+    def add_header_footer(canvas, doc_template):
+        canvas.saveState()
+        canvas.setStrokeColor(colors.HexColor("#E0E0E0"))
+        canvas.setLineWidth(0.5)
+        canvas.line(15 * mm, page_height - 14 * mm, page_width - 15 * mm, page_height - 14 * mm)
+        canvas.setFont("Helvetica-Bold", 9)
+        canvas.setFillColor(colors.HexColor("#0E7C5C"))
+        canvas.drawString(15 * mm, page_height - 12 * mm, "Diskussionsprotokoll")
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.HexColor("#6B7280"))
+        canvas.drawRightString(page_width - 15 * mm, page_height - 12 * mm, proto_title[:70])
+        canvas.line(15 * mm, 12 * mm, page_width - 15 * mm, 12 * mm)
+        canvas.drawString(15 * mm, 8 * mm, "Auditworkshop · KOM-Checklisten-Designer")
+        canvas.drawRightString(page_width - 15 * mm, 8 * mm, f"Seite {doc_template.page}")
+        canvas.restoreState()
+
+    doc_template = SimpleDocTemplate(
+        output, pagesize=A4,
+        rightMargin=15 * mm, leftMargin=15 * mm,
+        topMargin=20 * mm, bottomMargin=18 * mm,
+    )
+
+    primary = colors.HexColor("#0E7C5C")
+    gray_dark = colors.HexColor("#1F2937")
+    gray_mid = colors.HexColor("#6B7280")
+
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle("DiscTitle", parent=styles["Heading1"], fontSize=20,
+                              textColor=colors.white, alignment=TA_CENTER))
+    styles.add(ParagraphStyle("Node", parent=styles["Heading2"], fontSize=13,
+                              textColor=primary, spaceBefore=6 * mm, spaceAfter=1 * mm))
+    styles.add(ParagraphStyle("NodeMeta", parent=styles["Normal"], fontSize=8,
+                              textColor=gray_mid, spaceAfter=3 * mm))
+    styles.add(ParagraphStyle("CMeta", parent=styles["Normal"], fontSize=9,
+                              textColor=gray_dark, fontName="Helvetica-Bold", spaceAfter=1))
+    styles.add(ParagraphStyle("CMsg", parent=styles["Normal"], fontSize=10,
+                              textColor=gray_dark, leading=13, spaceAfter=4))
+    styles.add(ParagraphStyle("CMsgDel", parent=styles["Normal"], fontSize=10,
+                              textColor=gray_mid, leading=13, spaceAfter=4))
+
+    story: list[Any] = []
+    cover = Table([[Paragraph("Diskussionsprotokoll", styles["DiscTitle"])]], colWidths=[180 * mm])
+    cover.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), primary),
+        ("TOPPADDING", (0, 0), (-1, -1), 14),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
+    ]))
+    story.append(cover)
+    story.append(Spacer(1, 4 * mm))
+    story.append(Paragraph(f"<b>{_esc(proto_title)}</b>",
+                          ParagraphStyle("PT", parent=styles["Normal"], fontSize=14,
+                                         textColor=gray_dark, spaceAfter=2 * mm)))
+    story.append(Paragraph(
+        f"Erzeugt am {datetime.now().strftime('%d.%m.%Y %H:%M')}", styles["NodeMeta"]))
+
+    if not ordered_nodes:
+        story.append(Spacer(1, 4 * mm))
+        story.append(Paragraph("<i>Keine Diskussionsbeiträge vorhanden.</i>", styles["CMsg"]))
+        doc_template.build(story, onFirstPage=add_header_footer, onLaterPages=add_header_footer)
+        return output.getvalue()
+
+    for nr, node in ordered_nodes:
+        title = _node_title(node)
+        story.append(Paragraph(f"{_esc(nr)} {_esc(title)}".strip(), styles["Node"]))
+
+        status_label = NODE_STATUS_LABELS.get((node.status or "").lower(), "")
+        meta_bits = []
+        if status_label:
+            meta_bits.append(f"Status: {_esc(status_label)}")
+        if (node.legal_reference or "").strip():
+            meta_bits.append(f"Rechtsgrundlage: {_esc(node.legal_reference.strip())}")
+        if meta_bits:
+            story.append(Paragraph("   ·   ".join(meta_bits), styles["NodeMeta"]))
+
+        for comment, depth in _threaded_comments(comments_by_node.get(node.id, [])):
+            deleted = getattr(comment, "deleted_at", None) is not None
+            indent = "&nbsp;" * (6 * depth)
+            story.append(Paragraph(f"{indent}{_esc(_comment_meta(comment, names))}", styles["CMeta"]))
+            if deleted:
+                story.append(Paragraph(f"{indent}<i>[gelöscht]</i>", styles["CMsgDel"]))
+            else:
+                msg = _esc(comment.message or "").replace("\n", "<br/>")
+                story.append(Paragraph(f"{indent}{msg}", styles["CMsg"]))
 
     doc_template.build(story, onFirstPage=add_header_footer, onLaterPages=add_header_footer)
     return output.getvalue()
