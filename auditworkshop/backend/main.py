@@ -960,7 +960,7 @@ async def _hc_egpu_gateway() -> SubcheckResult:
     if not egpu_url:
         return SubcheckResult(status="ready", message="not_configured")
     async with httpx.AsyncClient(timeout=3) as client:
-        resp = await client.get(f"{egpu_url.rstrip('/')}/api/llm/health")
+        resp = await client.get(f"{egpu_url.rstrip('/')}/health")
     return SubcheckResult(
         status="ready" if resp.status_code == 200 else "degraded",
         message=f"http_{resp.status_code}",

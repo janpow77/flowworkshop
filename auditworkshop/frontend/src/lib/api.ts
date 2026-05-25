@@ -1214,6 +1214,48 @@ export const searchKnowledge = (q: string, topK = 5) =>
 export const deleteKnowledgeSource = (source: string) =>
   request<{ deleted_chunks: number }>(`/knowledge/source/${encodeURIComponent(source)}`, { method: 'DELETE' });
 
+export interface KbGeneratedSource {
+  source: string;
+  filename?: string | null;
+  chunk_index: number;
+  score: number;
+  snippet: string;
+}
+
+export type KbTextType = 'analyse' | 'zusammenfassung' | 'stellungnahme' | 'vermerk' | 'pruefbericht';
+export type KbTextLength = 'kurz' | 'mittel' | 'lang';
+
+export interface KbGenerateParams {
+  query: string;
+  text_type: KbTextType;
+  length: KbTextLength;
+  source?: string;
+}
+
+/**
+ * Streamt eine belegbasierte KB-Generierung (qwen3.5:35b über den ai-router).
+ * Die Quellen kommen als erstes Meta-Event (onSources), danach die Tokens.
+ */
+export function streamKbGenerate(
+  params: KbGenerateParams,
+  onToken: (token: string) => void,
+  onSources: (sources: KbGeneratedSource[]) => void,
+  onDone: (info: { token_count?: number; model?: string; tok_per_s?: number }) => void,
+  onError: (err: string) => void,
+): AbortController {
+  return streamSSE(
+    '/knowledge/generate',
+    params,
+    onToken,
+    onDone,
+    onError,
+    undefined,
+    (data) => {
+      if (Array.isArray(data.sources)) onSources(data.sources as KbGeneratedSource[]);
+    },
+  );
+}
+
 // Demo
 export const seedDemoData = () => request<{ status: string; project_id?: string; checklist_id?: string }>('/demo/seed', { method: 'POST' });
 export const resetDemoData = () => request<{ status: string }>('/demo/reset', { method: 'DELETE' });
@@ -1308,6 +1350,7 @@ export function streamSSE(
   onDone: (info: { token_count?: number; model?: string; tok_per_s?: number }) => void,
   onError: (err: string) => void,
   onStatus?: (state: string) => void,
+  onMeta?: (data: Record<string, unknown>) => void,
 ): AbortController {
   const controller = new AbortController();
   fetch(`${BASE}${url}`, {
@@ -1346,6 +1389,8 @@ export function streamSSE(
               onDone(data);
             } else if (data.token) {
               onToken(data.token);
+            } else if (data.sources) {
+              onMeta?.(data);
             } else if (data.type === 'status' && data.state) {
               onStatus?.(data.state);
             } else if (data.type === 'progress') {

@@ -4,6 +4,7 @@ import {
   Home, FolderOpen, Database, FileSpreadsheet, Building2, Scale,
   CalendarDays, UserPlus, Settings, Upload, User, ShieldAlert,
   MessagesSquare, FolderArchive, Banknote, ClipboardCheck, ScrollText, ListChecks,
+  Sparkles,
 } from 'lucide-react';
 
 function isModerator(): boolean {
@@ -52,6 +53,7 @@ const NAV = [
       { to: '/projects', label: 'Projekte', icon: FolderOpen },
       { to: '/checklisten', label: 'Checklisten', icon: ListChecks },
       { to: '/knowledge', label: 'Wissensbasis', icon: Database },
+      { to: '/recherche', label: 'Wissens-Recherche', icon: Sparkles },
       { to: '/dataframes', label: 'Datenanalyse', icon: FileSpreadsheet },
       { to: '/company-search', label: 'Unternehmenssuche', icon: Building2 },
       { to: '/beihilfen', label: 'Beihilfe-Register', icon: Banknote },

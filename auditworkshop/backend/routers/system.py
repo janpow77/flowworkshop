@@ -53,27 +53,27 @@ def _get_ollama_models() -> list[dict]:
     """Fragt Ollama /api/ps ab und liefert aktuell geladene Modelle."""
     if LLM_BACKEND in {"egpu-manager", "egpu_manager", "gateway"}:
         try:
-            url = f"{EGPU_GATEWAY_URL}/api/llm/providers"
-            req = urllib.request.Request(url, method="GET")
+            url = f"{EGPU_GATEWAY_URL}/v1/models"
+            req = urllib.request.Request(
+                url, method="GET", headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
+            )
             with urllib.request.urlopen(req, timeout=3) as resp:
                 data = json.loads(resp.read())
 
             models = []
             seen = set()
-            for provider in data.get("providers", []):
-                if not provider.get("healthy"):
+            for entry in data.get("data", []):
+                name = entry.get("id")
+                if not name or name in seen:
                     continue
-                for name in provider.get("models", []):
-                    if not name or name in seen:
-                        continue
-                    seen.add(name)
-                    models.append({
-                        "name": name,
-                        "size_gb": 0,
-                        "vram_gb": 0,
-                        "expires_at": "",
-                        "provider": provider.get("name", "unknown"),
-                    })
+                seen.add(name)
+                models.append({
+                    "name": name,
+                    "size_gb": 0,
+                    "vram_gb": 0,
+                    "expires_at": "",
+                    "provider": entry.get("owned_by", "ai-router"),
+                })
 
             if MODEL_NAME and MODEL_NAME not in seen:
                 models.insert(0, {

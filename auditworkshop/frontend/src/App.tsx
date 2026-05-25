@@ -26,6 +26,7 @@ const ChecklistPage = lazy(() => import('./pages/ChecklistPage'));
 const ChecklistsPage = lazy(() => import('./pages/ChecklistsPage'));
 const ChecklistDetailPage = lazy(() => import('./pages/ChecklistDetailPage'));
 const KnowledgePage = lazy(() => import('./pages/KnowledgePage'));
+const KbResearchPage = lazy(() => import('./pages/KbResearchPage'));
 const DataFramePage = lazy(() => import('./pages/DataFramePage'));
 const CompanySearchPage = lazy(() => import('./pages/CompanySearchPage'));
 const AiActPage = lazy(() => import('./pages/AiActPage'));
@@ -134,6 +135,7 @@ export default function App() {
             <Route path="/projects/:projectId" element={<LazyPage><ProjectDetailPage /></LazyPage>} />
             <Route path="/projects/:projectId/checklists/:checklistId" element={<LazyPage><ChecklistPage /></LazyPage>} />
             <Route path="/knowledge" element={<LazyPage><KnowledgePage /></LazyPage>} />
+            <Route path="/recherche" element={<LazyPage><KbResearchPage /></LazyPage>} />
             <Route path="/dataframes" element={<LazyPage><DataFramePage /></LazyPage>} />
             <Route path="/company-search" element={<LazyPage><CompanySearchPage /></LazyPage>} />
             <Route path="/ai-act" element={<LazyPage><AiActPage /></LazyPage>} />
