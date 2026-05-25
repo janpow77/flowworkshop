@@ -16,6 +16,10 @@ from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
 from routers import projects, checklists, assessment, demo_data, dataframes, beneficiaries, reference_data, event, documents, auth, sanctions, forum, automation
+from routers import checklist_templates
+from routers import checklist_collab
+from routers import checklist_history, checklist_export, checklist_translate
+from routers import checklist_discussion, checklist_versions
 from routers import docs as docs_router, notifications, state_aid, admin_access, mail_templates
 from routers import beneficiaries_sources
 from routers import entities as entities_router
@@ -48,10 +52,25 @@ async def lifespan(app: FastAPI):
     health_registry.mark_started()
     log.info("flowworkshop startet …")
 
-    # SQLAlchemy-Tabellen erstellen (workshop_*)
+    # Checklisten-Kollaborations-Broker an den laufenden Event-Loop binden,
+    # damit synchrone Request-Handler ueber call_soon_threadsafe publizieren
+    # koennen (siehe services/checklist_events.py).
     try:
-        Base.metadata.create_all(bind=engine)
-        log.info("SQLAlchemy-Tabellen erstellt/geprueft.")
+        import asyncio as _asyncio_bind
+        from services.checklist_events import broker as _checklist_broker
+        _checklist_broker.bind_loop(_asyncio_bind.get_running_loop())
+        log.info("Checklisten-Event-Broker an Event-Loop gebunden.")
+    except Exception as e:  # noqa: BLE001
+        log.warning("Checklisten-Event-Broker-Bindung fehlgeschlagen: %s", e)
+
+    # Schema wird jetzt von Alembic verwaltet — entrypoint.sh fuehrt vor uvicorn
+    # `alembic upgrade head` aus (bzw. `stamp head` bei bestehenden, noch nicht
+    # versionierten DBs). Das fruehere `Base.metadata.create_all(bind=engine)`
+    # entfaellt damit. Die unten folgenden idempotenten ALTER-Bloecke sind auf
+    # korrektem Schema redundante No-ops und bleiben uebergangsweise als
+    # Sicherheitsnetz stehen (Cleanup: Seed-Init von Schema-Migration trennen).
+    try:
+        log.info("Schema via Alembic verwaltet (create_all entfaellt).")
         # Access-Log: Behaltedauer-Hinweis (Pruning laeuft im Scheduler)
         from services.scheduler import WORKSHOP_ACCESS_LOG_TTL_DAYS as _ACL_TTL
         log.info(
@@ -878,6 +897,17 @@ app.include_router(system.router)
 # Neue CRUD + Assessment Router
 app.include_router(projects.router)
 app.include_router(checklists.router)
+# KOM-Checklisten-Template-Subsystem (Designer, projekt-ungebunden)
+app.include_router(checklist_templates.router)
+# Hybrid-Kollaboration: Presence + Node-Locking + Live-Updates via SSE
+app.include_router(checklist_collab.router)
+# Versionierung (History/Diff/Restore), Export (DOCX/XLSX/PDF), LLM-Uebersetzung
+app.include_router(checklist_history.router)
+app.include_router(checklist_export.router)
+app.include_router(checklist_translate.router)
+# Team-Diskussion/Status/Unread/Referenz-Docs + Ganz-Checklisten-Versionen
+app.include_router(checklist_discussion.router)
+app.include_router(checklist_versions.router)
 app.include_router(assessment.router)
 app.include_router(demo_data.router)
 app.include_router(dataframes.router)
@@ -930,7 +960,7 @@ async def _hc_egpu_gateway() -> SubcheckResult:
     if not egpu_url:
         return SubcheckResult(status="ready", message="not_configured")
     async with httpx.AsyncClient(timeout=3) as client:
-        resp = await client.get(f"{egpu_url.rstrip('/')}/api/llm/health")
+        resp = await client.get(f"{egpu_url.rstrip('/')}/health")
     return SubcheckResult(
         status="ready" if resp.status_code == 200 else "degraded",
         message=f"http_{resp.status_code}",

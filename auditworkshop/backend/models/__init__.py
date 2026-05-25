@@ -12,6 +12,21 @@ from models.checklist import (  # noqa: F401
     BOOLEAN_ANSWERS,
     BOOLEAN_JN_ANSWERS,
 )
+from models.checklist_template import (  # noqa: F401
+    ChecklistTemplate,
+    ChecklistTemplateNode,
+    ChecklistAnswerSet,
+    ChecklistAnswerOption,
+    ChecklistQuestionCategory,
+    ChecklistNodeHistory,
+    ChecklistMember,
+    ChecklistInvite,
+    ChecklistNodeLock,
+    ChecklistNodeComment,
+    ChecklistNoteRead,
+    ChecklistTemplateVersion,
+    ChecklistNodeReferenceDoc,
+)
 from models.document import ProjectDocument  # noqa: F401
 from models.audit_log import AuditLog  # noqa: F401
 from models.registration import (  # noqa: F401

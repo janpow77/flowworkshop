@@ -360,6 +360,272 @@ export interface ReferenceRegistrySearchResponse {
   hits: ReferenceRegistryHit[];
 }
 
+// ── Checklisten-Templates (Designer) ──────────────────────────────────────────
+
+export type ChecklistTemplateStatus = 'draft' | 'published' | 'archived';
+
+export interface ChecklistTemplate {
+  id: string;
+  owner_id: string | null;
+  title: string;
+  description: string | null;
+  source_language: string;
+  target_language: string;
+  source_document_name: string | null;
+  properties_json: unknown | null;
+  statistics_json: unknown | null;
+  status: string;
+  node_count: number;
+  my_role: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ChecklistTemplateMember {
+  id: string;
+  template_id: string;
+  user_id: string;
+  role: string;
+  invited_by_id: string | null;
+  created_at: string | null;
+}
+
+export interface ChecklistTemplateCategory {
+  id: string;
+  template_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string | null;
+}
+
+// ── Knoten-Typen (rekursiver Baum) ────────────────────────────────────────────
+
+export type NodeType = 'HEADING' | 'QUESTION' | 'DECISION' | 'HINT';
+export type NodeBranch = 'JA' | 'NEIN';
+/** Team-Workflow-Status eines Knotens. */
+export type NodeStatus = 'pending' | 'in_progress' | 'resolved';
+export type TemplateAnswerType =
+  | 'BOOLEAN' | 'BOOLEAN_JN' | 'CURRENCY' | 'DATE' | 'CUSTOM_ENUM' | 'TEXT';
+export type MemberRoleName = 'owner' | 'editor' | 'commenter' | 'viewer';
+
+export interface ChecklistNode {
+  id: string;
+  template_id: string;
+  parent_id: string | null;
+  node_type: NodeType;
+  branch: NodeBranch | null;
+  ja_label: string | null;
+  nein_label: string | null;
+  decision_parent_id: string | null;
+  sort_order: number;
+  title: string | null;
+  public_remark: string | null;
+  remark_snippets_json: unknown | null;
+  eingabetyp: number | null;
+  answer_type: TemplateAnswerType | null;
+  answer_set_id: string | null;
+  category_id: string | null;
+  legal_reference: string | null;
+  relevant_documents_json: unknown | null;
+  is_header_field: boolean;
+  /** Team-Workflow-Status des Knotens. */
+  status: NodeStatus | null;
+  source_text_en: string | null;
+  translated_text_de: string | null;
+  review_text_de: string | null;
+  translation_status: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ChecklistNodeTree extends ChecklistNode {
+  children: ChecklistNodeTree[];
+}
+
+export interface NodeCreatePayload {
+  parent_id?: string | null;
+  node_type?: NodeType;
+  branch?: NodeBranch | null;
+  ja_label?: string | null;
+  nein_label?: string | null;
+  decision_parent_id?: string | null;
+  sort_order?: number;
+  title?: string | null;
+  public_remark?: string | null;
+  eingabetyp?: number | null;
+  answer_type?: TemplateAnswerType | null;
+  answer_set_id?: string | null;
+  category_id?: string | null;
+  legal_reference?: string | null;
+  relevant_documents_json?: unknown | null;
+  is_header_field?: boolean;
+}
+
+export type NodeUpdatePayload = Partial<NodeCreatePayload>;
+
+export interface ChecklistAnswerOption {
+  id: string;
+  answer_set_id: string;
+  name: string;
+  sort_order: number;
+  is_standard: boolean;
+  is_entfaellt: boolean;
+  value_number: number | null;
+  threshold: number | null;
+  bemerkung: string | null;
+}
+
+export interface ChecklistAnswerSet {
+  id: string;
+  template_id: string | null;
+  name: string;
+  description: string | null;
+  sort_order: number;
+  created_at: string | null;
+  options: ChecklistAnswerOption[];
+}
+
+export interface AnswerOptionPayload {
+  name: string;
+  sort_order?: number;
+  is_standard?: boolean;
+  is_entfaellt?: boolean;
+  value_number?: number | null;
+  threshold?: number | null;
+  bemerkung?: string | null;
+}
+
+export interface ChecklistTemplateMemberDetail extends ChecklistTemplateMember {
+  user_name: string | null;
+  user_email: string | null;
+  organization: string | null;
+  bundesland: string | null;
+  function_role: string | null;
+}
+
+export interface ChecklistTemplateDetail extends ChecklistTemplate {
+  members: ChecklistTemplateMemberDetail[];
+  categories: ChecklistTemplateCategory[];
+  answer_sets: ChecklistAnswerSet[];
+}
+
+// ── Versionierung / Verlauf (ChecklistNodeHistory) ───────────────────────────
+
+/** Aenderungsart eines Verlaufseintrags (server-seitige Enum-Werte). */
+export type NodeChangeType =
+  | 'created' | 'updated' | 'deleted' | 'moved'
+  | 'duplicated' | 'restored' | 'translated' | 'reviewed';
+
+/** Ein Verlaufseintrag in der Commit-artigen Listenansicht. */
+export interface HistoryEntry {
+  id: string;
+  template_id: string;
+  node_id: string;
+  node_version: number;
+  change_type: NodeChangeType | string;
+  change_reason: string | null;
+  summary: string;
+  changed_by_id: string | null;
+  changed_by_name: string | null;
+  created_at: string | null;
+}
+
+/** Ein einzelnes Feld-Diff: alter und neuer Wert. */
+export interface HistoryFieldChange {
+  old: unknown;
+  new: unknown;
+}
+
+/** Detail eines Verlaufseintrags inkl. Voll-Snapshot und Feld-Diff. */
+export interface HistoryDetail extends HistoryEntry {
+  node_snapshot: Record<string, unknown> | null;
+  changed_fields: Record<string, HistoryFieldChange> | null;
+  old_parent_id: string | null;
+  new_parent_id: string | null;
+  old_position: number | null;
+  new_position: number | null;
+}
+
+/** Ergebnis einer Wiederherstellung. */
+export interface RestoreResult {
+  status: string; // "restored" | "recreated"
+  node_id: string;
+  new_version: number;
+  history_id: string;
+}
+
+/** Bulk-Ergebnis einer Uebersetzung (EN→DE). */
+export interface TranslateResult {
+  template_id: string;
+  translated_count: number;
+  skipped_count: number;
+  failed_count: number;
+  nodes: Array<{
+    id: string;
+    source_text_en: string | null;
+    title: string | null;
+    ok: boolean;
+    error: string | null;
+  }>;
+}
+
+/** Ergebnis einer Einzel-Uebersetzung. */
+export interface TranslatedNode {
+  id: string;
+  source_text_en: string | null;
+  title: string | null;
+  ok: boolean;
+  error: string | null;
+}
+
+/** Exportformate des Checklisten-Designers. */
+export type ExportFormat = 'word' | 'excel' | 'pdf';
+/** Exportmodus: leere Felder vs. befuellte Daten. */
+export type ExportMode = 'blank' | 'filled';
+
+// ── Kollaboration (Presence + Node-Locking + Live-Updates via SSE) ───────────
+
+/** Aktuell ueber den SSE-Stream verbundener Nutzer (Presence-Registry). */
+export interface CollabPresenceUser {
+  user_id: string;
+  name: string | null;
+  organization: string | null;
+  bundesland: string | null;
+  last_seen: string | null;
+}
+
+/** Aktiver Bearbeitungs-Lock auf einen Knoten inkl. Halter-Stammdaten. */
+export interface CollabNodeLock {
+  node_id: string;
+  template_id?: string;
+  locked_by_id: string;
+  locked_by_name: string | null;
+  organization?: string | null;
+  bundesland?: string | null;
+  locked_at?: string | null;
+  expires_at: string | null;
+}
+
+/** Halter-Infos im 409-Body, wenn ein anderer Nutzer den Lock haelt. */
+export interface CollabLockConflict {
+  message: string;
+  locked_by_id: string;
+  locked_by_name: string | null;
+  organization: string | null;
+  bundesland: string | null;
+  expires_at: string | null;
+}
+
+/** Eigene Sitzungsinfos (Nutzerkennung + Anzeigename). */
+export interface SessionInfo {
+  user_id: string;
+  email: string | null;
+  name: string | null;
+  organization: string | null;
+  role: string | null;
+  created_at?: string | null;
+}
+
 // ── API-Funktionen ───────────────────────────────────────────────────────────
 
 // Projects
@@ -406,12 +672,589 @@ export const editRemark = (qId: string, remarkText: string) =>
     body: JSON.stringify({ remark_text: remarkText }),
   });
 
+// Checklisten-Templates (Designer)
+export const listChecklistTemplates = () =>
+  request<ChecklistTemplate[]>('/checklist-templates/');
+export const getChecklistTemplate = (id: string) =>
+  request<ChecklistTemplateDetail>(`/checklist-templates/${id}`);
+
+// Knoten-Baum + CRUD + Move
+export const getChecklistTree = (id: string) =>
+  request<ChecklistNodeTree[]>(`/checklist-templates/${id}/tree`);
+export const createChecklistNode = (id: string, data: NodeCreatePayload) =>
+  request<ChecklistNode>(`/checklist-templates/${id}/nodes`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+export const updateChecklistNode = (id: string, nodeId: string, data: NodeUpdatePayload) =>
+  request<ChecklistNode>(`/checklist-templates/${id}/nodes/${nodeId}`, {
+    method: 'PUT', body: JSON.stringify(data),
+  });
+export const deleteChecklistNode = (id: string, nodeId: string) =>
+  request<void>(`/checklist-templates/${id}/nodes/${nodeId}`, { method: 'DELETE' });
+export const moveChecklistNode = (
+  id: string, nodeId: string, data: { parent_id: string | null; sort_order: number },
+) =>
+  request<ChecklistNode>(`/checklist-templates/${id}/nodes/${nodeId}/move`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+
+// Mitglieder (angereichert) — fuer Rollen-Anzeige
+export const listChecklistMembers = (id: string) =>
+  request<ChecklistTemplateMemberDetail[]>(`/checklist-templates/${id}/members`);
+
+// ── Team-Diskussion, Knoten-Status, Unread & Referenz-Dokumente ───────────────
+// Endpunkte: backend/routers/checklist_discussion.py
+
+/** Ein Diskussionsbeitrag eines Knotens (mit einer Antwort-Ebene). */
+export interface NodeComment {
+  id: string;
+  template_id: string;
+  node_id: string;
+  author_id: string | null;
+  author_name: string | null;
+  message: string;
+  parent_comment_id: string | null;
+  is_deleted: boolean;
+  created_at: string | null;
+  edited_at: string | null;
+  replies: NodeComment[];
+}
+
+/** Referenz-Dokument je Knoten (Belegverweis). */
+export interface NodeRefDoc {
+  id: string;
+  template_id: string;
+  node_id: string;
+  document_name: string;
+  document_path: string | null;
+  reference_text: string | null;
+  created_at: string | null;
+}
+
+export interface RefDocCreatePayload {
+  document_name: string;
+  document_path?: string | null;
+  reference_text?: string | null;
+}
+
+/** Setzt den Workflow-Status eines Knotens (editor+). */
+export const setNodeStatus = (id: string, nodeId: string, status: NodeStatus) =>
+  request<{ node_id: string; status: NodeStatus }>(
+    `/checklist-templates/${id}/nodes/${nodeId}/status`,
+    { method: 'PUT', body: JSON.stringify({ status }) },
+  );
+
+/** Liefert den Diskussions-Thread eines Knotens (Wurzeln mit Antworten). */
+export const getNodeComments = (id: string, nodeId: string) =>
+  request<NodeComment[]>(`/checklist-templates/${id}/nodes/${nodeId}/comments`);
+
+/** Legt einen Diskussionsbeitrag an (optional als Antwort). */
+export const addComment = (
+  id: string, nodeId: string, message: string, parentCommentId?: string | null,
+) =>
+  request<NodeComment>(`/checklist-templates/${id}/nodes/${nodeId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ message, parent_comment_id: parentCommentId ?? null }),
+  });
+
+/** Bearbeitet einen eigenen Kommentar. */
+export const editComment = (id: string, commentId: string, message: string) =>
+  request<NodeComment>(`/checklist-templates/${id}/comments/${commentId}`, {
+    method: 'PUT', body: JSON.stringify({ message }),
+  });
+
+/** Loescht einen Kommentar weich (Autor oder Owner). */
+export const deleteComment = (id: string, commentId: string) =>
+  request<void>(`/checklist-templates/${id}/comments/${commentId}`, { method: 'DELETE' });
+
+/** Anzahl ungelesener Kommentare je Knoten ({ node_id: anzahl }). */
+export const getUnreadCounts = (id: string) =>
+  request<Record<string, number>>(`/checklist-templates/${id}/unread-counts`);
+
+/** Markiert alle Kommentare eines Knotens als gelesen. */
+export const markNodeRead = (id: string, nodeId: string) =>
+  request<{ marked: number }>(
+    `/checklist-templates/${id}/nodes/${nodeId}/mark-read`, { method: 'POST' },
+  );
+
+/** Liefert die Referenz-Dokumente eines Knotens. */
+export const getNodeRefDocs = (id: string, nodeId: string) =>
+  request<NodeRefDoc[]>(`/checklist-templates/${id}/nodes/${nodeId}/refdocs`);
+
+/** Verknuepft ein Referenz-Dokument mit einem Knoten (editor+). */
+export const addNodeRefDoc = (id: string, nodeId: string, data: RefDocCreatePayload) =>
+  request<NodeRefDoc>(`/checklist-templates/${id}/nodes/${nodeId}/refdocs`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+
+/** Loescht ein Referenz-Dokument (editor+). */
+export const deleteNodeRefDoc = (id: string, refdocId: string) =>
+  request<void>(`/checklist-templates/${id}/refdocs/${refdocId}`, { method: 'DELETE' });
+
+// ── Versionierung / Verlauf ───────────────────────────────────────────────────
+
+/** Commit-artiger Gesamtverlauf einer Checkliste (neueste zuerst, paginiert). */
+export const getChecklistHistory = (
+  id: string,
+  opts?: { limit?: number; offset?: number; nodeId?: string },
+) => {
+  const query = new URLSearchParams();
+  if (typeof opts?.limit === 'number') query.set('limit', String(opts.limit));
+  if (typeof opts?.offset === 'number') query.set('offset', String(opts.offset));
+  if (opts?.nodeId) query.set('node_id', opts.nodeId);
+  const suffix = query.toString();
+  return request<HistoryEntry[]>(`/checklist-templates/${id}/history${suffix ? `?${suffix}` : ''}`);
+};
+
+/** Vollstaendiger Verlauf eines einzelnen Knotens (neueste zuerst). */
+export const getNodeHistory = (id: string, nodeId: string) =>
+  request<HistoryEntry[]>(`/checklist-templates/${id}/nodes/${nodeId}/history`);
+
+/** Detail eines Verlaufseintrags inkl. Snapshot + Feld-Diff. */
+export const getHistoryDetail = (id: string, historyId: string) =>
+  request<HistoryDetail>(`/checklist-templates/${id}/history/${historyId}`);
+
+/** Setzt einen Knoten auf den Snapshot eines Verlaufseintrags zurueck (editor+). */
+export const restoreHistory = (id: string, historyId: string, changeReason?: string) =>
+  request<RestoreResult>(`/checklist-templates/${id}/history/${historyId}/restore`, {
+    method: 'POST',
+    body: JSON.stringify({ change_reason: changeReason ?? null }),
+  });
+
+// ── Ganz-Checklisten-Versionsverwaltung (ChecklistTemplateVersion) ────────────
+// Endpunkte: backend/routers/checklist_versions.py. Eine Version ist ein
+// eingefrorener JSONB-Snapshot des Knotenbaums; sie dient Freigaben/Releases und
+// der Wiederherstellung frueherer Staende.
+
+/** Release-Status einer Gesamtversion. */
+export type ChecklistVersionStatus = 'draft' | 'released';
+
+/** Ein Eintrag in der Versionsliste (ohne tree_snapshot). */
+export interface ChecklistVersion {
+  id: string;
+  template_id: string;
+  version_number: string;
+  is_frozen: boolean;
+  status: ChecklistVersionStatus | string;
+  notes: string | null;
+  node_count: number;
+  created_by_id: string | null;
+  created_by_name: string | null;
+  created_at: string | null;
+}
+
+/** Vollstaendige Version inkl. eingefrorenem Baum-Snapshot. */
+export interface ChecklistVersionDetail extends ChecklistVersion {
+  tree_snapshot: {
+    root_ids?: string[];
+    nodes?: Record<string, Record<string, unknown>>;
+  } | null;
+}
+
+/** Kurz-Beschreibung eines hinzugefuegten/entfernten Knotens im Diff. */
+export interface VersionDiffNodeBrief {
+  node_id: string;
+  node_type: string | null;
+  title: string | null;
+}
+
+/** Ein einzelnes Feld-Diff im Versionsvergleich: alter und neuer Wert. */
+export interface VersionDiffFieldChange {
+  old: unknown;
+  new: unknown;
+}
+
+/** Ein geaenderter Knoten mit field-level {old, new}-Diff. */
+export interface VersionDiffChangedNode {
+  node_id: string;
+  node_type: string | null;
+  title: string | null;
+  fields: Record<string, VersionDiffFieldChange>;
+}
+
+/** Metadaten einer verglichenen Version (Kopf der Compare-Antwort). */
+export interface VersionDiffVersionInfo {
+  id: string;
+  version_number: string;
+  status: ChecklistVersionStatus | string;
+  is_frozen: boolean;
+  node_count: number;
+  created_at: string | null;
+}
+
+/** Ergebnis des field-level Diffs zweier Versions-Snapshots. */
+export interface VersionDiff {
+  version_a: VersionDiffVersionInfo;
+  version_b: VersionDiffVersionInfo;
+  summary: {
+    added: number;
+    removed: number;
+    changed: number;
+    unchanged: number;
+  };
+  added: VersionDiffNodeBrief[];
+  removed: VersionDiffNodeBrief[];
+  changed: VersionDiffChangedNode[];
+}
+
+/** Ergebnis einer Versions-Wiederherstellung. */
+export interface VersionRestoreResult {
+  template_id: string;
+  version_id: string;
+  version_number: string;
+  restored_node_count: number;
+  deleted_node_count: number;
+}
+
+/** Listet alle Gesamtversionen einer Checkliste (neueste zuerst). */
+export const listChecklistVersions = (id: string) =>
+  request<ChecklistVersion[]>(`/checklist-templates/${id}/versions`);
+
+/** Friert die aktuelle Arbeitskopie als neue Gesamtversion ein (editor+). */
+export const createChecklistVersion = (
+  id: string, data: { version_number: string; notes?: string | null },
+) =>
+  request<ChecklistVersionDetail>(`/checklist-templates/${id}/versions`, {
+    method: 'POST',
+    body: JSON.stringify({ version_number: data.version_number, notes: data.notes ?? null }),
+  });
+
+/** Liefert eine einzelne Version inkl. eingefrorenem ``tree_snapshot``. */
+export const getChecklistVersion = (id: string, versionId: string) =>
+  request<ChecklistVersionDetail>(`/checklist-templates/${id}/versions/${versionId}`);
+
+/** Friert eine Version ein und gibt sie frei (editor/owner). */
+export const freezeChecklistVersion = (id: string, versionId: string) =>
+  request<ChecklistVersionDetail>(
+    `/checklist-templates/${id}/versions/${versionId}/freeze`, { method: 'POST' },
+  );
+
+/** Vergleicht zwei Versions-Snapshots auf Knoten-Ebene (field-level Diff). */
+export const compareChecklistVersions = (id: string, versionAId: string, versionBId: string) => {
+  const query = new URLSearchParams({ version_a_id: versionAId, version_b_id: versionBId });
+  return request<VersionDiff>(`/checklist-templates/${id}/versions/compare?${query.toString()}`);
+};
+
+/** Stellt die Arbeitskopie aus einem Versions-Snapshot wieder her (editor/owner). */
+export const restoreChecklistVersion = (id: string, versionId: string) =>
+  request<VersionRestoreResult>(
+    `/checklist-templates/${id}/versions/${versionId}/restore`, { method: 'POST' },
+  );
+
+// ── Export (DOCX/XLSX/PDF) ────────────────────────────────────────────────────
+
+const EXPORT_ENDPOINT: Record<ExportFormat, string> = {
+  word: 'export-word',
+  excel: 'export-excel',
+  pdf: 'export-pdf',
+};
+
+const EXPORT_FALLBACK_EXT: Record<ExportFormat, string> = {
+  word: 'docx',
+  excel: 'xlsx',
+  pdf: 'pdf',
+};
+
+/**
+ * Laedt einen Checklisten-Export als Blob und stoesst den Browser-Download ueber
+ * einen temporaeren ``<a>``-Link an (keine zusaetzliche Abhaengigkeit). Der
+ * Dateiname wird — falls vorhanden — aus dem ``Content-Disposition``-Header
+ * uebernommen, sonst aus Titel/Format gebildet.
+ */
+export async function exportChecklist(
+  id: string,
+  format: ExportFormat,
+  mode: ExportMode = 'blank',
+): Promise<void> {
+  const endpoint = EXPORT_ENDPOINT[format];
+  const res = await fetch(
+    `${BASE}/checklist-templates/${id}/${endpoint}?mode=${encodeURIComponent(mode)}`,
+    { headers: { ...getWorkshopAuthHeaders() } },
+  );
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+
+  // Dateinamen aus Content-Disposition extrahieren (filename="...").
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  const filename = match
+    ? decodeURIComponent(match[1])
+    : `Pruefcheckliste.${EXPORT_FALLBACK_EXT[format]}`;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Object-URL nach kurzem Tick freigeben (Safari/Firefox-sicher).
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Laedt das Diskussionsprotokoll des Checklisten-Designers als Blob (DOCX oder
+ * PDF) und stoesst den Browser-Download ueber einen temporaeren ``<a>``-Link an
+ * (gleiches Muster wie ``exportChecklist``, keine zusaetzliche Abhaengigkeit).
+ * Der Dateiname wird — falls vorhanden — aus dem ``Content-Disposition``-Header
+ * uebernommen, sonst auf ``Diskussionsprotokoll.${format}`` zurueckgefallen.
+ */
+export async function exportDiscussion(
+  templateId: string,
+  format: 'docx' | 'pdf',
+): Promise<void> {
+  const res = await fetch(
+    `${BASE}/checklist-templates/${templateId}/export-discussion?format=${encodeURIComponent(format)}`,
+    { headers: { ...getWorkshopAuthHeaders() } },
+  );
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+
+  // Dateinamen aus Content-Disposition extrahieren (filename="...").
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  const filename = match
+    ? decodeURIComponent(match[1])
+    : `Diskussionsprotokoll.${format}`;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Object-URL nach kurzem Tick freigeben (Safari/Firefox-sicher).
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Laedt das hinterlegte Quelldokument (z. B. das englische KOM-Original) herunter.
+ */
+export async function downloadSourceDocument(id: string): Promise<void> {
+  const res = await fetch(
+    `${BASE}/checklist-templates/${id}/source-document`,
+    { headers: { ...getWorkshopAuthHeaders() } },
+  );
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  const filename = match ? decodeURIComponent(match[1]) : 'Quelldokument';
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Uebersetzung (EN→DE via LLM) ──────────────────────────────────────────────
+
+/**
+ * Uebersetzt englischsprachige Knoten eines Templates ins Deutsche (editor+).
+ * Ohne ``nodeIds`` werden alle EN-Knoten betrachtet. Bei nicht erreichbarem
+ * LLM-Backend wirft der Server HTTP 503 (vom Aufrufer abzufangen).
+ */
+export const translateChecklist = (id: string, nodeIds?: string[]) =>
+  request<TranslateResult>(`/checklist-templates/${id}/translate`, {
+    method: 'POST',
+    body: JSON.stringify(nodeIds && nodeIds.length ? { node_ids: nodeIds } : {}),
+  });
+
+/** Uebersetzt einen einzelnen Knoten-Titel EN→DE (editor+). */
+export const translateNode = (id: string, nodeId: string) =>
+  request<TranslatedNode>(`/checklist-templates/${id}/nodes/${nodeId}/translate`, {
+    method: 'POST',
+  });
+
+// ── Kollaboration: SSE-Stream, Node-Locks, Presence ──────────────────────────
+
+/**
+ * Oeffnet den SSE-Stream einer Checkliste. ``EventSource`` kann keine
+ * Authorization-Header setzen, daher wird der Workshop-Token als Query-Parameter
+ * uebergeben (Backend validiert ihn ueber ``?token=...``). Liefert die
+ * EventSource-Instanz; der Aufrufer haengt ``onmessage``/``onerror`` an und ruft
+ * ``close()`` beim Verlassen der Seite.
+ */
+export function openChecklistEvents(id: string): EventSource {
+  const token = getWorkshopAuthToken() ?? '';
+  const url = `${BASE}/checklist-templates/${id}/events?token=${encodeURIComponent(token)}`;
+  return new EventSource(url);
+}
+
+/**
+ * Fehler beim Lock-Erwerb. Bei HTTP 409 (anderer Nutzer haelt den Lock) liegt in
+ * ``conflict`` der Halter-Datensatz vor; der Aufrufer kann den Inspector dann
+ * schreibgeschuetzt mit Halter-Hinweis darstellen.
+ */
+export class LockConflictError extends Error {
+  status: number;
+  conflict: CollabLockConflict | null;
+  constructor(status: number, conflict: CollabLockConflict | null, message: string) {
+    super(message);
+    this.name = 'LockConflictError';
+    this.status = status;
+    this.conflict = conflict;
+  }
+}
+
+/**
+ * Erwirbt/erneuert einen Bearbeitungs-Lock auf einen Knoten. Bei 409 wird ein
+ * ``LockConflictError`` mit den Halter-Infos geworfen, sonst der eigene Lock
+ * zurueckgegeben.
+ */
+export async function acquireNodeLock(id: string, nodeId: string): Promise<CollabNodeLock> {
+  const res = await fetch(`${BASE}/checklist-templates/${id}/nodes/${nodeId}/lock`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getWorkshopAuthHeaders() },
+  });
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
+  if (res.status === 409) {
+    let conflict: CollabLockConflict | null = null;
+    try {
+      const body = await res.json();
+      // FastAPI verpackt HTTPException(detail=...) in {detail: ...}.
+      conflict = (body?.detail ?? body) as CollabLockConflict;
+    } catch { /* kein JSON-Body */ }
+    throw new LockConflictError(409, conflict, conflict?.message ?? 'Knoten ist gesperrt.');
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status}: ${body}`);
+  }
+  return res.json() as Promise<CollabNodeLock>;
+}
+
+/** Gibt den eigenen Lock auf einen Knoten frei (idempotent). */
+export const releaseNodeLock = (id: string, nodeId: string) =>
+  request<void>(`/checklist-templates/${id}/nodes/${nodeId}/lock`, { method: 'DELETE' });
+
+/** Listet die aktiven (nicht abgelaufenen) Locks einer Checkliste. */
+export const listLocks = (id: string) =>
+  request<CollabNodeLock[]>(`/checklist-templates/${id}/locks`);
+
+/** Liefert die aktuell ueber SSE verbundenen Nutzer einer Checkliste. */
+export const listPresence = (id: string) =>
+  request<CollabPresenceUser[]>(`/checklist-templates/${id}/presence`);
+
+/** Eigene Sitzungsinfos (Nutzerkennung + Anzeigename) — fuer „eigener Nutzer". */
+export const getMe = () => request<SessionInfo>('/auth/me');
+
+// Antwortsets: global + checklistenspezifisch
+export const listGlobalAnswerSets = () =>
+  request<ChecklistAnswerSet[]>('/checklist-templates/answer-sets');
+export const listTemplateAnswerSets = (id: string) =>
+  request<ChecklistAnswerSet[]>(`/checklist-templates/${id}/answer-sets`);
+export const createGlobalAnswerSet = (data: { name: string; description?: string | null; sort_order?: number; options?: AnswerOptionPayload[] }) =>
+  request<ChecklistAnswerSet>('/checklist-templates/answer-sets', {
+    method: 'POST', body: JSON.stringify(data),
+  });
+export const createTemplateAnswerSet = (id: string, data: { name: string; description?: string | null; sort_order?: number; options?: AnswerOptionPayload[] }) =>
+  request<ChecklistAnswerSet>(`/checklist-templates/${id}/answer-sets`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+export const updateAnswerSet = (setId: string, data: { name?: string; description?: string | null; sort_order?: number }) =>
+  request<ChecklistAnswerSet>(`/checklist-templates/answer-sets/${setId}`, {
+    method: 'PUT', body: JSON.stringify(data),
+  });
+export const deleteAnswerSet = (setId: string) =>
+  request<void>(`/checklist-templates/answer-sets/${setId}`, { method: 'DELETE' });
+export const addAnswerOption = (setId: string, data: AnswerOptionPayload) =>
+  request<ChecklistAnswerOption>(`/checklist-templates/answer-sets/${setId}/options`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+export const updateAnswerOption = (optionId: string, data: Partial<AnswerOptionPayload>) =>
+  request<ChecklistAnswerOption>(`/checklist-templates/answer-options/${optionId}`, {
+    method: 'PUT', body: JSON.stringify(data),
+  });
+export const deleteAnswerOption = (optionId: string) =>
+  request<void>(`/checklist-templates/answer-options/${optionId}`, { method: 'DELETE' });
+
+// Kategorien je Checkliste
+export const listChecklistCategories = (id: string) =>
+  request<ChecklistTemplateCategory[]>(`/checklist-templates/${id}/categories`);
+export const createChecklistCategory = (id: string, data: { name: string; sort_order?: number }) =>
+  request<ChecklistTemplateCategory>(`/checklist-templates/${id}/categories`, {
+    method: 'POST', body: JSON.stringify(data),
+  });
+export const updateChecklistCategory = (id: string, catId: string, data: { name?: string; sort_order?: number }) =>
+  request<ChecklistTemplateCategory>(`/checklist-templates/${id}/categories/${catId}`, {
+    method: 'PUT', body: JSON.stringify(data),
+  });
+export const deleteChecklistCategory = (id: string, catId: string) =>
+  request<void>(`/checklist-templates/${id}/categories/${catId}`, { method: 'DELETE' });
+
 // Knowledge
 export const getKnowledgeStats = () => request<KnowledgeStats>('/knowledge/stats');
 export const searchKnowledge = (q: string, topK = 5) =>
   request<{ query: string; results: SearchResult[] }>(`/knowledge/search?q=${encodeURIComponent(q)}&top_k=${topK}`);
 export const deleteKnowledgeSource = (source: string) =>
   request<{ deleted_chunks: number }>(`/knowledge/source/${encodeURIComponent(source)}`, { method: 'DELETE' });
+
+export interface KbGeneratedSource {
+  source: string;
+  filename?: string | null;
+  chunk_index: number;
+  score: number;
+  snippet: string;
+}
+
+export type KbTextType = 'analyse' | 'zusammenfassung' | 'stellungnahme' | 'vermerk' | 'pruefbericht';
+export type KbTextLength = 'kurz' | 'mittel' | 'lang';
+
+export interface KbGenerateParams {
+  query: string;
+  text_type: KbTextType;
+  length: KbTextLength;
+  source?: string;
+}
+
+/**
+ * Streamt eine belegbasierte KB-Generierung (qwen3.5:35b über den ai-router).
+ * Die Quellen kommen als erstes Meta-Event (onSources), danach die Tokens.
+ */
+export function streamKbGenerate(
+  params: KbGenerateParams,
+  onToken: (token: string) => void,
+  onSources: (sources: KbGeneratedSource[]) => void,
+  onDone: (info: { token_count?: number; model?: string; tok_per_s?: number }) => void,
+  onError: (err: string) => void,
+): AbortController {
+  return streamSSE(
+    '/knowledge/generate',
+    params,
+    onToken,
+    onDone,
+    onError,
+    undefined,
+    (data) => {
+      if (Array.isArray(data.sources)) onSources(data.sources as KbGeneratedSource[]);
+    },
+  );
+}
 
 // Demo
 export const seedDemoData = () => request<{ status: string; project_id?: string; checklist_id?: string }>('/demo/seed', { method: 'POST' });
@@ -507,6 +1350,7 @@ export function streamSSE(
   onDone: (info: { token_count?: number; model?: string; tok_per_s?: number }) => void,
   onError: (err: string) => void,
   onStatus?: (state: string) => void,
+  onMeta?: (data: Record<string, unknown>) => void,
 ): AbortController {
   const controller = new AbortController();
   fetch(`${BASE}${url}`, {
@@ -545,6 +1389,8 @@ export function streamSSE(
               onDone(data);
             } else if (data.token) {
               onToken(data.token);
+            } else if (data.sources) {
+              onMeta?.(data);
             } else if (data.type === 'status' && data.state) {
               onStatus?.(data.state);
             } else if (data.type === 'progress') {

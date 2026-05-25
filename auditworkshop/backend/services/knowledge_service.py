@@ -53,7 +53,7 @@ def _get_local_model():
 def _gateway_embed(texts: list[str]) -> list[list[float]]:
     with httpx.Client(timeout=httpx.Timeout(30, read=300)) as client:
         resp = client.post(
-            f"{EMBEDDING_GATEWAY_URL}/api/llm/embeddings",
+            f"{EMBEDDING_GATEWAY_URL}/api/embed",
             json={"model": EMBEDDING_MODEL, "input": texts},
             headers={"X-App-Id": EMBEDDING_GATEWAY_APP_ID},
         )

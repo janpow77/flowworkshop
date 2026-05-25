@@ -341,7 +341,7 @@ async def _generate_ai_paragraph(
             timeout=httpx.Timeout(5, read=config.EMAIL_AI_TIMEOUT_S)
         ) as client:
             resp = await client.post(
-                f"{config.EGPU_GATEWAY_URL}/api/llm/chat/completions",
+                f"{config.EGPU_GATEWAY_URL}/v1/chat/completions",
                 json=payload,
                 headers={"X-App-Id": config.EGPU_GATEWAY_APP_ID},
             )

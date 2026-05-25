@@ -16,7 +16,6 @@ import httpx
 from config import (
     EGPU_GATEWAY_APP_ID,
     EGPU_GATEWAY_URL,
-    EGPU_WORKLOAD_TYPE,
     LLM_BACKEND,
     LLM_MAX_TOKENS_DEFAULT,
     LLM_NUM_CTX,
@@ -220,37 +219,14 @@ def _sanitize_stream_token(
     return "".join(visible_parts)
 
 
-async def _fetch_gateway_providers(client: httpx.AsyncClient) -> list[dict]:
-    resp = await client.get(f"{EGPU_GATEWAY_URL}/api/llm/providers")
+async def _fetch_gateway_model_ids(client: httpx.AsyncClient) -> list[str]:
+    """Liest die verfuegbaren Modelle vom ai-router (OpenAI /v1/models)."""
+    resp = await client.get(
+        f"{EGPU_GATEWAY_URL}/v1/models",
+        headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
+    )
     resp.raise_for_status()
-    return resp.json().get("providers", [])
-
-
-def _healthy_gateway_models(providers: list[dict]) -> list[str]:
-    models: list[str] = []
-    seen: set[str] = set()
-    for provider in providers:
-        if not provider.get("healthy"):
-            continue
-        for model in provider.get("models", []):
-            if model and model not in seen:
-                seen.add(model)
-                models.append(model)
-    return models
-
-
-def _healthy_gateway_provider_names(providers: list[dict]) -> list[str]:
-    names: list[str] = []
-    seen: set[str] = set()
-    for provider in providers:
-        if not provider.get("healthy"):
-            continue
-        name = provider.get("name") or "unknown"
-        if name in seen:
-            continue
-        seen.add(name)
-        names.append(name)
-    return names
+    return [m.get("id") for m in resp.json().get("data", []) if m.get("id")]
 
 
 def _extract_gateway_error(resp: httpx.Response) -> str:
@@ -271,28 +247,30 @@ async def check_ollama() -> dict:
     if _use_gateway():
         try:
             async with httpx.AsyncClient(timeout=5) as client:
-                health_resp = await client.get(f"{EGPU_GATEWAY_URL}/api/llm/health")
+                health_resp = await client.get(f"{EGPU_GATEWAY_URL}/health")
                 health_resp.raise_for_status()
                 health = health_resp.json()
-                providers = await _fetch_gateway_providers(client)
+                model_ids = await _fetch_gateway_model_ids(client)
 
-            healthy_models = _healthy_gateway_models(providers)
-            configured_ok = MODEL_NAME in healthy_models if MODEL_NAME else bool(healthy_models)
-            healthy_providers = _healthy_gateway_provider_names(providers)
+            configured_ok = MODEL_NAME in model_ids if MODEL_NAME else bool(model_ids)
+            online_spokes = [
+                s.get("name") for s in health.get("spokes", [])
+                if s.get("ok") and s.get("name")
+            ]
             return {
                 "ok": health.get("status") == "ok" and configured_ok,
-                "models": [MODEL_NAME] if configured_ok else healthy_models,
+                "models": [MODEL_NAME] if configured_ok else model_ids,
                 "url": EGPU_GATEWAY_URL,
-                "backend": "egpu-manager",
+                "backend": "ai-router",
                 "app_id": EGPU_GATEWAY_APP_ID,
-                "providers": healthy_providers,
+                "providers": online_spokes,
             }
         except Exception as e:
             return {
                 "ok": False,
                 "error": str(e),
                 "url": EGPU_GATEWAY_URL,
-                "backend": "egpu-manager",
+                "backend": "ai-router",
                 "app_id": EGPU_GATEWAY_APP_ID,
             }
 
@@ -319,14 +297,13 @@ async def warmup_gateway_model() -> None:
         "stream": False,
         "max_tokens": 8,
         "temperature": 0,
-        "workload_type": EGPU_WORKLOAD_TYPE,
     }
 
     started = time.monotonic()
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(10, read=90)) as client:
             resp = await client.post(
-                f"{EGPU_GATEWAY_URL}/api/llm/chat/completions",
+                f"{EGPU_GATEWAY_URL}/v1/chat/completions",
                 json=payload,
                 headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
             )
@@ -409,10 +386,9 @@ async def _stream_via_gateway(
             {"role": "user", "content": full_prompt},
         ],
         "stream": True,
+        "stream_options": {"include_usage": True},
         "max_tokens": max_tokens or LLM_MAX_TOKENS_DEFAULT,
         "temperature": LLM_TEMPERATURE,
-        "think": False,
-        "workload_type": EGPU_WORKLOAD_TYPE,
     }
 
     token_count = 0
@@ -425,7 +401,7 @@ async def _stream_via_gateway(
         non_stream_payload = {**payload, "stream": False}
         async with httpx.AsyncClient(timeout=httpx.Timeout(10, read=300)) as client:
             resp = await client.post(
-                f"{EGPU_GATEWAY_URL}/api/llm/chat/completions",
+                f"{EGPU_GATEWAY_URL}/v1/chat/completions",
                 json=non_stream_payload,
                 headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
             )
@@ -453,7 +429,7 @@ async def _stream_via_gateway(
             async with httpx.AsyncClient(timeout=httpx.Timeout(10, read=300)) as client:
                 async with client.stream(
                     "POST",
-                    f"{EGPU_GATEWAY_URL}/api/llm/chat/completions",
+                    f"{EGPU_GATEWAY_URL}/v1/chat/completions",
                     json=payload,
                     headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
                 ) as resp:

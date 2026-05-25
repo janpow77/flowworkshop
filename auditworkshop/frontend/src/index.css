@@ -114,6 +114,22 @@ h4 {
   animation: slide-up 0.4s ease-out both;
 }
 
+/* Off-Canvas-Drawer (Checklisten-Navigation, mobile) */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.18s ease-out both;
+}
+
 /* Typing cursor */
 @keyframes cursor-blink {
   0%, 100% { opacity: 1; }

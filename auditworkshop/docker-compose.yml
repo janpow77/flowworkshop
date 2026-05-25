@@ -38,11 +38,11 @@ services:
       DATABASE_URL: postgresql://workshop:workshop@db:5432/workshop
       OLLAMA_URL: http://host.docker.internal:11434
       LLM_BACKEND: egpu-manager
-      EGPU_GATEWAY_URL: http://host.docker.internal:7842
+      EGPU_GATEWAY_URL: http://host.docker.internal:7849   # ai-router (OpenAI /v1)
       EGPU_GATEWAY_APP_ID: auditworkshop
       EGPU_WORKLOAD_TYPE: llm
       EMBEDDING_BACKEND: gateway
-      EMBEDDING_GATEWAY_URL: http://host.docker.internal:7842
+      EMBEDDING_GATEWAY_URL: http://host.docker.internal:7849   # ai-router (/api/embed)
       EMBEDDING_GATEWAY_APP_ID: auditworkshop
       EMBEDDING_MODEL: bge-m3
       EMBEDDING_DIM: "1024"

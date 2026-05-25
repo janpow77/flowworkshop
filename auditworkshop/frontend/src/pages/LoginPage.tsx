@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { LogIn, UserPlus, Loader2, Eye, EyeOff, QrCode } from 'lucide-react';
+import { LogIn, UserPlus, Loader2, Eye, EyeOff, QrCode, ListChecks } from 'lucide-react';
 
 export default function LoginPage({ onLogin }: { onLogin: (token: string, user: { name: string; organization: string; role: string }) => void }) {
   const [email, setEmail] = useState('');
@@ -232,6 +232,30 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
             </ul>
             <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-rose-300/80">
               Für Begünstigten-Screening nach Art. 73 VO 2021/1060
+            </p>
+          </button>
+
+          {/* Kachel 3: Checklisten-Designer */}
+          <button
+            onClick={() => navigate('/checklisten')}
+            className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-blue-500/10 hover:scale-[1.01] hover:shadow-xl md:col-span-2"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/20 text-blue-300 backdrop-blur-sm"><ListChecks size={24} /></span>
+              <h2 className="text-lg font-semibold text-white">Checklisten-Designer</h2>
+            </div>
+            <p className="text-sm leading-relaxed text-blue-200/80">
+              KOM-Musterchecklisten verwalten, gemeinsam bearbeiten und darüber diskutieren &mdash;
+              kollaborativ über Prüfbehörden und Prüfungseinrichtungen hinweg.
+            </p>
+            <ul className="mt-4 grid gap-2 text-xs text-blue-200/60 sm:grid-cols-2 flex-1">
+              <li className="flex items-start gap-2"><span className="text-blue-400 mt-0.5">●</span> KOM-Musterchecklisten der EU (2021-2027) auf Deutsch</li>
+              <li className="flex items-start gap-2"><span className="text-blue-400 mt-0.5">●</span> Baum-Editor mit Entscheidungsbäumen, Status &amp; Team-Diskussion</li>
+              <li className="flex items-start gap-2"><span className="text-blue-400 mt-0.5">●</span> Versionsverwaltung mit Freigabe &amp; Versionsvergleich</li>
+              <li className="flex items-start gap-2"><span className="text-blue-400 mt-0.5">●</span> Export als ausfüllbares Word, Excel &amp; PDF</li>
+            </ul>
+            <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-blue-300/80">
+              Kollaborativer Checklisten-Designer für Prüfbehörden
             </p>
           </button>
 

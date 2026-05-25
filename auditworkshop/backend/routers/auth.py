@@ -412,10 +412,14 @@ def rotate_qr_secret(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/sessions")
-def list_sessions(pin: str = "", db: Session = Depends(get_db)):
-    """Admin: Zeigt aktive Sessions."""
-    if pin != "1234":
-        raise HTTPException(403, "Falscher PIN.")
+def list_sessions(request: Request, db: Session = Depends(get_db)):
+    """Admin: Zeigt aktive Sessions.
+
+    F-010: Zugriff nur fuer angemeldete Admins (echte Rollenpruefung via
+    ``require_admin`` ueber require_session + Rollenauflösung) statt des frueheren
+    hartcodierten PINs.
+    """
+    require_admin(request)
     sessions = db.query(WorkshopSession).order_by(WorkshopSession.last_seen_at.desc()).all()
     return {
         "active_sessions": len(sessions),
@@ -453,10 +457,13 @@ def log_action(
 
 
 @router.get("/audit/log")
-def get_audit_log(pin: str = "", limit: int = 50, db: Session = Depends(get_db)):
-    """Admin: Zeigt Audit-Log."""
-    if pin != "1234":
-        raise HTTPException(403, "Falscher PIN.")
+def get_audit_log(request: Request, limit: int = 50, db: Session = Depends(get_db)):
+    """Admin: Zeigt Audit-Log.
+
+    F-010: Zugriff nur fuer angemeldete Admins (echte Rollenpruefung via
+    ``require_admin``) statt des frueheren hartcodierten PINs.
+    """
+    require_admin(request)
     entries = (
         db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit).all()
     )

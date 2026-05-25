@@ -63,6 +63,29 @@ LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 LLM_NUM_GPU     = int(os.getenv("LLM_NUM_GPU", "99"))  # Alle Layer auf GPU
 LLM_MAX_TOKENS_DEFAULT = int(os.getenv("LLM_MAX_TOKENS_DEFAULT", "384"))
 
+# ── Wissens-Recherche (KB-Search) ──────────────────────────────────────────
+# Modell fuer die KB-Textgenerierung im Recherche-Modul. Geht ueber das Gateway
+# (LLM_BACKEND=egpu-manager) an die Route "qwen3.5:* → evo-x2". Der echte
+# Ollama-Tag auf der evo-x2 ist "qwen3.5:35b-fast" (verifiziert ueber den
+# Router-Spoke-Healthcheck) — "qwen3.5:35b" ohne Suffix existiert dort NICHT.
+# Der Recherche-Modus ist KEINE Live-Demo, daher ist das langsamere, staerkere
+# Reasoning-Modell hier vertretbar (anders als bei den Szenarien 1-6).
+KB_RESEARCH_MODEL = os.getenv("KB_RESEARCH_MODEL", "qwen3.5:35b-fast")
+# Wie viele Chunks als RAG-Kontext in die Generierung gehen.
+KB_RESEARCH_TOP_K = int(os.getenv("KB_RESEARCH_TOP_K", "6"))
+# Wortmarke fuer die Abstention-Erkennung im Frontend (muss zum Prompt passen).
+KB_RESEARCH_ABSTENTION = "Die Wissensbasis enthält keine Belege zu dieser Frage."
+# System-Prompt fuer die KB-Textgenerierung. Strikt belegbasiert mit Abstention —
+# das Modell darf nur aus dem mitgelieferten Kontext schöpfen.
+KB_RESEARCH_SYSTEM_PROMPT = """Du bist ein Rechercheassistent für EFRE-Prüfer.
+Beantworte die Frage AUSSCHLIESSLICH auf Basis der bereitgestellten Fundstellen aus
+der Wissensbasis. Erfinde keine Inhalte, Artikel oder Zahlen.
+Wenn die Fundstellen die Frage nicht abdecken, antworte exakt mit:
+"Die Wissensbasis enthält keine Belege zu dieser Frage."
+Zitiere relevante Rechtsgrundlagen (z. B. Artikelnummern) nur, wenn sie im Kontext stehen.
+Formuliere keine prüfungsrechtlichen Urteile — das Urteil obliegt dem Prüfer.
+Antworte auf Deutsch in klarer Behördensprache."""
+
 # ── Begünstigtenverzeichnis ────────────────────────────────────────────────
 BENEFICIARY_URL = (
     "https://wirtschaft.hessen.de/sites/wirtschaft.hessen.de/files/"

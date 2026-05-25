@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
 import PublicShell from './components/layout/PublicShell';
+import ChecklistLayout from './components/checklist/ChecklistLayout';
 import EuLoader from './components/layout/EuLoader';
 import ErrorBoundary from './components/layout/ErrorBoundary';
 
@@ -22,7 +23,10 @@ const ScenarioPage = lazy(() => import('./pages/ScenarioPage'));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const ChecklistPage = lazy(() => import('./pages/ChecklistPage'));
+const ChecklistsPage = lazy(() => import('./pages/ChecklistsPage'));
+const ChecklistDetailPage = lazy(() => import('./pages/ChecklistDetailPage'));
 const KnowledgePage = lazy(() => import('./pages/KnowledgePage'));
+const KbResearchPage = lazy(() => import('./pages/KbResearchPage'));
 const DataFramePage = lazy(() => import('./pages/DataFramePage'));
 const CompanySearchPage = lazy(() => import('./pages/CompanySearchPage'));
 const AiActPage = lazy(() => import('./pages/AiActPage'));
@@ -107,20 +111,31 @@ export default function App() {
           </Route>
         )}
 
+        {/* Checklisten-Designer — eigenstaendiges Layout OHNE Workshop-Navigation.
+            Nur fuer eingeloggte Nutzer (API braucht den Bearer-Token). */}
+        {authToken && (
+          <Route element={<ChecklistLayout />}>
+            <Route path="/checklisten" element={<LazyPage><ChecklistsPage /></LazyPage>} />
+            <Route path="/checklisten/:id" element={<LazyPage><ChecklistDetailPage /></LazyPage>} />
+          </Route>
+        )}
+
         {authToken ? (
           <Route element={<AppShell />}>
             {/* Startseite je nach Phase */}
-            <Route index element={
-              phase === 'post'
-                ? <LazyPage><HubPage /></LazyPage>
-                : <LazyPage><HomePage /></LazyPage>
-            } />
+            {/* Startseite = Kachel-Uebersicht (Hub). Der Workshop ist vorbei;
+                die Seite dient jetzt als dauerhafte Info-/Austausch-Plattform. */}
+            <Route index element={<LazyPage><HubPage /></LazyPage>} />
+            <Route path="/hub" element={<LazyPage><HubPage /></LazyPage>} />
+            {/* Alte Workshop-Startseite (Hero/Anmeldung) weiterhin erreichbar */}
+            <Route path="/willkommen" element={<LazyPage><HomePage /></LazyPage>} />
             <Route path="/account" element={<LazyPage><AccountPage /></LazyPage>} />
             <Route path="/scenario/:id" element={<LazyPage><ScenarioPage /></LazyPage>} />
             <Route path="/projects" element={<LazyPage><ProjectsPage /></LazyPage>} />
             <Route path="/projects/:projectId" element={<LazyPage><ProjectDetailPage /></LazyPage>} />
             <Route path="/projects/:projectId/checklists/:checklistId" element={<LazyPage><ChecklistPage /></LazyPage>} />
             <Route path="/knowledge" element={<LazyPage><KnowledgePage /></LazyPage>} />
+            <Route path="/recherche" element={<LazyPage><KbResearchPage /></LazyPage>} />
             <Route path="/dataframes" element={<LazyPage><DataFramePage /></LazyPage>} />
             <Route path="/company-search" element={<LazyPage><CompanySearchPage /></LazyPage>} />
             <Route path="/ai-act" element={<LazyPage><AiActPage /></LazyPage>} />
