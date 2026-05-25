@@ -12,7 +12,11 @@
 set -euo pipefail
 
 COMMON_SLUG="auditworkshop"
-STACK_DIR="/opt/${COMMON_SLUG}"
+# STACK_DIR = Verzeichnis mit der compose.yaml. Aus dem Skript-Pfad abgeleitet
+# (= App-Unterverzeichnis, z. B. /opt/auditworkshop/auditworkshop), damit
+# `docker compose` die Compose-Datei findet. Bugfix: vorher fix /opt/auditworkshop
+# (Repo-Root ohne compose.yaml) → "no configuration file provided".
+STACK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="/etc/${COMMON_SLUG}/env"
 
 # shellcheck disable=SC1091
@@ -54,7 +58,7 @@ fi
 log "Stack starten"
 cd "${STACK_DIR}"
 PREVIOUS_IMAGE_TAG="${PREVIOUS_IMAGE_TAG:-}"
-docker compose up -d
+docker compose -f compose.yaml up -d
 
 # ── 5. Health-Polling mit Rollback ────────────────────────
 rollback_to_previous() {
@@ -63,7 +67,7 @@ rollback_to_previous() {
     return 1
   fi
   warn "Rollback auf ${PREVIOUS_IMAGE_TAG}"
-  IMAGE_TAG="$PREVIOUS_IMAGE_TAG" docker compose up -d
+  IMAGE_TAG="$PREVIOUS_IMAGE_TAG" docker compose -f compose.yaml up -d
 }
 
 # Probiere zunächst den Container-Endpunkt; wenn das Backend nicht
@@ -74,7 +78,7 @@ log "Backend-Health-Endpoint: ${HEALTH_URL} (Timeout 5 Min, MIG-07)"
 # Versuche aus dem Backend-Container heraus zu pollen — das geht ohne
 # Caddy-Vorschaltung und ist netzwerk-unabhängig vom Host.
 docker_health_probe() {
-  docker compose exec -T auditworkshop-backend \
+  docker compose -f compose.yaml exec -T auditworkshop-backend \
     python3 -c "import urllib.request,sys,json; \
                 r=urllib.request.urlopen('http://localhost:8000/health',timeout=3); \
                 d=json.load(r); sys.exit(0 if d.get('status')=='ready' else 2)" \

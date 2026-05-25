@@ -27,7 +27,10 @@ from routers.auth import require_moderator, require_session
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 
 # Laengen-Steuerung der Generierung → Token-Budget.
-_LENGTH_TOKENS = {"kurz": 350, "mittel": 700, "lang": 1200}
+# Hoch angesetzt, weil qwen3.5:35b-fast ein Reasoning-Modell ist und ~1500-1900
+# Tokens fuer den (separat gestreamten) Thinking-Block verbraucht, BEVOR Content
+# kommt. Zu kleine Budgets → 0 Content-Tokens. Das Budget deckt Reasoning + Antwort.
+_LENGTH_TOKENS = {"kurz": 2200, "mittel": 3200, "lang": 4200}
 # Textart → Instruktion, die an den Basis-System-Prompt angehaengt wird.
 _TEXT_TYPE_HINTS = {
     "analyse": "Erstelle eine strukturierte Analyse mit nummerierten Kernpunkten.",
