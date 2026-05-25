@@ -47,11 +47,17 @@ services:
       EMBEDDING_MODEL: bge-m3
       EMBEDDING_DIM: "1024"
       MODEL_NAME: qwen3:14b
+      # Knowledge-API via ai-router (zentrale audit_designer RAG, 8000+ Chunks)
+      AI_ROUTER_URL: http://ai-router:7842
+      WORKSHOP_APP_ID: auditworkshop
       WORKSHOP_ADMIN: "true"   # Ingest-Endpunkt freischalten
       ALLOW_REMOTE_GEOCODING: "false"
       ALLOW_REMOTE_TILES: "true"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - spoke-stack_default
     ports:
       - "8006:8000"
     volumes:
@@ -87,3 +93,8 @@ services:
 
 volumes:
   db_data:
+
+networks:
+  # spoke-stack: Verbindung zum ai-router für Knowledge-API
+  spoke-stack_default:
+    external: true
