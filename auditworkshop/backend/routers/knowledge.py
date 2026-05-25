@@ -26,7 +26,7 @@ from config import (
     KB_SOURCE_GROUPS,
     KB_DEFAULT_SOURCE,
 )
-from services import knowledge_service as ks
+from services import router_knowledge_service as ks
 from services.file_parser import extract
 from services.ollama_service import stream
 from routers.auth import require_moderator, require_session
