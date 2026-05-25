@@ -111,7 +111,11 @@ def search(
     _session: dict = Depends(require_session),
 ):
     """Semantische Ähnlichkeitssuche in den gespeicherten Chunks."""
-    results = ks.search(q, top_k=top_k, source_filter=_resolve_source(source))
+    # Note: source filter not supported by router_knowledge_service yet
+    # TODO: implement source filtering in router_knowledge_service
+    response = ks.search(q, top_k=top_k)
+    # Map response format: router returns dict with 'results' key
+    results = response.get('results', []) if isinstance(response, dict) else response
     return {"query": q, "results": results}
 
 
@@ -131,11 +135,14 @@ async def generate(req: KbGenerateRequest, _session: dict = Depends(require_sess
     # Reranking: grob KB_RERANK_POOL Treffer holen, per Cross-Encoder auf die
     # besten KB_RESEARCH_TOP_K sortieren (loest die „Artikel 74"-Kollision
     # VO/AI-Act domaenenneutral). Fallback in rerank() auf Vektor-Reihenfolge.
+    # Note: source filter not supported by router_knowledge_service yet
     if KB_RERANK_ENABLED:
-        pool = ks.search(req.query, top_k=KB_RERANK_POOL, source_filter=_resolve_source(req.source))
+        pool_response = ks.search(req.query, top_k=KB_RERANK_POOL, enable_reranking=True)
+        pool = pool_response.get('results', []) if isinstance(pool_response, dict) else pool_response
         hits = ks.rerank(req.query, pool, top_k=KB_RESEARCH_TOP_K, threshold=KB_RERANK_THRESHOLD)
     else:
-        hits = ks.search(req.query, top_k=KB_RESEARCH_TOP_K, source_filter=_resolve_source(req.source))
+        hits_response = ks.search(req.query, top_k=KB_RESEARCH_TOP_K, enable_reranking=False)
+        hits = hits_response.get('results', []) if isinstance(hits_response, dict) else hits_response
 
     sources = [
         {

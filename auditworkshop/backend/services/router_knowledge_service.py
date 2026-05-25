@@ -62,11 +62,17 @@ def search(
             data = resp.json()
 
             # Mapping audit_designer-Schema auf Workshop-Schema
-            # audit_designer: "content" → Workshop: "text"
+            # audit_designer → Workshop: "content" → "text", "source_id" → "source", "chunk_id" → "chunk_index"
             if "results" in data:
                 for item in data["results"]:
                     if "content" in item and "text" not in item:
                         item["text"] = item["content"]
+                    if "source_id" in item and "source" not in item:
+                        item["source"] = item["source_id"]
+                    if "chunk_id" in item and "chunk_index" not in item:
+                        # chunk_id ist ein String-UUID, wir brauchen aber einen Index
+                        # Fallback: nutze die Position in der Ergebnisliste
+                        item["chunk_index"] = data["results"].index(item)
 
             log.info(
                 "Knowledge-Search via Router: query=%r, results=%d, took=%dms",
@@ -167,3 +173,31 @@ def get_stats() -> dict[str, Any]:
 # Alias für Kompatibilität mit bestehendem Code
 search_knowledge = search
 ask_question = ask
+
+
+def stats() -> dict[str, Any]:
+    """Wrapper für get_stats() - Kompatibilität mit knowledge_service API."""
+    return get_stats()
+
+
+def rerank(
+    query: str,
+    hits: list[dict],
+    top_k: int = 5,
+    threshold: float = 0.0,
+) -> list[dict]:
+    """Reranking-Wrapper - aktuell Passthrough, da ai-router bereits rerankt.
+
+    Args:
+        query: Suchanfrage (wird ignoriert, da ai-router bereits rerankt hat)
+        hits: Liste von Search-Results
+        top_k: Maximale Anzahl zurückzugebender Treffer
+        threshold: Minimaler Score (Treffer darunter werden gefiltert)
+
+    Returns:
+        Gefilterte und limitierte Trefferliste
+    """
+    # Filter by threshold
+    filtered = [h for h in hits if h.get('score', 0) >= threshold]
+    # Limit to top_k
+    return filtered[:top_k]
