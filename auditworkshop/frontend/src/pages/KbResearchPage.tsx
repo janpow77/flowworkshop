@@ -156,7 +156,16 @@ export default function KbResearchPage() {
       try {
         const res = await searchKnowledge(q, 12);
         const all = res.results || [];
-        setResults(source ? all.filter((r) => r.source === source) : all);
+        // `source` kann ein Gruppenname (z. B. „Grundlagen Strukturfonds") oder
+        // eine Einzelquelle sein. Bei einer Gruppe nach ihren Mitglieds-Quellen
+        // filtern, bei einer Einzelquelle exakt, sonst alle Treffer zeigen.
+        const members = groups[source];
+        const filtered = !source
+          ? all
+          : members
+            ? all.filter((r) => members.includes(r.source))
+            : all.filter((r) => r.source === source);
+        setResults(filtered);
       } catch {
         setError('Die Fundstellensuche ist fehlgeschlagen.');
       } finally {
