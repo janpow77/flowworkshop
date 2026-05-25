@@ -332,7 +332,7 @@ def test_link_record_unknown_module_raises(db_session):
 def test_rebuild_idempotent(db_session):
     """Zweiter Rebuild fuer dieselbe Source erzeugt 0 neue Matches."""
     from services.entity_resolution import (
-        link_record, rebuild_entities_from_state_aid,
+        rebuild_entities_from_state_aid,
     )
     # Erstmals ein paar Records anlegen — dafuer brauchen wir aber echte
     # state_aid-Awards. Ohne grossen Bestand testen wir nur, dass

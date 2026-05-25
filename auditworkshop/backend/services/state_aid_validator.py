@@ -24,11 +24,11 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
-from typing import Any, Literal
+from typing import Literal
 
-from sqlalchemy import and_, func as sql_func, or_
+from sqlalchemy import func as sql_func, or_
 from sqlalchemy.orm import Session
 
 from models.state_aid import StateAidAward, StateAidSource

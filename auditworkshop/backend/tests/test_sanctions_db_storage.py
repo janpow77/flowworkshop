@@ -14,9 +14,7 @@ sie via ``pytest.skip`` uebersprungen.
 from __future__ import annotations
 
 import csv
-import os
 import sys
-import time
 import uuid
 from pathlib import Path
 

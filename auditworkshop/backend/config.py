@@ -65,14 +65,65 @@ LLM_MAX_TOKENS_DEFAULT = int(os.getenv("LLM_MAX_TOKENS_DEFAULT", "384"))
 
 # ── Wissens-Recherche (KB-Search) ──────────────────────────────────────────
 # Modell fuer die KB-Textgenerierung im Recherche-Modul. Geht ueber das Gateway
-# (LLM_BACKEND=egpu-manager) an die Route "qwen3.5:* → evo-x2". Der echte
-# Ollama-Tag auf der evo-x2 ist "qwen3.5:35b-fast" (verifiziert ueber den
-# Router-Spoke-Healthcheck) — "qwen3.5:35b" ohne Suffix existiert dort NICHT.
-# Der Recherche-Modus ist KEINE Live-Demo, daher ist das langsamere, staerkere
-# Reasoning-Modell hier vertretbar (anders als bei den Szenarien 1-6).
-KB_RESEARCH_MODEL = os.getenv("KB_RESEARCH_MODEL", "qwen3.5:35b-fast")
+# (LLM_BACKEND=egpu-manager) an den ai-router.
+#
+# Stand 2026-05-25: Umstellung von "qwen3.5:35b-fast" (evo-x2) auf "qwen3:14b".
+# Begruendung (real gemessen, siehe Mess-Tabelle in der Analyse):
+#   - 35b-fast lieferte fuer die Generierung KEINEN Content: lange Reasoning-Phase,
+#     dann Read-Timeout (>200 s, 0 Text-Tokens). Der Schalter reasoning_effort
+#     wirkte dort nicht.
+#   - 14b liefert mit reasoning_effort="none" das erste Text-Token in ~0,1 s und
+#     eine vollstaendige, belegbasierte Antwort in ~20-25 s. Qualitaet fuer den
+#     belegbasierten Recherche-Modus voellig ausreichend.
+# Zurueckdrehen: ENV KB_RESEARCH_MODEL=qwen3.5:35b-fast setzen (nicht empfohlen,
+# solange der evo-x2-Spoke so langsam antwortet).
+KB_RESEARCH_MODEL = os.getenv("KB_RESEARCH_MODEL", "qwen3:14b")
+# Reasoning-Steuerung fuer die KB-Generierung. "none" schaltet die Denk-Phase
+# vollstaendig ab (sofortiger Content). WICHTIG: das fruehere "/no_think" im
+# User-Prompt wirkte am ai-router NICHT — nur der OpenAI-Parameter
+# reasoning_effort greift. Werte: none | low | medium | high.
+KB_RESEARCH_REASONING_EFFORT = os.getenv("KB_RESEARCH_REASONING_EFFORT", "none")
 # Wie viele Chunks als RAG-Kontext in die Generierung gehen.
-KB_RESEARCH_TOP_K = int(os.getenv("KB_RESEARCH_TOP_K", "6"))
+# 4 statt 6: weniger Prefill-Tokens → schnelleres erstes Token (Latenz P0).
+KB_RESEARCH_TOP_K = int(os.getenv("KB_RESEARCH_TOP_K", "4"))
+
+# Reranking der Generierungs-Treffer ueber den ai-router (BGE-Reranker-v2-m3).
+# Cross-Encoder bewertet die Kandidaten nach echter Relevanz zur Frage und loest
+# so z. B. die „Artikel 74"-Kollision zwischen VO 2021/1060 und dem EU AI Act —
+# domaenenneutral (eine AI-Act-Frage rankt AI-Act-Stellen oben). Ablauf:
+# grob KB_RERANK_POOL Treffer per Vektorsuche → reranken → beste KB_RESEARCH_TOP_K.
+KB_RERANK_ENABLED = os.getenv("KB_RERANK_ENABLED", "true").lower() in ("1", "true", "yes")
+KB_RERANK_POOL = int(os.getenv("KB_RERANK_POOL", "8"))
+KB_RERANK_THRESHOLD = float(os.getenv("KB_RERANK_THRESHOLD", "0.05"))
+KB_RERANK_MODEL = os.getenv("KB_RERANK_MODEL", "BAAI/bge-reranker-v2-m3")
+
+# Quellen-Gruppen fuer die Recherche: ein auswaehlbarer Eintrag bündelt mehrere
+# Einzelquellen. Wird in Suche + Generierung als Quellen-Filter expandiert.
+KB_SOURCE_GROUPS: dict[str, list[str]] = {
+    "Grundlagen Strukturfonds": [
+        "VO_2018_1046_DE",       # EU-Haushaltsordnung
+        "VO_2021_1060_DE",       # Dachverordnung (CPR)
+        "VO_2021_1058_DE",       # EFRE + Kohäsionsfonds
+        "VO_2021_1057_DE",       # ESF+
+        "VO_2021_1056_DE",       # JTF
+        "VO_2021_1059_DE",       # Interreg
+        "DVO_2023_1676_DE",      # DelVO: SCO-Definitionen (Kosten je Einheit, Pauschalen)
+        "DVO_2023_0067_DE",      # DelVO: standardisierte Stichprobenmethoden
+        "DVO_2022_2175_DE",      # DelVO: ALMA — Kosten je Einheit
+        "DVO_2025_2190_DE",      # DelVO: Interventionskategorien (Anhang I)
+    ],
+    "Beihilferecht": [
+        "AEUV_KONSOLIDIERT_DE",            # AEUV (Art. 107-109)
+        "AGVO_651_2014_DE",               # Allgemeine Gruppenfreistellungsverordnung
+        "DEMINIMIS_2023_2831_DE",         # De-minimis
+        "DEMINIMIS_DAWI_2023_2832_DE",    # De-minimis DAWI
+        "DAWI_BESCHLUSS_2012_21_DE",      # DAWI-Freistellungsbeschluss
+        "VERFAHRENS_VO_2015_1589_DE",     # Beihilfeverfahren / Notifizierung
+        "KOM_LEITLINIEN_INTERESSENKONFLIKTE_DE",  # KOM-Leitlinien Interessenkonflikte
+    ],
+}
+# Standard-Quellenauswahl der Recherche (Gruppenname oder "" für alle Quellen).
+KB_DEFAULT_SOURCE = os.getenv("KB_DEFAULT_SOURCE", "Grundlagen Strukturfonds")
 # Wortmarke fuer die Abstention-Erkennung im Frontend (muss zum Prompt passen).
 KB_RESEARCH_ABSTENTION = "Die Wissensbasis enthält keine Belege zu dieser Frage."
 # System-Prompt fuer die KB-Textgenerierung. Strikt belegbasiert mit Abstention —

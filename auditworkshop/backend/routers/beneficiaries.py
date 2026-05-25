@@ -34,7 +34,7 @@ from services.country_profiles import (
     get_region_label,
     list_country_codes,
 )
-from routers.auth import require_moderator, require_moderator_or_worker, require_session
+from routers.auth import require_moderator, require_moderator_or_worker
 
 # Plan v3.2 §5.5: Karten- und Quellen-Daten sind nach Art. 49 VO (EU)
 # 2021/1060 öffentlich. Daher kein require_session auf Router-Ebene —
@@ -383,8 +383,8 @@ def get_nuts_regions():
 # weil AT auf NUTS-1 nur drei Grossregionen hat). Die Dateien sind aus dem
 # Frontend (`public/state_aid/*.geojson`) uebernommen — siehe data/geo/.
 
-import json as _json
-from pathlib import Path as _Path
+import json as _json  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
 
 _GEO_DIR = _Path(__file__).resolve().parent.parent / "data" / "geo"
 

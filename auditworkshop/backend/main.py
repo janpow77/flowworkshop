@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from database import engine, Base
+from database import engine
 from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system

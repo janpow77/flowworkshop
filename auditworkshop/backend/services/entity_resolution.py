@@ -30,7 +30,6 @@ from typing import Any
 
 from rapidfuzz import fuzz, process
 from sqlalchemy import or_, text
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from models.entities import CompanyEntity, EntityMatch
@@ -1012,8 +1011,6 @@ def link_corporate_group_to_entities(db: Session, group: Any) -> dict:
         return stats
 
     primary_corp = group.primary_entity
-    primary_lei = getattr(primary_corp, "lei", None)
-    primary_name = getattr(primary_corp, "name", None) or ""
 
     # Primary-Entity holen oder anlegen
     primary_ent = _ensure_entity_for_corporate(

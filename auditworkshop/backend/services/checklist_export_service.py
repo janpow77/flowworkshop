@@ -46,11 +46,11 @@ from docx.shared import Cm, Pt, RGBColor
 # Wird fuer echte, anklickbare Word-Checkbox-Inhaltssteuerelemente benoetigt.
 nsmap.setdefault("w14", "http://schemas.microsoft.com/office/word/2010/wordml")
 
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter
+from openpyxl import Workbook  # noqa: E402
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side  # noqa: E402
+from openpyxl.utils import get_column_letter  # noqa: E402
 
-from models.checklist_template import (
+from models.checklist_template import (  # noqa: E402
     ChecklistTemplate,
     ChecklistTemplateNode,
     ChecklistAnswerSet,

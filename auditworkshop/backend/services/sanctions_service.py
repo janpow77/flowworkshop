@@ -30,7 +30,7 @@ import logging
 import os
 import re
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, TYPE_CHECKING
 

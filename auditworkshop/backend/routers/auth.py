@@ -19,7 +19,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import SessionLocal, get_db
-from models.registration import Registration, PasswordResetToken, SecurityAuditLog
+from models.registration import Registration, PasswordResetToken
 from models.audit_log import AuditLog
 from models.session import WorkshopSession
 from config import AUTH_TOKEN_SECRET, WORKER_API_TOKEN

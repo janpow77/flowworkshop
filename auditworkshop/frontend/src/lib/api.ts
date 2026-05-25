@@ -1208,6 +1208,11 @@ export const deleteChecklistCategory = (id: string, catId: string) =>
   request<void>(`/checklist-templates/${id}/categories/${catId}`, { method: 'DELETE' });
 
 // Knowledge
+export interface KnowledgeGroups {
+  groups: Record<string, string[]>;
+  default_source: string;
+}
+export const getKnowledgeGroups = () => request<KnowledgeGroups>('/knowledge/groups');
 export const getKnowledgeStats = () => request<KnowledgeStats>('/knowledge/stats');
 export const searchKnowledge = (q: string, topK = 5) =>
   request<{ query: string; results: SearchResult[] }>(`/knowledge/search?q=${encodeURIComponent(q)}&top_k=${topK}`);

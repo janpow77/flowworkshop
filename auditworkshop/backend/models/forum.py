@@ -7,7 +7,7 @@ Quelle und wird in eine Default-Kategorie überführt.
 """
 from sqlalchemy import (
     Column, String, Text, Integer, Boolean, DateTime, ForeignKey,
-    BigInteger, JSON, UniqueConstraint, Index, func,
+    BigInteger, UniqueConstraint, Index, func,
 )
 import uuid
 

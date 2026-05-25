@@ -366,6 +366,7 @@ async def _stream_via_gateway(
     documents: list[str],
     max_tokens: int | None = None,
     model_override: str | None = None,
+    reasoning_effort: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Echtes Streaming ueber den egpu-manager LLM Gateway.
 
@@ -390,6 +391,11 @@ async def _stream_via_gateway(
         "max_tokens": max_tokens or LLM_MAX_TOKENS_DEFAULT,
         "temperature": LLM_TEMPERATURE,
     }
+    # Reasoning-Steuerung: "/no_think" im User-Prompt wird vom ai-router NICHT
+    # beachtet — nur der OpenAI-Parameter reasoning_effort schaltet die Denk-Phase
+    # zuverlaessig ab ("none" → sofortiger Content statt langer Thinking-Phase).
+    if reasoning_effort:
+        payload["reasoning_effort"] = reasoning_effort
 
     token_count = 0
     model_name = model
@@ -567,6 +573,7 @@ async def stream(
     max_tokens: int | None = None,
     backend_override: str | None = None,
     model_override: str | None = None,
+    reasoning_effort: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """
     Streamt eine LLM-Antwort als Server-Sent-Events.
@@ -583,6 +590,7 @@ async def stream(
             documents or [],
             max_tokens=max_tokens,
             model_override=model_override,
+            reasoning_effort=reasoning_effort,
         ):
             yield chunk
         return

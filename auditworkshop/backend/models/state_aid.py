@@ -3,7 +3,7 @@ flowworkshop · models/state_aid.py
 EU-Beihilfe-Transparenzregister (Plan: docs/eu-state-aid-register-plan.md §5).
 """
 from sqlalchemy import (
-    Column, String, Text, Integer, BigInteger, Boolean, DateTime,
+    Column, String, Text, Integer, Boolean, DateTime,
     Numeric, JSON, Date, Index, UniqueConstraint, func,
 )
 import uuid

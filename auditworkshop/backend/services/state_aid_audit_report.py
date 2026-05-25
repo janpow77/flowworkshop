@@ -1776,7 +1776,6 @@ def _build_corporate_group_section(
     from services.corporate_registry import lookup_corporate_group_cached
     from services.state_aid_service import (
         fuzzy_match_company,
-        normalize_company_name,
     )
     from models.state_aid import StateAidAward
 

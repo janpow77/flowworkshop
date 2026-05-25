@@ -23,7 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, Search, ChevronsDownUp, ChevronsUpDown, ListChecks, Tags,
   Loader2, AlertCircle, FolderTree, RefreshCw, History, CheckCircle2,
-  Undo2, Redo2,
+  Undo2, Redo2, BookOpen,
 } from 'lucide-react';
 import {
   acquireNodeLock, createChecklistNode, deleteChecklistNode, getChecklistTree,
@@ -42,7 +42,7 @@ import CategoryManager from './CategoryManager';
 import NodeContextMenu from './NodeContextMenu';
 import PresenceBar from './PresenceBar';
 import HistoryPanel from './HistoryPanel';
-import ExportMenu from './ExportMenu';
+import HelpPanel from './HelpPanel';
 import VersionsMenu from './VersionsMenu';
 import {
   useChecklistCollab, type RemoteDiscussionEvent, type RemoteNodeEvent,
@@ -84,7 +84,7 @@ const EMPTY_DRAG: DragState = { dragId: null, overId: null, position: 'before', 
 
 function loadSplit(): number {
   const raw = parseFloat(localStorage.getItem(SPLIT_KEY) ?? '');
-  if (Number.isNaN(raw)) return 62;
+  if (Number.isNaN(raw)) return 50;
   return Math.min(Math.max(raw, SPLIT_MIN), SPLIT_MAX);
 }
 
@@ -110,11 +110,12 @@ export default function TreeEditor({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
-  const [newType, setNewType] = useState<NodeType>('QUESTION');
+  const [addOpen, setAddOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showAnswerSets, setShowAnswerSets] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [success, setSuccess] = useState('');
   const successTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -441,10 +442,10 @@ export default function TreeEditor({
     }
   };
 
-  const handleAddRoot = () =>
+  const handleAddRoot = (type: NodeType) =>
     runCreate({
       parent_id: null,
-      node_type: newType,
+      node_type: type,
       title: '',
       sort_order: nextSortOrder(tree, null),
     });
@@ -707,7 +708,9 @@ export default function TreeEditor({
       </div>
 
       {/* ── Split-View: Baum | Divider | Inspector ────────────────────────── */}
-      <div ref={splitContainerRef} className="flex items-stretch gap-0 lg:gap-0">
+      {/* Kein Frame-im-Frame: Baum und Inspector wachsen mit ihrem Inhalt,
+          gescrollt wird die ganze Seite (kein interner Scrollbalken). */}
+      <div ref={splitContainerRef} className="flex items-stretch gap-0">
         {/* Baum-Spalte */}
         <div
           className="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 lg:rounded-r-none"
@@ -739,24 +742,49 @@ export default function TreeEditor({
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2 text-sm dark:border-slate-800">
             {canEdit && (
               <>
-                <select
-                  value={newType}
-                  onChange={(e) => setNewType(e.target.value as NodeType)}
-                  aria-label="Typ des neuen Wurzelknotens"
-                  className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  {NODE_TYPE_ORDER.map((t) => (
-                    <option key={t} value={t}>{NODE_TYPE_META[t].label}</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={handleAddRoot}
-                  disabled={busy}
-                  className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-700"
-                >
-                  <Plus size={14} /> Wurzelknoten
-                </button>
+                {/* Einzelner „+"-Knopf: oeffnet ein Menue zur Auswahl des
+                    einzufuegenden Knotentyps (Wurzelebene). */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAddOpen((v) => !v)}
+                    disabled={busy}
+                    aria-haspopup="menu"
+                    aria-expanded={addOpen}
+                    title="Knoten hinzufügen"
+                    className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-700"
+                  >
+                    <Plus size={14} /> Hinzufügen
+                  </button>
+                  {addOpen && (
+                    <>
+                      <button
+                        type="button"
+                        aria-hidden="true"
+                        tabIndex={-1}
+                        onClick={() => setAddOpen(false)}
+                        className="fixed inset-0 z-10 cursor-default"
+                      />
+                      <div
+                        role="menu"
+                        className="absolute left-0 top-full z-20 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+                      >
+                        {NODE_TYPE_ORDER.map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => { setAddOpen(false); handleAddRoot(t); }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+                          >
+                            <Plus size={13} className="text-slate-400" />
+                            {NODE_TYPE_META[t].label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
                 {/* Undo/Redo */}
                 <div className="flex items-center gap-0.5">
                   <button
@@ -803,6 +831,13 @@ export default function TreeEditor({
             >
               <History size={14} /> Verlauf
             </button>
+            <button
+              type="button"
+              onClick={() => setShowHelp(true)}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <BookOpen size={14} /> Anleitung
+            </button>
             <VersionsMenu
               templateId={templateId}
               canEdit={canEdit}
@@ -810,14 +845,13 @@ export default function TreeEditor({
               onError={flashNotice}
               onRestored={() => { void loadTree(); }}
             />
-            <ExportMenu templateId={templateId} onError={flashNotice} />
             <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-slate-400">
               {busy && <Loader2 size={13} className="animate-spin" />}
               {total} Knoten
             </span>
           </div>
 
-          <div className="max-h-[64vh] flex-1 overflow-y-auto px-2 py-2">
+          <div className="flex-1 px-2 py-2">
             {error && (
               <div className="mx-2 mb-2 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-400">
                 <AlertCircle size={15} /> {error}
@@ -868,7 +902,7 @@ export default function TreeEditor({
           <ResizeHandle resizing={resizing} onResizeStart={onResizeStart} />
         </div>
 
-        {/* Inspector — Desktop */}
+        {/* Inspector — Desktop. Volle Frame-Hoehe, Inhalt scrollt intern. */}
         <div
           className="hidden min-w-0 flex-1 rounded-xl rounded-l-none border border-l-0 border-slate-200 bg-white transition-shadow dark:border-slate-700 dark:bg-slate-900 lg:block lg:min-h-[400px]"
         >
@@ -934,6 +968,9 @@ export default function TreeEditor({
           onClose={() => setShowHistory(false)}
           onRestored={(msg) => { flashSuccess(msg); void loadTree(); }}
         />
+      )}
+      {showHelp && (
+        <HelpPanel onClose={() => setShowHelp(false)} />
       )}
     </div>
   );

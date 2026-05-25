@@ -197,7 +197,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
   const currentStatus: NodeStatus = (node.status ?? 'pending') as NodeStatus;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
       {/* Kopf */}
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
         <div className="flex min-w-0 items-center gap-2">
@@ -219,7 +219,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1">
         {/* Statushinweise */}
         <div className="space-y-2 px-4 pt-4">
           {locked && (
@@ -256,8 +256,8 @@ export default function NodeInspector(props: NodeInspectorProps) {
               <label className={labelCls} htmlFor="ni-title">Titel / Fragetext</label>
               <textarea
                 id="ni-title"
-                rows={2}
-                className={fieldCls}
+                rows={6}
+                className={`${fieldCls} min-h-[8rem] resize-y leading-6`}
                 value={form.title}
                 disabled={!fieldsEditable}
                 onChange={(e) => set('title', e.target.value)}
@@ -375,7 +375,7 @@ export default function NodeInspector(props: NodeInspectorProps) {
             )}
 
             <div>
-              <label className={labelCls} htmlFor="ni-legal">KOM-Rechtsgrundlage</label>
+              <label className={labelCls} htmlFor="ni-legal">Rechtsgrundlage</label>
               <textarea
                 id="ni-legal"
                 rows={2}

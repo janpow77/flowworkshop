@@ -14,7 +14,6 @@ import sys
 from pathlib import Path
 from typing import AsyncGenerator
 
-import pytest
 
 # Backend-Verzeichnis in den Pfad legen, damit `services.*` importierbar ist
 _BACKEND = Path(__file__).resolve().parent.parent

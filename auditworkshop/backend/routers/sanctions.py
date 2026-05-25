@@ -26,8 +26,6 @@ from pydantic import BaseModel, Field
 
 from routers.auth import require_admin
 from services.sanctions_service import (
-    DEFAULT_SANCTIONS_SOURCES,
-    get_index,
     get_multi_service,
     method_explanation,
     normalize_name,

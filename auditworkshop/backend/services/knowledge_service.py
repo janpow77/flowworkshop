@@ -25,6 +25,7 @@ from config import (
     EMBEDDING_GATEWAY_APP_ID,
     EMBEDDING_GATEWAY_URL,
     EMBEDDING_MODEL,
+    KB_RERANK_MODEL,
 )
 
 log = logging.getLogger(__name__)
@@ -268,11 +269,22 @@ def reembed_all() -> dict:
     return {"reembedded_chunks": total, "sources": len(grouped)}
 
 
-def search(query: str, top_k: int = 5, source_filter: str | None = None) -> list[dict]:
-    """Semantische Ähnlichkeitssuche (cosine distance) mit Keyword-Fallback."""
+def search(query: str, top_k: int = 5, source_filter: str | list[str] | None = None) -> list[dict]:
+    """Semantische Ähnlichkeitssuche (cosine distance) mit Keyword-Fallback.
+
+    ``source_filter`` darf eine einzelne Quelle (str) ODER eine Liste von Quellen
+    (z. B. eine Quellen-Gruppe wie „Grundlagen Strukturfonds") sein. Bei einer
+    Liste wird per ``source = ANY(...)`` auf die Gruppe eingegrenzt.
+    """
+    # Gruppen-Filter (Liste) vs. Einzelquelle (str) trennen.
+    allowed: set[str] | None = set(source_filter) if isinstance(source_filter, list) else None
+    single_source = source_filter if isinstance(source_filter, str) else None
+
     article_match = re.search(r"[Aa]rt(?:ikel)?\.?\s*(\d+)", query)
-    hinted_source = source_filter or _detect_regulation_source(query)
-    if article_match:
+    # Bei Gruppen-Filter keine Einzelquelle erraten; die Artikel-Schnellpfade
+    # werden uebersprungen und die Gruppe per ANY im Vektorpfad eingegrenzt.
+    hinted_source = None if allowed else (single_source or _detect_regulation_source(query))
+    if article_match and not allowed:
         article_num = article_match.group(1)
         keyword_results = _article_search(query, article_num, hinted_source, top_k=top_k)
         if keyword_results:
@@ -287,10 +299,15 @@ def search(query: str, top_k: int = 5, source_filter: str | None = None) -> list
         log.exception("Vektorsuche fehlgeschlagen, nutze Keyword-Fallback fuer Query: %s", query)
         return _keyword_search(query, hinted_source, top_k=top_k)
 
-    filter_clause = "WHERE source = %s AND embedding IS NOT NULL" if hinted_source else "WHERE embedding IS NOT NULL"
     params: list = [str(vec)]
-    if hinted_source:
+    if allowed:
+        filter_clause = "WHERE source = ANY(%s) AND embedding IS NOT NULL"
+        params.append(sorted(allowed))
+    elif hinted_source:
+        filter_clause = "WHERE source = %s AND embedding IS NOT NULL"
         params.append(hinted_source)
+    else:
+        filter_clause = "WHERE embedding IS NOT NULL"
     params.append(str(vec))
     params.append(top_k)
 
@@ -318,7 +335,7 @@ def search(query: str, top_k: int = 5, source_filter: str | None = None) -> list
         for row in rows
     ]
 
-    if article_match:
+    if article_match and not allowed:
         keyword_results = _article_search(query, article_match.group(1), hinted_source, top_k=2)
         if not keyword_results:
             keyword_results = _keyword_search(f"Artikel {article_match.group(1)}", hinted_source, top_k=2)
@@ -332,6 +349,42 @@ def search(query: str, top_k: int = 5, source_filter: str | None = None) -> list
         return merged[:top_k]
 
     return results
+
+
+def rerank(query: str, candidates: list[dict], top_k: int, threshold: float = 0.0) -> list[dict]:
+    """Sortiert Kandidaten per Cross-Encoder (ai-router /api/reranker) nach echter
+    Relevanz zur Frage und liefert die besten ``top_k``. Faellt bei Fehler oder
+    leerer Antwort auf die uebergebene Reihenfolge zurueck (nie hart scheitern).
+    """
+    if not candidates:
+        return candidates
+    # Fuer das Relevanz-Scoring genuegt ein Auszug — das beschleunigt den
+    # Cross-Encoder deutlich. Der volle Chunk-Text bleibt fuer den Kontext erhalten.
+    docs = [c["text"][:800] for c in candidates]
+    try:
+        with httpx.Client(timeout=httpx.Timeout(20, read=60)) as client:
+            resp = client.post(
+                f"{EMBEDDING_GATEWAY_URL}/api/reranker",
+                json={"query": query, "documents": docs,
+                      "top_k": min(top_k, len(docs)), "model": KB_RERANK_MODEL},
+                headers={"X-App-Id": EMBEDDING_GATEWAY_APP_ID},
+            )
+            resp.raise_for_status()
+            scored = resp.json().get("results", [])
+    except Exception:
+        log.exception("Reranking fehlgeschlagen, nutze Vektor-Reihenfolge")
+        return candidates[:top_k]
+
+    out: list[dict] = []
+    for item in scored:
+        idx = item.get("index")
+        score = float(item.get("score", 0.0))
+        if idx is None or idx >= len(candidates) or score < threshold:
+            continue
+        enriched = dict(candidates[idx])
+        enriched["rerank_score"] = round(score, 4)
+        out.append(enriched)
+    return out[:top_k] or candidates[:top_k]
 
 
 def _detect_regulation_source(query: str) -> str | None:

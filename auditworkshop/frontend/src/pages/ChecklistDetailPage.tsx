@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
-  ArrowLeft, ClipboardCheck, FileText, Users, AlertCircle, Hash,
+  ClipboardCheck, FileText, Users, AlertCircle, Hash,
   Eye, Pencil, MessageSquare, Download,
 } from 'lucide-react';
 import { getChecklistTemplate, getMe, downloadSourceDocument, type ChecklistTemplateDetail } from '../lib/api';
 import { Skeleton } from '../components/ui/Skeleton';
 import TreeEditor from '../components/checklist/TreeEditor';
+import ExportMenu from '../components/checklist/ExportMenu';
 import { canComment, canEdit, normRole, ROLE_LABEL } from '../components/checklist/treeMeta';
 
 function normStatus(raw: string): 'draft' | 'published' | 'archived' {
@@ -33,7 +34,6 @@ function Prop({ label, children }: { label: string; children: React.ReactNode })
 
 export default function ChecklistDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [tpl, setTpl] = useState<ChecklistTemplateDetail | null>(null);
   const [ownUserId, setOwnUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,15 +71,7 @@ export default function ChecklistDetailPage() {
       : 'Schreibgeschützte Ansicht.';
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <button
-        type="button"
-        onClick={() => navigate('/checklisten')}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-      >
-        <ArrowLeft size={16} /> Zurück zur Übersicht
-      </button>
-
+    <div className="w-full">
       {loading ? (
         <div className="space-y-4">
           <Skeleton className="h-8 w-1/2" />
@@ -107,17 +99,20 @@ export default function ChecklistDetailPage() {
               )}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-2">
-              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_META[normStatus(tpl.status)].cls}`}>
-                {STATUS_META[normStatus(tpl.status)].label}
-              </span>
-              {role && (
-                <span
-                  title={roleHint}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                >
-                  <RoleIcon size={13} /> {ROLE_LABEL[role]}
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_META[normStatus(tpl.status)].cls}`}>
+                  {STATUS_META[normStatus(tpl.status)].label}
                 </span>
-              )}
+                {role && (
+                  <span
+                    title={roleHint}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                  >
+                    <RoleIcon size={13} /> {ROLE_LABEL[role]}
+                  </span>
+                )}
+              </div>
+              {id && <ExportMenu templateId={id} />}
             </div>
           </div>
 

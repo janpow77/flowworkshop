@@ -7,6 +7,7 @@ import {
   searchKnowledge,
   streamKbGenerate,
   getKnowledgeStats,
+  getKnowledgeGroups,
   type SearchResult,
   type KbGeneratedSource,
   type KbTextType,
@@ -41,6 +42,7 @@ const SUGGESTIONS = [
   'Art. 74 Verwaltungskontrolle',
   'Anforderungen an die Belegprüfung',
   'Was sind Querschnittsziele?',
+  'Natura 2000 — FFH-Verträglichkeit im Huckepackverfahren',
 ];
 
 const MIN_RELEVANCE = 0.1;
@@ -89,7 +91,8 @@ export default function KbResearchPage() {
   const [textType, setTextType] = useState<KbTextType>('analyse');
   const [length, setLength] = useState<KbTextLength>('mittel');
   const [sources, setSources] = useState<KnowledgeSource[]>([]);
-  const [showHelp, setShowHelp] = useState(true);
+  const [groups, setGroups] = useState<Record<string, string[]>>({});
+  const [showHelp, setShowHelp] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -106,6 +109,11 @@ export default function KbResearchPage() {
 
   useEffect(() => {
     getKnowledgeStats().then((s) => setSources(s.sources ?? [])).catch(() => setSources([]));
+    // Quellen-Gruppen laden und die Standard-Auswahl (z. B. „Grundlagen
+    // Strukturfonds") als Vorbelegung des Quellen-Filters setzen.
+    getKnowledgeGroups()
+      .then((g) => { setGroups(g.groups ?? {}); if (g.default_source) setSource(g.default_source); })
+      .catch(() => { /* ignore */ });
     return () => abortRef.current?.abort();
   }, []);
 
@@ -227,7 +235,7 @@ export default function KbResearchPage() {
                   placeholder={mode === 'generate'
                     ? 'z. B. Fasse die Anforderungen an die Verwaltungskontrolle zusammen.'
                     : 'z. B. Besserstellungsverbot · Art. 74 · vereinfachte Kostenoptionen'}
-                  className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 pl-12 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-700 dark:focus:ring-emerald-900/40 sm:text-lg"
+                  className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-8 pl-12 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-700 dark:focus:ring-emerald-900/40 sm:text-lg"
                 />
                 {query && (
                   <button
@@ -243,7 +251,7 @@ export default function KbResearchPage() {
               <button
                 disabled={!query.trim() || isLoading}
                 onClick={runSearch}
-                className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-slate-900 px-6 py-4 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none dark:bg-emerald-600 dark:hover:bg-emerald-700 dark:disabled:bg-slate-700"
+                className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-slate-900 px-6 py-8 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none dark:bg-emerald-600 dark:hover:bg-emerald-700 dark:disabled:bg-slate-700"
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (mode === 'generate' ? <Sparkles size={16} /> : <Search size={16} />)}
                 {mode === 'generate' ? 'Text generieren' : 'Fundstellen suchen'}
@@ -259,10 +267,19 @@ export default function KbResearchPage() {
                   onChange={(e) => setSource(e.target.value)}
                   className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
                 >
+                  {Object.keys(groups).length > 0 && (
+                    <optgroup label="Themengruppen">
+                      {Object.keys(groups).map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </optgroup>
+                  )}
                   <option value="">Alle Quellen</option>
-                  {sources.map((s) => (
-                    <option key={s.source} value={s.source}>{s.source} ({s.chunks})</option>
-                  ))}
+                  <optgroup label="Einzelquellen">
+                    {sources.map((s) => (
+                      <option key={s.source} value={s.source}>{s.source} ({s.chunks})</option>
+                    ))}
+                  </optgroup>
                 </select>
               </label>
 
@@ -295,6 +312,32 @@ export default function KbResearchPage() {
         </div>
       </section>
 
+      {/* Startzustand mit Vorschlägen — vor der Erläuterung */}
+      {!hasSearched && !isLoading && (
+        <section className="rounded-[24px] border border-dashed border-slate-300 bg-white/90 px-6 py-10 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
+          <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
+            Recherche starten
+          </h3>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Stellen Sie eine Frage oder w&auml;hlen Sie einen Vorschlag. Im Modus
+            &bdquo;Text generieren&ldquo; wird die Antwort ausschlie&szlig;lich aus den
+            in der Datenbank gespeicherten Chunks generiert. Ohne ein entsprechendes
+            Dokument wird auch kein Text generiert.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => applySuggestion(s)}
+                className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Hilfetext: So funktioniert die Recherche (RAG · LLM · Vorgehen) */}
       <section className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/85 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
         <button
@@ -310,79 +353,75 @@ export default function KbResearchPage() {
           />
         </button>
         {showHelp && (
-          <div className="grid gap-4 border-t border-slate-100 px-6 py-5 dark:border-slate-800 md:grid-cols-3">
-            <div className="flex flex-col gap-2">
+          <div className="space-y-5 border-t border-slate-100 px-6 py-5 dark:border-slate-800">
+            <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2 text-sm font-semibold text-cyan-700 dark:text-cyan-300">
                 <Database size={16} /> 1 · Wissensbasis (RAG)
               </div>
-              <p className="text-xs leading-5 text-slate-600 dark:text-slate-400">
-                Ihre Frage wird in einen Vektor übersetzt (Embedding-Modell
-                <strong> bge-m3</strong>) und semantisch gegen die eingelesenen
-                Verordnungen und Dokumente abgeglichen (<strong>pgvector</strong>).
-                Nur die treffendsten Textabschnitte gehen weiter &mdash; nicht die
-                ganze Datenbank. Das nennt man <em>Retrieval-Augmented Generation</em>.
+              <p className="text-xs leading-6 text-slate-600 dark:text-slate-400">
+                Ihre Frage wird zunächst in eine Vektorrepräsentation übersetzt
+                (Embedding-Modell <strong>bge-m3</strong>) und anschließend semantisch
+                gegen die eingelesenen Verordnungen und Dokumente abgeglichen. Diese
+                sind zuvor in inhaltlich zusammenhängende Abschnitte zerlegt, einzeln
+                vektorisiert und in einer PostgreSQL-Datenbank mit der Erweiterung
+                <strong> pgvector</strong> hinterlegt worden. Die Auswahl der
+                Fundstellen erfolgt über die Kosinus-Ähnlichkeit zwischen dem
+                Frage-Vektor und den Abschnitts-Vektoren; nur die thematisch
+                nächstliegenden Treffer werden an die nächste Stufe übergeben, nicht
+                der gesamte Datenbestand. Dieses Verfahren ist unter dem Begriff
+                <em> Retrieval-Augmented Generation (RAG)</em> etabliert.
               </p>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                <Cpu size={16} /> 2 · Lokales LLM
+                <Cpu size={16} /> 2 · Lokales Sprachmodell
               </div>
-              <p className="text-xs leading-5 text-slate-600 dark:text-slate-400">
-                Beim Modus &bdquo;Text generieren&ldquo; formuliert ein
-                <strong> lokales Reasoning-Modell (qwen3.5:35b-fast)</strong> über den
-                hauseigenen <strong>ai-router</strong> eine Antwort &mdash;
-                ausschließlich aus den gefundenen Belegen. Liegt kein Beleg vor,
-                verweigert das Modell die Aussage statt zu raten.
+              <p className="text-xs leading-6 text-slate-600 dark:text-slate-400">
+                Im Modus &bdquo;Text generieren&ldquo; formuliert das Sprachmodell
+                <strong> Qwen3.6 14B</strong> auf Grundlage der zuvor abgerufenen
+                Belegstellen einen Antwortentwurf. Die Ausführung erfolgt vollständig
+                auf eigener Hardware, konkret auf einem Verbund aus einer NVIDIA RTX
+                5060 mit 16 GB, einer NVIDIA RTX 5070 mit 16 GB sowie einem GMKtec
+                EVO-X2 mit 128 GB Unified Memory. Das Modell ist durch den Systemprompt
+                darauf verpflichtet, ausschließlich aus den übergebenen Fundstellen zu
+                antworten; lässt sich eine Aussage nicht durch eine Belegstelle decken,
+                weist es ausdrücklich darauf hin, anstatt frei zu formulieren.
+                Halluzinationen werden auf diese Weise architektonisch eingedämmt und
+                nicht erst nachträglich herausgefiltert.
               </p>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2 text-sm font-semibold text-violet-700 dark:text-violet-300">
-                <ListOrdered size={16} /> 3 · Vorgehen &amp; Quellen
+                <ListOrdered size={16} /> 3 · Vorgehen und Quellen
               </div>
-              <p className="text-xs leading-5 text-slate-600 dark:text-slate-400">
-                Wählen Sie <strong>Fundstellen suchen</strong> (reine Treffer mit
-                Relevanz-Score) oder <strong>Text generieren</strong> (formulierter
-                Entwurf). Die verwendeten Fundstellen werden immer mit ausgewiesen,
-                damit jede Aussage nachprüfbar bleibt &mdash; das Urteil trifft die
-                Prüferin oder der Prüfer.
+              <p className="text-xs leading-6 text-slate-600 dark:text-slate-400">
+                Sie haben die Wahl zwischen &bdquo;Fundstellen suchen&ldquo;, einer
+                reinen Trefferliste mit Relevanzwert, und &bdquo;Text generieren&ldquo;,
+                bei dem ein formulierter Entwurf erzeugt wird. In beiden Fällen werden
+                die zugrunde liegenden Fundstellen mit ausgewiesen, sodass jede Aussage
+                nachvollziehbar bleibt. Die rechtliche und sachliche Würdigung verbleibt
+                bei der Prüferin oder dem Prüfer; das System leistet Vorarbeit, ersetzt
+                jedoch keine Bewertung.
               </p>
             </div>
-            <div className="md:col-span-3 flex items-start gap-2 rounded-2xl bg-emerald-50/70 px-4 py-3 text-xs leading-5 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+            <div className="flex items-start gap-2 rounded-2xl bg-emerald-50/70 px-4 py-3 text-xs leading-6 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
               <ShieldCheck size={15} className="mt-0.5 shrink-0" />
               <span>
-                <strong>DSGVO-konform:</strong> Embedding, Suche und Textgenerierung
-                laufen vollständig lokal auf eigener Hardware. Es werden keine Daten an
-                Cloud-Dienste übertragen.
+                <strong>Datenschutz und Rechtsgrundlagen.</strong> Diese Anwendung ist
+                eine private Anwendung des Verfassers. Embedding-Erzeugung, Vektorsuche
+                und Textgenerierung laufen ausschließlich auf eigener Hardware; eine
+                Übermittlung von Anfragen oder Inhalten an Cloud-Dienste oder externe
+                Anbieter findet nicht statt. Damit ist den Grundsätzen der
+                Datenminimierung gemäß Artikel 5 Absatz 1 Buchstabe c
+                Datenschutz-Grundverordnung sowie den Anforderungen an die Sicherheit
+                der Verarbeitung gemäß Artikel 32 Datenschutz-Grundverordnung Rechnung
+                getragen; eine Übermittlung in Drittländer im Sinne der Artikel 44 ff.
+                Datenschutz-Grundverordnung findet strukturbedingt nicht statt.
               </span>
             </div>
           </div>
         )}
       </section>
-
-      {/* Startzustand mit Vorschlägen */}
-      {!hasSearched && !isLoading && (
-        <section className="rounded-[24px] border border-dashed border-slate-300 bg-white/90 px-6 py-10 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
-          <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-            Recherche starten
-          </h3>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Stellen Sie eine Frage oder w&auml;hlen Sie einen Vorschlag. Im Modus
-            &bdquo;Text generieren&ldquo; wird die Antwort ausschlie&szlig;lich aus den
-            gefundenen Belegen formuliert &mdash; ohne Beleg keine Aussage.
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            {SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => applySuggestion(s)}
-                className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Fehler */}
       {error && (
