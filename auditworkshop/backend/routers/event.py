@@ -807,11 +807,11 @@ async def admin_mail_test(body: MailTestRequest, request: Request):
         first_name="Test",
         last_name="Empfänger",
         email=body.to,
-        organization="Prüfbehörde EFRE Hessen",
+        organization="Prüfbehörde (Mail-Versand-Test)",
         department="(Mail-Versand-Test)",
         fund=None,
         ai_consent=body.with_ai,
-        workshop_title="Prüferworkshop EFRE Hessen 2026 — Testmail",
+        workshop_title="Prüferworkshop 2026 — Testmail",
     )
     if not ok:
         raise HTTPException(502, "Versand fehlgeschlagen. Backend-Logs prüfen.")

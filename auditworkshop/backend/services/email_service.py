@@ -118,10 +118,7 @@ Admin-Bereich: {{ public_url }}/admin
             "Einladung mit Setup-Link für Selbst-Passwort-Vergabe. Wird vom "
             "Admin-Button \"Mail senden\" im AdminUsersPanel ausgelöst."
         ),
-        "subject": (
-            "Erweiterte Recherche- und Auswertungsbereiche der Plattform "
-            "„KI und LLM für Prüfbehörden\""
-        ),
+        "subject": "Freigabelink zur Workshop-Seite der Prüfbehörden",
         "placeholders": ["first_name", "last_name", "setup_url", "public_url"],
         "body": """\
 Guten Tag {{ first_name }} {{ last_name }},
@@ -176,10 +173,9 @@ Wichtiger Hinweis zur Trägerschaft
 ==================================
 
 Dieses Angebot ist ein rein privates, nicht-kommerzielles Vorhaben von
-Jan Riener als Privatperson. Die Hessische Prüfbehörde EFRE ist weder
-Veranstalterin noch Verantwortliche und tritt nicht als
-Datenverarbeiterin auf. Die Inhalte und die Plattform stehen in keinem
-dienstlichen Zusammenhang.
+Jan Riener als Privatperson. Es steht in keinem dienstlichen Zusammenhang;
+eine Behörde oder Prüfbehörde ist weder Veranstalterin noch Verantwortliche
+und tritt nicht als Datenverarbeiterin auf.
 
 Datensicherheit: Bitte geben Sie auf der Plattform keine echten
 produktiven Vorhabens- oder Begünstigtendaten ein. Alle Recherchen
@@ -428,7 +424,7 @@ async def send_registration_confirmation(
     department: str | None,
     fund: str | None,
     ai_consent: bool,
-    workshop_title: str = "Prüferworkshop EFRE Hessen 2026",
+    workshop_title: str = "Prüferworkshop 2026",
 ) -> bool:
     """Sendet die Anmeldebestätigung an den Teilnehmer.
 

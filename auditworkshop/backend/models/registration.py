@@ -39,13 +39,13 @@ class WorkshopMeta(Base):
     __tablename__ = "workshop_meta"
 
     id = Column(Integer, primary_key=True, default=1)
-    title = Column(String(255), default="Prüferworkshop EFRE Hessen")
+    title = Column(String(255), default="Prüferworkshop 2026")
     subtitle = Column(String(500), default="KI und LLMs in der EFRE-Prüfbehörde")
     date = Column(String(50), default="")
     time = Column(String(50), default="09:00 - 16:00 Uhr")
     location_short = Column(String(255), default="")
     location_full = Column(String(500), default="")
-    organizer = Column(String(255), default="Hessische Prüfbehörde")
+    organizer = Column(String(255), default="Prüferworkshop")
     registration_deadline = Column(String(50), default="")
     qr_url = Column(String(500), default="")
     admin_pin = Column(String(20), default="1234")

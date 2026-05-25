@@ -274,7 +274,7 @@ SMTP_STARTTLS      = os.getenv("SMTP_STARTTLS", "true").lower() == "true"
 SMTP_USER          = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD      = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM          = os.getenv("SMTP_FROM", "jan.riener@vwvg.de")
-SMTP_FROM_NAME     = os.getenv("SMTP_FROM_NAME", "Prüferworkshop EFRE Hessen")
+SMTP_FROM_NAME     = os.getenv("SMTP_FROM_NAME", "Prüferworkshop")
 ADMIN_NOTIFY_EMAIL = os.getenv("ADMIN_NOTIFY_EMAIL", "jan.riener@vwvg.de")
 EMAIL_TIMEOUT_S    = int(os.getenv("EMAIL_TIMEOUT_S", "20"))
 # Public-URL für Links in Mails (Login, Tagesordnung)

@@ -86,10 +86,10 @@ _SAMPLE_DATA: dict[str, dict] = {
         "department": "Referat 1",
         "fund": "EFRE",
         "ai_paragraph": "",
-        "workshop_title": "Prüferworkshop EFRE Hessen 2026",
+        "workshop_title": "Prüferworkshop 2026",
         "public_url": "https://workshop.flowaudit.de",
         "reply_to": "administration@vwvg.de",
-        "organizer": "Prüferworkshop EFRE Hessen",
+        "organizer": "Prüferworkshop",
     },
     "admin_notify": {
         "registration_id": "demo-uuid-1234-5678",

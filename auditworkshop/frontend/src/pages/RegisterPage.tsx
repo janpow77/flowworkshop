@@ -361,7 +361,7 @@ export default function RegisterPage() {
                   Anonymisieren oder schw&auml;rzen Sie pers&ouml;nliche Angaben vor dem Upload.
                 </p>
                 <p className="mt-2">
-                  Verantwortlich: Pr&uuml;fbeh&ouml;rde EFRE Hessen. Bei Fragen wenden Sie sich an{' '}
+                  Verantwortlich: Jan Riener (privat). Bei Fragen wenden Sie sich an{' '}
                   <a href="mailto:Jan.Riener@vwvg.de" className="text-indigo-600 underline dark:text-indigo-400">Jan.Riener@vwvg.de</a>.
                 </p>
                 <p className="mt-2">
