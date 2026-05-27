@@ -16,6 +16,22 @@ from config import AI_ROUTER_URL, WORKSHOP_APP_ID
 log = logging.getLogger(__name__)
 
 
+def _drop_internal_hits(results: list[dict]) -> tuple[list[dict], int]:
+    """Entfernt nicht-öffentliche Treffer aus der zentralen Wissensbasis.
+
+    Die zentrale audit_designer-KB enthält neben öffentlichen Verordnungen auch
+    echte, VP-AI-eingebettete Vorgangsdaten (Zuwendungsbescheide, Mittelabrufe
+    etc.). Diese sind mit ``is_efre_hessen=True`` markiert und dürfen im
+    öffentlich erreichbaren Workshop NIEMALS als RAG-Kontext oder Fundstelle
+    erscheinen. Wir filtern sie hier zentral heraus — fail-safe für alle
+    Workshop-Pfade (Szenario 3/5, /recherche, Assessment).
+
+    Rückgabe: (gefilterte Treffer, Anzahl verworfen).
+    """
+    kept = [r for r in results if not r.get("is_efre_hessen")]
+    return kept, len(results) - len(kept)
+
+
 def search(
     query: str,
     limit: int = 5,
@@ -43,10 +59,15 @@ def search(
     # top_k hat Vorrang wenn gesetzt (Kompatibilität)
     result_limit = top_k if top_k is not None else limit
 
+    # Over-Fetch: Wir holen mehr Treffer als angefordert, damit nach dem
+    # Aussortieren der nicht-öffentlichen Treffer (siehe _drop_internal_hits)
+    # noch genug öffentliche übrig bleiben.
+    fetch_limit = min(max(result_limit * 3, result_limit + 5), 40)
+
     url = f"{AI_ROUTER_URL}/api/knowledge/search"
     payload = {
         "query": query,
-        "limit": result_limit,
+        "limit": fetch_limit,
         "enable_reranking": enable_reranking,
         "enable_multi_query": enable_multi_query,
     }
@@ -61,23 +82,38 @@ def search(
             resp.raise_for_status()
             data = resp.json()
 
+            # Nicht-öffentliche (VP-AI-eingebettete) Treffer hart aussortieren,
+            # BEVOR sie als Kontext/Fundstelle weitergereicht werden.
+            raw_results = data.get("results", [])
+            filtered, dropped = _drop_internal_hits(raw_results)
+            if dropped:
+                log.warning(
+                    "Knowledge-Search: %d nicht-öffentliche Treffer (is_efre_hessen) "
+                    "verworfen für query=%r", dropped, query,
+                )
+            # Auf die ursprünglich angeforderte Anzahl zurückschneiden.
+            filtered = filtered[:result_limit]
+            data["results"] = filtered
+            data["total_results"] = len(filtered)
+
             # Mapping audit_designer-Schema auf Workshop-Schema
             # audit_designer → Workshop: "content" → "text", "source_id" → "source", "chunk_id" → "chunk_index"
-            if "results" in data:
-                for item in data["results"]:
-                    if "content" in item and "text" not in item:
-                        item["text"] = item["content"]
-                    if "source_id" in item and "source" not in item:
-                        item["source"] = item["source_id"]
-                    if "chunk_id" in item and "chunk_index" not in item:
-                        # chunk_id ist ein String-UUID, wir brauchen aber einen Index
-                        # Fallback: nutze die Position in der Ergebnisliste
-                        item["chunk_index"] = data["results"].index(item)
+            for idx, item in enumerate(data["results"]):
+                if "content" in item and "text" not in item:
+                    item["text"] = item["content"]
+                if "source_id" in item and "source" not in item:
+                    item["source"] = item["source_id"]
+                if "chunk_id" in item and "chunk_index" not in item:
+                    # chunk_id ist ein String-UUID, wir brauchen aber einen Index
+                    # Fallback: nutze die Position in der (gefilterten) Ergebnisliste
+                    item["chunk_index"] = idx
 
             log.info(
-                "Knowledge-Search via Router: query=%r, results=%d, took=%dms",
+                "Knowledge-Search via Router: query=%r, results=%d (von %d, %d verworfen), took=%dms",
                 query,
                 len(data.get("results", [])),
+                len(raw_results),
+                dropped,
                 int(data.get("processing_time_ms", 0)),
             )
             return data
@@ -127,6 +163,14 @@ def ask(
             resp = client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
+            # Defensive: nicht-öffentliche Fundstellen aus der Quellenliste
+            # entfernen. HINWEIS: /ask generiert die Antwort serverseitig im
+            # ai-router — wird ask() je produktiv genutzt, muss die Filterung
+            # dort (app-getrennter Korpus) erfolgen, nicht erst hier.
+            if isinstance(data.get("sources"), list):
+                data["sources"], dropped = _drop_internal_hits(data["sources"])
+                if dropped:
+                    log.warning("Knowledge-Ask: %d nicht-öffentliche Fundstellen verworfen", dropped)
             log.info("Knowledge-Ask via Router: took=%dms", data.get("took_ms", 0))
             return data
 
