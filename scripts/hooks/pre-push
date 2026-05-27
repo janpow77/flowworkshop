@@ -1,0 +1,77 @@
+#!/bin/bash
+# Pre-push: lokale CI vor Push nach Hetzner/GHCR (auditworkshop).
+#
+# Lintet die GEAENDERTEN .py-Dateien mit Host-ruff (bewusst kein World-Lint —
+# das vermeidet Blockaden durch Alt-Lint-Schulden, haelt aber neuen Code sauber),
+# baut das Frontend und faehrt pytest best-effort.
+#
+#   SKIP_PREPUSH=1   Hook komplett umgehen (Notfall)
+#   SKIP_PYTEST=1    Tests ueberspringen
+#   PYTEST_STRICT=1  Test-Failures blockierend machen
+set -u
+
+# ── repo-spezifische Parameter ───────────────────────────────────────────
+FRONTEND_DIR="auditworkshop/frontend"   # leer = kein Frontend-Build
+PYTEST_CONTAINER="auditworkshop-backend" # docker-Container, leer = kein pytest
+PYTEST_PATH="/app/tests/"
+
+if [ "${SKIP_PREPUSH:-0}" = "1" ]; then echo "Pre-Push uebersprungen (SKIP_PREPUSH=1)"; exit 0; fi
+START_TS=$(date +%s)
+fail() { echo ""; echo "  Push abgebrochen: $1"; exit 1; }
+
+# ── 1) Ruff-Lint der geaenderten Python-Dateien (Host-ruff) ───────────────
+echo "[1] Ruff-Lint (geaenderte .py)..."
+if command -v ruff >/dev/null 2>&1; then
+    BASE=""
+    for ref in origin/main origin/master; do
+        if git rev-parse --verify -q "$ref" >/dev/null 2>&1; then
+            BASE=$(git merge-base HEAD "$ref" 2>/dev/null); break
+        fi
+    done
+    [ -z "$BASE" ] && BASE=$(git rev-parse -q --verify HEAD~1 2>/dev/null)
+    if [ -n "$BASE" ]; then
+        FILES=$(git diff --name-only --diff-filter=ACM "$BASE"...HEAD -- '*.py')
+    else
+        FILES=$(git ls-files '*.py')
+    fi
+    if [ -n "$FILES" ]; then
+        echo "$FILES" | xargs -r ruff check 2>&1 | tail -10
+        [ "${PIPESTATUS[1]}" -ne 0 ] && fail "Ruff-Lint geaenderter Dateien — fix: ruff check --fix <datei> (oder SKIP_PREPUSH=1)"
+        echo "  Lint OK ($(echo "$FILES" | grep -c .) Datei(en))"
+    else
+        echo "  Lint OK (keine .py-Aenderungen)"
+    fi
+else
+    echo "  ruff nicht installiert auf dem Host — Lint uebersprungen (pip install --user ruff)"
+fi
+
+# ── 2) Frontend-Build (nur wenn node_modules vorhanden) ───────────────────
+if [ -n "$FRONTEND_DIR" ] && [ -d "$FRONTEND_DIR/node_modules" ]; then
+    echo "[2] Frontend-Build ($FRONTEND_DIR)..."
+    if ( cd "$FRONTEND_DIR" && NODE_OPTIONS=--max-old-space-size=4096 npm run build >/tmp/prepush-fe.log 2>&1 ); then
+        echo "  Frontend-Build OK"
+    else
+        tail -15 /tmp/prepush-fe.log
+        fail "Frontend-Build — fix: cd $FRONTEND_DIR && npm run build"
+    fi
+fi
+
+# ── 3) pytest (best-effort, warn-only) ────────────────────────────────────
+if [ -n "$PYTEST_CONTAINER" ] && [ "${SKIP_PYTEST:-0}" != "1" ]; then
+    if docker ps --format '{{.Names}}' | grep -qx "$PYTEST_CONTAINER" \
+       && docker exec "$PYTEST_CONTAINER" python -c "import pytest" >/dev/null 2>&1; then
+        echo "[3] pytest ($PYTEST_CONTAINER)..."
+        OUT=$(docker exec "$PYTEST_CONTAINER" python -m pytest "$PYTEST_PATH" -q --no-header --tb=line 2>&1)
+        echo "  $(echo "$OUT" | grep -E 'passed|failed|error' | tail -1)"
+        if echo "$OUT" | grep -qE "[0-9]+ (failed|error)"; then
+            [ "${PYTEST_STRICT:-0}" = "1" ] && { echo "$OUT" | grep -E 'FAILED|ERROR' | head -8; fail "pytest (PYTEST_STRICT=1)"; }
+            echo "  Warnung: pytest-Failures (warn-only; PYTEST_STRICT=1 fuer harten Fail)"
+        fi
+    else
+        echo "[3] pytest uebersprungen (Container '$PYTEST_CONTAINER' laeuft nicht / hat kein pytest)"
+    fi
+fi
+
+echo ""
+echo "Lokale CI bestanden in $(($(date +%s) - START_TS))s. Push wird fortgesetzt."
+exit 0
