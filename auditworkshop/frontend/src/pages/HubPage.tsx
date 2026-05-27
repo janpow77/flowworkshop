@@ -123,7 +123,9 @@ export default function HubPage() {
         }
       } catch { /* ignore */ }
       try {
-        const b = await fetch('/api/beneficiaries/map?country_code=DE');
+        // Schlanke Kennzahl statt des vollen ~27-MB-Map-Payloads — die
+        // HomePage braucht nur die Gesamtzahl.
+        const b = await fetch('/api/beneficiaries/summary?country_code=DE');
         if (b.ok) {
           const j = await b.json();
           out.beneficiaries_total = j.count;
