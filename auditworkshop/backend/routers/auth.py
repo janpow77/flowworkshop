@@ -19,7 +19,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import SessionLocal, get_db
-from models.registration import Registration, PasswordResetToken, SecurityAuditLog
+from models.registration import Registration, PasswordResetToken
 from models.audit_log import AuditLog
 from models.session import WorkshopSession
 from config import AUTH_TOKEN_SECRET, WORKER_API_TOKEN
@@ -763,7 +763,7 @@ def admin_create_reset_token(
         raise HTTPException(404, "User nicht gefunden.")
     raw = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
-    expires = _utcnow().replace(tzinfo=None) + timedelta(hours=24)
+    expires = _utcnow().replace(tzinfo=None) + timedelta(days=5)
     rt = PasswordResetToken(
         user_id=u.id,
         token_hash=token_hash,
@@ -813,7 +813,7 @@ async def admin_send_invite(
 
     raw = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
-    expires = _utcnow().replace(tzinfo=None) + timedelta(hours=24)
+    expires = _utcnow().replace(tzinfo=None) + timedelta(days=5)
     rt = PasswordResetToken(
         user_id=u.id,
         token_hash=token_hash,

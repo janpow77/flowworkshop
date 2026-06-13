@@ -138,7 +138,7 @@ Ihr Zugang zur Plattform
 ========================
 
 Bitte legen Sie über den folgenden Link Ihr persönliches Passwort fest
-(der Link ist 24 Stunden gültig und einmalig nutzbar):
+(der Link ist 5 Tage gültig und einmalig nutzbar):
 
   {{ setup_url }}
 
