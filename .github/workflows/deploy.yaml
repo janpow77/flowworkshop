@@ -31,6 +31,7 @@ permissions:
   contents: read
   packages: read
   id-token: write
+  attestations: read
 
 concurrency:
   group: deploy-${{ github.event.inputs.environment || 'development' }}
@@ -53,6 +54,20 @@ jobs:
           else
             echo "image_tag=sha-$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Verify image provenance (SLSA, MIG-04)
+        # Verifikation läuft hier auf dem Runner mit dem kurzlebigen
+        # GITHUB_TOKEN und --repo — dort sind aktuelles gh + passender
+        # Token-Scope garantiert vorhanden. Der Server-Deploy überspringt
+        # die redundante Zweitprüfung deshalb mit COMMON_SKIP_SLSA=1.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for comp in backend frontend; do
+            gh attestation verify \
+              "oci://ghcr.io/janpow77/auditworkshop-${comp}:${{ steps.tag.outputs.image_tag }}" \
+              --repo "${{ github.repository }}"
+          done
 
       - name: Connect Tailscale
         # CICD-05: SHA-Pinning. Aktualisierung über Dependabot
@@ -100,7 +115,7 @@ jobs:
               echo 'IMAGE_TAG=${IMAGE_TAG}' | sudo tee -a /etc/auditworkshop/env >/dev/null
             fi
           "
-          ssh deploy@"$CCX23_HOST" "cd /opt/auditworkshop/auditworkshop && sudo bash lifecycle/start.sh"
+          ssh deploy@"$CCX23_HOST" "cd /opt/auditworkshop/auditworkshop && sudo COMMON_SKIP_SLSA=1 bash lifecycle/start.sh"
 
       - name: Smoke test
         env:
@@ -114,5 +129,5 @@ jobs:
         env:
           CCX23_HOST: ${{ secrets.CCX23_TAILSCALE_HOSTNAME }}
         run: |
-          ssh deploy@"$CCX23_HOST" "cd /opt/auditworkshop && git checkout HEAD@{1} && sudo bash lifecycle/start.sh" || true
+          ssh deploy@"$CCX23_HOST" "cd /opt/auditworkshop && git checkout HEAD@{1} && cd auditworkshop && sudo COMMON_SKIP_SLSA=1 bash lifecycle/start.sh" || true
           exit 1
