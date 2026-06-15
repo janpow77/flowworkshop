@@ -7,25 +7,25 @@ _Automatisch generiert von graphify-kira aus dem Code-Graphen. Nicht von Hand ed
 ## Modulkarte
 
 - **Community 0** (147): `__init__.py`, `docs.py`, `forum.py`, `registration.py`, `event.py`
-- **Community 1** (113): `audit_log.py`, `registration.py`, `session.py`, `auth.py`, `mail_templates.py`
-- **Community 2** (112): `AnswerSetManager.tsx`, `CategoryManager.tsx`, `NodeDiscussion.tsx`, `RefDocsPanel.tsx`, `Breadcrumb.tsx`
-- **Community 3** (100): `state_aid_llm.py`, `test_state_aid_llm.py`
-- **Community 4** (90): `sanctions_entries.py`, `entities.py`, `rebuild_entity_resolution.py`, `entity_resolution.py`, `test_entity_resolution.py`
-- **Community 5** (88): `entity_embeddings.py`, `embeddings.py`, `rebuild_embeddings.py`, `test_entity_embeddings.py`, `test_entity_resolution.py`
+- **Community 1** (116): `AnswerSetManager.tsx`, `CategoryManager.tsx`, `EvidenceCard.tsx`, `NodeDiscussion.tsx`, `RefDocsPanel.tsx`
+- **Community 2** (113): `audit_log.py`, `registration.py`, `session.py`, `auth.py`, `mail_templates.py`
+- **Community 3** (90): `sanctions_entries.py`, `entities.py`, `rebuild_entity_resolution.py`, `entity_resolution.py`, `test_entity_resolution.py`
+- **Community 4** (88): `entity_embeddings.py`, `embeddings.py`, `rebuild_embeddings.py`, `test_entity_embeddings.py`, `test_entity_resolution.py`
+- **Community 5** (84): `state_aid_llm.py`, `test_state_aid_llm.py`
 - **Community 6** (76): `audit_match_verifier.py`, `entity_match_llm_verifier.py`, `test_entity_match_llm_batch.py`
 - **Community 7** (74): `automation.py`, `checklist_template.py`, `registration.py`, `checklist_export.py`, `checklist_history.py`
 - **Community 8** (72): `checklist_template.py`, `checklist_discussion.py`
 - **Community 9** (68): `sanctions_service.py`, `state_aid_audit_report.py`, `test_audit_report_polish_v3.py`
 - **Community 10** (66): `BeneficiaryAnalyticsPanel.tsx`, `BeneficiaryCompanySearch.tsx`, `BeneficiaryMap.tsx`, `BeneficiaryWorkspace.tsx`, `api.ts`
 - **Community 11** (63): `checklist_export_service.py`
-- **Community 13** (62): `AnswerSetManager.tsx`, `CategoryManager.tsx`, `NodeContextMenu.tsx`, `NodeInspector.tsx`, `StatusButtons.tsx`
-- **Community 14** (61): `state_aid.py`, `excel_export.py`
-- **Community 12** (61): `dataframe_service.py`, `test_beneficiary_search.py`
+- **Community 12** (62): `AnswerSetManager.tsx`, `CategoryManager.tsx`, `NodeContextMenu.tsx`, `NodeInspector.tsx`, `StatusButtons.tsx`
+- **Community 13** (61): `state_aid.py`, `excel_export.py`
+- **Community 14** (61): `dataframe_service.py`, `test_beneficiary_search.py`
 - **Community 15** (59): `checklist_template.py`, `checklist_versions.py`
-- **Community 16** (56): `entities.py`, `state_aid.py`, `entity_embeddings.py`, `entity_match_llm_verifier.py`, `state_aid_audit_report.py`
-- **Community 23** (53): `AuditCrossReferences.tsx`, `AuditReportPreview.tsx`, `stateAidApi.ts`
-- **Community 17** (52): `state_aid_service.py`, `test_state_aid_search_quality.py`
-- **Community 18** (50): `str`, `BaseModel`, `checklist_template.py`, `checklist_collab.py`, `checklist_history.py`
+- **Community 16** (57): `backfill_state_aid_identifiers.py`, `harvest_state_aid.py`, `state_aid_harvester.py`
+- **Community 17** (56): `entities.py`, `state_aid.py`, `entity_embeddings.py`, `entity_match_llm_verifier.py`, `state_aid_audit_report.py`
+- **Community 18** (54): `state_aid_service.py`, `test_state_aid_search_quality.py`
+- **Community 19** (50): `str`, `BaseModel`, `checklist_template.py`, `checklist_collab.py`, `checklist_history.py`
 
 ## Zentrale Bausteine (God Nodes)
 
@@ -58,6 +58,12 @@ _Hohe Zentralität ist nicht automatisch ein Defekt (zentrale Stores/Modelle sin
 ## Zirkuläre Abhängigkeiten
 
 Es gibt **1** nicht-triviale Zyklen (starke Zusammenhangskomponenten) — Kandidaten zum Auflösen (Dependency-Inversion).
+
+## Empfohlene Spezialisten
+
+Passend zu Stack/Domäne dieses Projekts (Claude-Code-Agents/Skills):
+
+`/deutsche-formulierung`, `@git-workflow`, `/auto-verify`, `@alembic-migrator`, `/db-migration-helper`, `@e2e-browser-tester`, `/modern-gui-builder`, `/ux-completeness-check`, `@memory-bridge`, `/rag-knowledge-base`.
 
 ## Hinweis für Änderungen
 
