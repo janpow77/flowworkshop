@@ -63,7 +63,7 @@ Es gibt **1** nicht-triviale Zyklen (starke Zusammenhangskomponenten) — Kandid
 
 Passend zu Stack/Domäne dieses Projekts (Claude-Code-Agents/Skills):
 
-`/deutsche-formulierung`, `@git-workflow`, `/auto-verify`, `@alembic-migrator`, `/db-migration-helper`, `@e2e-browser-tester`, `/modern-gui-builder`, `/ux-completeness-check`, `@memory-bridge`, `/rag-knowledge-base`.
+`/deutsche-formulierung`, `@git-workflow`, `/auto-verify`, `/workshop-trainer`, `@alembic-migrator`, `/db-migration-helper`, `@e2e-browser-tester`, `/modern-gui-builder`, `/ux-completeness-check`, `@memory-bridge`, `/rag-knowledge-base`.
 
 ## Hinweis für Änderungen
 
