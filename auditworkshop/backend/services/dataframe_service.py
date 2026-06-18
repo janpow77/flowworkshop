@@ -174,6 +174,25 @@ def _format_eur(value: float | None) -> str:
     return f"{value:,.0f}".replace(",", ".") + " €"
 
 
+def _format_eur_compact(value: float | None) -> str:
+    """Kompakte, gut lesbare Euro-Darstellung (Mrd./Mio./Tsd.) für Ranglisten.
+
+    Beispiele: 2_318_000_000 -> '2,32 Mrd. €', 602_000_000 -> '602 Mio. €'.
+    0/None ergibt einen ehrlichen Hinweis statt '0 €', weil viele
+    Transparenzlisten keine Beträge ausweisen.
+    """
+    if value is None or value == 0:
+        return "keine Betragsangabe"
+    abs_v = abs(value)
+    if abs_v >= 1_000_000_000:
+        return f"{value / 1_000_000_000:.2f}".replace(".", ",") + " Mrd. €"
+    if abs_v >= 1_000_000:
+        return f"{value / 1_000_000:.0f}" + " Mio. €"
+    if abs_v >= 10_000:
+        return f"{value / 1_000:.0f}" + " Tsd. €"
+    return _format_eur(value)
+
+
 def _de_int(value: int | float | None) -> str:
     """Formatiert eine Ganzzahl mit deutschem Tausenderpunkt (z.B. 4501 -> '4.501').
 
@@ -1302,6 +1321,19 @@ def _detect_beneficiary_name_filter(
     return None, None
 
 
+# Stämme, die ein grossgeschriebenes Wort als Domänen-/Auswertungsbegriff
+# entlarven (auch in Komposita wie "EFRE-Volumen" oder "Fördersummen-Ranking").
+# Solche Tokens sind keine Eigennamen und dürfen das Begünstigten-Namensrouting
+# nicht kapern. Casefold-Vergleich (Substring).
+_NON_ENTITY_STEMS = (
+    "förder", "foerder", "volumen", "fördermittel", "foerdermittel",
+    "zuschuss", "zuschüss", "zuschuess", "fonds", "efre", "esf", "jtf",
+    "bundesland", "bundeslaender", "bundesländer", "verteilung", "aufteilung",
+    "auswertung", "übersicht", "uebersicht", "ranking", "rangliste",
+    "gesamtsumme", "gesamtvolumen",
+)
+
+
 # Wörter, die zwar grossgeschrieben sind, aber keine konkreten Eigennamen
 # darstellen (Bundeslaender werden separat als Filter behandelt).
 _PROPER_NOUN_STOPLIST = {
@@ -1332,6 +1364,34 @@ _PROPER_NOUN_STOPLIST = {
     "Milliarde", "Milliarden", "Periode", "Foerderperiode", "Förderperiode",
     "Liste", "Verzeichnis", "Verzeichnisse", "Daten", "Datensatz",
     "Datensaetze", "Datensätze",
+    # Auswertungs-/Frage-Intent-Woerter — keine Eigennamen, sondern die
+    # Auswertung selbst. Ohne diese landen Saetze wie "Verteilung der
+    # Foerdermittel nach Bundesland" oder "Ranking der Bundeslaender" als
+    # vermeintlicher Begueunstigtenname im top_beneficiaries-Filter (0 Treffer)
+    # und fallen faelschlich in den LLM-Pfad, statt state_fund_totals zu treffen.
+    "Verteilung", "Verteilungen", "Verteilungs", "Mittelverteilung",
+    "Aufteilung", "Aufteilungen", "Aufstellung", "Aufschlüsselung",
+    "Aufschluesselung", "Übersicht", "Uebersicht", "Überblick", "Ueberblick",
+    "Auswertung", "Auswertungen", "Ranking", "Rangliste", "Reihenfolge",
+    "Vergleich", "Vergleiche", "Anteil", "Anteile", "Zusammenfassung",
+    "Statistik", "Statistiken", "Quote", "Quoten", "Fonds", "Fördertopf",
+    "Foerdertopf", "Darstellung", "Aufschluss", "Quelle",
+    # Auswertungs-Dimensionen der Analytics-Kachel (sind keine Eigennamen,
+    # sondern die Gruppierungsachse — sonst Hijack des top_beneficiaries-Routings)
+    "Standort", "Standorte", "Standorten", "Wirtschaftszweig", "Wirtschaftszweige",
+    "Wirtschaftsbereich", "Wirtschaftsbereiche", "Branche", "Branchen",
+    "Sektor", "Sektoren", "Interventionsbereich", "Interventionsbereiche",
+    "Interventionskategorie", "Themenfeld", "Themenfelder", "Förderbereich",
+    "Foerderbereich", "Förderbereiche", "Foerderbereiche",
+    # Geld-/Foerder-Synonyme (sind keine Eigennamen!)
+    "Fördergelder", "Foerdergelder", "Fördersumme", "Foerdersumme",
+    "Fördersummen", "Foerdersummen", "Fördervolumina", "Foerdervolumina",
+    "Gesamtförderung", "Gesamtfoerderung", "Gesamtsumme", "Top",
+    # Imperative / Aufforderungen (Frage-Satzanfänge der Demo-Buttons)
+    "Zeig", "Zeige", "Gib", "Nenne", "Sortiere", "Gruppiere", "Zähl", "Zaehl",
+    "Liste", "Vergleiche", "Berechne", "Ermittle", "Stelle", "Stell",
+    "Berücksichtige", "Beruecksichtige", "Berücksichtig", "Beruecksichtig",
+    "Analysiere", "Analysier", "Schlüssele", "Schluessele", "Erstelle",
     # Begueunstigten-Typen (sind schon ueber _BENEFICIARY_TYPE_FILTERS abgedeckt)
     "Universität", "Universitaet", "Universitäten", "Universitaeten",
     "Uni", "Hochschule", "Hochschulen", "Fachhochschule", "Fachhochschulen",
@@ -1451,7 +1511,14 @@ def _extract_prompt_proper_nouns(prompt: str | None) -> list[str]:
     # Trennzeichen: Whitespace, Satzzeichen außer Bindestrich (Eigennamen
     # wie "Justus-Liebig-Universität" sollen erhalten bleiben).
     candidates = re.findall(r"[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ\-]{3,}", prompt)
-    return [c for c in candidates if c not in _PROPER_NOUN_STOPLIST]
+    return [
+        c for c in candidates
+        if c not in _PROPER_NOUN_STOPLIST
+        # Komposita mit Domänen-Stamm (z. B. "EFRE-Volumen", "ESF-Förderung",
+        # "Fördervolumen-Vergleich", "JTF-Mittel") sind keine Eigennamen, sondern
+        # Auswertungsbegriffe — sonst kapern sie das top_beneficiaries-Routing.
+        and not any(stem in c.casefold() for stem in _NON_ENTITY_STEMS)
+    ]
 
 
 # Heuristisches Mapping Stadt → Bundesland fuer den Fallback-Pfad.
@@ -1552,6 +1619,10 @@ def _match_beneficiary_analysis_mode(prompt: str | None) -> str | None:
             "verschiedenen bundeslaendern",
             "verschiedene bundesländer",
             "verschiedenen bundesländern",
+            "mehr als einem bundesland",
+            "mehr als ein bundesland",
+            "mehr als einem bundesländern",
+            "in mehr als einem land",
             "mehrere listen",
             "in mehreren listen",
             "mehrere verzeichnisse",
@@ -1566,13 +1637,36 @@ def _match_beneficiary_analysis_mode(prompt: str | None) -> str | None:
     ):
         return "multi_state_beneficiaries"
 
-    # Begueunstigten-Typ-Filter (Universitaet, Hochschule, Klinik, GmbH, ...)
-    # ODER konkrete Eigennamen (Stadtname, Personenname) ergeben eine
-    # gefilterte Top-Liste der groessten Begueunstigten.
+    # Begueunstigten-Typ-Filter (Universitaet, Hochschule, Klinik, GmbH, ...) ist
+    # eine explizite Entitaets-Absicht und gewinnt vor allem anderen.
     if _detect_beneficiary_name_filter(prompt)[0] is not None:
         return "top_beneficiaries"
-    if _extract_prompt_proper_nouns(prompt):
-        return "top_beneficiaries"
+
+    # STARKE Aggregations-Signale (eindeutige Gruppierungs-Achsen) werden VOR der
+    # Eigennamen-Heuristik geprueft. Sonst kapert ein grossgeschriebenes
+    # Dimensions-/Satzanfangs-Wort ("Verteilung", "Standorte", "Wirtschaftszweige",
+    # "Muster", "Stelle") das Routing und die Auswertung faellt faelschlich in den
+    # LLM-Pfad, statt die deterministische Aggregation zu liefern.
+
+    # ANZAHL der Vorhaben je Bundesland (zählen, nicht Volumen). Vor dem
+    # state_fund_totals-Block, weil "bundesland" dort sonst zuerst greift und
+    # statt der Anzahl das Fördervolumen liefert.
+    if any(
+        phrase in normalized_prompt
+        for phrase in (
+            "wie viele vorhaben", "wieviele vorhaben", "wie viele projekte",
+            "wieviele projekte", "anzahl der vorhaben", "anzahl vorhaben",
+            "anzahl der projekte", "anzahl projekte", "zahl der vorhaben",
+            "wie viele gefoerderte", "wie viele geförderte",
+        )
+    ) and any(
+        phrase in normalized_prompt
+        for phrase in (
+            "bundesland", "bundesländer", "bundeslaender", "land", "länder",
+            "laender", "region", "regionen",
+        )
+    ):
+        return "region_project_counts"
 
     if any(
         phrase in normalized_prompt
@@ -1593,12 +1687,13 @@ def _match_beneficiary_analysis_mode(prompt: str | None) -> str | None:
             "bundesland",
             "bundesländer",
             "bundeslaender",
-            "fonds",
             "verteilung",
             "aufteilung",
-            "efre",
-            "esf",
-            "jtf",
+            "pro fonds",
+            "nach fonds",
+            "je fonds",
+            "pro land",
+            "nach land",
         )
     ):
         return "state_fund_totals"
@@ -1613,7 +1708,6 @@ def _match_beneficiary_analysis_mode(prompt: str | None) -> str | None:
             "stadt",
             "städte",
             "staedte",
-            "orte",
             "orte",
             "landkreis",
             "landkreise",
@@ -1651,6 +1745,17 @@ def _match_beneficiary_analysis_mode(prompt: str | None) -> str | None:
         )
     ):
         return "top_sectors"
+
+    # Konkrete Eigennamen (Firmen-, Personen-, Stadtname) ⇒ gefilterte Top-Liste.
+    # NACH den starken Aggregations-Signalen (reine Dimensionswoerter zaehlen dann
+    # nicht mehr als Eigenname), aber VOR den schwachen Fondsnamen.
+    if _extract_prompt_proper_nouns(prompt):
+        return "top_beneficiaries"
+
+    # SCHWACHE Signale: blosse Fondsnamen ohne Gruppierungsachse. Erst hier, damit
+    # z. B. "Wie viel EFRE-Geld hat Siemens bekommen?" beim Eigennamen bleibt.
+    if any(phrase in normalized_prompt for phrase in ("fonds", "efre", "esf", "jtf")):
+        return "state_fund_totals"
 
     if any(
         phrase in normalized_prompt
@@ -1898,6 +2003,496 @@ def get_beneficiary_llm_context(
     return "\n".join(parts)
 
 
+def _build_state_fund_totals_answer(
+    prompt: str,
+    country_code: str | None,
+    bundesland: str | None,
+    fonds: str | None,
+) -> str:
+    """Lesbare Rangliste 'Fördervolumen pro Bundesland'.
+
+    Re-aggregiert die (Bundesland × Fonds)-Buckets aus
+    ``analyze_beneficiary_records`` auf Bundesland-Ebene (Fonds zusammengefasst,
+    aber mit Aufschlüsselung), zeigt ALLE Länder statt nur Top-5 und trennt
+    Einträge ohne Länderzuordnung (bundesweite Programme wie AMIF/ISF, fehlende
+    Bundesland-Spalte) als Fußnote ab.
+    """
+    # "Bundesland" ist ein nationaler Begriff und nur DE führt eine
+    # Bundesland-Spalte. Ohne explizite Landauswahl daher Deutschland —
+    # sonst mischt sich z. B. Österreich als "Unbekannt" in die Rangliste.
+    eff_cc = _default_de_country(prompt, country_code)
+
+    analysis = analyze_beneficiary_records(
+        mode="state_fund_totals",
+        bundesland=bundesland,
+        fonds=fonds,
+        limit=100,
+        country_code=eff_cc,
+    )
+    items = analysis["items"]
+    summary = analysis["summary"]
+    country_label = get_country_name(eff_cc) or eff_cc
+
+    if not items:
+        return (
+            f"Für {country_label} liegen in den aktuell geladenen "
+            "Begünstigtenverzeichnissen keine auswertbaren Fördervolumina vor."
+        )
+
+    # Re-Aggregation auf Bundesland-Ebene; Einträge ohne Land separat sammeln.
+    per_state: dict[str, dict[str, Any]] = {}
+    no_state: dict[str, Any] = {"total": 0.0, "pc": 0, "fonds": {}}
+    for it in items:
+        bl = (it.get("bundesland") or "").strip()
+        target = (
+            no_state if (not bl or bl == "Unbekannt")
+            else per_state.setdefault(bl, {"total": 0.0, "pc": 0, "fonds": {}})
+        )
+        val = float(it.get("value") or 0.0)
+        target["total"] += val
+        target["pc"] += int(it.get("project_count") or 0)
+        fonds_name = (it.get("fonds") or "").strip() or "—"
+        target["fonds"][fonds_name] = target["fonds"].get(fonds_name, 0.0) + val
+
+    # Header-Bausteine: Fonds-Geltungsbereich und (falls einheitlich) Periode.
+    if fonds:
+        scope = f"nur {fonds}"
+    else:
+        fonds_present = sorted({
+            f for d in per_state.values() for f, v in d["fonds"].items()
+            if v > 0 and f != "—"
+        })
+        scope = " + ".join(fonds_present) if fonds_present else "alle Fonds"
+    periods = {s.get("periode") for s in get_beneficiary_sources(country_code=eff_cc) if s.get("periode")}
+    period_suffix = f" · Förderperiode {next(iter(periods))}" if len(periods) == 1 else ""
+
+    def _fonds_breakdown(fonds_map: dict[str, float], sep: str = " · ") -> str:
+        parts = [
+            f"{f} {_format_eur_compact(v)}"
+            for f, v in sorted(fonds_map.items(), key=lambda kv: -kv[1])
+            if v > 0 and f != "—"
+        ]
+        return sep.join(parts[:3])
+
+    lines: list[str] = []
+    if per_state:
+        lines.append(
+            f"Fördervolumen pro Bundesland ({country_label} · {scope}{period_suffix}):"
+        )
+        ranked = sorted(per_state.items(), key=lambda kv: -kv[1]["total"])
+        for rank, (bl, d) in enumerate(ranked, start=1):
+            breakdown = _fonds_breakdown(d["fonds"])
+            # Aufschlüsselung nur zeigen, wenn mehr als ein Fonds beiträgt.
+            suffix = f" ({breakdown})" if len([1 for f, v in d["fonds"].items() if v > 0 and f != "—"]) > 1 else ""
+            lines.append(
+                f"{rank}. {bl} — {_format_eur_compact(d['total'])} "
+                f"· {_de_int(d['pc'])} Vorhaben{suffix}"
+            )
+        if no_state["total"] > 0:
+            fed = _fonds_breakdown(no_state["fonds"], sep=", ")
+            fed_hint = f" ({fed})" if fed else ""
+            lines.append(
+                f"Hinzu kommen {_format_eur_compact(no_state['total'])} aus "
+                f"bundesweiten Programmen ohne Länderzuordnung{fed_hint}."
+            )
+        grundlage = (
+            f"Datengrundlage: {country_label}, "
+            f"{'1 Bundesland' if len(per_state) == 1 else f'{_de_int(len(per_state))} Bundesländer'}, "
+            f"{_de_int(summary['records_scanned'])} Datensätze, "
+            f"{summary['total_volume_label']} Gesamtvolumen."
+        )
+    else:
+        # Land ohne Bundesland-Spalte (z. B. Österreich) → Fonds-Summen.
+        lines.append(
+            f"{country_label} weist in den geladenen Transparenzlisten keine "
+            "Bundesland-Spalte aus — eine länderscharfe Aufteilung ist hier nicht "
+            "möglich. Fonds-Summen:"
+        )
+        for rank, (f, v) in enumerate(
+            sorted(no_state["fonds"].items(), key=lambda kv: -kv[1]), start=1
+        ):
+            if v > 0 and f != "—":
+                lines.append(f"{rank}. {f} — {_format_eur_compact(v)}")
+        grundlage = (
+            f"Datengrundlage: {country_label}, "
+            f"{_de_int(summary['records_scanned'])} Datensätze, "
+            f"{summary['total_volume_label']} Gesamtvolumen."
+        )
+
+    lines.append(grundlage)
+    return "\n".join(lines)
+
+
+# Werte, die in Kategorie-Spalten als Header-/Platzhalter-Reste auftauchen und
+# keine echte Kategorie sind. Casefold-Vergleich nach Whitespace-Normalisierung.
+_CATEGORY_JUNK = {
+    "", "-", "–", "—", ".", "nan", "none", "na", "n/a", "k.a.", "ka", "kein",
+    "keine", "keine angabe", "nicht zutreffend", "not applicable",
+    "spezifisches ziel", "specific objective", "type of intervention",
+    "type of intervation", "art der intervention",
+    "art der intervention für das vorhaben", "interventionsbereich",
+    "intervention field", "intervention", "categorisation",
+    "category of intervention", "economic activity", "priority",
+    "prg_priority", "country", "efre", "esf", "jtf", "amif", "isf",
+    # geleakte Summen-/Total-Zeilen
+    "gesamt", "summe", "gesamt - summe", "gesamtsumme", "summe gesamt",
+    "total", "insgesamt", "zwischensumme",
+}
+
+# Werte, die in Standort-Spalten kein verwertbarer Ort sind.
+_LOCATION_JUNK = {
+    "", "-", "–", "nan", "none", "na", "k.a.", "ka", "ort", "standort",
+    "region", "nuts", "nuts2", "nuts3", "plz", "stadt", "gemeinde", "country",
+    "unbekannt", "coordinates", "koordinaten", "deutschland", "österreich",
+    "oesterreich",
+}
+
+# Flächen-Bundesländer sind kein „Standort"; die Stadtstaaten Berlin/Hamburg/
+# Bremen dagegen schon und bleiben erhalten.
+_NON_CITY_STATES = {
+    "baden-württemberg", "baden-wuerttemberg", "bayern", "sachsen",
+    "sachsen-anhalt", "thüringen", "thueringen", "brandenburg",
+    "niedersachsen", "hessen", "nordrhein-westfalen", "rheinland-pfalz",
+    "schleswig-holstein", "mecklenburg-vorpommern", "saarland",
+}
+
+
+def _classify_category_taxonomy(column_name: str | None) -> str | None:
+    """Ordnet eine erkannte Kategorie-Spalte einem der drei Klassifikations-
+    systeme zu — anhand des Spaltennamens, damit es nach jedem Harvest stabil
+    bleibt (keine Bindung an konkrete Quellen).
+    """
+    if not column_name:
+        return None
+    c = column_name.casefold()
+    # NACE zuerst: kombinierte Spalten ("wirtschaftstätigkeit … art der
+    # intervention …") tragen NACE-Codes.
+    if any(k in c for k in ("wirtschaftstätigkeit", "wirtschaftstaetigkeit",
+                            "wirtschaftszweig", "economic activity", "nace")):
+        return "nace"
+    if any(k in c for k in ("spezifisch", "specific objective", "prg_priority",
+                            "priorität", "prioritaet", "prg_priority")):
+        return "objective"
+    if any(k in c for k in ("intervention", "interventionsbereich",
+                            "interventionskategorie", "categorisation")):
+        return "intervention"
+    return None
+
+
+def _is_category_artefact(value: Any) -> bool:
+    norm = re.sub(r"\s+", " ", str(value or "").replace("\n", " ")).strip()
+    low = norm.casefold()
+    if low in _CATEGORY_JUNK:
+        return True
+    # Geleakte Header-Zeile (z. B. Berlin EFRE)
+    if "categories of intervention for the operation" in low:
+        return True
+    return False
+
+
+def _category_bucket_key(value: str) -> tuple[str, str]:
+    """Liefert (Gruppenschlüssel, Anzeige-Code-Hinweis) für eine Kategorie.
+
+    Führende Nummern-Codes ("004 - …", "1.1 …", "136") werden normalisiert, sodass
+    dieselbe Kategorie über Listen mit/ohne Bezeichnung in EINEN Bucket fällt.
+    """
+    v = re.sub(r"\s+", " ", value).strip()
+    m = re.match(r"^(\d{1,4}(?:\.\d+)*)\s*[-–:.)]?\s*", v)
+    if m:
+        code = m.group(1)
+        # Reine Ganzzahl-Codes ohne Punkt: führende Nullen ignorieren ("004"=="4").
+        norm = code if "." in code else (code.lstrip("0") or "0")
+        return f"code:{norm}", code
+    return f"text:{v.casefold()}", ""
+
+
+def _scan_beneficiary_records(
+    country_code: str | None,
+    bundesland: str | None,
+    fonds: str | None,
+):
+    """Generator über alle passenden Begünstigten-Datensätze.
+
+    Liest Quellen und Spalten bei JEDEM Aufruf live aus der DB — nach einem
+    erneuten Harvest spiegelt die Auswertung sofort den neuen Stand. Yieldet je
+    Datensatz die Roh-Kategorie (+ erkannte Spalte/Taxonomie), den Roh-Standort,
+    die geparsten Kosten sowie Fonds/Bundesland aus den Quellen-Metadaten.
+    """
+    from services.geocoding_service import detect_columns
+
+    sources = [
+        s for s in get_beneficiary_sources(country_code=country_code)
+        if (not bundesland or (s.get("bundesland") or "") == bundesland)
+        and (not fonds or (s.get("fonds") or "") == fonds)
+    ]
+    for s in sources:
+        src = s["source"]
+        table = _safe_table_name(src)
+        cols = detect_columns(src)
+        cat_col = cols.get("sz")
+        loc_col = cols.get("standort") or cols.get("ort") or cols.get("landkreis")
+        cost_col = cols.get("kosten")
+        taxonomy = _classify_category_taxonomy(cat_col)
+        selected = [
+            (alias, col) for alias, col in (
+                ("category", cat_col), ("location", loc_col), ("kosten", cost_col),
+            ) if col
+        ]
+        if not selected:
+            continue
+        sql = ", ".join(f"{_quote_ident(col)} AS {alias}" for alias, col in selected)
+        try:
+            with engine.connect() as conn:
+                rows = conn.execute(text(f'SELECT {sql} FROM "{table}"')).fetchall()
+        except Exception:
+            log.exception("Scan der Quelle %s fehlgeschlagen.", src)
+            continue
+        for row in rows:
+            entry = dict(row._mapping)
+            yield {
+                "category": entry.get("category"),
+                "taxonomy": taxonomy,
+                "location": entry.get("location"),
+                "kosten": _parse_numeric(entry.get("kosten")),
+                "fonds": s.get("fonds"),
+                "bundesland": s.get("bundesland"),
+            }
+
+
+def _default_de_country(prompt: str, country_code: str | None) -> str | None:
+    """Ohne explizites Land Deutschland annehmen, außer der Prompt nennt
+    ausdrücklich Österreich (verhindert AT/DE-Code-Mischung in Aggregaten)."""
+    if country_code:
+        return country_code
+    norm = _normalize_search_text(prompt) or ""
+    if any(tok in norm for tok in ("österreich", "oesterreich", "austria")):
+        return "AT"
+    return "DE"
+
+
+def _build_top_sectors_answer(
+    prompt: str,
+    country_code: str | None,
+    bundesland: str | None,
+    fonds: str | None,
+) -> str:
+    """Geförderte Bereiche — getrennt nach den drei Klassifikationssystemen
+    (Interventionsbereich · NACE-Wirtschaftszweig · Spezifisches Ziel), weil die
+    Quelllisten diese uneinheitlich führen und ein Mischen fachlich falsch wäre.
+    """
+    eff_cc = _default_de_country(prompt, country_code)
+    country_label = get_country_name(eff_cc) or eff_cc
+
+    # taxonomy -> bucket_key -> {value, count, label, fonds:set, bl:set}
+    grouped: dict[str, dict[str, dict[str, Any]]] = {
+        "intervention": {}, "nace": {}, "objective": {},
+    }
+    scanned = 0
+    classified = 0
+    for rec in _scan_beneficiary_records(eff_cc, bundesland, fonds):
+        scanned += 1
+        tax = rec["taxonomy"]
+        if tax not in grouped:
+            continue
+        raw = str(rec["category"] or "").strip()
+        if not raw or _is_category_artefact(raw):
+            continue
+        classified += 1
+        key, _code = _category_bucket_key(raw)
+        bucket = grouped[tax].setdefault(key, {
+            "value": 0.0, "count": 0, "label": "", "fonds": set(), "bl": set(),
+        })
+        if rec["kosten"] is not None:
+            bucket["value"] += float(rec["kosten"])
+        bucket["count"] += 1
+        # Längste/aussagekräftigste Original-Schreibweise als Anzeige-Label.
+        if len(raw) > len(bucket["label"]):
+            bucket["label"] = raw
+        if rec["fonds"]:
+            bucket["fonds"].add(rec["fonds"])
+        if rec["bundesland"]:
+            bucket["bl"].add(rec["bundesland"])
+
+    if not classified:
+        return (
+            f"Für {country_label} liegen in den geladenen Begünstigtenverzeichnissen "
+            "keine auswertbaren Kategorieangaben (Interventionsbereich, "
+            "Wirtschaftszweig oder Spezifisches Ziel) vor."
+        )
+
+    section_titles = {
+        "intervention": "Interventionsbereiche (Art der Intervention · Anhang I CPR)",
+        "nace": "Wirtschaftszweige (NACE)",
+        "objective": "Spezifische Ziele / Prioritäten",
+    }
+    lines = [f"Geförderte Bereiche ({country_label}), getrennt nach Klassifikation:"]
+    for tax in ("intervention", "nace", "objective"):
+        buckets = grouped[tax]
+        if not buckets:
+            continue
+        ranked = sorted(
+            buckets.values(), key=lambda b: (-float(b["value"] or 0.0), -b["count"])
+        )[:6]
+        lines.append("")
+        lines.append(f"{section_titles[tax]}:")
+        for rank, b in enumerate(ranked, start=1):
+            label = b["label"]
+            # Reiner Code ohne Bezeichnung lesbarer machen ("1" → "Code 1").
+            if not re.search(r"[A-Za-zÄÖÜäöü]", label):
+                label = f"Code {label}"
+            label = label if len(label) <= 90 else label[:87].rstrip() + "…"
+            val = _format_eur_compact(b["value"])
+            lines.append(f"{rank}. {label} — {val} · {_de_int(b['count'])} Vorhaben")
+
+    lines.append("")
+    lines.append(
+        f"Datengrundlage: {country_label}, {_de_int(classified)} von "
+        f"{_de_int(scanned)} Vorhaben mit auswertbarer Kategorieangabe."
+    )
+    return "\n".join(lines)
+
+
+def _clean_location_value(value: Any) -> str | None:
+    """Normalisiert einen Standort-Rohwert auf einen lesbaren Ortsnamen oder
+    verwirft ihn (NUTS-Code, reine PLZ, Header-Rest, Flächen-Bundesland)."""
+    v = re.sub(r"\s+", " ", str(value or "")).strip()
+    if not v or v.casefold() in _LOCATION_JUNK:
+        return None
+    low = v.casefold()
+    if "standortindikator" in low or "geolokalisier" in low:
+        return None
+    # Vollständige Adresse "…, 12345 Stadt" → Stadt
+    m = re.search(r"\b\d{5}\s+([A-Za-zÄÖÜäöüß][\wÄÖÜäöüß .\-]+)$", v)
+    if m:
+        v = m.group(1).strip()
+    else:
+        # "12345 - Stadt" / "12345 Stadt" → Stadt
+        v = re.sub(r"^\d{4,5}\s*[-–]?\s*", "", v).strip()
+    # Mehrfach-Ort ("Ulm, Tübingen, …") → erster Ort
+    v = v.split(",")[0].strip(" -–")
+    # angehängten NUTS-Code entfernen ("Deutschland (DE80)" → "Deutschland")
+    v = re.sub(r"\s*\(\s*[A-Z]{2}[0-9A-Z]{1,4}\s*\)\s*$", "", v).strip()
+    if not v or v.casefold() in _LOCATION_JUNK:
+        return None
+    # Reiner NUTS-Code (DE, DE80, DE40C, …) oder reine PLZ
+    if re.fullmatch(r"[A-Z]{2}[0-9A-Z]{0,4}", v) or re.fullmatch(r"\d{3,5}", v):
+        return None
+    if v.casefold() in _NON_CITY_STATES:
+        return None
+    if not re.search(r"[A-Za-zÄÖÜäöü]", v):
+        return None
+    return v
+
+
+def _build_top_locations_answer(
+    prompt: str,
+    country_code: str | None,
+    bundesland: str | None,
+    fonds: str | None,
+) -> str:
+    """Standorte mit dem höchsten Fördervolumen — auf eine konsistente Ortsebene
+    normalisiert (NUTS-Codes, reine PLZ, Adress-Präfixe und Flächen-Bundesländer
+    werden bereinigt) mit ehrlicher Abdeckungsangabe."""
+    eff_cc = _default_de_country(prompt, country_code)
+    country_label = get_country_name(eff_cc) or eff_cc
+
+    grouped: dict[str, dict[str, Any]] = {}
+    scanned = 0
+    usable = 0
+    for rec in _scan_beneficiary_records(eff_cc, bundesland, fonds):
+        scanned += 1
+        place = _clean_location_value(rec["location"])
+        if not place:
+            continue
+        usable += 1
+        bucket = grouped.setdefault(place, {
+            "value": 0.0, "count": 0, "fonds": set(), "bl": set(),
+        })
+        if rec["kosten"] is not None:
+            bucket["value"] += float(rec["kosten"])
+        bucket["count"] += 1
+        if rec["fonds"]:
+            bucket["fonds"].add(rec["fonds"])
+        if rec["bundesland"]:
+            bucket["bl"].add(rec["bundesland"])
+
+    if not usable:
+        return (
+            f"Für {country_label} liegen in den geladenen Begünstigtenverzeichnissen "
+            "keine auswertbaren Ortsangaben vor (die Listen führen überwiegend nur "
+            "NUTS-Regionen oder Postleitzahlen)."
+        )
+
+    ranked = sorted(
+        grouped.items(), key=lambda kv: (-float(kv[1]["value"] or 0.0), -kv[1]["count"])
+    )[:10]
+    lines = [f"Standorte mit dem höchsten Fördervolumen ({country_label}):"]
+    for rank, (place, b) in enumerate(ranked, start=1):
+        val = _format_eur_compact(b["value"])
+        lines.append(f"{rank}. {place} — {val} · {_de_int(b['count'])} Vorhaben")
+    lines.append("")
+    lines.append(
+        f"Datengrundlage: {country_label}, {_de_int(usable)} von {_de_int(scanned)} "
+        "Vorhaben mit verwertbarem Ortsnamen."
+    )
+    return "\n".join(lines)
+
+
+def _build_region_counts_answer(
+    prompt: str,
+    country_code: str | None,
+    bundesland: str | None,
+    fonds: str | None,
+) -> str:
+    """Anzahl geförderter Vorhaben pro Bundesland (zählen, nicht Volumen),
+    aufgeschlüsselt nach Landesprogrammen (EFRE/ESF/JTF mit Länderbezug) vs.
+    bundesweiten Programmen ohne Länderzuordnung (z. B. AMIF/ISF)."""
+    eff_cc = _default_de_country(prompt, country_code)
+    country_label = get_country_name(eff_cc) or eff_cc
+
+    per_state: dict[str, dict[str, Any]] = {}
+    federal = {"count": 0, "fonds": set()}
+    total = 0
+    for rec in _scan_beneficiary_records(eff_cc, bundesland, fonds):
+        total += 1
+        bl = (rec["bundesland"] or "").strip()
+        if not bl or bl == "Unbekannt":
+            federal["count"] += 1
+            if rec["fonds"]:
+                federal["fonds"].add(rec["fonds"])
+            continue
+        bucket = per_state.setdefault(bl, {"count": 0, "fonds": set()})
+        bucket["count"] += 1
+        if rec["fonds"]:
+            bucket["fonds"].add(rec["fonds"])
+
+    if not per_state and federal["count"] == 0:
+        return (
+            f"Für {country_label} liegen in den geladenen Begünstigtenverzeichnissen "
+            "keine Vorhaben zum Zählen vor."
+        )
+
+    lines = [f"Anzahl geförderter Vorhaben pro Bundesland ({country_label}):"]
+    if per_state:
+        ranked = sorted(per_state.items(), key=lambda kv: (-kv[1]["count"], kv[0]))
+        for rank, (bl, b) in enumerate(ranked, start=1):
+            fonds_str = ", ".join(sorted(b["fonds"]))
+            suffix = f" ({fonds_str})" if fonds_str else ""
+            lines.append(f"{rank}. {bl} — {_de_int(b['count'])} Vorhaben{suffix}")
+    if federal["count"] > 0:
+        fed_fonds = ", ".join(sorted(federal["fonds"]))
+        fed_hint = f" ({fed_fonds})" if fed_fonds else ""
+        lines.append(
+            f"Bundesweite Programme ohne Länderzuordnung: "
+            f"{_de_int(federal['count'])} Vorhaben{fed_hint}."
+        )
+    lines.append(
+        f"Datengrundlage: {country_label}, {_de_int(total)} Vorhaben gesamt, "
+        f"{'1 Bundesland' if len(per_state) == 1 else f'{_de_int(len(per_state))} Bundesländer'}."
+    )
+    return "\n".join(lines)
+
+
 def build_beneficiary_analysis_answer(
     prompt: str,
     limit: int = 5,
@@ -1916,6 +2511,20 @@ def build_beneficiary_analysis_answer(
         return None
 
     bundesland, fonds = _extract_beneficiary_prompt_filters(prompt, sources)
+
+    # Aggregat-Modi mit uneinheitlichen Quelldaten bekommen eine eigene, lesbare
+    # Aufbereitung (vollständig, kompakte Beträge, bereinigt) statt der
+    # generischen Top-5-Liste. Alle lesen bei jedem Aufruf live aus der DB und
+    # spiegeln damit jeden neuen Begünstigten-Harvest.
+    if matched_mode == "state_fund_totals":
+        return _build_state_fund_totals_answer(prompt, country_code, bundesland, fonds)
+    if matched_mode == "top_sectors":
+        return _build_top_sectors_answer(prompt, country_code, bundesland, fonds)
+    if matched_mode == "top_locations":
+        return _build_top_locations_answer(prompt, country_code, bundesland, fonds)
+    if matched_mode == "region_project_counts":
+        return _build_region_counts_answer(prompt, country_code, bundesland, fonds)
+
     type_substrings, name_filter_label = _detect_beneficiary_name_filter(prompt)
     proper_nouns = _extract_prompt_proper_nouns(prompt)
     name_substrings: list[tuple[str, ...]] = []
@@ -1991,11 +2600,23 @@ def build_beneficiary_analysis_answer(
         intro = f"Die größten Begünstigten mit „{name_filter_label_combined}“ sind:"
     lines = [intro]
     for item in items[:effective_limit]:
-        line = f"{item['rank']}. {item['label']}: {item.get('value_label') or _format_eur(item.get('value'))}"
+        val = item.get("value")
+        value_display = (
+            _format_eur_compact(val) if isinstance(val, (int, float)) and val
+            else (item.get("value_label") or _format_eur(val))
+        )
+        line = f"{item['rank']}. {item['label']} — {value_display}"
         if item.get("project_count"):
-            line += f" bei {_de_int(item['project_count'])} Vorhaben"
-        if item.get("sublabel"):
-            line += f" ({item['sublabel']})"
+            line += f" · {_de_int(item['project_count'])} Vorhaben"
+        sub = item.get("sublabel") or ""
+        if sub:
+            parts = sub.split(" · ")
+            # Führende "N Vorhaben"-Angabe entfernen — steht schon in der Zeile.
+            if parts and re.search(r"\bVorhaben\b", parts[0]):
+                parts = parts[1:]
+            tail = " · ".join(p for p in parts if p)
+            if tail:
+                line += f" ({tail})"
         lines.append(line)
 
     coverage = (
