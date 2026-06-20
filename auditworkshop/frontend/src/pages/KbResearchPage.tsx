@@ -210,8 +210,8 @@ export default function KbResearchPage() {
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400 sm:text-base">
                   Durchsuchen Sie die eingelesenen Verordnungen und Dokumente semantisch
                   &mdash; oder lassen Sie aus den Fundstellen einen belegbasierten Text
-                  erzeugen. Die Generierung nutzt das st&auml;rkere Reasoning-Modell
-                  &uuml;ber den lokalen ai-router.
+                  erzeugen. Die Generierung nutzt Qwen3 14B lokal &uuml;ber den
+                  ai-router (Reasoning f&uuml;r schnelle Antworten abgeschaltet).
                 </p>
               </div>
 
@@ -387,11 +387,11 @@ export default function KbResearchPage() {
               </div>
               <p className="text-xs leading-6 text-slate-600 dark:text-slate-400">
                 Im Modus &bdquo;Text generieren&ldquo; formuliert das Sprachmodell
-                <strong> Qwen3.6 14B</strong> auf Grundlage der zuvor abgerufenen
-                Belegstellen einen Antwortentwurf. Die Ausführung erfolgt vollständig
-                auf eigener Hardware, konkret auf einem Verbund aus einer NVIDIA RTX
-                5060 mit 16 GB, einer NVIDIA RTX 5070 mit 16 GB sowie einem GMKtec
-                EVO-X2 mit 128 GB Unified Memory. Das Modell ist durch den Systemprompt
+                <strong> Qwen3 14B</strong> (Reasoning für schnelle Antworten
+                abgeschaltet) auf Grundlage der zuvor abgerufenen Belegstellen einen
+                Antwortentwurf. Die Ausführung erfolgt vollständig auf eigener
+                Hardware über den lokalen ai-router, der die Last auf einen Verbund
+                lokaler GPUs (u.&nbsp;a. NVIDIA RTX 5070 Ti, GMKtec EVO-X2) verteilt. Das Modell ist durch den Systemprompt
                 darauf verpflichtet, ausschließlich aus den übergebenen Fundstellen zu
                 antworten; lässt sich eine Aussage nicht durch eine Belegstelle decken,
                 weist es ausdrücklich darauf hin, anstatt frei zu formulieren.

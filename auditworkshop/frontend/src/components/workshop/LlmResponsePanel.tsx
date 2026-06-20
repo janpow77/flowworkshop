@@ -7,6 +7,8 @@ interface Props {
   tokenCount?: number;
   model?: string;
   tokPerS?: number;
+  /** Bei "deterministisch": Direktantwort ohne LLM — eigenes Badge statt Modellzeile. */
+  engine?: string;
   error?: string;
   onStop?: () => void;
   onRetry?: () => void;
@@ -15,9 +17,10 @@ interface Props {
 }
 
 export default function LlmResponsePanel({
-  response, streaming, tokenCount, model, tokPerS, error, onStop, onRetry,
+  response, streaming, tokenCount, model, tokPerS, engine, error, onStop, onRetry,
   status, startedAt,
 }: Props) {
+  const isDeterministic = engine === 'deterministisch';
   const endRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   // Sekunden seit Stream-Start. Wird per Interval gesetzt — Date.now() darf
@@ -58,7 +61,7 @@ export default function LlmResponsePanel({
       <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
         <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
           {streaming && <Loader2 size={14} className="animate-spin text-indigo-500" />}
-          <span>{streaming ? 'Generiere Antwort…' : 'KI-Antwort'}</span>
+          <span>{streaming ? 'Generiere Antwort…' : isDeterministic ? 'Deterministische Auswertung' : 'KI-Antwort'}</span>
         </div>
         <div className="flex items-center gap-2">
           {!streaming && response && (
@@ -82,7 +85,9 @@ export default function LlmResponsePanel({
           )}
           {tokenCount !== undefined && (
             <span className="text-xs text-slate-400">
-              {tokenCount} Token{model && ` · ${model}`}{tokPerS !== undefined && ` · ${tokPerS} tok/s`}
+              {isDeterministic
+                ? `${tokenCount} Token · deterministische Auswertung (kein LLM)`
+                : `${tokenCount} Token${model ? ` · ${model}` : ''}${tokPerS !== undefined && tokPerS > 0 ? ` · ${tokPerS} tok/s` : ''}`}
             </span>
           )}
         </div>

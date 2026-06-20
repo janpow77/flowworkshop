@@ -11,7 +11,7 @@ from typing import Any
 
 import httpx
 
-from config import AI_ROUTER_URL, WORKSHOP_APP_ID
+from config import AI_ROUTER_URL, WORKSHOP_APP_ID, gateway_headers
 
 log = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ def search(
     }
     headers = {
         "Content-Type": "application/json",
-        "X-App-Id": WORKSHOP_APP_ID,
+        **gateway_headers(WORKSHOP_APP_ID),
     }
 
     try:
@@ -155,7 +155,7 @@ def ask(
     }
     headers = {
         "Content-Type": "application/json",
-        "X-App-Id": WORKSHOP_APP_ID,
+        **gateway_headers(WORKSHOP_APP_ID),
     }
 
     try:

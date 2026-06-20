@@ -599,6 +599,19 @@ def signup(
     except Exception:  # noqa: BLE001 — Mailfehler darf Signup nicht killen
         log.exception("send_signup_alert konnte nicht eingereiht werden")
 
+    # Eingangsbestätigung an die anmeldende Person selbst (Background-Task)
+    try:
+        from services.email_service import send_signup_received
+        background_tasks.add_task(
+            send_signup_received,
+            first_name=new.first_name,
+            last_name=new.last_name,
+            email=new.email,
+            organization=new.organization,
+        )
+    except Exception:  # noqa: BLE001 — Mailfehler darf Signup nicht killen
+        log.exception("send_signup_received konnte nicht eingereiht werden")
+
     return SignupResponse(
         status="pending_approval",
         message=(
@@ -669,8 +682,18 @@ class UserActionResponse(BaseModel):
 
 
 @router.post("/users/{user_id}/approve", response_model=UserActionResponse)
-def admin_approve_user(user_id: str, request: Request, db: Session = Depends(get_db)):
-    """Admin: User freischalten — Status pending_approval → active."""
+def admin_approve_user(
+    user_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Admin: User freischalten — Status pending_approval → active.
+
+    Beim Übergang auf active wird die anmeldende Person per Mail informiert,
+    dass sie sich ab sofort einloggen kann (Background-Task, Mailfehler darf
+    die Freischaltung nicht killen).
+    """
     actor = require_admin(request)
     u = db.query(Registration).filter(Registration.id == user_id).first()
     if not u:
@@ -682,6 +705,22 @@ def admin_approve_user(user_id: str, request: Request, db: Session = Depends(get
     u.approved_by_id = actor.get("user_id")
     db.commit()
     log.info("admin_approve_user: %s durch %s", u.email, actor.get("email"))
+
+    # Freischaltungs-Mail an die anmeldende Person (Background-Task)
+    try:
+        import config
+        from services.email_service import send_account_approved
+        login_url = f"{config.EMAIL_PUBLIC_URL.rstrip('/')}/login"
+        background_tasks.add_task(
+            send_account_approved,
+            first_name=u.first_name,
+            last_name=u.last_name,
+            email=u.email,
+            login_url=login_url,
+        )
+    except Exception:  # noqa: BLE001 — Mailfehler darf die Freischaltung nicht killen
+        log.exception("send_account_approved konnte nicht eingereiht werden")
+
     return UserActionResponse(status="approved", user=_user_to_entry(u))
 
 

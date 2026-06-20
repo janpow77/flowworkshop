@@ -30,6 +30,7 @@ import logging
 import os
 import re
 import threading
+import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, TYPE_CHECKING
@@ -135,6 +136,10 @@ class SanctionsHit:
     # Multi-Source-Felder — Default leer fuer Backward-Compat
     source_key: str = ""
     source_display_name: str = ""
+    # Deterministischer Geburtsdatums-/Laender-Abgleich (nur gesetzt, wenn der
+    # Aufrufer birth_date/country mitgibt). True = Angabe widerspricht dem Treffer.
+    dob_conflict: bool = False
+    country_conflict: bool = False
 
 
 # ── Default-Quellen ──────────────────────────────────────────────────────────
@@ -193,6 +198,36 @@ DEFAULT_SANCTIONS_SOURCES: list[SanctionsSource] = [
 # ── Normalisierung ───────────────────────────────────────────────────────────
 
 
+# Zeichen, die unicodedata.normalize('NFKD', ...) NICHT in Basis-Buchstabe +
+# kombinierendes Diakritikum zerlegt — daher explizit auf eine ASCII-Form
+# falten, damit z.B. 'Müller'/'Muller', 'José Strauß'/'Jose Strauss' und
+# 'Søren'/'Soren' identisch verglichen werden.
+_DIACRITIC_FOLD_MAP = {
+    "ß": "ss",
+    "ø": "o", "Ø": "o",
+    "đ": "d", "Đ": "d",
+    "ð": "d", "Ð": "d",
+    "ł": "l", "Ł": "l",
+    "þ": "th", "Þ": "th",
+    "æ": "ae", "Æ": "ae",
+    "œ": "oe", "Œ": "oe",
+}
+
+
+def _fold_diacritics(s: str) -> str:
+    """Faltet Akzente/Diakritika auf ihre ASCII-Basisform.
+
+    1. Explizite Sonderfaelle (ß→ss, ø→o, …), die NFKD nicht zerlegt.
+    2. Unicode-NFKD-Zerlegung + Entfernen aller kombinierenden Zeichen
+       (Akzente, Umlaut-Punkte, Cedille …).
+    """
+    for src, dst in _DIACRITIC_FOLD_MAP.items():
+        if src in s:
+            s = s.replace(src, dst)
+    decomposed = unicodedata.normalize("NFKD", s)
+    return "".join(c for c in decomposed if not unicodedata.combining(c))
+
+
 def normalize_name(text: str) -> str:
     """Vergleichsform fuer Namen: lowercase, ohne Akzente/Sonderzeichen,
     ohne Rechtsform­suffixe, kompakte Whitespaces.
@@ -200,6 +235,8 @@ def normalize_name(text: str) -> str:
     if not text:
         return ""
     s = text.casefold()
+    # Diakritika/Akzente auf ASCII-Basisform falten (Müller→muller, José→jose)
+    s = _fold_diacritics(s)
     # Nicht-Wort-Zeichen durch Leerzeichen ersetzen
     s = re.sub(r"[^\w\s]", " ", s, flags=re.UNICODE)
     # Mehrfach-Whitespaces normalisieren
@@ -207,14 +244,130 @@ def normalize_name(text: str) -> str:
     return " ".join(tokens)
 
 
-def _classify(score: float) -> str:
+def _classify(
+    score: float,
+    q_norm: str | None = None,
+    matched_norm: str | None = None,
+) -> str:
+    """Klassifiziert einen rapidfuzz-Score in exact/high/medium/low.
+
+    token_set_ratio liefert per Definition 100 fuer reine Token-Teilmengen
+    ('putin' in 'vladimir vladimirovich putin' = 100). Eine solche Teilmenge
+    ist aber KEIN "exakter Treffer" im Sinne von "Schreibweise praktisch
+    identisch" — sie wuerde sonst jeden Namensvetter rot als 'exact' markieren.
+
+    Daher wird die 'exact'-Klasse zusaetzlich daran gekoppelt, dass die
+    Tokenmengen wirklich uebereinstimmen: gleiche Token-Anzahl bzw. ein hoher
+    token_sort_ratio (>=97, der Reihenfolge toleriert, aber Zusatz-Tokens
+    bestraft). Liegt nur eine Teilmenge vor, faellt der Treffer auf 'high'
+    zurueck — der token_set_ratio-Retrieval-Score selbst bleibt unveraendert,
+    damit die gewollte Alias-/Wortreihenfolge-Toleranz erhalten bleibt.
+    """
     if score >= 97:
+        if q_norm is not None and matched_norm is not None:
+            q_tokens = q_norm.split()
+            m_tokens = matched_norm.split()
+            same_token_count = len(q_tokens) == len(m_tokens)
+            sort_ratio = fuzz.token_sort_ratio(q_norm, matched_norm)
+            if same_token_count or sort_ratio >= 97:
+                return "exact"
+            return "high"
         return "exact"
     if score >= 90:
         return "high"
     if score >= 80:
         return "medium"
     return "low"
+
+
+# ── Deterministischer Geburtsdatums-/Laender-Abgleich (Befund 5+6) ──────────
+#
+# Geburtsdatum und Land fliessen NICHT in den rapidfuzz-Score ein. Wenn der
+# Pruefer aber ein Geburtsdatum oder Land zum Vorgang kennt, lassen sich
+# ambivalente Namens-Treffer deterministisch (ohne LLM) plausibilisieren:
+# Uebereinstimmung gibt einen Bonus, ein klarer Konflikt einen Malus.
+# OpenSanctions liefert beide Felder mehrwertig (Trenner ';' bzw. ', '),
+# daher wird tokenisiert verglichen.
+
+_MULTIVALUE_SPLIT_RE = re.compile(r"[;,]")
+
+# Bonus/Malus-Punkte auf den Roh-Score (0..100), bewusst klein gehalten,
+# damit sie nur ambivalente Treffer in eine andere Konfidenz-Klasse schieben.
+_DOB_MATCH_BONUS = 6.0
+_DOB_CONFLICT_MALUS = 18.0
+_COUNTRY_MATCH_BONUS = 4.0
+_COUNTRY_CONFLICT_MALUS = 10.0
+
+
+def _split_multivalue(raw: str) -> list[str]:
+    """Zerlegt einen mehrwertigen OpenSanctions-String (';'/',') in Teile."""
+    if not raw:
+        return []
+    return [p.strip() for p in _MULTIVALUE_SPLIT_RE.split(raw) if p.strip()]
+
+
+def _dob_year_tokens(raw: str) -> set[str]:
+    """Extrahiert die Jahres-Anteile (YYYY) aus einem Geburtsdatums-String.
+
+    Vergleicht bewusst nur das Jahr — OpenSanctions liefert teils nur das Jahr,
+    teils volle ISO-Daten; ein Jahres-Abgleich ist robust gegen diese Mischung.
+    """
+    years: set[str] = set()
+    for part in _split_multivalue(raw):
+        m = re.search(r"\b(\d{4})\b", part)
+        if m:
+            years.add(m.group(1))
+    return years
+
+
+def _country_tokens(raw: str) -> set[str]:
+    """Normalisierte Laender-Tokens (lowercase, gefaltet) aus einem String."""
+    tokens: set[str] = set()
+    for part in _split_multivalue(raw):
+        norm = normalize_name(part)
+        if norm:
+            tokens.add(norm)
+    return tokens
+
+
+def _adjust_score_for_dob_country(
+    score: float,
+    *,
+    rec_birth_date: str,
+    rec_countries: str,
+    query_birth_date: str | None,
+    query_country: str | None,
+) -> tuple[float, bool, bool]:
+    """Wendet deterministischen Bonus/Malus fuer Geburtsdatum/Land an.
+
+    Returns: (angepasster_score, dob_conflict, country_conflict). Der Score
+    wird auf [0, 100] geklemmt. Konflikt-Flags markieren widersprechende
+    Angaben (z.B. anderes Geburtsjahr) fuer die Anzeige.
+    """
+    dob_conflict = False
+    country_conflict = False
+
+    if query_birth_date:
+        q_years = _dob_year_tokens(query_birth_date)
+        r_years = _dob_year_tokens(rec_birth_date)
+        if q_years and r_years:
+            if q_years & r_years:
+                score += _DOB_MATCH_BONUS
+            else:
+                score -= _DOB_CONFLICT_MALUS
+                dob_conflict = True
+
+    if query_country:
+        q_countries = _country_tokens(query_country)
+        r_countries = _country_tokens(rec_countries)
+        if q_countries and r_countries:
+            if q_countries & r_countries:
+                score += _COUNTRY_MATCH_BONUS
+            else:
+                score -= _COUNTRY_CONFLICT_MALUS
+                country_conflict = True
+
+    return max(0.0, min(100.0, score)), dob_conflict, country_conflict
 
 
 # ── Pure Helpers: CSV / DB → FsfRecord ──────────────────────────────────────
@@ -341,6 +494,9 @@ def load_from_csv_to_db(
                 "refresh_run_id",
             )
         }
+        # Re-Listing: ein Eintrag, der frueher de-gelistet war und in dieser
+        # CSV wieder auftaucht, wird beim Upsert wieder aktiv gesetzt.
+        update_cols["delisted"] = False
         stmt = stmt.on_conflict_do_update(
             index_elements=["source_key", "entry_id"],
             set_=update_cols,
@@ -386,15 +542,41 @@ def load_from_csv_to_db(
         upserted += _flush()
         batch.clear()
 
+    # ── De-Listing / Tombstone ────────────────────────────────────────────
+    # NACH erfolgreichem Upsert aller CSV-Zeilen: jeder Eintrag der Quelle,
+    # der in DIESEM Lauf NICHT beruehrt wurde (refresh_run_id weicht ab),
+    # ist nicht mehr in der OpenSanctions-CSV vorhanden → de-gelistet.
+    # Solche Rows bleiben fuer den Audit-Trail erhalten, werden aber aus dem
+    # Suchindex ausgeschlossen (siehe load_index_from_db).
+    #
+    # Nur ausfuehren, wenn ein refresh_run_id vorliegt — andernfalls (z.B.
+    # CSV-Erst-Upsert beim Bootstrap ohne Lauf) fehlt das Unterscheidungs-
+    # merkmal und es darf NICHTS de-gelistet werden.
+    delisted = 0
+    if refresh_run_id is not None:
+        from sqlalchemy import update as sa_update
+
+        upd = (
+            sa_update(SanctionsEntry)
+            .where(SanctionsEntry.source_key == source_key)
+            .where(SanctionsEntry.refresh_run_id.is_distinct_from(refresh_run_id))
+            .where(SanctionsEntry.delisted.is_(False))
+            .values(delisted=True)
+        )
+        result = db.execute(upd)
+        db.commit()
+        delisted = int(result.rowcount or 0)
+
     log.info(
-        "load_from_csv_to_db [%s]: seen=%d upserted=%d skipped=%d",
-        source_key, seen, upserted, skipped,
+        "load_from_csv_to_db [%s]: seen=%d upserted=%d skipped=%d delisted=%d",
+        source_key, seen, upserted, skipped, delisted,
     )
     return {
         "source_key": source_key,
         "records_seen": seen,
         "records_upserted": upserted,
         "records_skipped": skipped,
+        "records_delisted": delisted,
         "csv_path": csv_path,
     }
 
@@ -417,6 +599,11 @@ def load_index_from_db(
     rows = (
         db.query(SanctionsEntry)
         .filter(SanctionsEntry.source_key == source.key)
+        # De-gelistete Eintraege (im letzten Refresh nicht mehr in der CSV)
+        # bleiben in der DB fuer den Audit-Trail, gehoeren aber nicht in den
+        # Suchindex — sonst werden entfernte Personen weiter als "gelistet"
+        # angezeigt (siehe Tombstone-Logik in load_from_csv_to_db).
+        .filter(SanctionsEntry.delisted.is_(False))
         .order_by(SanctionsEntry.id.asc())
         .all()
     )
@@ -603,6 +790,8 @@ class SanctionsListIndex:
         limit: int = 15,
         min_score: float = 65.0,
         schema: str | None = None,
+        birth_date: str | None = None,
+        country: str | None = None,
     ) -> list[SanctionsHit]:
         """Fuzzy-Suche ueber Namen und Aliase einer einzelnen Quelle.
 
@@ -614,6 +803,10 @@ class SanctionsListIndex:
           * vergleicht Mengenbezuege (Reihenfolge irrelevant)
           * ignoriert duplizierte Tokens
         - Pro betroffenem Datensatz wird der hoechste Score behalten.
+        - Optional: deterministischer Geburtsdatums-/Laender-Abgleich
+          (``birth_date``/``country``) als Bonus/Malus auf den Roh-Score —
+          ohne LLM. Uebereinstimmung hebt, ein klarer Konflikt senkt den Score
+          (und setzt ``dob_conflict``/``country_conflict``).
         - Klassifikation in exact/high/medium/low fuer die Anzeige.
         - Treffer enthalten `source_key` und `source_display_name` der Quelle.
         """
@@ -655,6 +848,16 @@ class SanctionsListIndex:
             rec = records[owner_idx]
             if schema and rec.schema != schema:
                 continue
+
+            # Deterministischer Geburtsdatums-/Laender-Abgleich (kein LLM).
+            adj_score, dob_conflict, country_conflict = _adjust_score_for_dob_country(
+                float(score),
+                rec_birth_date=rec.birth_date,
+                rec_countries=rec.countries,
+                query_birth_date=birth_date,
+                query_country=country,
+            )
+
             results.append(
                 SanctionsHit(
                     id=rec.id,
@@ -662,8 +865,8 @@ class SanctionsListIndex:
                     name=rec.name,
                     matched_on=originals[choice_idx],
                     matched_field=fields[choice_idx],
-                    score=round(float(score), 1),
-                    confidence=_classify(score),
+                    score=round(adj_score, 1),
+                    confidence=_classify(adj_score, q_norm, choices[choice_idx]),
                     aliases=rec.aliases[:8],  # nicht alle 50+ rausgeben
                     birth_date=rec.birth_date,
                     countries=rec.countries,
@@ -675,6 +878,8 @@ class SanctionsListIndex:
                     last_seen=rec.last_seen,
                     source_key=self.source.key,
                     source_display_name=self.source.display_name,
+                    dob_conflict=dob_conflict,
+                    country_conflict=country_conflict,
                 )
             )
 
@@ -905,6 +1110,7 @@ class MultiSanctionsService:
             stats["records_seen"] = upsert_summary.get("records_seen")
             stats["records_upserted"] = upsert_summary.get("records_upserted")
             stats["records_skipped_csv"] = upsert_summary.get("records_skipped")
+            stats["records_delisted"] = upsert_summary.get("records_delisted")
             return {"source_key": key, "status": "success", "stats": stats}
         finally:
             db.close()
@@ -953,12 +1159,18 @@ class MultiSanctionsService:
         min_score: float = 65.0,
         schema: str | None = None,
         sources: list[str] | None = None,
+        birth_date: str | None = None,
+        country: str | None = None,
     ) -> list[SanctionsHit]:
         """Aggregiert die Treffer aus allen aktivierten (oder gefilterten) Quellen.
 
         Args:
           sources: Optionaler Filter auf einzelne Source-Keys (z.B.
                    `["eu_fsf", "un_sc"]`). None = alle aktivierten Quellen.
+          birth_date: Optionales Geburtsdatum/-jahr zum Vorgang — wird pro
+                      Quelle deterministisch gegen den Treffer abgeglichen
+                      (Bonus/Malus, kein LLM).
+          country: Optionales Land zum Vorgang — analog zum Geburtsdatum.
 
         Pro Quelle wird `limit*2` geholt; danach global nach Score sortiert
         und auf `limit` zugeschnitten.
@@ -982,6 +1194,8 @@ class MultiSanctionsService:
                     limit=max(limit, 5) * 2,
                     min_score=min_score,
                     schema=schema,
+                    birth_date=birth_date,
+                    country=country,
                 )
                 all_hits.extend(hits)
             except Exception:
@@ -1158,9 +1372,12 @@ def method_explanation() -> dict:
                 "title": "3. Best-Match pro Eintrag",
                 "text": (
                     "Pro Datensatz werden Hauptname und alle Aliase einzeln verglichen. "
-                    "Behalten wird der höchste Score — so geht ein Treffer in einer "
-                    "russischen Schreibung nicht verloren, nur weil der lateinische Name "
-                    "schwächer matcht."
+                    "Behalten wird der höchste Score. Ein Treffer in einer russischen "
+                    "Schreibung gelingt dabei nur, wenn OpenSanctions die lateinische "
+                    "Variante als Alias mitliefert — es findet KEINE algorithmische "
+                    "Transliteration (kyrillisch↔lateinisch) statt. Eine rein "
+                    "kyrillisch erfasste Eingabe ohne passenden lateinischen Alias "
+                    "matcht also nicht."
                 ),
             },
             {
@@ -1176,10 +1393,15 @@ def method_explanation() -> dict:
             {
                 "title": "5. Konfidenz-Klassen",
                 "text": (
-                    "exact (>=97): Schreibweise praktisch identisch · "
-                    "high (>=90): klare Übereinstimmung, lohnt sich Abklärung · "
+                    "exact (>=97 UND gleiche Tokenmenge): Schreibweise praktisch "
+                    "identisch · high (>=90, oder >=97 als reine Teilmenge eines "
+                    "längeren Namens): klare Übereinstimmung, lohnt sich Abklärung · "
                     "medium (>=80): Hinweis, manuell prüfen · "
-                    "low (>=65): nur Verdacht, oft Namensgleichheit ohne Bezug."
+                    "low (>=65): nur Verdacht, oft Namensgleichheit ohne Bezug. "
+                    "Wichtig: ein Token-Set-Ratio von 100 entsteht auch, wenn die "
+                    "Eingabe nur eine Teilmenge eines längeren Listennamens ist "
+                    "(z.B. ‚Müller‘ in einem langen Namen) — solche Treffer werden "
+                    "bewusst als ‚high‘ und nicht als ‚exact‘ geführt."
                 ),
             },
         ],
@@ -1208,7 +1430,11 @@ def method_explanation() -> dict:
             "UN-Sicherheitsrats-Liste, OFAC SDN, UK OFSI und SECO. BAFA und "
             "Bundesbank-Hinweise sind hierüber nicht abgedeckt — dafür separate "
             "Recherche über die jeweiligen offiziellen Tools (siehe Karten unten).",
-            "Namensgleichheit ist häufig — vor allem bei Russisch-Transliterationen. "
-            "Geburtsdatum und Land im Treffer immer mit dem Vorgang abgleichen.",
+            "Es gibt keine algorithmische Transliteration kyrillisch↔lateinisch. "
+            "Russische Namen werden nur über die von OpenSanctions gelieferten "
+            "lateinischen Aliase gefunden. Namensgleichheit ist häufig — "
+            "Geburtsdatum und Land im Treffer immer mit dem Vorgang abgleichen "
+            "(optional als Suchparameter angebbar, dann fließen sie als "
+            "deterministischer Bonus/Malus in den Score ein).",
         ],
     }

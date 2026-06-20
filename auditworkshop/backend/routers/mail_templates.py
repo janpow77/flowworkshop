@@ -114,6 +114,26 @@ _SAMPLE_DATA: dict[str, dict] = {
         "signup_reason": "Interesse an der Recherche-Funktionalität und am Sanktionslisten-Abgleich.",
         "public_url": "https://workshop.flowaudit.de",
     },
+    "signup_received": {
+        "first_name": "Erika",
+        "last_name": "Musterfrau",
+        "email": "erika.musterfrau@behoerde.de",
+        "organization": "Beispiel-Prüfbehörde",
+        "workshop_title": "Prüferworkshop 2026",
+        "public_url": "https://workshop.flowaudit.de",
+        "reply_to": "administration@vwvg.de",
+        "organizer": "Prüferworkshop",
+    },
+    "account_approved": {
+        "first_name": "Erika",
+        "last_name": "Musterfrau",
+        "email": "erika.musterfrau@behoerde.de",
+        "login_url": "https://workshop.flowaudit.de/login",
+        "workshop_title": "Prüferworkshop 2026",
+        "public_url": "https://workshop.flowaudit.de",
+        "reply_to": "administration@vwvg.de",
+        "organizer": "Prüferworkshop",
+    },
 }
 
 

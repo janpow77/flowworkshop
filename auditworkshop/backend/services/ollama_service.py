@@ -17,12 +17,16 @@ from config import (
     EGPU_GATEWAY_APP_ID,
     EGPU_GATEWAY_URL,
     LLM_BACKEND,
+    LLM_DETERMINISTIC_SEED,
+    LLM_FALLBACK_READ_TIMEOUT_S,
     LLM_MAX_TOKENS_DEFAULT,
     LLM_NUM_CTX,
     LLM_NUM_GPU,
+    LLM_STREAM_DEADLINE_S,
     LLM_TEMPERATURE,
     MODEL_NAME,
     OLLAMA_URL,
+    gateway_headers,
 )
 from services.llm_usage_context import (
     get_current_route as _get_current_route,
@@ -223,7 +227,7 @@ async def _fetch_gateway_model_ids(client: httpx.AsyncClient) -> list[str]:
     """Liest die verfuegbaren Modelle vom ai-router (OpenAI /v1/models)."""
     resp = await client.get(
         f"{EGPU_GATEWAY_URL}/v1/models",
-        headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
+        headers=gateway_headers(EGPU_GATEWAY_APP_ID),
     )
     resp.raise_for_status()
     return [m.get("id") for m in resp.json().get("data", []) if m.get("id")]
@@ -305,7 +309,7 @@ async def warmup_gateway_model() -> None:
             resp = await client.post(
                 f"{EGPU_GATEWAY_URL}/v1/chat/completions",
                 json=payload,
-                headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
+                headers=gateway_headers(EGPU_GATEWAY_APP_ID),
             )
             resp.raise_for_status()
         log.info(
@@ -367,6 +371,7 @@ async def _stream_via_gateway(
     max_tokens: int | None = None,
     model_override: str | None = None,
     reasoning_effort: str | None = None,
+    deterministic: bool = False,
 ) -> AsyncGenerator[str, None]:
     """Echtes Streaming ueber den egpu-manager LLM Gateway.
 
@@ -374,11 +379,24 @@ async def _stream_via_gateway(
     Jeder OpenAI-Chunk wird sofort als Workshop-SSE-Event weitergegeben.
     Reasoning-Chunks halten den Stream per Status-Event aktiv, werden aber
     nicht als Antworttext an das UI weitergereicht.
+
+    deterministic=True erzwingt temperature=0 + fixen Seed fuer reproduzierbare
+    Verifikations-Calls (z. B. Entity-/Cross-Reference-Pruefung).
     """
     model = await _resolve_model(model_override, backend_override="gateway")
     full_prompt = _build_prompt(user_prompt, system_prompt, documents)
     full_prompt = _append_no_think_to_user(full_prompt, model)
     t_start = time.monotonic()
+    deadline = t_start + LLM_STREAM_DEADLINE_S
+
+    # Reasoning-Steuerung: "/no_think" im User-Prompt wird vom ai-router NICHT
+    # beachtet — nur der OpenAI-Parameter reasoning_effort schaltet die Denk-Phase
+    # zuverlaessig ab ("none" → sofortiger Content statt langer Thinking-Phase).
+    # Default fuer Qwen3/3.5: "none" — verhindert lange <think>-Phasen ohne
+    # Content auch dann, wenn der Caller (z. B. die Szenarien 1-6) keinen Wert
+    # uebergibt; defensiv gegen ein etwaiges SCENARIO_MODELS=…:qwen3.5…-ENV.
+    if reasoning_effort is None and _model_supports_no_think(model):
+        reasoning_effort = "none"
 
     payload = {
         "model": model,
@@ -389,27 +407,30 @@ async def _stream_via_gateway(
         "stream": True,
         "stream_options": {"include_usage": True},
         "max_tokens": max_tokens or LLM_MAX_TOKENS_DEFAULT,
-        "temperature": LLM_TEMPERATURE,
+        "temperature": 0.0 if deterministic else LLM_TEMPERATURE,
     }
-    # Reasoning-Steuerung: "/no_think" im User-Prompt wird vom ai-router NICHT
-    # beachtet — nur der OpenAI-Parameter reasoning_effort schaltet die Denk-Phase
-    # zuverlaessig ab ("none" → sofortiger Content statt langer Thinking-Phase).
     if reasoning_effort:
         payload["reasoning_effort"] = reasoning_effort
+    if deterministic:
+        payload["seed"] = LLM_DETERMINISTIC_SEED
 
     token_count = 0
+    prompt_token_count: int | None = None
     model_name = model
     last_status_at = 0.0
     saw_content = False
     think_state: dict[str, object] = {"buffer": "", "in_think": False}
 
-    async def _fallback_non_streaming_answer() -> tuple[str, int | None, str]:
+    async def _fallback_non_streaming_answer() -> tuple[str, int | None, int | None, str]:
         non_stream_payload = {**payload, "stream": False}
-        async with httpx.AsyncClient(timeout=httpx.Timeout(10, read=300)) as client:
+        non_stream_payload.pop("stream_options", None)
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(10, read=LLM_FALLBACK_READ_TIMEOUT_S)
+        ) as client:
             resp = await client.post(
                 f"{EGPU_GATEWAY_URL}/v1/chat/completions",
                 json=non_stream_payload,
-                headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
+                headers=gateway_headers(EGPU_GATEWAY_APP_ID),
             )
             if resp.status_code >= 400:
                 body = await resp.aread()
@@ -423,6 +444,7 @@ async def _stream_via_gateway(
         return (
             _strip_think_tags(message.get("content") or ""),
             usage.get("completion_tokens"),
+            usage.get("prompt_tokens"),
             data.get("model") or model_name,
         )
 
@@ -437,7 +459,7 @@ async def _stream_via_gateway(
                     "POST",
                     f"{EGPU_GATEWAY_URL}/v1/chat/completions",
                     json=payload,
-                    headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
+                    headers=gateway_headers(EGPU_GATEWAY_APP_ID),
                 ) as resp:
                     # Codex-Audit #5: 4xx ist nicht transient → kein Retry-Loop
                     # bei Bad-Request/Auth-Fail/Schema-Error.
@@ -453,6 +475,16 @@ async def _stream_via_gateway(
                         )
 
                     async for line in resp.aiter_lines():
+                        # Hartes Wanduhr-Deadline pro Request — kappt echte
+                        # Upstream-Haenger, bevor sich Read-Timeouts addieren.
+                        if time.monotonic() > deadline:
+                            await resp.aclose()
+                            log.warning(
+                                "Gateway-Stream Deadline (%ss) ueberschritten.",
+                                LLM_STREAM_DEADLINE_S,
+                            )
+                            yield f"data: {json.dumps({'error': 'Zeitlimit ueberschritten', 'done': True})}\n\n"
+                            return
                         line = line.strip()
                         if not line or line.startswith(":"):
                             continue
@@ -474,6 +506,17 @@ async def _stream_via_gateway(
                             continue
 
                         model_name = chunk.get("model", model_name)
+
+                        # OpenAI-konforme Router liefern usage in einem separaten
+                        # Schlusschunk mit LEEREM choices-Array — daher auf
+                        # Chunk-Ebene auswerten (nicht im choice-Loop), sonst
+                        # bleibt prompt_tokens dauerhaft NULL.
+                        chunk_usage = chunk.get("usage") or {}
+                        if chunk_usage:
+                            if chunk_usage.get("completion_tokens"):
+                                token_count = int(chunk_usage["completion_tokens"])
+                            if chunk_usage.get("prompt_tokens") is not None:
+                                prompt_token_count = int(chunk_usage["prompt_tokens"])
 
                         for choice in chunk.get("choices", []):
                             delta = choice.get("delta", {})
@@ -501,7 +544,14 @@ async def _stream_via_gateway(
                                     token_count = int(usage["completion_tokens"])
 
                 if not saw_content:
-                    fallback_text, fallback_completion_tokens, fallback_model_name = await _fallback_non_streaming_answer()
+                    (
+                        fallback_text,
+                        fallback_completion_tokens,
+                        fallback_prompt_tokens,
+                        fallback_model_name,
+                    ) = await _fallback_non_streaming_answer()
+                    if fallback_prompt_tokens is not None:
+                        prompt_token_count = int(fallback_prompt_tokens)
                     if fallback_text:
                         model_name = fallback_model_name or model_name
                         # Codex-Audit #5: token_count zuruecksetzen — sonst
@@ -532,7 +582,9 @@ async def _stream_via_gateway(
                 _safe_record(
                     model=model_name,
                     backend="gateway",
-                    prompt_tokens=None,  # Gateway-Path liefert prompt_tokens nicht zuverlaessig
+                    # prompt_tokens via stream_options.include_usage (Chunk-Ebene);
+                    # None nur, falls der Router kein usage-Objekt liefert.
+                    prompt_tokens=prompt_token_count,
                     completion_tokens=token_count,
                     t_start=t_start,
                 )
@@ -574,9 +626,13 @@ async def stream(
     backend_override: str | None = None,
     model_override: str | None = None,
     reasoning_effort: str | None = None,
+    deterministic: bool = False,
 ) -> AsyncGenerator[str, None]:
     """
     Streamt eine LLM-Antwort als Server-Sent-Events.
+
+    deterministic=True erzwingt temperature=0 + fixen Seed fuer reproduzierbare
+    Verifikations-Calls.
 
     Yields:
         SSE-Zeilen: 'data: {"token": "...", "done": false}\\n\\n'
@@ -591,6 +647,7 @@ async def stream(
             max_tokens=max_tokens,
             model_override=model_override,
             reasoning_effort=reasoning_effort,
+            deterministic=deterministic,
         ):
             yield chunk
         return
@@ -600,18 +657,21 @@ async def stream(
     token_count = 0
     t_start = time.monotonic()
 
+    _options: dict[str, object] = {
+        "temperature": 0.0 if deterministic else LLM_TEMPERATURE,
+        "num_ctx": LLM_NUM_CTX,
+        "num_gpu": LLM_NUM_GPU,
+        "num_predict": max_tokens or LLM_MAX_TOKENS_DEFAULT,
+    }
+    if deterministic:
+        _options["seed"] = LLM_DETERMINISTIC_SEED
     payload = {
         "model": model,
         "prompt": full_prompt,
         "system": system_prompt,
         "stream": True,
         "think": False,
-        "options": {
-            "temperature": LLM_TEMPERATURE,
-            "num_ctx": LLM_NUM_CTX,
-            "num_gpu": LLM_NUM_GPU,
-            "num_predict": max_tokens or LLM_MAX_TOKENS_DEFAULT,
-        },
+        "options": _options,
     }
 
     # Codex-Audit #2: nach erstem yield darf nicht mehr retried werden (sonst

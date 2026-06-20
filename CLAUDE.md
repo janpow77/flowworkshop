@@ -92,6 +92,6 @@ Workshop/
 - **CORS:** `main.py` erlaubt nur `localhost:3000/3004/5173` — bei Portwechsel anpassen
 - **Frontend wird in Docker als statische nginx-Dateien ausgeliefert** — Frontend-Änderungen erfordern Docker-Rebuild
 - **Thunderbolt-4-eGPU** (NUC): ~2 Min. Init nach Kaltstart; qwen3:14b Q8 belegt ~15 GB VRAM der RTX 5070 Ti
-- **ai-router-Auth:** Workshop sendet `X-App-Id: auditworkshop` + `X-Api-Key` mit jedem Gateway-Call
+- **ai-router-Auth:** Workshop sendet `X-App-Id: auditworkshop` mit jedem Gateway-Call; `X-Api-Key` wird **nur** angehängt, wenn `AI_ROUTER_API_KEY` gesetzt ist (Helper `config.gateway_headers`). Der Router erzwingt aktuell keinen Key — der Live-Betrieb läuft mit reinem `X-App-Id`.
 
 Detaillierte Szenarien-Übersicht, Hetzner-CCX23-Prod-Betrieb, Lifecycle-Skripte und Architektur-Entscheidungen: siehe @auditworkshop/CLAUDE.md, `auditworkshop/PROJEKTBESCHREIBUNG.md` und `auditworkshop/SZENARIEN_UEBERSICHT.md`.

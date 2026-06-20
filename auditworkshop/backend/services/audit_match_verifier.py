@@ -207,11 +207,16 @@ async def _collect_llm_text(
     *,
     max_tokens: int,
     timeout_s: float,
+    deterministic: bool = True,
 ) -> tuple[str, str | None]:
     """Sammelt einen LLM-Stream zu einem Text.
 
     Liefert ``(volltext, model_name)`` — ``model_name`` kann ``None`` sein,
     wenn kein ``done``-Frame eintraf.
+
+    ``deterministic`` (Default True) erzwingt temperature=0 + fixen Seed, damit
+    Verifikations-Verdicts ueber Re-Runs/Report-Laeufe reproduzierbar sind
+    (Befund Entity-Resolution #6).
     """
     parts: list[str] = []
     model_name: str | None = None
@@ -222,6 +227,7 @@ async def _collect_llm_text(
                 system_prompt=system_prompt,
                 documents=None,
                 max_tokens=max_tokens,
+                deterministic=deterministic,
             ):
                 for line in sse_chunk.splitlines():
                     line = line.strip()

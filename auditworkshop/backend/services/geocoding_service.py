@@ -154,18 +154,36 @@ COLUMN_PATTERNS = {
         r"subject", r"measure", r"operation", r"project", r"scheme",
         r"aid.*measure", r"programme?", r"program",
     ],
+    # Gesamt-/Projektkosten (förderfähige Gesamtausgaben). Die EU-Anteils-
+    # Patterns (eu.*beteiligung/eu.*beitrag/union.*support) wurden bewusst
+    # in die separate Rolle `kosten_eu` ausgelagert — sonst summierte
+    # dieselbe Auswertung je nach Header-Schreibweise mal die Gesamtkosten,
+    # mal nur den EU-Kofinanzierungsanteil (typ. 40–60 % der Gesamtkosten).
+    # `kosten` bleibt als generischer Fallback-Name erhalten und hat
+    # Priorität auf die Gesamtgröße.
     "kosten": [
         r"^op_?total_?cost$",
         r"kofinanziert.*projekt.*kosten",
         r"co.?financed.*project.*cost",
-        r"projekt.*kosten", r"gesamtkosten", r"total.*cost",
         r"förderf.*gesamt.*kosten",
+        r"projekt.*kosten", r"gesamtkosten", r"gesamtausgaben", r"total.*cost",
+        r"total.*eligible", r"eligible.*cost", r"förderf.*kosten",
         r"fördersumme", r"zuwendung.*betrag", r"bruttobetrag",
-        r"betrag", r"summe", r"zuschuss", r"eu.*beteiligung", r"eu.*beitrag",
+        r"betrag", r"summe", r"zuschuss",
         r"amount", r"grant",
         r"funding(?!.*rate)(?!.*satz)(?!quote)",
+        r"public.*support",
+    ],
+    # EU-Kofinanzierungsanteil (Unionsbeteiligung) — getrennt von den
+    # Gesamtkosten geführt, damit Aggregate eine eindeutige semantische
+    # Größe summieren. Wird in der zentralen Tabelle nach cost_eu_funding
+    # geschrieben.
+    "kosten_eu": [
+        r"eu.*beteiligung", r"eu.*beitrag", r"union.*support",
+        r"eu.*kofinanz", r"unionsbeteiligung", r"eu.*funding",
+        # Generische (Ko-)Finanzierungsspalten bezeichnen i.d.R. den
+        # Kofinanzierungsanteil, nicht die Gesamtkosten.
         r"kofinanzierung", r"co.*finanz",
-        r"total.*eligible", r"eligible.*cost", r"public.*support", r"union.*support",
     ],
     "standort": [
         r"^op_?geo_?location$",
@@ -892,7 +910,15 @@ def get_beneficiary_map_data(source: str, country_code: str | None = None) -> di
 
     name_col = col_map.get("name")
     standort_col = col_map.get("standort")
+    # Priorität: Gesamtkosten (kosten) vor EU-Anteil (kosten_eu) — sonst
+    # weist die Karte je nach Header-Schreibweise mal die Gesamtkosten,
+    # mal nur den Unionsanteil als „kosten" aus.
     kosten_col = col_map.get("kosten")
+    kosten_metric = "Gesamtkosten" if kosten_col else None
+    if not kosten_col:
+        kosten_col = col_map.get("kosten_eu")
+        if kosten_col:
+            kosten_metric = "EU-Anteil"
     projekt_col = col_map.get("projekt")
     sz_col = col_map.get("sz")
     plz_col = col_map.get("plz")
@@ -1039,6 +1065,7 @@ def get_beneficiary_map_data(source: str, country_code: str | None = None) -> di
         "count": len(results),
         "beneficiaries": results,
         "columns_detected": col_map,
+        "cost_metric_label": kosten_metric,
         "source": source,
         "country_code": cc,
         "country_name": get_country_name(cc),

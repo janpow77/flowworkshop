@@ -110,6 +110,7 @@ export default function ScenarioPage() {
   const [tokenCount, setTokenCount] = useState<number>();
   const [model, setModel] = useState<string>();
   const [tokPerS, setTokPerS] = useState<number>();
+  const [engine, setEngine] = useState<string>();
   const [error, setError] = useState<string>();
   const [bootstrappingDemo, setBootstrappingDemo] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState(false);
@@ -163,6 +164,7 @@ export default function ScenarioPage() {
         setTokenCount(doneInfo.token_count);
         setModel(doneInfo.model);
         setTokPerS(doneInfo.tok_per_s);
+        setEngine(doneInfo.engine);
         // Szenario 3: Antwort in Split-View speichern
         if (num === 3) {
           setSplitResponses((prev) => ({
@@ -428,6 +430,7 @@ export default function ScenarioPage() {
             tokenCount={tokenCount}
             model={model}
             tokPerS={tokPerS}
+            engine={engine}
             error={error}
             onStop={handleStop}
             onRetry={handleSubmit}

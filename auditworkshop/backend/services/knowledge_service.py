@@ -25,7 +25,9 @@ from config import (
     EMBEDDING_GATEWAY_APP_ID,
     EMBEDDING_GATEWAY_URL,
     EMBEDDING_MODEL,
+    IVFFLAT_PROBES,
     KB_RERANK_MODEL,
+    gateway_headers,
 )
 
 log = logging.getLogger(__name__)
@@ -56,7 +58,7 @@ def _gateway_embed(texts: list[str]) -> list[list[float]]:
         resp = client.post(
             f"{EMBEDDING_GATEWAY_URL}/api/embed",
             json={"model": EMBEDDING_MODEL, "input": texts},
-            headers={"X-App-Id": EMBEDDING_GATEWAY_APP_ID},
+            headers=gateway_headers(EMBEDDING_GATEWAY_APP_ID),
         )
         resp.raise_for_status()
         data = resp.json()
@@ -321,6 +323,10 @@ def search(query: str, top_k: int = 5, source_filter: str | list[str] | None = N
     """
 
     with _connect() as conn, conn.cursor() as cur:
+        # IVFFlat-Recall anheben: ohne dies scannt pgvector nur 1 Liste
+        # (Default probes=1) → 30-50% Recall-Verlust. SET LOCAL gilt fuer die
+        # laufende Transaktion derselben Verbindung.
+        cur.execute("SET LOCAL ivfflat.probes = %s", (IVFFLAT_PROBES,))
         cur.execute(sql, params)
         rows = cur.fetchall()
 
@@ -367,7 +373,7 @@ def rerank(query: str, candidates: list[dict], top_k: int, threshold: float = 0.
                 f"{EMBEDDING_GATEWAY_URL}/api/reranker",
                 json={"query": query, "documents": docs,
                       "top_k": min(top_k, len(docs)), "model": KB_RERANK_MODEL},
-                headers={"X-App-Id": EMBEDDING_GATEWAY_APP_ID},
+                headers=gateway_headers(EMBEDDING_GATEWAY_APP_ID),
             )
             resp.raise_for_status()
             scored = resp.json().get("results", [])

@@ -8,6 +8,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { search as searchStateAid, type StateAidSearchHit } from '../lib/stateAidApi';
+import EntityResolutionPanel from '../components/workshop/EntityResolutionPanel';
 import { Skeleton } from '../components/ui/Skeleton';
 import ExportButtons, { type ExportFormat } from '../components/ui/ExportButtons';
 import {
@@ -1111,6 +1112,9 @@ export default function CompanySearchPage() {
           ))}
         </div>
       </section>
+
+      {/* Konsolidierte Firmensicht (Entity-Resolution) */}
+      <EntityResolutionPanel initialQuery={deferredQuery} countryCode={countryCode} />
     </div>
   );
 }

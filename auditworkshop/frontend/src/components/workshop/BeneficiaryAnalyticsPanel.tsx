@@ -470,7 +470,19 @@ export default function BeneficiaryAnalyticsPanel(
                             )}
                           </div>
                         </div>
-                        <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                        {/*
+                          Die Balkenbreite skaliert mit item.value — dessen
+                          Einheit wechselt je nach Modus zwischen Euro
+                          (Fördervolumen) und Anzahl (Vorhaben). Per
+                          aria-label/title kenntlich machen, damit der
+                          Einheitswechsel nicht stillschweigend bleibt.
+                        */}
+                        <div
+                          className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+                          role="img"
+                          aria-label={`Anteil am Maximalwert (${analysis.metric_label}): ${item.value_label}`}
+                          title={`Balken skaliert nach ${analysis.metric_label}`}
+                        >
                           <div
                             className="h-full rounded-full bg-gradient-to-r from-rose-500 via-orange-500 to-amber-400"
                             style={{ width: `${width}%` }}
@@ -497,6 +509,10 @@ export default function BeneficiaryAnalyticsPanel(
                 (sum, it) => sum + (typeof it.project_count === 'number' ? it.project_count : 0),
                 0,
               );
+              // data_source ist (noch) nicht im API-Typ deklariert — optional
+              // auslesen, damit die Datenquelle (zentrale Tabelle vs.
+              // Verzeichnislisten) für den Prüfer transparent ist.
+              const dataSource = (analysis.summary as { data_source?: string } | undefined)?.data_source;
               return (
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
                   <span>
@@ -512,6 +528,9 @@ export default function BeneficiaryAnalyticsPanel(
                         </strong>{' '}Datensätze
                       </>
                     )}
+                    {dataSource && (
+                      <span className="text-slate-400 dark:text-slate-500"> · Quelle: {dataSource}</span>
+                    )}
                   </span>
                   <span className="flex flex-wrap items-center gap-x-4">
                     {totalProjects > 0 && (
@@ -524,7 +543,16 @@ export default function BeneficiaryAnalyticsPanel(
                     )}
                     {analysis.summary?.total_volume_label && (
                       <span>
-                        Summe:{' '}
+                        {/*
+                          Bei Zähl-Modi (metric_label === 'Vorhaben') ist die
+                          Primärkennzahl die Vorhaben-Anzahl (oben). Das globale
+                          Euro-Volumen daher klar als „zugehöriges Fördervolumen"
+                          ausweisen statt als blankes „Summe" — sonst liest es
+                          sich wie eine Spaltensumme der Anzahl.
+                        */}
+                        {analysis.metric_label === 'Vorhaben'
+                          ? 'zugehöriges Fördervolumen: '
+                          : 'Summe: '}
                         <strong className="font-mono text-sm font-semibold text-slate-900 dark:text-white">
                           {analysis.summary.total_volume_label}
                         </strong>

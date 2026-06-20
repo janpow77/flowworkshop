@@ -203,7 +203,8 @@ export default function HubPage() {
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/85">
                 Verordnungen und Dokumente semantisch durchsuchen &mdash; oder aus den
                 Fundstellen einen belegbasierten Text erzeugen lassen. Die Generierung
-                nutzt das stärkere Reasoning-Modell über den lokalen ai-router.
+                nutzt Qwen3 14B lokal über den ai-router (Reasoning für schnelle
+                Antworten abgeschaltet).
               </p>
             </div>
           </div>

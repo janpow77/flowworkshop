@@ -189,6 +189,7 @@ def _detect_canonical_columns(
         "aktenzeichen": "aktenzeichen",
         "beschreibung": "beschreibung",
         "kosten": "kosten",
+        "kosten_eu": "kosten_eu",
         "standort": "standort",
         "ort": "ort",
         "plz": "plz",

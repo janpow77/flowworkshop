@@ -62,9 +62,17 @@ _MAP_BUILD_LOCK = threading.Lock()   # serialisiert teure Builds (Stampede-Schut
 
 
 def invalidate_map_cache() -> None:
-    """Verwirft den kompletten Map-Cache — nach Upload/Delete aufrufen."""
+    """Verwirft den kompletten Map-Cache — nach Upload/Delete aufrufen.
+
+    Invalidiert zugleich den Begünstigten-Analytics-/Scan-Cache (Befund 3),
+    damit top_locations/top_sectors denselben Lebenszyklus haben."""
     with _MAP_CACHE_LOCK:
         _MAP_CACHE.clear()
+    try:
+        from services.dataframe_service import invalidate_analytics_cache
+        invalidate_analytics_cache()
+    except Exception:  # noqa: BLE001 — Cache-Invalidierung darf nie brechen
+        log.exception("Analytics-Cache-Invalidierung fehlgeschlagen.")
     log.info("Map-Cache invalidiert.")
 
 
@@ -406,7 +414,32 @@ def beneficiaries_summary(country_code: str | None = Query(None, description="Op
             "cached": True,
         }
     sources = get_beneficiary_sources(country_code=cc)
-    total = sum(int(s.get("row_count") or 0) for s in sources)
+    # Befund 5: Bei kaltem Cache NICHT SUM(row_count) der Legacy-Metadaten
+    # nehmen — die enthält Header-Artefakt-/Duplikatzeilen und divergiert von
+    # Karte/Suche. Stattdessen COUNT(*) der zentralen, deduplizierten Tabelle
+    # workshop_beneficiary_records (konsistent zu search/Karten-Anzahl).
+    from sqlalchemy import text as _text
+    from database import engine as _engine
+
+    where = "1=1"
+    params: dict[str, str] = {}
+    if cc:
+        where = "country_code = :cc"
+        params["cc"] = cc
+    try:
+        with _engine.connect() as conn:
+            total = int(
+                conn.execute(
+                    _text(
+                        f"SELECT COUNT(*) FROM workshop_beneficiary_records WHERE {where}"
+                    ),
+                    params,
+                ).scalar()
+                or 0
+            )
+    except Exception:  # noqa: BLE001 — Fallback auf Legacy-Summe
+        log.exception("Summary-COUNT auf zentraler Tabelle fehlgeschlagen.")
+        total = sum(int(s.get("row_count") or 0) for s in sources)
     return {"count": total, "source_count": len(sources), "cached": False}
 
 
@@ -620,8 +653,26 @@ def get_choropleth(
             GROUP BY prefix
             """
         )
+        # Befund 6: Records ohne (verwertbaren) NUTS-Code fallen aus der
+        # Prefix-Aggregation. Ihre Anzahl im summary mitliefern, damit auf der
+        # Karte transparent ist, wie viele Vorhaben „ohne Zuordnung" bleiben
+        # (statt sie still zu verschlucken). Choropleth bleibt NUTS-Prefix-
+        # basiert (kein Umbau auf bundesland-primär — sonst gingen AT-Quellen
+        # ohne bundesland-Spalte verloren).
+        discarded_sql = text(
+            """
+            SELECT COUNT(*) AS cnt
+            FROM workshop_beneficiary_records
+            WHERE country_code = :cc
+              AND (nuts_code IS NULL OR nuts_code = ''
+                   OR LENGTH(UPPER(LEFT(nuts_code, :pl))) <> :pl)
+            """
+        )
         with engine.connect() as conn:
             rows = conn.execute(sql, {"pl": prefix_len, "cc": cc}).fetchall()
+            discarded_unmapped = int(
+                conn.execute(discarded_sql, {"pl": prefix_len, "cc": cc}).scalar() or 0
+            )
 
         for row in rows:
             r = dict(row._mapping)
@@ -642,6 +693,19 @@ def get_choropleth(
                 "total_volume": cost_value,
                 "bundesland": nuts_to_name.get(nuts_code, ""),
             })
+
+        mapped_records = sum(int(r["project_count"] or 0) for r in regions)
+        summary = {
+            "records_mapped": mapped_records,
+            "records_unmapped": discarded_unmapped,
+            "records_total": mapped_records + discarded_unmapped,
+            "note": (
+                f"{discarded_unmapped} Vorhaben ohne NUTS-Zuordnung "
+                "(nicht auf der Karte dargestellt)."
+                if discarded_unmapped
+                else "Alle Vorhaben sind einer Region zugeordnet."
+            ),
+        }
 
     else:  # level == 3 — Aggregation aus kreis_project_counts
         try:

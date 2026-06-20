@@ -24,7 +24,7 @@ import LlmResponsePanel from './LlmResponsePanel';
 import BeneficiaryMap from './BeneficiaryMap';
 import BeneficiaryAnalyticsPanel from './BeneficiaryAnalyticsPanel';
 import BeneficiaryCompanySearch from './BeneficiaryCompanySearch';
-import { streamSSE, listBeneficiarySources, type CountryCode, type BeneficiarySource } from '../../lib/api';
+import { streamSSE, listBeneficiarySources, getWorkshopAuthHeaders, type CountryCode, type BeneficiarySource } from '../../lib/api';
 
 type TabKey = 'schnellsuche' | 'unternehmen' | 'frage';
 
@@ -86,8 +86,13 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
   // Die Suchkomponente meldet ihre aktuellen Treffer-Namen via Callback hoch.
   const [highlightedNames, setHighlightedNames] = useState<string[]>([]);
 
-  // Sources fuer die Hero-Stats (Total Vorhaben, Quellen aktiv, BL).
+  // Sources fuer die Hero-Stats (Quellen aktiv, BL/Fonds).
   const [sources, setSources] = useState<BeneficiarySource[]>([]);
+  // Befund 5: Die Hero-Zahl „Vorhaben" kommt aus der zentralen,
+  // deduplizierten Tabelle (GET /beneficiaries/summary), NICHT aus der
+  // Summe der Legacy-row_count (die Header-/Duplikatzeilen mitzaehlt und
+  // von Karte/Suche divergiert). null = noch nicht geladen.
+  const [centralCount, setCentralCount] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -101,13 +106,34 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
     return () => { cancelled = true; };
   }, [countryCode]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const query = countryCode ? `?country_code=${countryCode}` : '';
+        const res = await fetch(`/api/beneficiaries/summary${query}`, {
+          headers: { ...getWorkshopAuthHeaders() },
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json()) as { count?: number };
+        if (!cancelled) setCentralCount(typeof data.count === 'number' ? data.count : null);
+      } catch {
+        if (!cancelled) setCentralCount(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [countryCode]);
+
   const heroStats = useMemo(() => {
     const active = sources.filter((s) => (s.row_count ?? 0) > 0);
-    const total = active.reduce((sum, s) => sum + (s.row_count || 0), 0);
+    // Fallback auf die Legacy-Summe nur, solange der zentrale Count
+    // (deduplizierte Anzahl) noch nicht geladen ist.
+    const legacyTotal = active.reduce((sum, s) => sum + (s.row_count || 0), 0);
+    const total = centralCount ?? legacyTotal;
     const blSet = new Set(active.map((s) => s.bundesland).filter(Boolean));
     const fondsSet = new Set(active.map((s) => s.fonds).filter(Boolean));
     return { total, active_count: active.length, bl_count: blSet.size, fonds_count: fondsSet.size };
-  }, [sources]);
+  }, [sources, centralCount]);
 
 
   // KI-Frage-State
@@ -117,6 +143,7 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
   const [tokenCount, setTokenCount] = useState<number>();
   const [model, setModel] = useState<string>();
   const [tokPerS, setTokPerS] = useState<number>();
+  const [engine, setEngine] = useState<string>();
   const [error, setError] = useState<string>();
   const [streamStatus, setStreamStatus] = useState<string | null>(null);
   const [streamStartedAt, setStreamStartedAt] = useState<number | null>(null);
@@ -174,6 +201,7 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
         setTokenCount(doneInfo.token_count);
         setModel(doneInfo.model);
         setTokPerS(doneInfo.tok_per_s);
+        setEngine(doneInfo.engine);
       },
       (err) => {
         setStreaming(false);
@@ -413,6 +441,7 @@ export default function BeneficiaryWorkspace({ isPublicMode }: Props) {
               tokenCount={tokenCount}
               model={model}
               tokPerS={tokPerS}
+              engine={engine}
               error={error}
               onStop={handleStop}
               onRetry={handleSubmit}

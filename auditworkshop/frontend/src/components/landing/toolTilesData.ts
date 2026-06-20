@@ -126,7 +126,7 @@ export const TOOL_TILES: ToolTile[] = [
     bullets: [
       'Semantische Suche über pgvector (bge-m3)',
       'Belegbasierte Textgenerierung mit Quellenangabe',
-      'Lokales Reasoning-Modell über den ai-router',
+      'Lokales Qwen3 14B über den ai-router',
       'Kein Datenabfluss — alles auf eigener Hardware',
     ],
     footnote: 'KI-gestützte, belegbasierte Recherche in der Wissensbasis',

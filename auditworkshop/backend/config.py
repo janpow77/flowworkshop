@@ -5,15 +5,40 @@ Zentrale Konfiguration — System-Prompts, Umgebungsvariablen, Konstanten.
 import os
 
 # ── Verbindungen ───────────────────────────────────────────────────────────
+# WICHTIG: EGPU_GATEWAY_URL und AI_ROUTER_URL sind ZWEI separate Dienste des
+# ai-routers, die in jedem realen Deployment per ENV gesetzt werden:
+#   • EGPU_GATEWAY_URL  → OpenAI-kompatibler /v1-Pfad (Chat-Completions + /api/embed).
+#                         Dev-Compose: …:7849, CCX23-Prod: http://llm-router:7842.
+#   • AI_ROUTER_URL     → Knowledge-API (/api/knowledge/*). Dev-Compose: ai-router:7842.
+# Die Defaults unten gelten NUR fuer einen bare-uvicorn-Start ohne Compose und
+# spiegeln die Dev-Compose-Topologie (Gateway 7849, Knowledge 7842).
 DATABASE_URL  = os.getenv("DATABASE_URL",  "postgresql://workshop:workshop@localhost:5433/workshop")
 OLLAMA_URL    = os.getenv("OLLAMA_URL",    "http://localhost:11434")
 LLM_BACKEND   = os.getenv("LLM_BACKEND",   "ollama").lower()
-EGPU_GATEWAY_URL = os.getenv("EGPU_GATEWAY_URL", "http://localhost:7842")
+EGPU_GATEWAY_URL = os.getenv("EGPU_GATEWAY_URL", "http://localhost:7849")
 EGPU_GATEWAY_APP_ID = os.getenv("EGPU_GATEWAY_APP_ID", "auditworkshop")
+# Optionaler Per-App-Key des ai-routers. Wird NUR gesendet, wenn gesetzt — der
+# Router erzwingt aktuell keinen Key (Live-Betrieb laeuft mit reinem X-App-Id).
+# Vorhanden, damit die App konform bleibt, falls der Router Key-Pflicht aktiviert.
+AI_ROUTER_API_KEY = os.getenv("AI_ROUTER_API_KEY", "").strip()
 
 # ── AI-Router (Knowledge-API) ──────────────────────────────────────────────
-AI_ROUTER_URL = os.getenv("AI_ROUTER_URL", "http://localhost:7849")
+AI_ROUTER_URL = os.getenv("AI_ROUTER_URL", "http://localhost:7842")
 WORKSHOP_APP_ID = os.getenv("WORKSHOP_APP_ID", "auditworkshop")
+
+
+def gateway_headers(app_id: str) -> dict[str, str]:
+    """Standard-Header fuer ai-router-/Gateway-Calls.
+
+    Liefert immer ``X-App-Id`` und haengt ``X-Api-Key`` nur an, wenn ein
+    ``AI_ROUTER_API_KEY`` konfiguriert ist. So bleibt der bisherige Betrieb
+    (nur X-App-Id) unveraendert, und die App ist gegen eine kuenftige
+    Key-Pflicht des Routers gewappnet.
+    """
+    headers = {"X-App-Id": app_id}
+    if AI_ROUTER_API_KEY:
+        headers["X-Api-Key"] = AI_ROUTER_API_KEY
+    return headers
 EGPU_WORKLOAD_TYPE = os.getenv("EGPU_WORKLOAD_TYPE", "llm")
 MODEL_NAME    = os.getenv("MODEL_NAME",    "qwen3:14b")
 # Europaeische Alternative: MODEL_NAME = "mistral:7b" (Mistral AI, Paris)
@@ -66,6 +91,23 @@ LLM_NUM_CTX     = int(os.getenv("LLM_NUM_CTX", "8192"))
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 LLM_NUM_GPU     = int(os.getenv("LLM_NUM_GPU", "99"))  # Alle Layer auf GPU
 LLM_MAX_TOKENS_DEFAULT = int(os.getenv("LLM_MAX_TOKENS_DEFAULT", "384"))
+# Hartes Wanduhr-Deadline pro /stream-Request (Sekunden). Verhindert, dass sich
+# Streaming-Read-Timeout und Non-Streaming-Fallback zu mehreren Minuten Haenger
+# addieren. Bei Ueberschreitung wird der Stream sauber mit Timeout beendet.
+LLM_STREAM_DEADLINE_S = int(os.getenv("LLM_STREAM_DEADLINE_S", "240"))
+# Read-Timeout des Non-Streaming-Fallbacks (Sekunden). Kuerzer als der
+# Streaming-Read (300s), damit ein leerer Stream nicht 300+300s blockt.
+LLM_FALLBACK_READ_TIMEOUT_S = int(os.getenv("LLM_FALLBACK_READ_TIMEOUT_S", "90"))
+# Fixer Seed fuer deterministische, reproduzierbare LLM-Verifikations-Calls
+# (Entity-/Cross-Reference-Pruefung). Greift nur bei deterministic=True.
+LLM_DETERMINISTIC_SEED = int(os.getenv("LLM_DETERMINISTIC_SEED", "42"))
+
+# ── pgvector / IVFFlat ─────────────────────────────────────────────────────
+# Anzahl der zu durchsuchenden IVFFlat-Listen pro Query (Default von pgvector
+# ist 1 → nur 1 von `lists` Listen wird gescannt, 30-50% Recall-Verlust).
+# Faustregel ~ sqrt(lists); bei lists=100 also ~10. Wird per `SET LOCAL
+# ivfflat.probes` vor semantischen Queries gesetzt (Entity-Embeddings + RAG).
+IVFFLAT_PROBES = int(os.getenv("IVFFLAT_PROBES", "10"))
 
 # ── Wissens-Recherche (KB-Search) ──────────────────────────────────────────
 # Modell fuer die KB-Textgenerierung im Recherche-Modul. Geht ueber das Gateway

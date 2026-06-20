@@ -10,6 +10,8 @@ import csv
 import io
 import logging
 import re
+import threading
+import time as _time
 import unicodedata
 from typing import Any
 
@@ -25,6 +27,42 @@ from services.country_profiles import (
 )
 
 log = logging.getLogger(__name__)
+
+# ── TTL-Cache für teure Begünstigten-Aggregate (Befund 3) ────────────────────
+# top_locations/top_sectors scannen pro Aufruf alle Legacy-Tabellen voll (in
+# /analytics UND im KI-Pfad). Anders als region_/kreis_/state_fund_totals lassen
+# sie sich nicht trivial in ein SQL-GROUP-BY überführen (quellenspezifische
+# detect_columns-Heuristik). Daher cachen wir die fertigen Ergebnisse mit kurzer
+# TTL und invalidieren sie zusammen mit dem Map-Cache bei jedem Upload/Delete
+# (routers.beneficiaries.invalidate_map_cache ruft invalidate_analytics_cache).
+_ANALYTICS_CACHE: dict[tuple, tuple[float, Any]] = {}
+_ANALYTICS_CACHE_TTL = 3600.0  # 1 h — Sicherheitsnetz für Out-of-Band-Ingest
+_ANALYTICS_CACHE_LOCK = threading.Lock()
+
+
+def invalidate_analytics_cache() -> None:
+    """Verwirft den Analytics-/Scan-Cache — nach Upload/Delete aufrufen.
+
+    Wird von ``routers.beneficiaries.invalidate_map_cache`` mitgerufen, damit
+    der teure top_locations/top_sectors-Scan denselben Lebenszyklus wie der
+    Map-Cache hat."""
+    with _ANALYTICS_CACHE_LOCK:
+        _ANALYTICS_CACHE.clear()
+    log.info("Begünstigten-Analytics-Cache invalidiert.")
+
+
+def _analytics_cache_get(key: tuple) -> Any | None:
+    now = _time.time()
+    with _ANALYTICS_CACHE_LOCK:
+        hit = _ANALYTICS_CACHE.get(key)
+    if hit and (now - hit[0]) < _ANALYTICS_CACHE_TTL:
+        return hit[1]
+    return None
+
+
+def _analytics_cache_put(key: tuple, value: Any) -> None:
+    with _ANALYTICS_CACHE_LOCK:
+        _ANALYTICS_CACHE[key] = (_time.time(), value)
 
 _LEGAL_SUFFIXES = [
     r"gmbh\s*&\s*co\.?\s*kgaa",
@@ -1857,33 +1895,85 @@ def get_beneficiary_llm_context(
                     name_substrings=[type_substrings],
                 )
                 fallback_items.extend(broad2.get("items") or [])
-        # Plus rapidfuzz-Topmatches gegen den Original-Prompt
+        # Plus rapidfuzz-Topmatches gegen den Original-Prompt.
+        #
+        # Befund 8: NICHT mehr ~35 Legacy-Quelltabellen mit je `SELECT DISTINCT
+        # … LIMIT 2000` durchlaufen (worst-case ~70k Strings in Python). Statt
+        # dessen EIN trigramm-vorgefilterter Lauf auf der zentralen, bereits
+        # deduplizierten Tabelle workshop_beneficiary_records über die
+        # umlaut-expandierte Spalte beneficiary_name_normalized. Der `%`-
+        # Operator (pg_trgm) nutzt den GIN-trgm-Index, sobald er angelegt ist
+        # (siehe MIGRATION NEEDED im Bericht); ohne Index degradiert er auf
+        # einen Seq-Scan, das Kandidatenset wird aber per LIMIT hart gedeckelt.
         try:
             from rapidfuzz import fuzz, process
-            with engine.connect() as conn:
-                # Alle Begueunstigtennamen einsammeln (nur die paar tausend
-                # eindeutigen Namen, nicht die volle Tabelle pro Vorhaben)
-                names: list[tuple[str, str]] = []
-                for source_info in (
-                    [s for s in sources if (not bundesland or (s.get("bundesland") or "") == bundesland)]
-                ):
-                    info = get_table_info(source_info["source"])
-                    if not info.get("exists"):
-                        continue
-                    name_col = next(
-                        (c["name"] for c in info["columns"]
-                         if any(p in c["name"].lower() for p in ("auftragnehmer", "beguenstig", "begünstig"))),
-                        None,
-                    )
-                    if not name_col:
-                        continue
-                    rows = conn.execute(
-                        text(f'SELECT DISTINCT {_quote_ident(name_col)} FROM "{_safe_table_name(source_info["source"])}" LIMIT 2000')
-                    ).fetchall()
-                    for row in rows:
-                        if row[0]:
-                            names.append((str(row[0]).strip(), source_info.get("bundesland") or ""))
             query_text = " ".join(proper_nouns) or " ".join(type_substrings or [])
+            # Hartes Kandidaten-Limit, damit rapidfuzz nicht aus dem Ruder läuft.
+            _CANDIDATE_CAP = 2000
+            names: list[tuple[str, str]] = []
+            if query_text:
+                # Query analog search_beneficiary_records normalisieren +
+                # umlaut-expandieren (Spalte ist ae/oe/ue/ss-expandiert).
+                q_norm = _normalize_search_text(query_text)
+                q_db = (
+                    q_norm.replace("ä", "ae").replace("ö", "oe")
+                    .replace("ü", "ue").replace("ß", "ss")
+                )
+                cand_where = ["beneficiary_name_normalized IS NOT NULL"]
+                cand_params: dict[str, Any] = {"q": q_db, "cap": _CANDIDATE_CAP}
+                if country_code:
+                    cand_where.append("country_code = :cc")
+                    cand_params["cc"] = country_code.upper()
+                if bundesland:
+                    cand_where.append("bundesland = :bl")
+                    cand_params["bl"] = bundesland
+                # Trigramm-Vorfilter (GIN-trgm-fähig) ODER Token-ILIKE als
+                # zweite Sicherung, falls similarity unter dem Schwellwert
+                # bleibt. DISTINCT, damit pro Name nur ein Kandidat anfällt.
+                tokens = [t for t in re.split(r"\s+", q_db) if len(t) >= 3]
+                ilike_parts: list[str] = []
+                for i, tok in enumerate(tokens[:5]):
+                    pk = f"tok_{i}"
+                    esc = tok.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                    cand_params[pk] = f"%{esc}%"
+                    ilike_parts.append(f"beneficiary_name_normalized ILIKE :{pk}")
+                prefilter = "beneficiary_name_normalized % :q"
+                if ilike_parts:
+                    prefilter = f"({prefilter} OR {' OR '.join(ilike_parts)})"
+                cand_where.append(prefilter)
+                cand_sql = (
+                    "SELECT DISTINCT beneficiary_name, "
+                    "       COALESCE(bundesland, '') AS bundesland "
+                    "FROM workshop_beneficiary_records "
+                    f"WHERE {' AND '.join(cand_where)} "
+                    "LIMIT :cap"
+                )
+                with engine.connect() as conn:
+                    try:
+                        # pg_trgm-Schwellwert für den `%`-Operator setzen.
+                        conn.execute(text("SET pg_trgm.similarity_threshold = 0.2"))
+                    except Exception:  # noqa: BLE001 — Extension evtl. nicht aktiv
+                        pass
+                    try:
+                        rows = conn.execute(text(cand_sql), cand_params).fetchall()
+                    except Exception:
+                        # Falls der `%`-Operator nicht verfügbar ist (pg_trgm
+                        # nicht installiert), nur über Token-ILIKE filtern.
+                        if ilike_parts:
+                            cand_where[-1] = "(" + " OR ".join(ilike_parts) + ")"
+                            cand_sql = (
+                                "SELECT DISTINCT beneficiary_name, "
+                                "       COALESCE(bundesland, '') AS bundesland "
+                                "FROM workshop_beneficiary_records "
+                                f"WHERE {' AND '.join(cand_where)} "
+                                "LIMIT :cap"
+                            )
+                            rows = conn.execute(text(cand_sql), cand_params).fetchall()
+                        else:
+                            rows = []
+                for row in rows:
+                    if row[0]:
+                        names.append((str(row[0]).strip(), row[1] or ""))
             if names and query_text:
                 top_matches = process.extract(
                     query_text,
@@ -2231,7 +2321,8 @@ def _scan_beneficiary_records(
         cols = detect_columns(src)
         cat_col = cols.get("sz")
         loc_col = cols.get("standort") or cols.get("ort") or cols.get("landkreis")
-        cost_col = cols.get("kosten")
+        # Priorität: Gesamtkosten (kosten) vor EU-Anteil (kosten_eu).
+        cost_col = cols.get("kosten") or cols.get("kosten_eu")
         taxonomy = _classify_category_taxonomy(cat_col)
         selected = [
             (alias, col) for alias, col in (
@@ -2259,15 +2350,127 @@ def _scan_beneficiary_records(
             }
 
 
+def _scan_beneficiary_records_cached(
+    country_code: str | None,
+    bundesland: str | None,
+    fonds: str | None,
+) -> list[dict[str, Any]]:
+    """Materialisierter, gecachter Scan für den KI-Pfad (Befund 3).
+
+    Dieselbe Full-Table-Scan-Last wie ``analyze_beneficiary_records`` für
+    top_locations/top_sectors. Da die SSE-Builder (Sektoren, Standorte,
+    Region-Counts) denselben Scan mehrfach iterieren, materialisieren wir ihn
+    einmal in eine Liste und cachen sie mit derselben TTL/Invalidierung wie der
+    Map-/Analytics-Cache."""
+    key = ("scan", country_code, bundesland, fonds)
+    cached = _analytics_cache_get(key)
+    if cached is not None:
+        return cached
+    records = list(_scan_beneficiary_records(country_code, bundesland, fonds))
+    _analytics_cache_put(key, records)
+    return records
+
+
+def _prompt_names_austria(prompt: str) -> bool:
+    """True, wenn der Prompt ausdrücklich Österreich nennt."""
+    norm = _normalize_search_text(prompt) or ""
+    return any(tok in norm for tok in ("österreich", "oesterreich", "austria"))
+
+
 def _default_de_country(prompt: str, country_code: str | None) -> str | None:
     """Ohne explizites Land Deutschland annehmen, außer der Prompt nennt
-    ausdrücklich Österreich (verhindert AT/DE-Code-Mischung in Aggregaten)."""
+    ausdrücklich Österreich (verhindert AT/DE-Code-Mischung in Aggregaten).
+
+    Befund 9: NUR für die bundeslandbasierten Modi (state_fund_totals,
+    region_project_counts) anwenden — „Bundesland" ist ein nationaler Begriff
+    und nur DE führt eine Bundesland-Spalte. top_sectors/top_locations ehren
+    dagegen die 'Alle'-Auswahl (country_code=None ⇒ DE+AT)."""
     if country_code:
         return country_code
-    norm = _normalize_search_text(prompt) or ""
-    if any(tok in norm for tok in ("österreich", "oesterreich", "austria")):
+    if _prompt_names_austria(prompt):
         return "AT"
     return "DE"
+
+
+def _aggregate_location_buckets(
+    records: "list[dict[str, Any]] | Any",
+) -> tuple[dict[str, dict[str, Any]], int, int]:
+    """Gemeinsamer Aggregations-Kern für „Top-Standorte" (Befund 7).
+
+    Bereinigt jeden Standort-Rohwert via ``_clean_location_value`` (NUTS-Codes,
+    reine PLZ, Adress-Präfixe, Flächen-Bundesländer raus) und bucketet nach dem
+    bereinigten Ortsnamen. Wird sowohl vom /analytics-Modus ``top_locations`` als
+    auch vom SSE-Builder ``_build_top_locations_answer`` genutzt, damit Kachel
+    und Chat-Antwort dieselben Zahlen liefern.
+
+    Erwartet je Record die Keys ``location``, ``kosten``, ``bundesland``,
+    ``fonds``. Rückgabe: (buckets, scanned, usable).
+    """
+    grouped: dict[str, dict[str, Any]] = {}
+    scanned = 0
+    usable = 0
+    for rec in records:
+        scanned += 1
+        place = _clean_location_value(rec.get("location"))
+        if not place:
+            continue
+        usable += 1
+        bucket = grouped.setdefault(place, {
+            "label": place, "value": 0.0, "count": 0, "fonds": set(), "bl": set(),
+        })
+        if rec.get("kosten") is not None:
+            bucket["value"] += float(rec["kosten"])
+        bucket["count"] += 1
+        if rec.get("fonds"):
+            bucket["fonds"].add(rec["fonds"])
+        if rec.get("bundesland"):
+            bucket["bl"].add(rec["bundesland"])
+    return grouped, scanned, usable
+
+
+def _aggregate_sector_buckets(
+    records: "list[dict[str, Any]] | Any",
+) -> tuple[dict[str, dict[str, dict[str, Any]]], int, int]:
+    """Gemeinsamer Aggregations-Kern für „Geförderte Bereiche / Sektoren"
+    (Befund 7).
+
+    Trennt nach den drei Klassifikationssystemen (``intervention`` · ``nace`` ·
+    ``objective``) anhand ``rec['taxonomy']``, filtert Header-/Junk-Werte via
+    ``_is_category_artefact`` und bucketet code-normalisiert
+    (``_category_bucket_key``). Wird von /analytics ``top_sectors`` und vom
+    SSE-Builder ``_build_top_sectors_answer`` geteilt.
+
+    Erwartet je Record ``category``, ``taxonomy``, ``kosten``, ``fonds``,
+    ``bundesland``. Rückgabe: (grouped, scanned, classified).
+    """
+    grouped: dict[str, dict[str, dict[str, Any]]] = {
+        "intervention": {}, "nace": {}, "objective": {},
+    }
+    scanned = 0
+    classified = 0
+    for rec in records:
+        scanned += 1
+        tax = rec.get("taxonomy")
+        if tax not in grouped:
+            continue
+        raw = str(rec.get("category") or "").strip()
+        if not raw or _is_category_artefact(raw):
+            continue
+        classified += 1
+        key, _code = _category_bucket_key(raw)
+        bucket = grouped[tax].setdefault(key, {
+            "value": 0.0, "count": 0, "label": "", "fonds": set(), "bl": set(),
+        })
+        if rec.get("kosten") is not None:
+            bucket["value"] += float(rec["kosten"])
+        bucket["count"] += 1
+        if len(raw) > len(bucket["label"]):
+            bucket["label"] = raw
+        if rec.get("fonds"):
+            bucket["fonds"].add(rec["fonds"])
+        if rec.get("bundesland"):
+            bucket["bl"].add(rec["bundesland"])
+    return grouped, scanned, classified
 
 
 def _build_top_sectors_answer(
@@ -2280,38 +2483,21 @@ def _build_top_sectors_answer(
     (Interventionsbereich · NACE-Wirtschaftszweig · Spezifisches Ziel), weil die
     Quelllisten diese uneinheitlich führen und ein Mischen fachlich falsch wäre.
     """
-    eff_cc = _default_de_country(prompt, country_code)
-    country_label = get_country_name(eff_cc) or eff_cc
+    # Befund 9: Sektoren sind NICHT bundesland-spezifisch (NACE/Interventions-
+    # bereiche/Ziele gelten länderübergreifend). Daher KEIN DE-Erzwingen — bei
+    # country_code=None ('Alle') werden DE+AT zusammen ausgewertet, konsistent
+    # zur analyze_beneficiary_records-Kachel.
+    eff_cc = country_code
+    if eff_cc is None and _prompt_names_austria(prompt):
+        eff_cc = "AT"
+    country_label = get_country_name(eff_cc) if eff_cc else "Deutschland + Österreich (Alle)"
 
     # taxonomy -> bucket_key -> {value, count, label, fonds:set, bl:set}
-    grouped: dict[str, dict[str, dict[str, Any]]] = {
-        "intervention": {}, "nace": {}, "objective": {},
-    }
-    scanned = 0
-    classified = 0
-    for rec in _scan_beneficiary_records(eff_cc, bundesland, fonds):
-        scanned += 1
-        tax = rec["taxonomy"]
-        if tax not in grouped:
-            continue
-        raw = str(rec["category"] or "").strip()
-        if not raw or _is_category_artefact(raw):
-            continue
-        classified += 1
-        key, _code = _category_bucket_key(raw)
-        bucket = grouped[tax].setdefault(key, {
-            "value": 0.0, "count": 0, "label": "", "fonds": set(), "bl": set(),
-        })
-        if rec["kosten"] is not None:
-            bucket["value"] += float(rec["kosten"])
-        bucket["count"] += 1
-        # Längste/aussagekräftigste Original-Schreibweise als Anzeige-Label.
-        if len(raw) > len(bucket["label"]):
-            bucket["label"] = raw
-        if rec["fonds"]:
-            bucket["fonds"].add(rec["fonds"])
-        if rec["bundesland"]:
-            bucket["bl"].add(rec["bundesland"])
+    # Gemeinsamer Aggregations-Kern (Befund 7) — dieselbe Logik wie der
+    # /analytics-Modus top_sectors.
+    grouped, scanned, classified = _aggregate_sector_buckets(
+        _scan_beneficiary_records_cached(eff_cc, bundesland, fonds)
+    )
 
     if not classified:
         return (
@@ -2393,28 +2579,18 @@ def _build_top_locations_answer(
     """Standorte mit dem höchsten Fördervolumen — auf eine konsistente Ortsebene
     normalisiert (NUTS-Codes, reine PLZ, Adress-Präfixe und Flächen-Bundesländer
     werden bereinigt) mit ehrlicher Abdeckungsangabe."""
-    eff_cc = _default_de_country(prompt, country_code)
-    country_label = get_country_name(eff_cc) or eff_cc
+    # Befund 9: Standorte/Orte sind nicht bundesland-spezifisch — bei
+    # country_code=None ('Alle') DE+AT ehren statt DE zu erzwingen.
+    eff_cc = country_code
+    if eff_cc is None and _prompt_names_austria(prompt):
+        eff_cc = "AT"
+    country_label = get_country_name(eff_cc) if eff_cc else "Deutschland + Österreich (Alle)"
 
-    grouped: dict[str, dict[str, Any]] = {}
-    scanned = 0
-    usable = 0
-    for rec in _scan_beneficiary_records(eff_cc, bundesland, fonds):
-        scanned += 1
-        place = _clean_location_value(rec["location"])
-        if not place:
-            continue
-        usable += 1
-        bucket = grouped.setdefault(place, {
-            "value": 0.0, "count": 0, "fonds": set(), "bl": set(),
-        })
-        if rec["kosten"] is not None:
-            bucket["value"] += float(rec["kosten"])
-        bucket["count"] += 1
-        if rec["fonds"]:
-            bucket["fonds"].add(rec["fonds"])
-        if rec["bundesland"]:
-            bucket["bl"].add(rec["bundesland"])
+    # Gemeinsamer Aggregations-Kern (Befund 7) — dieselbe Bereinigung wie der
+    # /analytics-Modus top_locations.
+    grouped, scanned, usable = _aggregate_location_buckets(
+        _scan_beneficiary_records_cached(eff_cc, bundesland, fonds)
+    )
 
     if not usable:
         return (
@@ -2453,7 +2629,7 @@ def _build_region_counts_answer(
     per_state: dict[str, dict[str, Any]] = {}
     federal = {"count": 0, "fonds": set()}
     total = 0
-    for rec in _scan_beneficiary_records(eff_cc, bundesland, fonds):
+    for rec in _scan_beneficiary_records_cached(eff_cc, bundesland, fonds):
         total += 1
         bl = (rec["bundesland"] or "").strip()
         if not bl or bl == "Unbekannt":
@@ -3258,6 +3434,21 @@ def analyze_beneficiary_records(
     else:
         max_limit = 20
     limit = max(1, min(limit, max_limit))
+
+    # TTL-Cache nur für die teuren, voll-scannenden Aggregat-Modi ohne
+    # zusätzliche Filter-Varianz (Befund 3). name_substrings/min_cost
+    # erzeugen zu viele Schlüssel und werden nicht gecacht.
+    _cacheable = (
+        mode in {"top_locations", "top_sectors"}
+        and not name_substrings
+        and min_cost is None
+    )
+    _cache_key = ("analyze", mode, country_code, bundesland, fonds, source, limit)
+    if _cacheable:
+        _cached = _analytics_cache_get(_cache_key)
+        if _cached is not None:
+            return _cached
+
     beneficiary_sources = [
         item for item in get_beneficiary_sources(country_code=country_code)
         if (not bundesland or (item.get("bundesland") or "") == bundesland)
@@ -3267,17 +3458,43 @@ def analyze_beneficiary_records(
 
     scanned_records = 0
     flat_results: list[dict[str, Any]] = []
+    # Welche Geldgröße wurde summiert? Gesamtkosten (Default) vor EU-Anteil.
+    # Sobald eine Quelle nur den EU-Kofinanzierungsanteil führt (kein
+    # Gesamtkosten-Header), wird das ausgewiesen — sonst läse der Prüfer
+    # eine als "Fördervolumen" beschriftete Summe, die in Wahrheit nur den
+    # Unionsanteil (typ. 40–60 %) enthält.
+    used_total_cost = False
+    used_eu_cost = False
 
-    for source_info in beneficiary_sources:
+    # state_fund_totals, region_project_counts und kreis_project_counts
+    # aggregieren SQL-seitig direkt auf workshop_beneficiary_records — der
+    # teure In-Memory-Scan über alle Legacy-Tabellen (workshop_df_*) wird für
+    # diese Modi übersprungen (Befund 3: kein Full-Table-Scan pro Quelle bei
+    # jedem Aufruf; Befund 2: gleiche Datenquelle wie Karte/Kreis).
+    _sql_aggregate_modes = {
+        "state_fund_totals", "region_project_counts", "kreis_project_counts",
+    }
+    scan_sources = [] if mode in _sql_aggregate_modes else beneficiary_sources
+
+    for source_info in scan_sources:
         current_source = source_info["source"]
         table_name = _safe_table_name(current_source)
         columns = detect_columns(current_source)
 
         name_col = columns.get("name")
         project_col = columns.get("projekt")
+        # Priorität: Gesamtkosten (kosten) vor EU-Anteil (kosten_eu).
         cost_col = columns.get("kosten")
+        cost_is_eu = False
+        if not cost_col:
+            cost_col = columns.get("kosten_eu")
+            cost_is_eu = bool(cost_col)
         location_col = columns.get("standort") or columns.get("ort") or columns.get("landkreis")
         category_col = columns.get("sz")
+        # Taxonomie der Kategorie-Spalte (intervention/nace/objective) — für den
+        # gemeinsamen Sektoren-Kern (Befund 7), damit /analytics top_sectors
+        # dieselbe Klassifikations-Trennung wie der KI-Pfad nutzt.
+        source_taxonomy = _classify_category_taxonomy(category_col)
 
         selected_cols: list[tuple[str, str]] = []
         for alias, col in (
@@ -3292,6 +3509,12 @@ def analyze_beneficiary_records(
 
         if not selected_cols:
             continue
+
+        if cost_col:
+            if cost_is_eu:
+                used_eu_cost = True
+            else:
+                used_total_cost = True
 
         sql = ", ".join(f"{_quote_ident(col)} AS {alias}" for alias, col in selected_cols)
         with engine.connect() as conn:
@@ -3325,6 +3548,7 @@ def analyze_beneficiary_records(
                 "project_name": str(entry.get("projekt") or "").strip() or "",
                 "location": str(entry.get("standort") or "").strip() or "",
                 "category": str(entry.get("kategorie") or "").strip() or "",
+                "taxonomy": source_taxonomy,
                 "kosten": cost_value,
                 "source": current_source,
                 "bundesland": source_info.get("bundesland"),
@@ -3335,6 +3559,18 @@ def analyze_beneficiary_records(
             })
 
     total_volume = sum(float(item["kosten"]) for item in flat_results if item.get("kosten") is not None)
+    # Welche Geldgröße steckt in `total_volume`/den `value`-Feldern?
+    #   "Gesamtkosten"  — alle Quellen führen die Gesamt-/Projektkosten.
+    #   "EU-Anteil"     — alle Quellen führen nur den EU-Kofinanzierungsanteil.
+    #   "gemischt …"    — Quellen uneinheitlich (Hinweis für den Prüfer).
+    if used_total_cost and used_eu_cost:
+        cost_metric_label = "gemischt (Gesamtkosten + EU-Anteil)"
+    elif used_eu_cost:
+        cost_metric_label = "EU-Anteil"
+    elif used_total_cost:
+        cost_metric_label = "Gesamtkosten"
+    else:
+        cost_metric_label = "keine Betragsangabe"
     items: list[dict[str, Any]] = []
     title = ""
     metric_label = "Fördervolumen"
@@ -3417,10 +3653,54 @@ def analyze_beneficiary_records(
             title = "Begünstigte mit mehreren Vorhaben"
 
     elif mode == "state_fund_totals":
+        # SQL GROUP BY auf der zentralen Tabelle (Befund 3): Fördervolumen
+        # pro (Bundesland × Fonds) aus workshop_beneficiary_records. cost_total
+        # ist nach Befund 1 die echte Gesamtkosten-Größe. Den Source-Count
+        # liefert ein zweites GROUP BY pro (state, fund, source_key).
+        sft_where: list[str] = ["1=1"]
+        sft_params: dict[str, Any] = {}
+        if country_code:
+            sft_where.append("country_code = :country_code")
+            sft_params["country_code"] = country_code.upper()
+        if bundesland:
+            sft_where.append("bundesland = :bundesland")
+            sft_params["bundesland"] = bundesland
+        if fonds:
+            sft_where.append("fonds = :fonds")
+            sft_params["fonds"] = fonds
+        if source:
+            sft_where.append("source_key = :source")
+            sft_params["source"] = source
+        if min_cost is not None:
+            sft_where.append("cost_total IS NOT NULL AND cost_total >= :min_cost")
+            sft_params["min_cost"] = float(min_cost)
+
+        sft_sql = (
+            "SELECT COALESCE(NULLIF(bundesland, ''), 'Unbekannt') AS state, "
+            "       COALESCE(NULLIF(fonds, ''), 'Unbekannt') AS fund, "
+            "       source_key, "
+            "       COUNT(*) AS cnt, "
+            "       COALESCE(SUM(cost_total), 0) AS sum_cost "
+            "FROM workshop_beneficiary_records "
+            f"WHERE {' AND '.join(sft_where)} "
+            "GROUP BY state, fund, source_key"
+        )
         grouped: dict[tuple[str, str], dict[str, Any]] = {}
-        for item in flat_results:
-            state = item.get("bundesland") or "Unbekannt"
-            fund = item.get("fonds") or "Unbekannt"
+        sft_scanned = 0
+        try:
+            with engine.connect() as conn:
+                sft_rows = conn.execute(text(sft_sql), sft_params).fetchall()
+        except Exception as exc:  # noqa: BLE001
+            log.warning("state_fund_totals: DB-Query fehlgeschlagen: %s", exc)
+            sft_rows = []
+
+        for row in sft_rows:
+            r = dict(row._mapping)
+            state = (r.get("state") or "Unbekannt").strip() or "Unbekannt"
+            fund = (r.get("fund") or "Unbekannt").strip() or "Unbekannt"
+            cnt = int(r.get("cnt") or 0)
+            sft_scanned += cnt
+            sum_cost = float(r.get("sum_cost") or 0.0)
             key = (state, fund)
             bucket = grouped.setdefault(key, {
                 "label": f"{state} · {fund}",
@@ -3430,11 +3710,13 @@ def analyze_beneficiary_records(
                 "fonds": fund,
                 "sources": set(),
             })
-            if item.get("kosten") is not None:
-                bucket["value"] += float(item["kosten"])
-            bucket["project_count"] += 1
-            if item.get("source"):
-                bucket["sources"].add(item["source"])
+            bucket["value"] += sum_cost
+            bucket["project_count"] += cnt
+            if r.get("source_key"):
+                bucket["sources"].add(r["source_key"])
+
+        if sft_scanned and not scanned_records:
+            scanned_records = sft_scanned
 
         items = sorted([
             {
@@ -3452,103 +3734,120 @@ def analyze_beneficiary_records(
         title = "Fördervolumen nach Bundesland und Fonds"
 
     elif mode == "top_sectors":
-        # Wirtschaftszweig-/Interventionsbereich-Auswertung. Die `kategorie`-
-        # Spalte stammt aus geocoding_service.detect_columns(...).get("sz")
-        # und faengt Wirtschaftstaetigkeit, Art der Intervention,
-        # Interventionsbereich/-kategorie sowie Spezifisches Ziel ab.
-        grouped_sectors: dict[str, dict[str, Any]] = {}
-        records_with_category = 0
-        for item in flat_results:
-            category = (item.get("category") or "").strip()
-            if not category:
-                continue
-            records_with_category += 1
-            # Fuer lange Klartext-Kategorien auf eine handhabbare Laenge kuerzen
-            label = category if len(category) <= 110 else category[:107].rstrip() + "…"
-            bucket = grouped_sectors.setdefault(label, {
-                "label": label,
-                "value": 0.0,
-                "project_count": 0,
-                "bundeslaender": set(),
-                "fonds": set(),
-            })
-            if item.get("kosten") is not None:
-                bucket["value"] += float(item["kosten"])
-            bucket["project_count"] += 1
-            if item.get("bundesland"):
-                bucket["bundeslaender"].add(item["bundesland"])
-            if item.get("fonds"):
-                bucket["fonds"].add(item["fonds"])
-
-        items = sorted([
-            {
-                "label": bucket["label"],
-                "sublabel": " · ".join(part for part in [
-                    f"{_de_int(bucket['project_count'])} Vorhaben",
-                    ", ".join(sorted(bucket["bundeslaender"])[:3]),
-                    ", ".join(sorted(bucket["fonds"])[:2]),
-                ] if part),
-                "value": bucket["value"],
-                "value_label": _format_eur(bucket["value"] or None),
-                "project_count": bucket["project_count"],
-                "bundeslaender": sorted(bucket["bundeslaender"]),
-                "fonds_list": sorted(bucket["fonds"]),
-            }
-            for bucket in grouped_sectors.values()
-        ], key=lambda item: (-float(item["value"] or 0.0), -int(item["project_count"]), item["label"]))[:limit]
+        # Wirtschaftszweig-/Interventionsbereich-Auswertung über den gemeinsamen
+        # Kern (Befund 7): dieselbe Taxonomie-Trennung + Junk-Filterung wie der
+        # KI-Pfad, damit Kachel und Chat-Antwort übereinstimmen. Die drei
+        # Klassifikations-Gruppen werden für die flache Kachel-Rangliste
+        # zusammengeführt (das Anzeige-Label trägt die Kategorie selbst).
+        grouped_tax, _sec_scanned, records_with_category = _aggregate_sector_buckets(
+            flat_results
+        )
+        sector_items: list[dict[str, Any]] = []
+        for tax_buckets in grouped_tax.values():
+            for bucket in tax_buckets.values():
+                label = bucket["label"]
+                if not re.search(r"[A-Za-zÄÖÜäöü]", label):
+                    label = f"Code {label}"
+                label = label if len(label) <= 110 else label[:107].rstrip() + "…"
+                sector_items.append({
+                    "label": label,
+                    "sublabel": " · ".join(part for part in [
+                        f"{_de_int(bucket['count'])} Vorhaben",
+                        ", ".join(sorted(bucket["bl"])[:3]),
+                        ", ".join(sorted(bucket["fonds"])[:2]),
+                    ] if part),
+                    "value": bucket["value"],
+                    "value_label": _format_eur(bucket["value"] or None),
+                    "project_count": bucket["count"],
+                    "bundeslaender": sorted(bucket["bl"]),
+                    "fonds_list": sorted(bucket["fonds"]),
+                })
+        items = sorted(
+            sector_items,
+            key=lambda item: (-float(item["value"] or 0.0), -int(item["project_count"]), item["label"]),
+        )[:limit]
         title = (
             f"Wirtschaftszweige / Interventionsbereiche "
             f"({_de_int(records_with_category)} von {_de_int(scanned_records)} Vorhaben mit Angabe)"
         )
 
     elif mode == "top_locations":
-        grouped_locations: dict[str, dict[str, Any]] = {}
-        for item in flat_results:
-            location = item.get("location") or ""
-            if not location:
-                continue
-            bucket = grouped_locations.setdefault(location, {
-                "label": location,
-                "value": 0.0,
-                "project_count": 0,
-                "bundeslaender": set(),
-                "fonds": set(),
-            })
-            if item.get("kosten") is not None:
-                bucket["value"] += float(item["kosten"])
-            bucket["project_count"] += 1
-            if item.get("bundesland"):
-                bucket["bundeslaender"].add(item["bundesland"])
-            if item.get("fonds"):
-                bucket["fonds"].add(item["fonds"])
-
+        # Gemeinsamer Kern (Befund 7) — bereinigte Ortsnamen (NUTS/PLZ/
+        # Flächen-Bundesländer raus), identisch zum KI-Pfad.
+        grouped_loc, _loc_scanned, _loc_usable = _aggregate_location_buckets(
+            flat_results
+        )
         items = sorted([
             {
                 "label": bucket["label"],
                 "sublabel": " · ".join(part for part in [
-                    f"{_de_int(bucket['project_count'])} Vorhaben",
-                    ", ".join(sorted(bucket["bundeslaender"])[:2]),
+                    f"{_de_int(bucket['count'])} Vorhaben",
+                    ", ".join(sorted(bucket["bl"])[:2]),
                     ", ".join(sorted(bucket["fonds"])[:2]),
                 ] if part),
                 "value": bucket["value"],
                 "value_label": _format_eur(bucket["value"] or None),
-                "project_count": bucket["project_count"],
-                "bundeslaender": sorted(bucket["bundeslaender"]),
+                "project_count": bucket["count"],
+                "bundeslaender": sorted(bucket["bl"]),
                 "fonds_list": sorted(bucket["fonds"]),
             }
-            for bucket in grouped_locations.values()
+            for bucket in grouped_loc.values()
         ], key=lambda item: (-float(item["value"] or 0.0), item["label"]))[:limit]
         title = "Standorte mit dem höchsten Fördervolumen"
 
     elif mode == "region_project_counts":
         # Vorhaben je Bundesland mit Quellen-/Fonds-Aufschluesselung.
-        # Aggregation aus dem bereits gefilterten flat_results-Set; pro
-        # Bundesland-Bucket eine zweite Sub-Aggregation nach
-        # (source, fonds), damit der Pruefer sieht, aus welchem Topf
-        # die Vorhaben stammen.
+        #
+        # Liest — analog kreis_project_counts und der Choropleth-Karte —
+        # direkt aus der zentralen, deduplizierten Tabelle
+        # workshop_beneficiary_records per SQL GROUP BY (Befund 2: gleiche
+        # Datenquelle wie Karte/Kreis; Befund 3: SQL statt In-Memory-Scan).
+        # Der frühere Legacy-Pfad (flat_results aus workshop_df_*) zählte
+        # undedupliziert und mit anderem Header-Filter — die Kachel
+        # divergierte damit von der Karte. Die Datenquelle wird im
+        # Coverage-Footer als „zentrale Tabelle" benannt.
+        region_where: list[str] = ["1=1"]
+        region_params: dict[str, Any] = {}
+        if country_code:
+            region_where.append("country_code = :country_code")
+            region_params["country_code"] = country_code.upper()
+        if bundesland:
+            region_where.append("bundesland = :bundesland")
+            region_params["bundesland"] = bundesland
+        if fonds:
+            region_where.append("fonds = :fonds")
+            region_params["fonds"] = fonds
+        if source:
+            region_where.append("source_key = :source")
+            region_params["source"] = source
+        if min_cost is not None:
+            region_where.append("cost_total IS NOT NULL AND cost_total >= :min_cost")
+            region_params["min_cost"] = float(min_cost)
+
+        region_sql = (
+            "SELECT COALESCE(NULLIF(bundesland, ''), 'Unbekannt') AS state, "
+            "       source_key, fonds, "
+            "       COUNT(*) AS cnt, "
+            "       COALESCE(SUM(cost_total), 0) AS sum_cost "
+            "FROM workshop_beneficiary_records "
+            f"WHERE {' AND '.join(region_where)} "
+            "GROUP BY state, source_key, fonds"
+        )
         grouped_regions: dict[str, dict[str, Any]] = {}
-        for item in flat_results:
-            state = item.get("bundesland") or "Unbekannt"
+        region_scanned = 0
+        try:
+            with engine.connect() as conn:
+                region_rows = conn.execute(text(region_sql), region_params).fetchall()
+        except Exception as exc:  # noqa: BLE001
+            log.warning("region_project_counts: DB-Query fehlgeschlagen: %s", exc)
+            region_rows = []
+
+        for row in region_rows:
+            r = dict(row._mapping)
+            state = (r.get("state") or "Unbekannt").strip() or "Unbekannt"
+            cnt = int(r.get("cnt") or 0)
+            region_scanned += cnt
+            sum_cost = float(r.get("sum_cost") or 0.0)
             bucket = grouped_regions.setdefault(state, {
                 "label": state,
                 "value": 0.0,
@@ -3558,15 +3857,14 @@ def analyze_beneficiary_records(
                 "fonds": set(),
                 "sub_buckets": {},
             })
-            if item.get("kosten") is not None:
-                bucket["value"] += float(item["kosten"])
-            bucket["project_count"] += 1
-            src_key = item.get("source") or "unknown"
-            fonds_label = item.get("fonds") or "Unbekannt"
-            if item.get("source"):
-                bucket["sources"].add(item["source"])
-            if item.get("fonds"):
-                bucket["fonds"].add(item["fonds"])
+            bucket["value"] += sum_cost
+            bucket["project_count"] += cnt
+            src_key = r.get("source_key") or "unknown"
+            fonds_label = r.get("fonds") or "Unbekannt"
+            if r.get("source_key"):
+                bucket["sources"].add(r["source_key"])
+            if r.get("fonds"):
+                bucket["fonds"].add(r["fonds"])
             sub_key = (src_key, fonds_label)
             sub = bucket["sub_buckets"].setdefault(sub_key, {
                 "source": src_key,
@@ -3574,9 +3872,12 @@ def analyze_beneficiary_records(
                 "count": 0,
                 "value": 0.0,
             })
-            sub["count"] += 1
-            if item.get("kosten") is not None:
-                sub["value"] += float(item["kosten"])
+            sub["count"] += cnt
+            sub["value"] += sum_cost
+
+        # scanned_records aus dem Aggregat setzen (Legacy-Scan lief hier nicht).
+        if region_scanned and not scanned_records:
+            scanned_records = region_scanned
 
         items_local: list[dict[str, Any]] = []
         for bucket in grouped_regions.values():
@@ -3754,7 +4055,29 @@ def analyze_beneficiary_records(
     for index, item in enumerate(items, start=1):
         item["rank"] = index
 
-    return {
+    # Datenquelle der Aggregation offenlegen (Befund 2): die SQL-Modi lesen
+    # aus der zentralen, deduplizierten Tabelle, die übrigen aus den
+    # Legacy-Verzeichnis-Tabellen (workshop_df_*).
+    if mode in _sql_aggregate_modes:
+        data_source = "zentrale Tabelle (dedupliziert)"
+        cost_metric_label = "Gesamtkosten"
+        # total_volume kam aus dem (übersprungenen) Legacy-Scan = 0 → aus den
+        # SQL-Buckets neu summieren. Bei state_fund_totals ist die Geldgröße
+        # das item['value'], bei den Zähl-Modi das separate item['total_volume'].
+        if mode == "state_fund_totals":
+            total_volume = sum(float(it.get("value") or 0.0) for it in items)
+        else:
+            total_volume = sum(float(it.get("total_volume") or 0.0) for it in items)
+    else:
+        data_source = "Verzeichnislisten (workshop_df_*)"
+
+    # Die summierte Geldgröße offen ausweisen — als Suffix am Volumen-Label
+    # (vom Frontend direkt gerendert) und separat als `cost_metric_label`.
+    volume_label = _format_eur(total_volume or None)
+    if total_volume and cost_metric_label not in ("keine Betragsangabe", "Gesamtkosten"):
+        volume_label = f"{volume_label} ({cost_metric_label})"
+
+    result = {
         "mode": mode,
         "title": title,
         "metric_label": metric_label,
@@ -3763,7 +4086,9 @@ def analyze_beneficiary_records(
             "records_scanned": scanned_records,
             "items": len(items),
             "total_volume": total_volume,
-            "total_volume_label": _format_eur(total_volume or None),
+            "total_volume_label": volume_label,
+            "cost_metric_label": cost_metric_label,
+            "data_source": data_source,
         },
         "filters": {
             "bundesland": bundesland,
@@ -3774,6 +4099,9 @@ def analyze_beneficiary_records(
         },
         "items": items,
     }
+    if _cacheable:
+        _analytics_cache_put(_cache_key, result)
+    return result
 
 
 def search_reference_registry_records(

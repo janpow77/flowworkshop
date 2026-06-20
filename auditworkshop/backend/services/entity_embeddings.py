@@ -42,6 +42,8 @@ from config import (
     EMBEDDING_GATEWAY_APP_ID,
     EMBEDDING_GATEWAY_URL,
     EMBEDDING_MODEL,
+    IVFFLAT_PROBES,
+    gateway_headers,
 )
 from models.entity_embeddings import EntityEmbedding
 
@@ -137,7 +139,7 @@ def _gateway_embed(texts: list[str]) -> list[list[float]]:
         resp = client.post(
             f"{EMBEDDING_GATEWAY_URL}/api/embed",
             json={"model": EMBEDDING_MODEL, "input": texts},
-            headers={"X-App-Id": EMBEDDING_GATEWAY_APP_ID},
+            headers=gateway_headers(EMBEDDING_GATEWAY_APP_ID),
         )
         resp.raise_for_status()
         data = resp.json()
@@ -577,6 +579,9 @@ def search_semantic(
     """)
 
     try:
+        # IVFFlat-Recall anheben (Default probes=1 scannt nur 1 von `lists`
+        # Listen). SET LOCAL gilt fuer die laufende Transaktion der Session.
+        db.execute(text("SET LOCAL ivfflat.probes = :p"), {"p": IVFFLAT_PROBES})
         rows = db.execute(sql, params).fetchall()
     except Exception:  # noqa: BLE001
         log.exception("Semantic-Search fehlgeschlagen (query=%r)", query[:80])

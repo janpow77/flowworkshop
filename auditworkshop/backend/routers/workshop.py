@@ -48,13 +48,19 @@ def _check_rate_limit(client_ip: str) -> None:
     now = time.monotonic()
     timestamps = _rate_limit[client_ip]
     # Alte Eintraege entfernen
-    _rate_limit[client_ip] = [t for t in timestamps if now - t < RATE_LIMIT_WINDOW]
-    if len(_rate_limit[client_ip]) >= RATE_LIMIT_MAX:
+    fresh = [t for t in timestamps if now - t < RATE_LIMIT_WINDOW]
+    if len(fresh) >= RATE_LIMIT_MAX:
+        _rate_limit[client_ip] = fresh
         raise HTTPException(
             status_code=429,
             detail=f"Zu viele Anfragen. Maximal {RATE_LIMIT_MAX} LLM-Aufrufe pro Minute.",
         )
-    _rate_limit[client_ip].append(now)
+    fresh.append(now)
+    _rate_limit[client_ip] = fresh
+    # Leere IP-Schluessel nicht im Dict halten — sonst waechst es bei vielen
+    # verschiedenen Quell-IPs monoton (kein Cleanup-Pfad).
+    if not fresh:
+        del _rate_limit[client_ip]
 
 
 def _chunk_text_for_sse(text: str, chunk_size: int = 56) -> list[str]:
@@ -94,6 +100,10 @@ async def _stream_static_response(text: str, model: str) -> StreamingResponse:
                     "model": model,
                     "elapsed_s": 0.0,
                     "tok_per_s": 0.0,
+                    # Markiert deterministische Direktantworten (kein LLM). Das
+                    # Frontend zeigt dafuer ein eigenes Badge statt einer
+                    # irrefuehrenden "0 tok/s"-Modellzeile.
+                    "engine": "deterministisch",
                 }
             )
             + "\n\n"
@@ -107,38 +117,6 @@ async def _stream_static_response(text: str, model: str) -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
-
-
-def _build_extract_response(hits: list[dict]) -> str:
-    cleaned_hits = sorted(
-        hits,
-        key=lambda hit: (
-            0 if str(hit.get("text", "")).strip()[:1].isupper() else 1,
-            -float(hit.get("score") or 0.0),
-            int(hit.get("chunk_index") or 0),
-        ),
-    )
-    uppercase_hits = [
-        hit for hit in cleaned_hits
-        if str(hit.get("text", "")).strip()[:1].isupper()
-    ]
-    if uppercase_hits:
-        cleaned_hits = uppercase_hits
-
-    lines = ["Relevante Fundstellen aus den geladenen Dokumenten:"]
-    for idx, hit in enumerate(cleaned_hits[:2], start=1):
-        excerpt = re.sub(r"\s+", " ", str(hit.get("text") or "")).strip()
-        excerpt = excerpt[:420]
-        if excerpt and not excerpt.endswith("."):
-            excerpt += " …"
-        lines.append(
-            f"{idx}. [{hit['source']} · Abschnitt {hit['chunk_index'] + 1}] {excerpt}"
-        )
-    lines.append(
-        "Die Antwort wird hier direkt aus den gefundenen Fundstellen wiedergegeben. "
-        "Wenn der Ausschnitt unvollständig wirkt, sollte der Volltext geprüft werden."
-    )
-    return "\n".join(lines)
 
 
 def _normalize_text(text: str) -> str:
@@ -405,11 +383,9 @@ async def workshop_stream(req: StreamRequest, request: Request):
         try:
             search_prompt = _default_article_query(req.prompt) if article_prompt else req.prompt
             hits = ks.search(search_prompt, top_k=3 if article_prompt else 2)
-            if article_prompt and hits:
-                return await _stream_static_response(
-                    _build_extract_response(hits),
-                    "knowledge-extract",
-                )
+            # Auch Artikel-Fragen gehen durch den RAG→LLM-Pfad (kein statischer
+            # Fundstellen-Dump mehr) — so bleibt der mit/ohne-Vergleich
+            # durchgaengig eine echte KI-Antwort (didaktischer Zweck Szenario 3).
             rag_context = "\n\n".join(
                 f"[{h['source']} · Abschnitt {h['chunk_index'] + 1}]\n{h['text'][:650 if article_prompt else 850]}"
                 for h in hits
@@ -424,11 +400,8 @@ async def workshop_stream(req: StreamRequest, request: Request):
         try:
             search_prompt = _default_article_query(req.prompt) if article_prompt else req.prompt
             hits = ks.search(search_prompt, top_k=3 if article_prompt else 2)
-            if article_prompt and hits:
-                return await _stream_static_response(
-                    _build_extract_response(hits),
-                    "knowledge-extract",
-                )
+            # Wie Szenario 3: Artikel-Treffer gehen ebenfalls durch den
+            # RAG→LLM-Pfad statt als statischer Fundstellen-Dump.
             rag_context = "\n\n".join(
                 f"[{h['source']} · S. {h['chunk_index'] + 1}]\n{h['text'][:650 if article_prompt else 850]}"
                 for h in hits

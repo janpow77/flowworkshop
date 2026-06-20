@@ -107,8 +107,10 @@ FRONTEND_BASE=https://workshop.flowaudit.de \
 - Thunderbolt 4 eGPU braucht ~2 Min. zum Initialisieren nach Kaltstart
 - Qwen3-14B Q8 belegt ~15 GB VRAM der RTX 5070 Ti (16 GB)
 - Nominatim-API: max. 1 Request/s (Szenario 6 Geocoding)
-- LLM-Router-Auth: Workshop schickt `X-App-Id: auditworkshop` und
-  `X-Api-Key: <vom Router-Admin>` mit jedem Ollama-Call
+- LLM-Router-Auth: Workshop schickt `X-App-Id: auditworkshop` mit jedem
+  Gateway-Call; `X-Api-Key` wird nur angehängt, wenn `AI_ROUTER_API_KEY`
+  gesetzt ist (Helper `config.gateway_headers`). Der Router erzwingt aktuell
+  keinen Key — der Live-Betrieb läuft mit reinem `X-App-Id`.
 - Backfill-Tempo: ~5–10 k Updates/h gesamt mit 6 Workern (sleep 0.2s, HTTP-Bound)
 
 ## Zusammenhang mit anderen Projekten

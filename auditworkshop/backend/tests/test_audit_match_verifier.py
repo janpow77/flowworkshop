@@ -81,6 +81,9 @@ def _make_mock_stream(verdict_payload: dict | str | None = None,
         max_tokens: int | None = None,
         backend_override: str | None = None,
         model_override: str | None = None,
+        reasoning_effort: str | None = None,
+        deterministic: bool = False,
+        **kwargs,
     ) -> AsyncGenerator[str, None]:
         if raise_timeout:
             raise TimeoutError("simulated timeout")
