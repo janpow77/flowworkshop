@@ -57,7 +57,10 @@ services:
   # Screenshot-Microservice (Headless-Chromium). Kein externes Port-Mapping —
   # nur intern im auditworkshop-Netz unter dem Alias `security-screenshot`.
   security-screenshot:
-    image: ghcr.io/janpow77/auditworkshop-security-screenshot:${IMAGE_TAG:-latest}
+    # Stabiler Playwright/Chromium-Sidecar — fest auf :latest gepinnt (manuell
+    # gepflegt), NICHT an IMAGE_TAG gekoppelt, da nicht pro Commit CI-gebaut.
+    image: ghcr.io/janpow77/auditworkshop-security-screenshot:latest
+    pull_policy: always
     container_name: auditworkshop-security-screenshot
     restart: unless-stopped
     networks:

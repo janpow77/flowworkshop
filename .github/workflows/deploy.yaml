@@ -63,7 +63,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for comp in backend frontend security-screenshot; do
+          for comp in backend frontend; do
             gh attestation verify \
               "oci://ghcr.io/janpow77/auditworkshop-${comp}:${{ steps.tag.outputs.image_tag }}" \
               --repo "${{ github.repository }}"

@@ -37,9 +37,8 @@ jobs:
           - component: frontend
             context: auditworkshop/frontend
             image: ghcr.io/janpow77/auditworkshop-frontend
-          - component: security-screenshot
-            context: auditworkshop/security-screenshot
-            image: ghcr.io/janpow77/auditworkshop-security-screenshot
+          # security-screenshot: bewusst nicht pro Commit gebaut (stabiler
+          # Sidecar, manuell als :latest gepflegt, in compose.yaml gepinnt).
     steps:
       - name: Checkout
         uses: actions/checkout@v4
