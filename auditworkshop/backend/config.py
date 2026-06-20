@@ -327,3 +327,30 @@ EMAIL_AI_PERSONALIZE = os.getenv("EMAIL_AI_PERSONALIZE", "true").lower() == "tru
 EMAIL_AI_MAX_TOKENS  = int(os.getenv("EMAIL_AI_MAX_TOKENS", "180"))
 EMAIL_AI_TIMEOUT_S   = int(os.getenv("EMAIL_AI_TIMEOUT_S", "25"))
 
+# ── Webseiten-Sicherheitsprüfung (KA 6 — ISMS-Systemprüfung) ─────────────────
+# Nicht-intrusive technische Prüfung der von außen erreichbaren Konfiguration
+# einer Webanwendung nach IT-Grundschutz (APP.3.1, NET.3.3, TR-02102-2).
+SECURITY_SCAN_ENABLED      = os.getenv("SECURITY_SCAN_ENABLED", "true").lower() == "true"
+# Screenshot-Microservice (separater Container mit Headless-Chromium).
+SCREENSHOT_SERVICE_URL     = os.getenv("SCREENSHOT_SERVICE_URL", "http://security-screenshot:8090")
+SECURITY_SCAN_STORAGE_ROOT = os.getenv("SECURITY_SCAN_STORAGE_ROOT", "/app/data/security-scans")
+# Gesamt-Timeout pro Scan-Lauf (Sekunden).
+SECURITY_SCAN_TIMEOUT_S    = int(os.getenv("SECURITY_SCAN_TIMEOUT_S", "120"))
+# Timeout je einzelner TCP-/HTTP-Probe (Sekunden).
+SECURITY_PROBE_TIMEOUT_S   = float(os.getenv("SECURITY_PROBE_TIMEOUT_S", "5"))
+# Nicht-intrusiver TCP-Connect-Portscan: konservative Default-Portliste.
+SECURITY_SCAN_PORTS        = [
+    int(p) for p in os.getenv(
+        "SECURITY_SCAN_PORTS",
+        "21,22,23,25,53,80,110,143,443,445,587,993,995,1433,3306,3389,5432,6379,8080,8443,9200,27017",
+    ).split(",") if p.strip().isdigit()
+]
+# Nur diese Ports sind laut Zweck einer Webanwendung erwartbar (alles andere = Befund).
+SECURITY_EXPECTED_PORTS    = {
+    int(p) for p in os.getenv("SECURITY_EXPECTED_PORTS", "80,443").split(",") if p.strip().isdigit()
+}
+# OSV.dev — Open-Source-Schwachstellen-DB für die CVE-Indikation (VUL-02).
+OSV_API_URL                = os.getenv("OSV_API_URL", "https://api.osv.dev")
+# Rate-Limit: max. Scans pro Nutzer und Stunde.
+SECURITY_SCAN_RATE_PER_HOUR = int(os.getenv("SECURITY_SCAN_RATE_PER_HOUR", "20"))
+

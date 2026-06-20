@@ -53,6 +53,7 @@ services:
       WORKSHOP_ADMIN: "true"   # Ingest-Endpunkt freischalten
       ALLOW_REMOTE_GEOCODING: "false"
       ALLOW_REMOTE_TILES: "true"
+      SCREENSHOT_SERVICE_URL: http://security-screenshot:8090   # Headless-Chromium-Sidecar
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -73,6 +74,15 @@ services:
         condition: service_healthy
     ports:
       - "3004:80"
+
+  # ── Screenshot-Microservice (Headless-Chromium) ─────────────
+  security-screenshot:
+    build: ./security-screenshot
+    container_name: auditworkshop-security-screenshot
+    restart: unless-stopped
+    # Kein ports:-Mapping — nur intern im default-Netz erreichbar.
+    networks:
+      - default
 
   # ── Cloudflare Tunnel ────────────────────────────────────────
   cloudflared:

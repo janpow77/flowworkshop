@@ -30,6 +30,7 @@ const KnowledgePage = lazy(() => import('./pages/KnowledgePage'));
 const KbResearchPage = lazy(() => import('./pages/KbResearchPage'));
 const DataFramePage = lazy(() => import('./pages/DataFramePage'));
 const CompanySearchPage = lazy(() => import('./pages/CompanySearchPage'));
+const SecurityCheckPage = lazy(() => import('./pages/SecurityCheckPage'));
 const AiActPage = lazy(() => import('./pages/AiActPage'));
 const SanktionslistenPage = lazy(() => import('./pages/SanktionslistenPage'));
 const StateAidRegisterPage = lazy(() => import('./pages/StateAidRegisterPage'));
@@ -144,6 +145,7 @@ export default function App() {
             <Route path="/recherche" element={<LazyPage><KbResearchPage /></LazyPage>} />
             <Route path="/dataframes" element={<LazyPage><DataFramePage /></LazyPage>} />
             <Route path="/company-search" element={<LazyPage><CompanySearchPage /></LazyPage>} />
+            <Route path="/websec" element={<LazyPage><SecurityCheckPage /></LazyPage>} />
             <Route path="/ai-act" element={<LazyPage><AiActPage /></LazyPage>} />
             <Route path="/sanktionslisten" element={<LazyPage><SanktionslistenPage /></LazyPage>} />
             <Route path="/beihilfen" element={<LazyPage><StateAidRegisterPage /></LazyPage>} />
