@@ -2,6 +2,9 @@
 # Die Image-Tag-Version muss zur playwright-Version in requirements.txt passen.
 FROM mcr.microsoft.com/playwright/python:v1.47.0-jammy
 
+# Verknüpft das GHCR-Paket mit dem Repo (Actions-Schreibzugriff via source-Label).
+LABEL org.opencontainers.image.source="https://github.com/janpow77/flowworkshop"
+
 WORKDIR /app
 
 COPY requirements.txt .
