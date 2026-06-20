@@ -1466,6 +1466,132 @@ export const importReferenceData = (form: FormData) => requestForm<{
 export const deleteReferenceSource = (source: string) =>
   request<{ status: string; source: string }>(`/reference-data/${encodeURIComponent(source)}`, { method: 'DELETE' });
 
+// ── Webseiten-Sicherheitsprüfung (KA 6 — ISMS-Systemprüfung) ─────────────────
+// Backend-Prefix: /api/security-scan (require_session → Bearer-Token).
+// Nicht-intrusive technische Prüfung der von außen erreichbaren Konfiguration
+// (TLS, Sicherheitsheader, HTTPS-Erzwingung, offene Ports) nach IT-Grundschutz.
+
+/** Ampel-Bewertung eines Einzelbefunds bzw. der Gesamtkonformität. */
+export type SecurityRating = 'konform' | 'gelb' | 'rot' | 'grau';
+/** Gesamtbewertung des Scans (überspringt „grau"). */
+export type SecurityOverall = 'konform' | 'gelb' | 'kritisch';
+/** Lebenszyklus eines Scans. */
+export type SecurityScanState = 'pending' | 'running' | 'completed' | 'failed';
+
+/** Ampel-Zähler je Bewertungsstufe. */
+export interface SecurityScanCounts {
+  konform: number;
+  gelb: number;
+  rot: number;
+  grau: number;
+}
+
+/** Status-Antwort eines Scans (Polling-Quelle). */
+export interface SecurityScanStatus {
+  scan_id: string;
+  status: SecurityScanState;
+  url: string;
+  host: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  overall: SecurityOverall | null;
+  counts: SecurityScanCounts;
+  has_screenshot: boolean;
+  has_architecture: boolean;
+  error: string | null;
+}
+
+/** Ein Einzelbefund der Sicherheitsprüfung (Soll/Ist + Empfehlung). */
+export interface SecurityFinding {
+  pruef_id: string;
+  titel: string;
+  gruppe: string;
+  bezug: string;
+  sollzustand: string;
+  istzustand: string;
+  bewertung: SecurityRating;
+  bewertung_label: string;
+  empfehlung: string;
+  eingriffstiefe: string;
+  rohbefund: string;
+}
+
+/** Vollständiger Befundbericht (Status + Befunde + Rahmen). */
+export interface SecurityScanReport extends SecurityScanStatus {
+  authorized_by: string | null;
+  authorization_text: string | null;
+  bezugsrahmen: string | null;
+  findings: SecurityFinding[];
+  observed: Record<string, unknown> | null;
+}
+
+/** Antwort beim Anstoßen eines Scans. */
+export interface SecurityScanStartResult {
+  scan_id: string;
+  status: SecurityScanState;
+  hinweis: string;
+}
+
+/**
+ * Stößt eine Webseiten-Sicherheitsprüfung an. Der Aufrufer MUSS die
+ * Berechtigung bestätigt haben (`authorizationConfirmed`); andernfalls
+ * antwortet das Backend mit 403. Bei Rate-Limit kommt 429.
+ */
+export const startSecurityScan = (url: string, authorizationConfirmed: boolean) =>
+  request<SecurityScanStartResult>('/security-scan/scan', {
+    method: 'POST',
+    body: JSON.stringify({ url, authorization_confirmed: authorizationConfirmed }),
+  });
+
+/** Liest den aktuellen Status eines Scans (für das Polling). */
+export const getSecurityScanStatus = (scanId: string) =>
+  request<SecurityScanStatus>(`/security-scan/scan/${encodeURIComponent(scanId)}`);
+
+/** Liest den vollständigen Befundbericht eines abgeschlossenen Scans. */
+export const getSecurityScanReport = (scanId: string) =>
+  request<SecurityScanReport>(`/security-scan/scan/${encodeURIComponent(scanId)}/report`);
+
+/**
+ * Lädt den PDF-Bericht eines Scans als Blob. Der Aufrufer entscheidet selbst
+ * über die Auslieferung (z.B. `URL.createObjectURL` + `<a download>`).
+ */
+export async function downloadSecurityScanPdf(scanId: string): Promise<Blob> {
+  const res = await fetch(`${BASE}/security-scan/scan/${encodeURIComponent(scanId)}/pdf`, {
+    headers: { ...getWorkshopAuthHeaders() },
+  });
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`${res.status}: ${body || res.statusText}`);
+  }
+  return res.blob();
+}
+
+/**
+ * Holt ein Scan-Bild (Screenshot oder Architektur-Diagramm) als Blob. Die
+ * Endpunkte sind session-geschützt — ein `<img src="/api/…">` würde den
+ * Bearer-Header NICHT mitsenden, daher muss das Bild per fetch geladen und
+ * über `URL.createObjectURL` als ObjectURL eingebunden werden.
+ */
+export async function fetchSecurityScanImage(
+  scanId: string,
+  kind: 'screenshot' | 'architecture',
+): Promise<Blob> {
+  const res = await fetch(`${BASE}/security-scan/scan/${encodeURIComponent(scanId)}/${kind}`, {
+    headers: { ...getWorkshopAuthHeaders() },
+  });
+  if (res.status === 401 && getWorkshopAuthToken()) {
+    handleAuthExpired();
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`${res.status}: ${body || res.statusText}`);
+  }
+  return res.blob();
+}
+
 // SSE Streaming helper
 export function streamSSE(
   url: string,

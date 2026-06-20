@@ -19,6 +19,9 @@ services:
           - backend
     env_file:
       - /etc/auditworkshop/env
+    environment:
+      # Headless-Chromium-Sidecar im selben Compose-Netz (auditworkshop).
+      SCREENSHOT_SERVICE_URL: http://security-screenshot:8090
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request,sys; r=urllib.request.urlopen(\"http://localhost:8000/health\",timeout=3); sys.exit(0 if r.status==200 else 1)"]
       interval: 10s
@@ -49,6 +52,18 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+    logging: *default-logging
+
+  # Screenshot-Microservice (Headless-Chromium). Kein externes Port-Mapping —
+  # nur intern im auditworkshop-Netz unter dem Alias `security-screenshot`.
+  security-screenshot:
+    image: ghcr.io/janpow77/auditworkshop-security-screenshot:${IMAGE_TAG:-latest}
+    container_name: auditworkshop-security-screenshot
+    restart: unless-stopped
+    networks:
+      auditworkshop:
+        aliases:
+          - security-screenshot
     logging: *default-logging
 
 networks:

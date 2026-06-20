@@ -24,6 +24,7 @@ from routers import docs as docs_router, notifications, state_aid, admin_access,
 from routers import beneficiaries_sources
 from routers import entities as entities_router
 from routers import embeddings as embeddings_router
+from routers import security_scan
 from services.access_log_middleware import AccessLogMiddleware
 from cockpit_common import (
     HealthRegistry,
@@ -946,6 +947,8 @@ app.include_router(entities_router.router)
 app.include_router(entities_router.admin_router)
 # Layer A: Embedding-Index (bge-m3) ueber alle Module — semantische Suche.
 app.include_router(embeddings_router.router)
+# KA 6 — ISMS-Systemprüfung: nicht-intrusive Webseiten-Sicherheitsprüfung.
+app.include_router(security_scan.router)
 
 
 @health_registry.subcheck("database", timeout_seconds=2.0)

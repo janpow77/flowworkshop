@@ -5,7 +5,7 @@
  * Render-Komponenten in ToolTiles.tsx, damit React-Fast-Refresh sauber bleibt.
  */
 import type { LucideIcon } from 'lucide-react';
-import { ListChecks, Sparkles, GraduationCap, ShieldAlert, MapPinned } from 'lucide-react';
+import { ListChecks, Sparkles, GraduationCap, ShieldAlert, ShieldCheck, MapPinned } from 'lucide-react';
 
 // Statische Akzent-Klassenkarten — bewusst ausgeschrieben, damit Tailwind die
 // Klassen beim Build erfasst (dynamische `bg-${x}` werden nicht erkannt).
@@ -113,6 +113,22 @@ export const TOOL_TILES: ToolTile[] = [
       'Bei Bedarf mit den Musterchecklisten der Kommission als Ausgangsfassung starten',
     ],
     footnote: 'Eine gemeinsame Werkbank für die Prüfungsmethodik statt verstreuter Insellösungen',
+  },
+  {
+    key: 'websec',
+    title: 'Webseiten-Sicherheitsprüfung (KA 6 — ISMS-Systemprüfung)',
+    route: '/websec',
+    accent: 'cyan',
+    icon: ShieldCheck,
+    gated: true,
+    description: 'Nicht-intrusive technische Prüfung der von außen erreichbaren Konfiguration nach IT-Grundschutz.',
+    bullets: [
+      'TLS-Protokolle, Zertifikat & Cipher (TR-02102-2)',
+      'HTTP-Sicherheitsheader & Cookies (APP.3.1)',
+      'HTTPS-Erzwingung & offener-Ports-Scan (NET.3.3)',
+      'Versions-/CVE-Indikation + Befundbericht (PDF)',
+    ],
+    footnote: 'Nur mit Berechtigung · nicht-intrusiv · ersetzt keine Grundschutz-Prüfung (BSI 200-2)',
   },
   {
     key: 'recherche',
