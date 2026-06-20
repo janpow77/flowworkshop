@@ -382,7 +382,8 @@ async def workshop_stream(req: StreamRequest, request: Request):
     if req.scenario == 3 and req.with_context:
         try:
             search_prompt = _default_article_query(req.prompt) if article_prompt else req.prompt
-            hits = ks.search(search_prompt, top_k=3 if article_prompt else 2)
+            _kb_resp = ks.search(search_prompt, top_k=3 if article_prompt else 2)
+            hits = _kb_resp.get("results", []) if isinstance(_kb_resp, dict) else _kb_resp
             # Auch Artikel-Fragen gehen durch den RAG→LLM-Pfad (kein statischer
             # Fundstellen-Dump mehr) — so bleibt der mit/ohne-Vergleich
             # durchgaengig eine echte KI-Antwort (didaktischer Zweck Szenario 3).
@@ -399,7 +400,8 @@ async def workshop_stream(req: StreamRequest, request: Request):
     if req.scenario == 5 and req.with_context:
         try:
             search_prompt = _default_article_query(req.prompt) if article_prompt else req.prompt
-            hits = ks.search(search_prompt, top_k=3 if article_prompt else 2)
+            _kb_resp = ks.search(search_prompt, top_k=3 if article_prompt else 2)
+            hits = _kb_resp.get("results", []) if isinstance(_kb_resp, dict) else _kb_resp
             # Wie Szenario 3: Artikel-Treffer gehen ebenfalls durch den
             # RAG→LLM-Pfad statt als statischer Fundstellen-Dump.
             rag_context = "\n\n".join(

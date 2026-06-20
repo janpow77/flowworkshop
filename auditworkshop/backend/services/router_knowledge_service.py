@@ -32,6 +32,40 @@ def _drop_internal_hits(results: list[dict]) -> tuple[list[dict], int]:
     return kept, len(results) - len(kept)
 
 
+def _local_search_fallback(query: str, result_limit: int, reason: str) -> dict[str, Any]:
+    """Fallback auf die lokale pgvector-Wissensbasis, wenn die zentrale
+    ai-router-Knowledge-API nicht erreichbar ist.
+
+    Die lokale ``knowledge_service.search`` liefert bereits das Workshop-Schema
+    ({text, source, filename, chunk_index, score}); wir verpacken es in dieselbe
+    Dict-Hülle wie der Router-Pfad, damit alle Aufrufer transparent weiterlaufen.
+    """
+    try:
+        from services import knowledge_service as _local  # lazy: vermeidet Zyklus
+        local_hits = _local.search(query, top_k=result_limit)
+    except Exception as exc:  # noqa: BLE001
+        log.error("Lokaler Knowledge-Fallback fehlgeschlagen: %s", exc)
+        return {
+            "query": query, "results": [], "total_results": 0,
+            "error": reason, "backend": "none",
+        }
+    filtered, dropped = _drop_internal_hits(local_hits)
+    filtered = filtered[:result_limit]
+    if dropped:
+        log.warning("Lokaler Knowledge-Fallback: %d nicht-öffentliche Treffer verworfen", dropped)
+    log.info(
+        "Knowledge-Search lokaler Fallback: query=%r, results=%d (Grund: zentrale RAG nicht verfügbar)",
+        query, len(filtered),
+    )
+    return {
+        "query": query,
+        "results": filtered,
+        "total_results": len(filtered),
+        "backend": "local",
+        "fallback_reason": reason,
+    }
+
+
 def search(
     query: str,
     limit: int = 5,
@@ -119,13 +153,11 @@ def search(
             return data
 
     except httpx.HTTPError as exc:
-        log.error("Router Knowledge-Search fehlgeschlagen: %s", exc)
-        return {
-            "query": query,
-            "results": [],
-            "total_results": 0,
-            "error": str(exc),
-        }
+        log.warning(
+            "Router Knowledge-Search nicht verfügbar (%s) — Fallback auf lokale "
+            "pgvector-Wissensbasis.", exc,
+        )
+        return _local_search_fallback(query, result_limit, str(exc))
 
 
 def ask(
@@ -206,12 +238,32 @@ def get_stats() -> dict[str, Any]:
             return resp.json()
 
     except httpx.HTTPError as exc:
-        log.error("Router Knowledge-Stats fehlgeschlagen: %s", exc)
-        return {
-            "total_chunks": 0,
-            "total_sources": 0,
-            "error": str(exc),
-        }
+        log.warning(
+            "Router Knowledge-Stats nicht verfügbar (%s) — Fallback auf lokale "
+            "pgvector-Wissensbasis.", exc,
+        )
+        try:
+            from services import knowledge_service as _local  # lazy: vermeidet Zyklus
+            ls = _local.stats()
+            chunks = int(ls.get("chunks", 0))
+            docs = int(ls.get("documents", 0))
+            # Beide Shapes liefern (zentrale total_* UND lokale documents/chunks/
+            # sources), damit alle Konsumenten transparent weiterlaufen.
+            return {
+                "total_chunks": chunks,
+                "total_sources": docs,
+                "documents": docs,
+                "chunks": chunks,
+                "sources": ls.get("sources", []),
+                "backend": "local",
+            }
+        except Exception as exc2:  # noqa: BLE001
+            log.error("Lokaler Knowledge-Stats-Fallback fehlgeschlagen: %s", exc2)
+            return {
+                "total_chunks": 0,
+                "total_sources": 0,
+                "error": str(exc),
+            }
 
 
 # Alias für Kompatibilität mit bestehendem Code
