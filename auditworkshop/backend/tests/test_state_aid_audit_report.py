@@ -516,10 +516,10 @@ def test_render_audit_report_pdf_enthaelt_detail_tabellen():
     full_text = "\n".join(page.get_text() for page in doc)
     doc.close()
 
-    # State-Aid-Sektion: Detail-Tabellen-Spaltenkoepfe
-    assert "Beguenstigter" in full_text
+    # State-Aid-Sektion: Detail-Tabellen-Spaltenkoepfe (Code nutzt echte Umlaute)
+    assert "Begünstigter" in full_text or "Beguenstigter" in full_text
     assert "Region" in full_text
-    assert "Behoerde" in full_text
+    assert "Behörde" in full_text or "Behoerde" in full_text
     assert "SA-Ref" in full_text
 
     # Beneficiaries-Sektion: Spaltenkopf Vorhaben + Aktenzeichen-Spalte
@@ -529,7 +529,7 @@ def test_render_audit_report_pdf_enthaelt_detail_tabellen():
     assert "EFRE-2023/0042" in full_text
 
     # Sanctions-Sektion: bei 0 Treffern erscheint die Hinweis-Zeile
-    assert "Keine Treffer in der konsolidierten Finanzsanktionsliste" in full_text
+    assert "Keine Treffer für die Organisation" in full_text
 
 
 def test_render_audit_report_pdf_enthaelt_sources_und_disclaimer():

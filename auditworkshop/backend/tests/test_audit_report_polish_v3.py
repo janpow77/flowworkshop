@@ -323,10 +323,10 @@ def test_cross_reference_address_match_ohne_nuts_kein_treffer():
 
 
 def test_completeness_label_grenzwerte():
-    """`_completeness_label`: vollstaendig >= 95%, partiell 1..94, sonst unbekannt."""
+    """`_completeness_label`: vollständig >= 95%, partiell 1..94, sonst unbekannt."""
     from services.state_aid_audit_report import _completeness_label
-    assert _completeness_label(100.0, 1000) == "vollstaendig"
-    assert _completeness_label(95.0, 1000) == "vollstaendig"
+    assert _completeness_label(100.0, 1000) == "vollständig"
+    assert _completeness_label(95.0, 1000) == "vollständig"
     assert _completeness_label(94.9, 1000) == "partiell"
     assert _completeness_label(50.0, 1000) == "partiell"
     assert _completeness_label(1.0, 1000) == "partiell"
@@ -350,7 +350,7 @@ def test_aggregate_overall_completeness_green_yellow_red():
             expected_count=expected,
             coverage_percent=percent,
             last_harvest_at=None,
-            completeness_note="vollstaendig",
+            completeness_note="vollständig",
         )
 
     # Alle 100% → green
@@ -459,22 +459,22 @@ def test_coverage_section_drei_module_konsistent():
     assert 80.0 <= de_entry.coverage_percent <= 90.0
     assert de_entry.completeness_note == "partiell"
 
-    # State-Aid: tam_at lokal == erwartet → vollstaendig
+    # State-Aid: tam_at lokal == erwartet → vollständig
     at_entry = next(
         e for e in section.entries
         if e.source_module == "state_aid" and e.source_key == "tam_at"
     )
     assert at_entry.coverage_percent == 100.0
-    assert at_entry.completeness_note == "vollstaendig"
+    assert at_entry.completeness_note == "vollständig"
 
-    # Beneficiaries: Hessen 5000 → vollstaendig (lokal == erwartet)
+    # Beneficiaries: Hessen 5000 → vollständig (lokal == erwartet)
     ben_hessen = next(
         e for e in section.entries
         if e.source_module == "beneficiary"
         and "hessen" in (e.source_key or "").lower()
     )
     assert ben_hessen.local_count == 5000
-    assert ben_hessen.completeness_note == "vollstaendig"
+    assert ben_hessen.completeness_note == "vollständig"
 
     # Sanctions: eu_fsf 5000 entries
     eu_fsf = next(
@@ -482,7 +482,7 @@ def test_coverage_section_drei_module_konsistent():
         if e.source_module == "sanctions" and e.source_key == "eu_fsf"
     )
     assert eu_fsf.local_count == 5000
-    assert eu_fsf.completeness_note == "vollstaendig"
+    assert eu_fsf.completeness_note == "vollständig"
     # mtime parse
     assert eu_fsf.last_harvest_at is not None
 
@@ -633,7 +633,7 @@ def _build_audit_data_with_polish_v3():
                     expected_count=5000,
                     coverage_percent=100.0,
                     last_harvest_at=None,
-                    completeness_note="vollstaendig",
+                    completeness_note="vollständig",
                 ),
                 CoverageEntry(
                     source_module="sanctions",
@@ -643,7 +643,7 @@ def _build_audit_data_with_polish_v3():
                     expected_count=5000,
                     coverage_percent=100.0,
                     last_harvest_at=datetime(2026, 5, 7),
-                    completeness_note="vollstaendig",
+                    completeness_note="vollständig",
                 ),
             ],
             overall_completeness="yellow",
@@ -674,7 +674,7 @@ def test_render_pdf_enthaelt_personen_und_coverage_sektionen():
     assert "98" in full_text or "OFAC" in full_text
     # Coverage-Sektion vorhanden
     assert "Coverage und Datenstand" in full_text
-    assert "vollstaendig" in full_text or "partiell" in full_text
+    assert "vollständig" in full_text or "partiell" in full_text
     # Beobachtung-Hinweis (Indikation, kein Beweis)
     assert "Indikation" in full_text or "Beweis" in full_text
 

@@ -5,8 +5,13 @@ def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
     data = r.json()
-    assert data["status"] == "ok"
-    assert data["service"] == "flowworkshop"
+    # Der Endpunkt liefert "ready" (alle Checks ok) oder "degraded" (eine
+    # weiche Abhängigkeit wie der zentrale llm_router ist transient nicht
+    # erreichbar) — beides ist betriebsbereit.
+    assert data["status"] in ("ready", "degraded")
+    assert data["service"] == "auditworkshop-backend"
+    # Die kritische Abhängigkeit (Datenbank) muss bereit sein.
+    assert data["checks"]["database"]["status"] == "ready"
 
 
 def test_ollama_status(client):

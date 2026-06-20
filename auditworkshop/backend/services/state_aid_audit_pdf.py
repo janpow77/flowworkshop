@@ -1026,12 +1026,12 @@ def _render_sanctions_section(state: _RenderState) -> None:
     scope_rows: list[list[str]] = [
         ["Organisation", query_name, "—"],
     ]
-    if persons_check and persons_check.entries:
-        for entry in persons_check.entries[:20]:
+    if persons_check and persons_check.persons_checked:
+        for entry in persons_check.persons_checked[:20]:
             scope_rows.append([
                 "Natürliche Person",
-                entry.input_name,
-                entry.input_role or "Sonstige",
+                entry.name,
+                entry.role or "Sonstige",
             ])
     state.write_table(
         ["Typ", "Identifikator", "Rolle"],
