@@ -17,6 +17,7 @@ from config import (
     LLM_BACKEND,
     MODEL_NAME,
     OLLAMA_URL,
+    gateway_headers,
 )
 from services.ollama_service import check_ollama
 
@@ -55,7 +56,7 @@ def _get_ollama_models() -> list[dict]:
         try:
             url = f"{EGPU_GATEWAY_URL}/v1/models"
             req = urllib.request.Request(
-                url, method="GET", headers={"X-App-Id": EGPU_GATEWAY_APP_ID},
+                url, method="GET", headers=gateway_headers(EGPU_GATEWAY_APP_ID),
             )
             with urllib.request.urlopen(req, timeout=3) as resp:
                 data = json.loads(resp.read())

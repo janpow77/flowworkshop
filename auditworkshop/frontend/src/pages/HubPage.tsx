@@ -123,7 +123,9 @@ export default function HubPage() {
         }
       } catch { /* ignore */ }
       try {
-        const b = await fetch('/api/beneficiaries/map?country_code=DE');
+        // Schlanke Kennzahl statt des vollen ~27-MB-Map-Payloads — die
+        // HomePage braucht nur die Gesamtzahl.
+        const b = await fetch('/api/beneficiaries/summary?country_code=DE');
         if (b.ok) {
           const j = await b.json();
           out.beneficiaries_total = j.count;
@@ -201,7 +203,8 @@ export default function HubPage() {
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/85">
                 Verordnungen und Dokumente semantisch durchsuchen &mdash; oder aus den
                 Fundstellen einen belegbasierten Text erzeugen lassen. Die Generierung
-                nutzt das stärkere Reasoning-Modell über den lokalen ai-router.
+                nutzt Qwen3 14B lokal über den ai-router (Reasoning für schnelle
+                Antworten abgeschaltet).
               </p>
             </div>
           </div>

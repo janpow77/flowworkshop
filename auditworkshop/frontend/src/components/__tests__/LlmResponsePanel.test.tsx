@@ -30,7 +30,9 @@ describe('LlmResponsePanel', () => {
         streaming={true}
       />,
     );
-    expect(screen.getByText('KI verarbeitet die Anfrage...')).toBeInTheDocument();
+    // Text ist über zwei Knoten gesplittet ("KI verarbeitet die Anfrage" + Ellipsis);
+    // Teil-Matcher statt exakter ASCII-Punkte.
+    expect(screen.getByText(/KI verarbeitet die Anfrage/)).toBeInTheDocument();
   });
 
   it('zeigt "Generiere Antwort" wenn streaming', () => {

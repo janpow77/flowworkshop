@@ -9,7 +9,7 @@
  * saubere Breakpoints. Farbwelt Emerald/Cyan, Dark Mode beibehalten.
  */
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ClipboardCheck, LogOut, Menu, Moon, Sun, User, X,
 } from 'lucide-react';
@@ -51,6 +51,10 @@ export default function ChecklistLayout() {
   const [dark, setDark] = useDarkMode();
   const [templates, setTemplates] = useState<ChecklistTemplate[] | null>(null);
   const [navOpen, setNavOpen] = useState(false);
+  const location = useLocation();
+  // Auf der Detailseite (/checklisten/:id) zeigt die linke Spalte den Knotenbaum
+  // des Editors selbst — die „Meine Checklisten"-Navigation entfaellt dort.
+  const isDetail = /^\/checklisten\/[^/]+$/.test(location.pathname);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,14 +72,16 @@ export default function ChecklistLayout() {
       <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-950/70">
         <div className="flex min-h-14 items-center justify-between gap-3 px-4 lg:px-6">
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setNavOpen((v) => !v)}
-              className="rounded-xl border border-slate-200 bg-white/80 p-2 text-slate-500 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
-              aria-label="Checklisten-Navigation umschalten"
-            >
-              {navOpen ? <X size={18} /> : <Menu size={18} />}
-            </button>
+            {!isDetail && (
+              <button
+                type="button"
+                onClick={() => setNavOpen((v) => !v)}
+                className="rounded-xl border border-slate-200 bg-white/80 p-2 text-slate-500 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
+                aria-label="Checklisten-Navigation umschalten"
+              >
+                {navOpen ? <X size={18} /> : <Menu size={18} />}
+              </button>
+            )}
             <Link to="/checklisten" className="flex items-center gap-2.5">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 text-white shadow-sm">
                 <ClipboardCheck size={18} />
@@ -89,7 +95,7 @@ export default function ChecklistLayout() {
 
           <div className="flex items-center gap-2">
             <Link
-              to="/hub"
+              to="/"
               className="hidden items-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-800 sm:inline-flex"
             >
               <ArrowLeft size={14} /> Zur Übersicht
@@ -127,10 +133,10 @@ export default function ChecklistLayout() {
 
       <div className="flex flex-1 min-h-0">
         {/* ── Schmale Checklisten-Navigation (Desktop) ──────────────────── */}
-        <ChecklistNav templates={templates} variant="desktop" />
+        {!isDetail && <ChecklistNav templates={templates} variant="desktop" />}
 
         {/* ── Off-Canvas-Navigation (mobile) ────────────────────────────── */}
-        {navOpen && (
+        {!isDetail && navOpen && (
           <div className="fixed inset-0 z-40 lg:hidden">
             <button
               type="button"
@@ -146,7 +152,7 @@ export default function ChecklistLayout() {
 
         {/* ── Inhalt (volle Breite) ─────────────────────────────────────── */}
         <main className="flex-1 min-w-0 overflow-x-hidden px-4 pb-10 pt-6 lg:px-8">
-          <div className="mx-auto w-full max-w-6xl animate-enter">
+          <div className={`mx-auto w-full animate-enter ${isDetail ? 'max-w-[1700px]' : 'max-w-6xl'}`}>
             <ErrorBoundary>
               <Outlet />
             </ErrorBoundary>
@@ -177,7 +183,7 @@ function ChecklistNav({
     <aside className={aside} aria-label="Checklisten-Navigation">
       <div className="flex items-center justify-between px-4 py-3">
         <Link
-          to="/hub"
+          to="/"
           className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
         >
           <ArrowLeft size={13} /> Zurück zur Übersicht

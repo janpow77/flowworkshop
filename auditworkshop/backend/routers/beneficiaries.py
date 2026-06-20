@@ -11,6 +11,8 @@ import csv
 import io
 import logging
 import re
+import threading
+import time as _time
 from datetime import datetime
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, Depends
@@ -34,7 +36,7 @@ from services.country_profiles import (
     get_region_label,
     list_country_codes,
 )
-from routers.auth import require_moderator, require_moderator_or_worker, require_session
+from routers.auth import require_moderator, require_moderator_or_worker
 
 # Plan v3.2 §5.5: Karten- und Quellen-Daten sind nach Art. 49 VO (EU)
 # 2021/1060 öffentlich. Daher kein require_session auf Router-Ebene —
@@ -44,6 +46,117 @@ router = APIRouter(
     tags=["beneficiaries"],
 )
 log = logging.getLogger(__name__)
+
+
+# ── Map-Cache ──────────────────────────────────────────────────────────────
+# Der Aufbau der Kartendaten (Geocoding + Serialisierung von ~72k Records über
+# 33 Quellen-Tabellen) dauert auf der CCX23 ~19 s und wurde bislang bei JEDEM
+# Aufruf neu berechnet — Ursache für „failed to fetch" (Gateway-Timeout) sowohl
+# auf der Karte als auch auf der HomePage. Die Daten ändern sich nur bei
+# Upload/Delete, daher cachen wir das fertige Ergebnis pro country_code.
+# Die TTL ist ein Sicherheitsnetz für Out-of-Band-Ingest (harvest_*.py).
+_MAP_CACHE: dict[str | None, tuple[float, dict]] = {}
+_MAP_CACHE_TTL = 3600.0  # 1 h
+_MAP_CACHE_LOCK = threading.Lock()   # schützt nur das Cache-Dict (schnell)
+_MAP_BUILD_LOCK = threading.Lock()   # serialisiert teure Builds (Stampede-Schutz)
+
+
+def invalidate_map_cache() -> None:
+    """Verwirft den kompletten Map-Cache — nach Upload/Delete aufrufen.
+
+    Invalidiert zugleich den Begünstigten-Analytics-/Scan-Cache (Befund 3),
+    damit top_locations/top_sectors denselben Lebenszyklus haben."""
+    with _MAP_CACHE_LOCK:
+        _MAP_CACHE.clear()
+    try:
+        from services.dataframe_service import invalidate_analytics_cache
+        invalidate_analytics_cache()
+    except Exception:  # noqa: BLE001 — Cache-Invalidierung darf nie brechen
+        log.exception("Analytics-Cache-Invalidierung fehlgeschlagen.")
+    log.info("Map-Cache invalidiert.")
+
+
+def _build_map_payload(cc: str | None) -> dict:
+    """Baut die Kartendaten frisch auf (teuer, ~19 s). Quelle der Wahrheit
+    für get_map_data — wird nur über get_cached_map_payload aufgerufen."""
+    sources = get_beneficiary_sources(country_code=cc)
+    all_beneficiaries: list[dict] = []
+    sources_info: list[dict] = []
+
+    for src in sources:
+        src_cc = src.get("country_code") or country_code_for_bundesland(src.get("bundesland"))
+        data = get_beneficiary_map_data(src["source"], country_code=src_cc)
+        for b in data.get("beneficiaries", []):
+            b["bundesland"] = src.get("bundesland") or src["source"]
+            b["fonds"] = src.get("fonds") or ""
+            b["country_code"] = src_cc
+            b["country_name"] = src.get("country_name") or get_country_name(src_cc)
+            # nuts3/region werden im Frontend nicht gerendert → Payload schlank halten.
+            b.pop("nuts3", None)
+            b.pop("region", None)
+        all_beneficiaries.extend(data.get("beneficiaries", []))
+        sources_info.append({
+            "source": src["source"],
+            "country_code": src_cc,
+            "country_name": src.get("country_name") or get_country_name(src_cc),
+            "bundesland": src.get("bundesland"),
+            "region_label": get_region_label(src_cc),
+            "fonds": src.get("fonds"),
+            "periode": src.get("periode"),
+            "count": data.get("count", 0),
+            "total_rows": src.get("row_count", 0),
+        })
+
+    profile = get_country_profile(cc) if cc else None
+    return {
+        "country_code": cc,
+        "country_name": profile["country_name"] if profile else None,
+        "region_label": profile["region_label"] if profile else "Region/Bundesland",
+        "count": len(all_beneficiaries),
+        "beneficiaries": all_beneficiaries,
+        "sources": sources_info,
+    }
+
+
+def get_cached_map_payload(cc: str | None, *, force: bool = False) -> dict:
+    """Liefert die Kartendaten aus dem Cache oder baut sie (einmalig) auf.
+
+    Cache-Treffer werden nie durch einen laufenden Build blockiert; gleichzeitige
+    Cold-Aufrufe werden über _MAP_BUILD_LOCK serialisiert (kein Stampede).
+    """
+    now = _time.time()
+    if not force:
+        with _MAP_CACHE_LOCK:
+            hit = _MAP_CACHE.get(cc)
+        if hit and (now - hit[0]) < _MAP_CACHE_TTL:
+            return hit[1]
+
+    with _MAP_BUILD_LOCK:
+        # Double-Check: ein paralleler Thread könnte gerade fertig gebaut haben.
+        if not force:
+            with _MAP_CACHE_LOCK:
+                hit = _MAP_CACHE.get(cc)
+            if hit and (_time.time() - hit[0]) < _MAP_CACHE_TTL:
+                return hit[1]
+        payload = _build_map_payload(cc)
+        with _MAP_CACHE_LOCK:
+            _MAP_CACHE[cc] = (_time.time(), payload)
+        return payload
+
+
+def warm_map_cache(country_codes: tuple[str | None, ...] = (None, "DE", "AT")) -> None:
+    """Baut den Map-Cache im Hintergrund vor (beim App-Start). Fehler pro Land
+    werden geschluckt — der Cache füllt sich sonst beim ersten Request."""
+    for cc in country_codes:
+        try:
+            t0 = _time.time()
+            payload = get_cached_map_payload(cc, force=True)
+            log.info(
+                "Map-Cache vorgewärmt: %s → %d Records in %.1fs",
+                cc or "ALLE", payload.get("count", 0), _time.time() - t0,
+            )
+        except Exception as exc:  # noqa: BLE001 — Warmup darf den Start nie brechen
+            log.warning("Map-Cache-Warmup für %s fehlgeschlagen: %s", cc, exc)
 
 
 def _normalize_country_code(country_code: str | None) -> str | None:
@@ -227,6 +340,10 @@ async def upload_beneficiary_list(
     finally:
         db.close()
 
+    # Neue/ersetzte Quelle → Map-Cache verwerfen, sonst zeigt die Karte
+    # weiterhin den alten Stand bis zum TTL-Ablauf.
+    invalidate_map_cache()
+
     return {
         "status": "replaced" if replaced else "created",
         "source": source,
@@ -268,42 +385,62 @@ def get_map_data(country_code: str | None = Query(None, description="Optional Fi
     Kartendaten für die eingelesenen Begünstigtenverzeichnisse.
     Wenn country_code gesetzt ist, werden nur Quellen dieses Landes aggregiert,
     damit DE und AT auf der Karte nicht vermischt werden.
+
+    Ergebnis wird pro country_code gecacht (siehe get_cached_map_payload) — der
+    teure Geocoding-/Serialisierungs-Aufbau läuft nur bei kaltem Cache bzw. nach
+    Upload/Delete erneut.
     """
     cc = _normalize_country_code(country_code)
+    return get_cached_map_payload(cc)
+
+
+@router.get("/summary")
+def beneficiaries_summary(country_code: str | None = Query(None, description="Optional Filter DE oder AT")):
+    """Schlanke Kennzahlen für HomePage/Übersichtskacheln.
+
+    Liefert NUR Aggregatzahlen statt des vollen (~27 MB) Map-Payloads. Nutzt den
+    Map-Cache, wenn er warm ist (exakte geocodierte Anzahl), sonst eine günstige
+    Zeilensumme aus den Quellen-Metadaten — in beiden Fällen im Millisekunden-
+    Bereich, ohne Geocoding-Aufbau.
+    """
+    cc = _normalize_country_code(country_code)
+    with _MAP_CACHE_LOCK:
+        hit = _MAP_CACHE.get(cc)
+    if hit and (_time.time() - hit[0]) < _MAP_CACHE_TTL:
+        payload = hit[1]
+        return {
+            "count": payload.get("count", 0),
+            "source_count": len(payload.get("sources", [])),
+            "cached": True,
+        }
     sources = get_beneficiary_sources(country_code=cc)
-    all_beneficiaries = []
-    sources_info = []
+    # Befund 5: Bei kaltem Cache NICHT SUM(row_count) der Legacy-Metadaten
+    # nehmen — die enthält Header-Artefakt-/Duplikatzeilen und divergiert von
+    # Karte/Suche. Stattdessen COUNT(*) der zentralen, deduplizierten Tabelle
+    # workshop_beneficiary_records (konsistent zu search/Karten-Anzahl).
+    from sqlalchemy import text as _text
+    from database import engine as _engine
 
-    for src in sources:
-        src_cc = src.get("country_code") or country_code_for_bundesland(src.get("bundesland"))
-        data = get_beneficiary_map_data(src["source"], country_code=src_cc)
-        for b in data.get("beneficiaries", []):
-            b["bundesland"] = src.get("bundesland") or src["source"]
-            b["fonds"] = src.get("fonds") or ""
-            b["country_code"] = src_cc
-            b["country_name"] = src.get("country_name") or get_country_name(src_cc)
-        all_beneficiaries.extend(data.get("beneficiaries", []))
-        sources_info.append({
-            "source": src["source"],
-            "country_code": src_cc,
-            "country_name": src.get("country_name") or get_country_name(src_cc),
-            "bundesland": src.get("bundesland"),
-            "region_label": get_region_label(src_cc),
-            "fonds": src.get("fonds"),
-            "periode": src.get("periode"),
-            "count": data.get("count", 0),
-            "total_rows": src.get("row_count", 0),
-        })
-
-    profile = get_country_profile(cc) if cc else None
-    return {
-        "country_code": cc,
-        "country_name": profile["country_name"] if profile else None,
-        "region_label": profile["region_label"] if profile else "Region/Bundesland",
-        "count": len(all_beneficiaries),
-        "beneficiaries": all_beneficiaries,
-        "sources": sources_info,
-    }
+    where = "1=1"
+    params: dict[str, str] = {}
+    if cc:
+        where = "country_code = :cc"
+        params["cc"] = cc
+    try:
+        with _engine.connect() as conn:
+            total = int(
+                conn.execute(
+                    _text(
+                        f"SELECT COUNT(*) FROM workshop_beneficiary_records WHERE {where}"
+                    ),
+                    params,
+                ).scalar()
+                or 0
+            )
+    except Exception:  # noqa: BLE001 — Fallback auf Legacy-Summe
+        log.exception("Summary-COUNT auf zentraler Tabelle fehlgeschlagen.")
+        total = sum(int(s.get("row_count") or 0) for s in sources)
+    return {"count": total, "source_count": len(sources), "cached": False}
 
 
 @router.get("/search")
@@ -383,8 +520,8 @@ def get_nuts_regions():
 # weil AT auf NUTS-1 nur drei Grossregionen hat). Die Dateien sind aus dem
 # Frontend (`public/state_aid/*.geojson`) uebernommen — siehe data/geo/.
 
-import json as _json
-from pathlib import Path as _Path
+import json as _json  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
 
 _GEO_DIR = _Path(__file__).resolve().parent.parent / "data" / "geo"
 
@@ -516,8 +653,26 @@ def get_choropleth(
             GROUP BY prefix
             """
         )
+        # Befund 6: Records ohne (verwertbaren) NUTS-Code fallen aus der
+        # Prefix-Aggregation. Ihre Anzahl im summary mitliefern, damit auf der
+        # Karte transparent ist, wie viele Vorhaben „ohne Zuordnung" bleiben
+        # (statt sie still zu verschlucken). Choropleth bleibt NUTS-Prefix-
+        # basiert (kein Umbau auf bundesland-primär — sonst gingen AT-Quellen
+        # ohne bundesland-Spalte verloren).
+        discarded_sql = text(
+            """
+            SELECT COUNT(*) AS cnt
+            FROM workshop_beneficiary_records
+            WHERE country_code = :cc
+              AND (nuts_code IS NULL OR nuts_code = ''
+                   OR LENGTH(UPPER(LEFT(nuts_code, :pl))) <> :pl)
+            """
+        )
         with engine.connect() as conn:
             rows = conn.execute(sql, {"pl": prefix_len, "cc": cc}).fetchall()
+            discarded_unmapped = int(
+                conn.execute(discarded_sql, {"pl": prefix_len, "cc": cc}).scalar() or 0
+            )
 
         for row in rows:
             r = dict(row._mapping)
@@ -538,6 +693,19 @@ def get_choropleth(
                 "total_volume": cost_value,
                 "bundesland": nuts_to_name.get(nuts_code, ""),
             })
+
+        mapped_records = sum(int(r["project_count"] or 0) for r in regions)
+        summary = {
+            "records_mapped": mapped_records,
+            "records_unmapped": discarded_unmapped,
+            "records_total": mapped_records + discarded_unmapped,
+            "note": (
+                f"{discarded_unmapped} Vorhaben ohne NUTS-Zuordnung "
+                "(nicht auf der Karte dargestellt)."
+                if discarded_unmapped
+                else "Alle Vorhaben sind einer Region zugeordnet."
+            ),
+        }
 
     else:  # level == 3 — Aggregation aus kreis_project_counts
         try:
@@ -599,6 +767,7 @@ def get_choropleth(
 def delete_source(source: str, _session: dict = Depends(require_moderator)):
     """Begünstigtenverzeichnis entfernen."""
     delete_dataframe_table(source)
+    invalidate_map_cache()
     return {"status": "deleted", "source": source}
 
 

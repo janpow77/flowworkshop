@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { LogIn, UserPlus, Loader2, Eye, EyeOff, QrCode, ListChecks } from 'lucide-react';
+import { LogIn, UserPlus, Loader2, Eye, EyeOff, QrCode, Lock } from 'lucide-react';
+import LandingBackdrop from '../components/landing/LandingBackdrop';
+import { ToolTiles } from '../components/landing/ToolTiles';
+import type { ToolTile } from '../components/landing/toolTilesData';
 
 export default function LoginPage({ onLogin }: { onLogin: (token: string, user: { name: string; organization: string; role: string }) => void }) {
   const [email, setEmail] = useState('');
@@ -12,13 +15,32 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
   const navigate = useNavigate();
   const qrToken = searchParams.get('qr');
 
+  // Login-gebundene Features (Checklisten-Designer, Wissens-Recherche) sind ohne
+  // Token nicht nutzbar — ihre API verlangt eine Session. Statt ins Leere zu
+  // navigieren, fuehren wir den Nutzer zum Login-Formular und erklaeren warum.
+  const loginRef = useRef<HTMLDivElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const [gatedHint, setGatedHint] = useState('');
+
+  const requireLogin = (feature: string) => {
+    setGatedHint(`Bitte zuerst anmelden, um „${feature}“ zu nutzen.`);
+    loginRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => emailRef.current?.focus(), 320);
+  };
+
+  // Oeffentliche Werkzeuge navigieren direkt, gesperrte fuehren zum Login.
+  const handleTile = (tile: ToolTile) => {
+    if (tile.gated) requireLogin(tile.title);
+    else navigate(tile.route);
+  };
+
   const finishLogin = (data: { token: string; name: string; organization: string; role: string }) => {
     onLogin(data.token, { name: data.name, organization: data.organization, role: data.role });
     navigate('/');
   };
 
   const handleLogin = async () => {
-    if (!email.includes('@')) { setError('Bitte g\u00fcltige E-Mail eingeben.'); return; }
+    if (!email.includes('@')) { setError('Bitte gültige E-Mail eingeben.'); return; }
     setLoading(true);
     setError('');
     try {
@@ -74,193 +96,19 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
   }, [qrToken]);
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #1e40af 40%, #2563eb 70%, #3b82f6 100%)' }}>
-
-      {/* Binary Data Water Effect */}
-      <div className="absolute bottom-0 left-0 right-0 h-48 overflow-hidden pointer-events-none">
-        {/* Back layer */}
-        <div className="absolute bottom-0 left-0 whitespace-nowrap text-blue-400/10 text-[10px] font-mono data-flow-slow">
-          {'01001010 11010010 00110101 01110011 10101100 01010111 11001010 00101101 01001010 11010010 00110101 01110011 10101100 01010111 11001010 00101101 '.repeat(4)}
-        </div>
-        {/* Middle layer */}
-        <div className="absolute bottom-6 left-0 whitespace-nowrap text-blue-300/15 text-xs font-mono data-flow">
-          {'10110100 01101011 11010001 00101110 01011010 10100111 01110010 11001001 10110100 01101011 11010001 00101110 01011010 10100111 01110010 11001001 '.repeat(4)}
-        </div>
-        {/* Front layer */}
-        <div className="absolute bottom-12 left-0 whitespace-nowrap text-blue-200/20 text-sm font-mono data-flow-fast binary-pulse">
-          {'01010010 11100101 00011010 10110011 01001101 11010110 00101011 10011100 01010010 11100101 00011010 10110011 01001101 11010110 00101011 10011100 '.repeat(4)}
-        </div>
-
-        {/* Wave surface 1 */}
-        <div className="absolute bottom-28 left-0 right-0 wave-animation">
-          <svg viewBox="0 0 1200 40" preserveAspectRatio="none" className="w-[200%] h-10">
-            <path d="M0,20 Q150,5 300,20 Q450,35 600,20 Q750,5 900,20 Q1050,35 1200,20 L1200,40 L0,40 Z"
-              fill="rgba(37, 99, 235, 0.15)" />
-          </svg>
-        </div>
-        {/* Wave surface 2 */}
-        <div className="absolute bottom-24 left-0 right-0 wave-animation-reverse">
-          <svg viewBox="0 0 1200 40" preserveAspectRatio="none" className="w-[200%] h-8">
-            <path d="M0,20 Q150,35 300,20 Q450,5 600,20 Q750,35 900,20 Q1050,5 1200,20 L1200,40 L0,40 Z"
-              fill="rgba(59, 130, 246, 0.1)" />
-          </svg>
-        </div>
-      </div>
-
-      {/* Decorative Bubbles */}
-      <div className="absolute bottom-40 left-1/4 w-3 h-3 bg-blue-300/30 rounded-full animate-bounce pointer-events-none" style={{ animationDelay: '0s', animationDuration: '3s' }} />
-      <div className="absolute bottom-52 left-1/3 w-2 h-2 bg-blue-200/20 rounded-full animate-bounce pointer-events-none" style={{ animationDelay: '1s', animationDuration: '4s' }} />
-      <div className="absolute bottom-36 right-1/4 w-4 h-4 bg-blue-300/25 rounded-full animate-bounce pointer-events-none" style={{ animationDelay: '0.5s', animationDuration: '3.5s' }} />
-      <div className="absolute bottom-60 right-1/3 w-2 h-2 bg-blue-200/30 rounded-full animate-bounce pointer-events-none" style={{ animationDelay: '1.5s', animationDuration: '4.5s' }} />
-
-      {/* EU Stars (subtil oben) */}
-      <div className="absolute top-8 left-1/2 -translate-x-1/2 pointer-events-none opacity-30">
-        <div className="relative h-20 w-20">
-          {Array.from({ length: 12 }).map((_, i) => {
-            const angle = (i * 30 - 90) * (Math.PI / 180);
-            const x = 50 + 38 * Math.cos(angle);
-            const y = 50 + 38 * Math.sin(angle);
-            return (
-              <div key={i} className="absolute" style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}>
-                <svg width="8" height="8" viewBox="0 0 24 24"><path d="M12 2l2.09 6.26L20.18 9l-5.09 3.74L16.18 19 12 15.27 7.82 19l1.09-6.26L3.82 9l6.09-.74L12 2z" fill="#FFD700" /></svg>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Register-Tools + Login */}
-      <div className="relative z-10 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+    <LandingBackdrop center>
+      <div className="relative z-10 w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-10">
           <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight">Pr&uuml;ferworkshop 2026</h1>
           <p className="text-base text-blue-200/70 mt-3">Workshop 5 &mdash; KI und Digitalisierung in der Pr&uuml;ft&auml;tigkeit</p>
         </div>
 
-        {/* Auswertungskacheln + Anmelden */}
+        {/* Werkzeugkacheln + Anmelden */}
         <div className="grid grid-cols-1 gap-7 md:grid-cols-2 items-stretch">
-          {/* Kachel A: Beihilfe-Register */}
-          <button
-            onClick={() => navigate('/beihilfen')}
-            className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-amber-500/10 hover:scale-[1.01] hover:shadow-xl"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-2xl backdrop-blur-sm">💰</span>
-              <h2 className="text-lg font-semibold text-white">Beihilfe-Register</h2>
-            </div>
-            <p className="text-sm leading-relaxed text-blue-200/80">
-              EU-Transparency-Aid-Module (TAM) lokal indiziert &mdash; alle veröffentlichungs&shy;pflichtigen
-              Beihilfen aus DE und AT seit 2014.
-            </p>
-            <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
-              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> 349.135 Beihilfen (DE 253.731 + AT 95.404)</li>
-              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> NUTS-Karte mit Aggregation auf Bundesland/Kreis</li>
-              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> Hybrid-Suche (Trigram + Fuzzy-Match + LLM-Verifikation)</li>
-              <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">●</span> KI-Suche mit Klartext-Fragen</li>
-            </ul>
-            <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-amber-300/80">
-              Veröffentlicht nach Art. 9 Abs. 1 lit. c) VO (EU) 651/2014
-            </p>
-          </button>
-
-          {/* Kachel B: Cross-Register-Auswertung */}
-          <button
-            onClick={() => navigate('/audit-report')}
-            className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-indigo-500/10 hover:scale-[1.01] hover:shadow-xl"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/20 text-2xl backdrop-blur-sm">📄</span>
-              <h2 className="text-lg font-semibold text-white">Cross-Register-Auswertung</h2>
-            </div>
-            <p className="text-sm leading-relaxed text-blue-200/80">
-              Eine Eingabe (Firma + Personen) &rarr; ein PDF aus drei Registern.
-              Faktisch, ohne Risiko-Bewertung.
-            </p>
-            <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
-              <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">●</span> State-Aid + Begünstigte + Sanktionen aggregiert</li>
-              <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">●</span> Personen-Sanctions-Check (Geschäftsführer/UBO)</li>
-              <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">●</span> Konzernverbund via GLEIF</li>
-              <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">●</span> Mehrseitiger PDF-Download</li>
-            </ul>
-            <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-indigo-300/80">
-              Registerübergreifende Prüfnotiz mit Quellen- und Trefferanhang
-            </p>
-          </button>
-
-          {/* Kachel 1: Begünstigtenverzeichnisse */}
-          <button
-            onClick={() => navigate('/scenario/6')}
-            className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-emerald-500/10 hover:scale-[1.01] hover:shadow-xl"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-2xl backdrop-blur-sm">🗺</span>
-              <h2 className="text-lg font-semibold text-white">Begünstigtenverzeichnisse</h2>
-            </div>
-            <p className="text-sm leading-relaxed text-blue-200/80">
-              Konsolidiertes Begünstigtenverzeichnis aus EFRE, ESF+, JTF, ISF und AMIF
-              für Deutschland und Österreich.
-            </p>
-            <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
-              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> Interaktive Karte mit Geocoding aller Standorte</li>
-              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> Volltextsuche, Filter nach Land und Förderhöhe</li>
-              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> LLM-Auswertung von Auffälligkeiten</li>
-              <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">●</span> Export als PNG oder PDF</li>
-            </ul>
-            <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-emerald-300/80">
-              Öffentlich nach Art. 49 VO (EU) 2021/1060
-            </p>
-          </button>
-
-          {/* Kachel 2: Sanktionslisten */}
-          <button
-            onClick={() => navigate('/sanktionslisten')}
-            className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-rose-500/10 hover:scale-[1.01] hover:shadow-xl"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/20 text-2xl backdrop-blur-sm">🛡</span>
-              <h2 className="text-lg font-semibold text-white">Sanktionslisten</h2>
-            </div>
-            <p className="text-sm leading-relaxed text-blue-200/80">
-              Konsolidierte Personen- und Organisations-Sanktionslisten der EU,
-              USA, UK und Schweiz.
-            </p>
-            <ul className="mt-4 space-y-2 text-xs text-blue-200/60 flex-1">
-              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> EU FSF, UN, OFAC, OFSI, SECO</li>
-              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> Lokale Fuzzy-Suche (kein Datenabfluss)</li>
-              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> 39.000+ Einträge inkl. Aliase und Schreibvarianten</li>
-              <li className="flex items-start gap-2"><span className="text-rose-400 mt-0.5">●</span> Täglich automatisch aktualisiert</li>
-            </ul>
-            <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-rose-300/80">
-              Für Begünstigten-Screening nach Art. 73 VO 2021/1060
-            </p>
-          </button>
-
-          {/* Kachel 3: Checklisten-Designer */}
-          <button
-            onClick={() => navigate('/checklisten')}
-            className="glass-card group flex flex-col rounded-3xl p-8 text-left transition hover:bg-blue-500/10 hover:scale-[1.01] hover:shadow-xl md:col-span-2"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/20 text-blue-300 backdrop-blur-sm"><ListChecks size={24} /></span>
-              <h2 className="text-lg font-semibold text-white">Checklisten-Designer</h2>
-            </div>
-            <p className="text-sm leading-relaxed text-blue-200/80">
-              KOM-Musterchecklisten verwalten, gemeinsam bearbeiten und darüber diskutieren &mdash;
-              kollaborativ über Prüfbehörden und Prüfungseinrichtungen hinweg.
-            </p>
-            <ul className="mt-4 grid gap-2 text-xs text-blue-200/60 sm:grid-cols-2 flex-1">
-              <li className="flex items-start gap-2"><span className="text-blue-400 mt-0.5">●</span> KOM-Musterchecklisten der EU (2021-2027) auf Deutsch</li>
-              <li className="flex items-start gap-2"><span className="text-blue-400 mt-0.5">●</span> Baum-Editor mit Entscheidungsbäumen, Status &amp; Team-Diskussion</li>
-              <li className="flex items-start gap-2"><span className="text-blue-400 mt-0.5">●</span> Versionsverwaltung mit Freigabe &amp; Versionsvergleich</li>
-              <li className="flex items-start gap-2"><span className="text-blue-400 mt-0.5">●</span> Export als ausfüllbares Word, Excel &amp; PDF</li>
-            </ul>
-            <p className="mt-5 pt-4 border-t border-white/10 text-[11px] text-blue-300/80">
-              Kollaborativer Checklisten-Designer für Prüfbehörden
-            </p>
-          </button>
+          <ToolTiles onActivate={handleTile} locked />
 
           {/* Login */}
-          <div className="glass-card flex flex-col rounded-3xl p-8 md:col-span-2">
+          <div ref={loginRef} className="glass-card flex flex-col rounded-3xl p-8 md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/20 text-cyan-300 backdrop-blur-sm">
                 {qrToken ? <QrCode size={22} /> : <LogIn size={22} />}
@@ -272,8 +120,15 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
                 ? 'Der QR-Code wird geprüft. Falls der Link abgelaufen ist, können Sie sich unten normal anmelden.'
                 : 'Melden Sie sich mit Ihrer registrierten E-Mail-Adresse an. Falls gesetzt, geben Sie zusätzlich Ihr Passwort ein.'}
             </p>
+            {gatedHint && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/15 px-3 py-2.5 text-sm text-cyan-100">
+                <Lock size={15} className="shrink-0" />
+                {gatedHint}
+              </div>
+            )}
             <div className="grid gap-3 flex-1 lg:grid-cols-[1fr_1fr_auto] lg:items-start">
               <input
+                ref={emailRef}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -338,6 +193,6 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
           <Link to="/datenschutz" className="hover:text-blue-200/70 hover:underline">Datenschutz</Link>
         </p>
       </div>
-    </div>
+    </LandingBackdrop>
   );
 }

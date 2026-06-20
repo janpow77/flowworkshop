@@ -8,6 +8,7 @@ POST /api/knowledge/ingest        — Datei hochladen (nur WORKSHOP_ADMIN)
 DELETE /api/knowledge/source/{source}  — Quelle entfernen (nur WORKSHOP_ADMIN)
 """
 import json
+import re
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, Depends
 from fastapi.responses import StreamingResponse
@@ -16,21 +17,63 @@ from pydantic import BaseModel, Field
 from config import (
     WORKSHOP_ADMIN,
     KB_RESEARCH_MODEL,
+    KB_RESEARCH_REASONING_EFFORT,
     KB_RESEARCH_TOP_K,
     KB_RESEARCH_SYSTEM_PROMPT,
+    KB_RERANK_ENABLED,
+    KB_RERANK_POOL,
+    KB_RERANK_THRESHOLD,
+    KB_SOURCE_GROUPS,
+    KB_DEFAULT_SOURCE,
 )
-from services import knowledge_service as ks
+from services import router_knowledge_service as ks
 from services.file_parser import extract
 from services.ollama_service import stream
 from routers.auth import require_moderator, require_session
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 
+
+def _resolve_source(source: str | None) -> str | list[str] | None:
+    """Loest einen Quellen-Parameter auf: Gruppenname → Quellen-Liste,
+    Einzelquelle → str, leer/None → None (alle Quellen)."""
+    if not source:
+        return None
+    if source in KB_SOURCE_GROUPS:
+        return KB_SOURCE_GROUPS[source]
+    return source
+
 # Laengen-Steuerung der Generierung → Token-Budget.
-# Hoch angesetzt, weil qwen3.5:35b-fast ein Reasoning-Modell ist und ~1500-1900
-# Tokens fuer den (separat gestreamten) Thinking-Block verbraucht, BEVOR Content
-# kommt. Zu kleine Budgets → 0 Content-Tokens. Das Budget deckt Reasoning + Antwort.
-_LENGTH_TOKENS = {"kurz": 2200, "mittel": 3200, "lang": 4200}
+# Seit der Umstellung auf qwen3:14b mit reasoning_effort="none" (siehe config.py)
+# entfaellt der frueher noetige grosse Puffer fuer den Thinking-Block — das Budget
+# deckt nur noch die reine Antwort. Werte bleiben grosszuegig, damit lange
+# Berichtspassagen nicht abgeschnitten werden.
+_LENGTH_TOKENS = {"kurz": 220, "mittel": 700, "lang": 1500}
+
+# Max. Zeichen je Fundstelle, die als Kontext ins LLM gehen. Statt des vollen
+# Chunks (~5.300 Zeichen) nur ein Fenster um die Trefferstelle → drastisch
+# weniger Prefill-Tokens → schnelleres erstes Token. Die vollstaendige Fundstelle
+# bleibt ueber die Quellen-Anzeige (Snippet + Abschnitt) nachvollziehbar.
+_CONTEXT_CHARS = 1400
+
+
+def _focus_window(text: str, query: str, max_chars: int = _CONTEXT_CHARS) -> str:
+    """Schneidet ein Fenster um die beste Query-Trefferstelle aus dem Chunk."""
+    if len(text) <= max_chars:
+        return text
+    terms = [w for w in re.split(r"\W+", query.lower()) if len(w) >= 4]
+    low = text.lower()
+    pos = next((low.find(w) for w in terms if low.find(w) != -1), -1)
+    if pos == -1:
+        return text[:max_chars].rstrip() + " …"
+    half = max_chars // 2
+    start, end = max(0, pos - half), min(len(text), pos + half)
+    out = text[start:end].strip()
+    if start > 0:
+        out = "… " + out
+    if end < len(text):
+        out = out + " …"
+    return out
 # Textart → Instruktion, die an den Basis-System-Prompt angehaengt wird.
 _TEXT_TYPE_HINTS = {
     "analyse": "Erstelle eine strukturierte Analyse mit nummerierten Kernpunkten.",
@@ -48,6 +91,12 @@ class KbGenerateRequest(BaseModel):
     source: str | None = Field(None, description="Nur diese Quelle als Kontext nutzen")
 
 
+@router.get("/groups")
+def get_groups(_session: dict = Depends(require_session)):
+    """Quellen-Gruppen + Standard-Auswahl fuer das Recherche-Dropdown."""
+    return {"groups": KB_SOURCE_GROUPS, "default_source": KB_DEFAULT_SOURCE}
+
+
 @router.get("/stats")
 def get_stats(_session: dict = Depends(require_session)):
     """Anzahl Dokumente und Chunks in der Wissensdatenbank."""
@@ -62,7 +111,11 @@ def search(
     _session: dict = Depends(require_session),
 ):
     """Semantische Ähnlichkeitssuche in den gespeicherten Chunks."""
-    results = ks.search(q, top_k=top_k, source_filter=source)
+    # Note: source filter not supported by router_knowledge_service yet
+    # TODO: implement source filtering in router_knowledge_service
+    response = ks.search(q, top_k=top_k)
+    # Map response format: router returns dict with 'results' key
+    results = response.get('results', []) if isinstance(response, dict) else response
     return {"query": q, "results": results}
 
 
@@ -71,15 +124,25 @@ async def generate(req: KbGenerateRequest, _session: dict = Depends(require_sess
     """
     Belegbasierte Textgenerierung über die Wissensbasis.
 
-    Holt RAG-Kontext via pgvector und streamt eine Antwort des stärkeren
-    Reasoning-Modells (qwen3.5:35b) über das Gateway/den ai-router
-    (Route ``qwen3.5:* → evo-x2``). Streamt als Server-Sent-Events:
+    Holt RAG-Kontext via pgvector und streamt eine belegbasierte Antwort
+    (Modell ``KB_RESEARCH_MODEL``, Default qwen3:14b mit reasoning_effort="none")
+    über das Gateway/den ai-router. Streamt als Server-Sent-Events:
 
       data: {"sources": [...]}                 — einmalig zu Beginn
       data: {"token": "...", "done": false}    — Antwort-Tokens
       data: {"done": true, "model": "...", ...} — Abschluss
     """
-    hits = ks.search(req.query, top_k=KB_RESEARCH_TOP_K, source_filter=req.source)
+    # Reranking: grob KB_RERANK_POOL Treffer holen, per Cross-Encoder auf die
+    # besten KB_RESEARCH_TOP_K sortieren (loest die „Artikel 74"-Kollision
+    # VO/AI-Act domaenenneutral). Fallback in rerank() auf Vektor-Reihenfolge.
+    # Note: source filter not supported by router_knowledge_service yet
+    if KB_RERANK_ENABLED:
+        pool_response = ks.search(req.query, top_k=KB_RERANK_POOL, enable_reranking=True)
+        pool = pool_response.get('results', []) if isinstance(pool_response, dict) else pool_response
+        hits = ks.rerank(req.query, pool, top_k=KB_RESEARCH_TOP_K, threshold=KB_RERANK_THRESHOLD)
+    else:
+        hits_response = ks.search(req.query, top_k=KB_RESEARCH_TOP_K, enable_reranking=False)
+        hits = hits_response.get('results', []) if isinstance(hits_response, dict) else hits_response
 
     sources = [
         {
@@ -93,7 +156,7 @@ async def generate(req: KbGenerateRequest, _session: dict = Depends(require_sess
     ]
 
     documents = [
-        f"[{h['source']} · Abschnitt {h['chunk_index'] + 1}]\n{h['text']}"
+        f"[{h['source']} · Abschnitt {h['chunk_index'] + 1}]\n{_focus_window(h['text'], req.query)}"
         for h in hits
     ]
 
@@ -109,6 +172,7 @@ async def generate(req: KbGenerateRequest, _session: dict = Depends(require_sess
             documents,
             max_tokens=max_tokens,
             model_override=KB_RESEARCH_MODEL,
+            reasoning_effort=KB_RESEARCH_REASONING_EFFORT,
         ):
             yield chunk
 

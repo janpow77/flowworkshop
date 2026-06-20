@@ -11,7 +11,6 @@ import logging
 import re
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -21,7 +20,6 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.forum import (
     ForumCategory, ForumThread, ForumPost, ForumReaction,
-    ForumTag, ForumThreadTag, ForumReadState,
 )
 from models.registration import Registration
 from routers.auth import require_session, require_moderator
@@ -372,7 +370,8 @@ def create_post(thread_id: str, body: CreatePost, request: Request, db: Session 
 def pin_thread(thread_id: str, request: Request, db: Session = Depends(get_db)):
     require_moderator(request)
     t = db.query(ForumThread).filter(ForumThread.id == thread_id).first()
-    if not t: raise HTTPException(404, "Thread nicht gefunden.")
+    if not t:
+        raise HTTPException(404, "Thread nicht gefunden.")
     t.pinned = not t.pinned
     db.commit()
     return {"pinned": t.pinned}
@@ -382,7 +381,8 @@ def pin_thread(thread_id: str, request: Request, db: Session = Depends(get_db)):
 def lock_thread(thread_id: str, request: Request, db: Session = Depends(get_db)):
     require_moderator(request)
     t = db.query(ForumThread).filter(ForumThread.id == thread_id).first()
-    if not t: raise HTTPException(404, "Thread nicht gefunden.")
+    if not t:
+        raise HTTPException(404, "Thread nicht gefunden.")
     t.locked = not t.locked
     db.commit()
     return {"locked": t.locked}
@@ -393,12 +393,14 @@ def mark_solution(thread_id: str, post_id: str, request: Request, db: Session = 
     """Markiert einen Post als Lösung. Threadstarter oder Mod können das."""
     sess = require_session(request)
     t = db.query(ForumThread).filter(ForumThread.id == thread_id).first()
-    if not t: raise HTTPException(404, "Thread nicht gefunden.")
+    if not t:
+        raise HTTPException(404, "Thread nicht gefunden.")
     is_mod = sess.get("role") in ("moderator", "admin")
     if not is_mod and t.author_user_id != sess.get("user_id"):
         raise HTTPException(403, "Nur Threadstarter oder Moderator.")
     post = db.query(ForumPost).filter(ForumPost.id == post_id, ForumPost.thread_id == thread_id).first()
-    if not post: raise HTTPException(404, "Post nicht gefunden.")
+    if not post:
+        raise HTTPException(404, "Post nicht gefunden.")
     t.solved_post_id = None if t.solved_post_id == post_id else post_id
     db.commit()
     return {"solved_post_id": t.solved_post_id}
@@ -435,7 +437,8 @@ def toggle_reaction(post_id: str, kind: str, request: Request, db: Session = Dep
 def edit_post(post_id: str, body: CreatePost, request: Request, db: Session = Depends(get_db)):
     user = _ensure_active_user(request, db)
     post = db.query(ForumPost).filter(ForumPost.id == post_id, ForumPost.deleted_at.is_(None)).first()
-    if not post: raise HTTPException(404, "Post nicht gefunden.")
+    if not post:
+        raise HTTPException(404, "Post nicht gefunden.")
     is_mod = (user.role in ("moderator", "admin"))
     if post.author_user_id != user.id and not is_mod:
         raise HTTPException(403, "Nicht erlaubt.")
@@ -450,7 +453,8 @@ def edit_post(post_id: str, body: CreatePost, request: Request, db: Session = De
 def delete_post(post_id: str, request: Request, db: Session = Depends(get_db)):
     user = _ensure_active_user(request, db)
     post = db.query(ForumPost).filter(ForumPost.id == post_id, ForumPost.deleted_at.is_(None)).first()
-    if not post: raise HTTPException(404, "Post nicht gefunden.")
+    if not post:
+        raise HTTPException(404, "Post nicht gefunden.")
     is_mod = (user.role in ("moderator", "admin"))
     if post.author_user_id != user.id and not is_mod:
         raise HTTPException(403, "Nicht erlaubt.")

@@ -29,8 +29,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from rapidfuzz import fuzz, process
-from sqlalchemy import or_, text
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
 
 from models.entities import CompanyEntity, EntityMatch
@@ -118,21 +117,6 @@ def _normalize_for_match(name: str | None) -> str:
     return normalize_company_name(name)
 
 
-def _classify_entity_type(name: str) -> str:
-    """Heuristik 'company' vs 'person'.
-
-    Sehr defensiv: wenn es eine Rechtsform-Endung gibt -> company; wenn der
-    Name ohne Rechtsform aus 2-3 Wortbestandteilen mit Grossbuchstaben besteht
-    und keine typische Firmen-Marker enthaelt -> person.
-
-    Im Zweifel: company. Sanctions-Eintraege koennen optional explizit
-    `entity_type='person'` setzen ueber den ``entity_type``-Parameter.
-    """
-    if not name:
-        return "company"
-    return "company"
-
-
 def _store_identifier(identifiers: dict | None, key: str, value: str | None) -> dict:
     """Fuegt einen Identifier zur Identifiers-JSONB hinzu — ohne Duplikate.
 
@@ -172,27 +156,33 @@ def _find_by_lei(db: Session, lei: str) -> CompanyEntity | None:
 
 
 def _find_by_identifier(db: Session, identifier: str) -> CompanyEntity | None:
-    """Sucht eine Entity, deren ``identifiers``-JSONB den Wert enthaelt.
+    """Sucht eine Entity, in deren ``identifiers``-JSONB der Wert EXAKT vorkommt.
 
-    Wir nutzen ``jsonb_path_exists``, um eine schnelle Containment-Suche
-    auf JSONB zu fahren (GIN-Index ist nicht zwingend, weil die Tabelle
-    initial klein ist; bei Bedarf kann spaeter ein GIN-Index dazukommen).
+    Bewusst strukturierte Wert-Gleichheit (``jsonb_path_exists`` mit
+    ``$.** ? (@ == $ident)``) statt eines ungeankerten ``::text ILIKE
+    '%ident%'``: Letzteres matchte den Identifier auch als Teilstring in
+    fremden Werten oder sogar in JSON-Schluesselnamen und verschmolz so
+    verschiedene Rechtstraeger mit Confidence 95 (Befund Entity-Resolution #3).
+    Die Werte werden in ``_store_identifier`` verbatim abgelegt, daher ist die
+    Exakt-Gleichheit konsistent mit der Speicher-Semantik.
     """
     if not identifier:
         return None
-    ident_lower = identifier.strip()
-    if not ident_lower:
+    ident_value = identifier.strip()
+    if not ident_value:
         return None
-    # Wir machen einen einfachen Linear-Scan ueber die Tabelle —
-    # Ergebnismenge ist begrenzt durch Tokens-Filter; spezifischer fragen wir
-    # mit einer JSONB-text-Suche an.
     sql = text("""
         SELECT id FROM workshop_company_entities
          WHERE identifiers IS NOT NULL
-           AND identifiers::text ILIKE :pattern
+           AND jsonb_path_exists(
+                 identifiers,
+                 '$.** ? (@ == $ident)',
+                 jsonb_build_object('ident', :ident)
+               )
+         ORDER BY id ASC
          LIMIT 1
     """)
-    row = db.execute(sql, {"pattern": f"%{ident_lower}%"}).first()
+    row = db.execute(sql, {"ident": ident_value}).first()
     if not row:
         return None
     return db.get(CompanyEntity, int(row[0]))
@@ -214,11 +204,14 @@ def _find_by_name_exact(
     if country_code:
         cc = country_code.upper()
         # Country-Code ist ISO-2 oder ISO-3 — wir matchen auf beide
-        q_cc = q.filter(CompanyEntity.country_code == cc)
+        # Deterministisches Tie-Breaking (id asc) — sonst gibt PostgreSQL bei
+        # Namensdubletten eine plan-/heap-abhaengige Zeile zurueck (Rebuilds
+        # nicht reproduzierbar, Befund Entity-Resolution #4).
+        q_cc = q.filter(CompanyEntity.country_code == cc).order_by(CompanyEntity.id.asc())
         ent = q_cc.first()
         if ent:
             return ent
-    return q.first()
+    return q.order_by(CompanyEntity.id.asc()).first()
 
 
 def _find_by_name_fuzzy(
@@ -261,7 +254,17 @@ def _find_by_name_fuzzy(
         CompanyEntity.canonical_name_normalized.ilike(f"%{t}%")
         for t in tokens[:3]
     ]
-    q = q.filter(or_(*ors)).limit(candidate_limit)
+    # Nach pg_trgm-Aehnlichkeit zum VOLLEN normalisierten Namen ordnen, BEVOR
+    # bei candidate_limit gekappt wird — sonst liefert die DB willkuerliche
+    # ≤200 Zeilen und der beste Match kann ausserhalb des Fensters liegen
+    # (Befund Entity-Resolution #8). Nutzt den GIN-trgm-Index ix_entity_name_trgm.
+    q = (
+        q.filter(or_(*ors))
+        .order_by(
+            func.similarity(CompanyEntity.canonical_name_normalized, name_normalized).desc()
+        )
+        .limit(candidate_limit)
+    )
     rows = q.all()
     if not rows:
         return None
@@ -386,6 +389,13 @@ def resolve_entity(
         ident_clean = (identifier or "").strip()
         if ident_clean and len(ident_clean) >= 4:
             ent = _find_by_identifier(db, ident_clean)
+            # Identifier-Treffer (Confidence 95) gegen den Namen plausibilisieren —
+            # ein zufaellig gleicher Identifier-String darf nicht zwei verschiedene
+            # Rechtstraeger verschmelzen (Befund Entity-Resolution #3). Schwelle
+            # bewusst niedrig (55), damit Abkuerzungen/Aliase tolerant bleiben.
+            if ent is not None and ent.canonical_name_normalized:
+                if fuzz.token_set_ratio(name_norm, ent.canonical_name_normalized) < 55:
+                    ent = None
             if ent is not None:
                 _enrich_existing(
                     ent, identifier=identifier, country_code=cc,
@@ -580,12 +590,15 @@ def link_record(
 
     table = source_table or SOURCE_TABLES[source_module]
 
-    # Schon vorhanden?
+    # Schon vorhanden? Abgelehnte Matches (rejected) ignorieren, damit ein vom
+    # Pruefer abgelehnter Datensatz beim naechsten Lauf neu/anders aufgeloest
+    # wird statt dauerhaft auf der falschen Entity zu haengen (Befund #5).
     existing = (
         db.query(EntityMatch)
         .filter(
             EntityMatch.source_module == source_module,
             EntityMatch.source_record_id == str(source_record_id),
+            EntityMatch.rejected.is_(False),
         )
         .first()
     )
@@ -681,6 +694,7 @@ def rebuild_entities_from_state_aid(
                 .filter(
                     EntityMatch.source_module == "state_aid",
                     EntityMatch.source_record_id == str(row.id),
+                    EntityMatch.rejected.is_(False),
                 )
                 .first()
             )
@@ -784,6 +798,7 @@ def rebuild_entities_from_beneficiaries(
                 .filter(
                     EntityMatch.source_module == "beneficiary",
                     EntityMatch.source_record_id == str(row.id),
+                    EntityMatch.rejected.is_(False),
                 )
                 .first()
             )
@@ -895,6 +910,7 @@ def rebuild_entities_from_sanctions(
                 .filter(
                     EntityMatch.source_module == "sanctions",
                     EntityMatch.source_record_id == str(row.id),
+                    EntityMatch.rejected.is_(False),
                 )
                 .first()
             )
@@ -1012,8 +1028,6 @@ def link_corporate_group_to_entities(db: Session, group: Any) -> dict:
         return stats
 
     primary_corp = group.primary_entity
-    primary_lei = getattr(primary_corp, "lei", None)
-    primary_name = getattr(primary_corp, "name", None) or ""
 
     # Primary-Entity holen oder anlegen
     primary_ent = _ensure_entity_for_corporate(

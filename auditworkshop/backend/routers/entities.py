@@ -20,12 +20,12 @@ import logging
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from database import get_db
+from database import SessionLocal, get_db
 from models.entities import CompanyEntity, EntityMatch
 from models.entity_match_llm_run import EntityMatchLlmRun
 from routers.auth import require_admin, require_session
@@ -352,40 +352,68 @@ admin_router = APIRouter(
 )
 
 
+def _do_rebuild(db: Session, module: str, dry: bool, limit: int | None) -> dict:
+    out: dict = {"module": module, "dry": dry}
+    if module in ("state_aid", "all"):
+        out["state_aid"] = rebuild_entities_from_state_aid(db, dry=dry, limit=limit)
+    if module in ("beneficiary", "all"):
+        out["beneficiary"] = rebuild_entities_from_beneficiaries(db, dry=dry, limit=limit)
+    if module in ("sanctions", "all"):
+        out["sanctions"] = rebuild_entities_from_sanctions(db, dry=dry, limit=limit)
+    return out
+
+
+def _rebuild_in_background(module: str, dry: bool, limit: int | None) -> None:
+    """Rebuild mit EIGENER DB-Session (die Request-Session ist nach dem
+    Response bereits geschlossen)."""
+    db = SessionLocal()
+    try:
+        out = _do_rebuild(db, module, dry, limit)
+        log.info("Entity-Rebuild (Hintergrund) abgeschlossen: %s", out)
+    except Exception:
+        log.exception("Entity-Rebuild (Hintergrund) fehlgeschlagen (module=%s)", module)
+    finally:
+        db.close()
+
+
 @admin_router.post("/rebuild")
 def admin_rebuild(
+    background_tasks: BackgroundTasks,
     module: Literal["state_aid", "beneficiary", "sanctions", "all"] = Query("all"),
     dry: bool = Query(False, description="Trockenlauf — keine Schreibvorgaenge."),
     limit: int | None = Query(
         None, ge=1,
         description="Maximale Anzahl Records pro Modul — fuer schnelle Tests.",
     ),
+    background: bool = Query(
+        False,
+        description="Im Hintergrund ausfuehren (HTTP-Worker nicht blockieren); "
+                    "Fortschritt in den Backend-Logs.",
+    ),
     _session: dict = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Triggert einen Rebuild der Entity-Resolution synchron.
+    """Triggert einen Rebuild der Entity-Resolution.
 
-    Synchron, weil das Workshop-Setup keine Background-Worker hat. Bei
-    grossen Bestaenden kann das mehrere Minuten dauern — daher in der UI
-    auf den ``module``-Filter setzen und ``limit`` einsetzen.
+    Standard ist synchron (kleine ``limit``/``module``-Filter nutzen). Bei
+    grossen Bestaenden ``background=true`` setzen, damit der HTTP-Worker nicht
+    blockiert — oder ``scripts/rebuild_entity_resolution.py`` per CLI nutzen.
     """
-    out: dict = {"module": module, "dry": dry}
     log.info(
-        "Entity-Rebuild ausgeloest: module=%s dry=%s limit=%s",
-        module, dry, limit,
+        "Entity-Rebuild ausgeloest: module=%s dry=%s limit=%s background=%s",
+        module, dry, limit, background,
     )
-    if module in ("state_aid", "all"):
-        out["state_aid"] = rebuild_entities_from_state_aid(
-            db, dry=dry, limit=limit,
-        )
-    if module in ("beneficiary", "all"):
-        out["beneficiary"] = rebuild_entities_from_beneficiaries(
-            db, dry=dry, limit=limit,
-        )
-    if module in ("sanctions", "all"):
-        out["sanctions"] = rebuild_entities_from_sanctions(
-            db, dry=dry, limit=limit,
-        )
+    if background:
+        background_tasks.add_task(_rebuild_in_background, module, dry, limit)
+        return {
+            "status": "gestartet",
+            "background": True,
+            "module": module,
+            "dry": dry,
+            "hinweis": "Rebuild laeuft im Hintergrund. Fortschritt in den Backend-Logs; "
+                       "fuer grosse Bestaende ist scripts/rebuild_entity_resolution.py empfohlen.",
+        }
+    out = _do_rebuild(db, module, dry, limit)
     log.info("Entity-Rebuild abgeschlossen: %s", out)
     return out
 
@@ -403,19 +431,38 @@ class LlmVerifyBatchRequest(BaseModel):
     per_call_timeout_s: float = 30.0
     overall_timeout_s: float = 7200.0
     dry: bool = False
+    background: bool = False  # True = im Hintergrund, Status via GET /llm-runs
+
+
+def _llm_batch_in_background(params: BatchVerifyParams, triggered_by: str) -> None:
+    """Batch-Lauf mit EIGENER DB-Session (Request-Session ist nach dem
+    Response geschlossen). Der Lauf protokolliert sich selbst in
+    workshop_entity_match_llm_runs → Status via GET /llm-runs."""
+    db = SessionLocal()
+    try:
+        result = run_batch_verification(db, params, triggered_by=triggered_by)
+        log.info("Entity-Match-LLM-Batch (Hintergrund) fertig: %s", result.to_dict())
+    except Exception:
+        log.exception("Entity-Match-LLM-Batch (Hintergrund) fehlgeschlagen")
+    finally:
+        db.close()
 
 
 @admin_router.post("/llm-verify-batch")
 def admin_llm_verify_batch(
     body: LlmVerifyBatchRequest,
+    background_tasks: BackgroundTasks,
     session: dict = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Triggert den LLM-Verifikations-Batch synchron (Admin-only).
+    """Triggert den LLM-Verifikations-Batch (Admin-only).
 
-    Synchron, weil das Workshop-Setup keine Background-Worker hat. Bei 500
-    Matches kann der Lauf mehrere Minuten bis Stunden dauern — daher in
-    Tests immer mit ``max_matches`` klein anfangen oder ``dry=True``.
+    Standard ist synchron — bei 500 Matches kann der Lauf mehrere Minuten bis
+    Stunden dauern, daher in Tests mit ``max_matches`` klein anfangen oder
+    ``dry=True``. Mit ``background=true`` laeuft der Batch im Hintergrund (der
+    HTTP-Worker wird nicht blockiert); der Fortschritt ist ueber
+    ``GET /llm-runs`` abrufbar. Fuer grosse Laeufe alternativ
+    ``scripts/entity_match_llm_batch.py`` per CLI.
     """
     user_id = str(session.get("user_id") or "unknown")[:36]
     triggered_by = f"admin:{user_id}"
@@ -432,9 +479,16 @@ def admin_llm_verify_batch(
     )
 
     log.info(
-        "Entity-Match-LLM-Batch ausgeloest (%s): max=%d recent=%dh dry=%s",
-        triggered_by, params.max_matches, params.only_recent_hours, params.dry,
+        "Entity-Match-LLM-Batch ausgeloest (%s): max=%d recent=%dh dry=%s background=%s",
+        triggered_by, params.max_matches, params.only_recent_hours, params.dry, body.background,
     )
+    if body.background:
+        background_tasks.add_task(_llm_batch_in_background, params, triggered_by)
+        return {
+            "status": "gestartet",
+            "background": True,
+            "hinweis": "Batch laeuft im Hintergrund — Status ueber GET /llm-runs abrufbar.",
+        }
     result = run_batch_verification(db, params, triggered_by=triggered_by)
     return result.to_dict()
 

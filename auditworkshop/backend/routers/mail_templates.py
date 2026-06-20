@@ -14,7 +14,6 @@ Endpoints:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -87,10 +86,10 @@ _SAMPLE_DATA: dict[str, dict] = {
         "department": "Referat 1",
         "fund": "EFRE",
         "ai_paragraph": "",
-        "workshop_title": "Prüferworkshop EFRE Hessen 2026",
+        "workshop_title": "Prüferworkshop 2026",
         "public_url": "https://workshop.flowaudit.de",
         "reply_to": "administration@vwvg.de",
-        "organizer": "Prüferworkshop EFRE Hessen",
+        "organizer": "Prüferworkshop",
     },
     "admin_notify": {
         "registration_id": "demo-uuid-1234-5678",
@@ -114,6 +113,26 @@ _SAMPLE_DATA: dict[str, dict] = {
         "function_role": "Prüferin",
         "signup_reason": "Interesse an der Recherche-Funktionalität und am Sanktionslisten-Abgleich.",
         "public_url": "https://workshop.flowaudit.de",
+    },
+    "signup_received": {
+        "first_name": "Erika",
+        "last_name": "Musterfrau",
+        "email": "erika.musterfrau@behoerde.de",
+        "organization": "Beispiel-Prüfbehörde",
+        "workshop_title": "Prüferworkshop 2026",
+        "public_url": "https://workshop.flowaudit.de",
+        "reply_to": "administration@vwvg.de",
+        "organizer": "Prüferworkshop",
+    },
+    "account_approved": {
+        "first_name": "Erika",
+        "last_name": "Musterfrau",
+        "email": "erika.musterfrau@behoerde.de",
+        "login_url": "https://workshop.flowaudit.de/login",
+        "workshop_title": "Prüferworkshop 2026",
+        "public_url": "https://workshop.flowaudit.de",
+        "reply_to": "administration@vwvg.de",
+        "organizer": "Prüferworkshop",
     },
 }
 

@@ -26,8 +26,6 @@ from pydantic import BaseModel, Field
 
 from routers.auth import require_admin
 from services.sanctions_service import (
-    DEFAULT_SANCTIONS_SOURCES,
-    get_index,
     get_multi_service,
     method_explanation,
     normalize_name,
@@ -35,6 +33,13 @@ from services.sanctions_service import (
 
 router = APIRouter(prefix="/api/sanctions", tags=["sanctions"])
 log = logging.getLogger(__name__)
+
+# Einheitlicher Default-Schwellenwert (Befund 7): Frontend-Slider, Backend-
+# Query-Defaults und die DSGVO-Begründungstexte beziehen sich auf DENSELBEN
+# Wert. Das Frontend sendet zwar bei jeder Suche min_score explizit mit, aber
+# damit Begründung (Banner/Docstring) und Default nicht auseinanderlaufen, ist
+# hier die Single Source of Truth fuer Roh-API-Aufrufer.
+SANCTIONS_DEFAULT_MIN_SCORE = 70.0
 
 
 # ── Statische Liste der Sanktionslisten (Cards-Definitionen) ─────────────────
@@ -310,6 +315,10 @@ class SearchHitOut(BaseModel):
     # Multi-Source-Felder
     source_key: str = ""
     source_display_name: str = ""
+    # Deterministischer Geburtsdatums-/Laender-Abgleich (nur wenn birth_date/
+    # country mitgegeben wurde): True = Angabe widerspricht dem Treffer.
+    dob_conflict: bool = False
+    country_conflict: bool = False
 
 
 class SearchResponse(BaseModel):
@@ -396,7 +405,7 @@ def _parse_sources_param(raw: str | None) -> list[str] | None:
 def search_get(
     q: str = Query(..., min_length=2, description="Suchbegriff (Name oder Alias)"),
     limit: int = Query(15, ge=1, le=50),
-    min_score: float = Query(65.0, ge=40.0, le=100.0),
+    min_score: float = Query(SANCTIONS_DEFAULT_MIN_SCORE, ge=40.0, le=100.0),
     schema_filter: str | None = Query(None, description='"Person" oder "Organization"'),
     sources: str | None = Query(
         None,
@@ -405,17 +414,36 @@ def search_get(
             "Default: alle aktivierten Quellen."
         ),
     ),
+    birth_date: str | None = Query(
+        None,
+        description=(
+            "Optionales Geburtsdatum/-jahr zum Vorgang (z.B. '1952' oder "
+            "'1952-10-07'). Wird deterministisch (ohne LLM) gegen den Treffer "
+            "abgeglichen: Übereinstimmung hebt, ein Jahres-Konflikt senkt den Score."
+        ),
+    ),
+    country: str | None = Query(
+        None,
+        description=(
+            "Optionales Land zum Vorgang (z.B. 'Russia'). Deterministischer "
+            "Bonus/Malus analog zum Geburtsdatum."
+        ),
+    ),
     _actor: dict = Depends(require_admin),
 ) -> SearchResponse:
     """Multi-Source-Fuzzy-Suche gegen alle indexierten Sanctions-Listen.
 
-    Aus DSGVO-Gründen Admin-Only: die Fuzzy-Schwelle 65 % produziert in einer
-    Demo-Plattform leicht False-Positives für unbeteiligte Namensvettern, und
-    die Verarbeitung von Personennamen Dritter ist außerhalb der eigentlichen
-    Prüfung nicht durch die Zweckbindung (Art. 5 Abs. 1 lit. b DSGVO) gedeckt.
+    Aus DSGVO-Gründen Admin-Only: die Fuzzy-Schwelle (Default 70 %) produziert
+    in einer Demo-Plattform leicht False-Positives für unbeteiligte
+    Namensvettern, und die Verarbeitung von Personennamen Dritter ist außerhalb
+    der eigentlichen Prüfung nicht durch die Zweckbindung
+    (Art. 5 Abs. 1 lit. b DSGVO) gedeckt.
 
     Default sind alle aktivierten Quellen. Mit dem `sources`-Parameter kann
     auf einzelne Listen eingeschraenkt werden (Komma-Liste).
+
+    Optionale `birth_date`/`country`-Parameter plausibilisieren ambivalente
+    Namens-Treffer deterministisch (kein LLM-Aufruf im synchronen GET).
     """
     svc = get_multi_service()
     if not svc.is_any_loaded():
@@ -439,6 +467,8 @@ def search_get(
         min_score=min_score,
         schema=schema_filter,
         sources=source_keys,
+        birth_date=birth_date,
+        country=country,
     )
     sources_searched = source_keys or list(svc.indices.keys())
 
@@ -469,6 +499,8 @@ def search_get(
                 last_seen=h.last_seen,
                 source_key=h.source_key,
                 source_display_name=h.source_display_name,
+                dob_conflict=h.dob_conflict,
+                country_conflict=h.country_conflict,
             )
             for h in hits
         ],
@@ -530,7 +562,7 @@ def export_sanctions_search(
     format: str = Query("csv", pattern="^(csv|xlsx|pdf)$"),
     q: str = Query(..., min_length=2, description="Suchbegriff (Name oder Alias)"),
     limit: int = Query(50, ge=1, le=500),
-    min_score: float = Query(65.0, ge=40.0, le=100.0),
+    min_score: float = Query(SANCTIONS_DEFAULT_MIN_SCORE, ge=40.0, le=100.0),
     schema_filter: str | None = Query(None, description='"Person" oder "Organization"'),
     sources: str | None = Query(
         None,
@@ -538,6 +570,14 @@ def export_sanctions_search(
             "Komma-Liste der Source-Keys (z.B. 'eu_fsf,un_sc'). "
             "Default: alle aktivierten Quellen."
         ),
+    ),
+    birth_date: str | None = Query(
+        None,
+        description="Optionales Geburtsdatum/-jahr — deterministischer Bonus/Malus.",
+    ),
+    country: str | None = Query(
+        None,
+        description="Optionales Land — deterministischer Bonus/Malus.",
     ),
     _actor: dict = Depends(require_admin),
 ):
@@ -570,6 +610,8 @@ def export_sanctions_search(
         min_score=min_score,
         schema=schema_filter,
         sources=source_keys,
+        birth_date=birth_date,
+        country=country,
     )
     rows = [_hit_to_dict(h) for h in hits]
 
@@ -590,9 +632,14 @@ def export_sanctions_search(
         "Suchbegriff": q,
         "Trefferzahl": str(len(rows)),
         "Schwellenwert": f"{min_score:.1f}",
+        "Methode": "rapidfuzz · fuzz.token_set_ratio (mit Normalisierung)",
         "Schema-Filter": schema_filter or "alle",
         "Listen-Filter": ", ".join(sources_searched) or "alle",
     }
+    if birth_date:
+        metadata["Geburtsdatum-Abgleich"] = birth_date
+    if country:
+        metadata["Land-Abgleich"] = country
     metadata.update(per_source_metadata)
 
     safe_q = _safe_filename_part(q)
@@ -701,6 +748,15 @@ def _stream_sanctions_pdf(rows: list[dict], metadata: dict[str, str]) -> Streami
             f"{row.get('score', 0):.1f} ({row.get('confidence', '')}) · "
             f"{row.get('source_display_name') or row.get('source_key', '')}",
             size=9, bold=True,
+        )
+        # Begruendung des Treffers: ueber welches Feld und welchen Originalstring
+        # der Score zustande kam (Befund 8 — bisher nur im CSV/XLSX vorhanden).
+        matched_field = row.get("matched_field") or ""
+        field_label = "Alias" if matched_field == "alias" else "Hauptname"
+        _write(
+            f"   Treffer über {field_label} „{row.get('matched_on', '')}\" · "
+            f"Score {row.get('score', 0):.1f} ({row.get('confidence', '')})",
+            size=8,
         )
         if row.get("aliases"):
             aliases = row["aliases"]

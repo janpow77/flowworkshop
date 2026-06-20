@@ -17,15 +17,15 @@ import asyncio
 import hashlib
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import desc, func
+from sqlalchemy import desc
 
 from database import SessionLocal
 from config import WORKER_API_TOKEN
 from models.automation import (
-    HarvestRun, HarvestSourceUpdate, SanctionsRefreshRun,
+    HarvestRun, SanctionsRefreshRun,
 )
 from models.beneficiary_records import BeneficiaryRecord
 from models.beneficiary_sources_config import BeneficiarySourceConfig
@@ -560,14 +560,20 @@ def run_beneficiary_harvest(triggered_by: str = "cron") -> dict:
         # Versuche Counts aus Output zu extrahieren (best-effort)
         for line in (result.stdout or "").splitlines():
             if line.startswith("Quellen ok:"):
-                try: run.sources_ok = int(line.split(":")[1].strip())
-                except Exception: pass
+                try:
+                    run.sources_ok = int(line.split(":")[1].strip())
+                except Exception:
+                    pass
             elif line.startswith("Quellen fehler:"):
-                try: run.sources_failed = int(line.split(":")[1].strip())
-                except Exception: pass
+                try:
+                    run.sources_failed = int(line.split(":")[1].strip())
+                except Exception:
+                    pass
             elif line.startswith("Quellen total:"):
-                try: run.sources_total = int(line.split(":")[1].strip())
-                except Exception: pass
+                try:
+                    run.sources_total = int(line.split(":")[1].strip())
+                except Exception:
+                    pass
         db.commit()
         log.info("Harvest-Run %s ok=%s status=%s", run_id, success, status)
         return {"status": status, "run_id": run_id, "started_at": started.isoformat()}

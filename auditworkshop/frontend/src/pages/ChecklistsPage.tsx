@@ -2,12 +2,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ClipboardCheck, Search, FileText, AlertCircle, Users,
+  LayoutGrid, List, Rows3,
 } from 'lucide-react';
 import { listChecklistTemplates, type ChecklistTemplate } from '../lib/api';
 import { Skeleton } from '../components/ui/Skeleton';
 
 type StatusFilter = 'all' | 'draft' | 'published' | 'archived';
 type SortKey = 'updated' | 'title' | 'status';
+type ViewMode = 'grid' | 'list' | 'compact';
+
+const VIEW_KEY = 'checklistViewMode';
+
+function loadViewMode(): ViewMode {
+  const raw = localStorage.getItem(VIEW_KEY);
+  if (raw === 'grid' || raw === 'list' || raw === 'compact') return raw;
+  return 'grid';
+}
 
 // Status-Normalisierung (Backend liefert Lowercase-Strings, ggf. Enum-Form)
 function normStatus(raw: string): 'draft' | 'published' | 'archived' {
@@ -57,6 +67,12 @@ export default function ChecklistsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('updated');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => loadViewMode());
+
+  const changeViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem(VIEW_KEY, mode);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -146,6 +162,23 @@ export default function ChecklistsPage() {
           <option value="title">Titel (A–Z)</option>
           <option value="status">Status</option>
         </select>
+
+        {/* Ansichts-Umschalter */}
+        <div
+          role="group"
+          aria-label="Ansicht wählen"
+          className="inline-flex items-center gap-0.5 rounded-lg border border-slate-300 bg-white p-0.5 dark:border-slate-600 dark:bg-slate-800"
+        >
+          <ViewButton active={viewMode === 'grid'} onClick={() => changeViewMode('grid')} label="Kacheln">
+            <LayoutGrid size={16} />
+          </ViewButton>
+          <ViewButton active={viewMode === 'list'} onClick={() => changeViewMode('list')} label="Liste">
+            <List size={16} />
+          </ViewButton>
+          <ViewButton active={viewMode === 'compact'} onClick={() => changeViewMode('compact')} label="Kompakt">
+            <Rows3 size={16} />
+          </ViewButton>
+        </div>
       </div>
 
       {error && (
@@ -183,7 +216,7 @@ export default function ChecklistsPage() {
             </>
           )}
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map((t) => (
             <button
@@ -227,7 +260,94 @@ export default function ChecklistsPage() {
             </button>
           ))}
         </div>
+      ) : viewMode === 'list' ? (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+          {/* Spaltenkopf — nur auf breiteren Viewports */}
+          <div className="hidden border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-500 sm:flex sm:items-center sm:gap-4">
+            <span className="flex-1">Titel</span>
+            <span className="w-28">Status</span>
+            <span className="w-24 text-right">Knoten</span>
+            <span className="w-28">Rolle</span>
+            <span className="w-24 text-right">Geändert</span>
+          </div>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {filtered.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/checklisten/${t.id}`)}
+                  className="group flex w-full flex-col gap-2 px-4 py-3 text-left transition-colors hover:bg-emerald-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 dark:hover:bg-emerald-950/20 sm:flex-row sm:items-center sm:gap-4"
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <ClipboardCheck size={15} className="shrink-0 text-emerald-500" />
+                    <span className="truncate text-sm font-medium text-slate-800 group-hover:text-emerald-700 dark:text-slate-100 dark:group-hover:text-emerald-300">
+                      {t.title}
+                    </span>
+                  </span>
+                  <span className="w-28 shrink-0">
+                    <StatusBadge status={t.status} />
+                  </span>
+                  <span className="w-24 shrink-0 text-xs text-slate-500 dark:text-slate-400 sm:text-right">
+                    {t.node_count > 0 ? `${t.node_count} Knoten` : '—'}
+                  </span>
+                  <span className="w-28 shrink-0 truncate text-xs text-slate-500 dark:text-slate-400">
+                    {t.my_role || '—'}
+                  </span>
+                  <span className="w-24 shrink-0 text-xs text-slate-400 dark:text-slate-500 sm:text-right">
+                    {formatDate(t.updated_at)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {filtered.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/checklisten/${t.id}`)}
+                  className="group flex w-full items-center gap-2.5 px-3 py-1.5 text-left transition-colors hover:bg-emerald-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 dark:hover:bg-emerald-950/20"
+                >
+                  <ClipboardCheck size={14} className="shrink-0 text-emerald-500" />
+                  <span className="min-w-0 flex-1 truncate text-sm text-slate-700 group-hover:text-emerald-700 dark:text-slate-200 dark:group-hover:text-emerald-300">
+                    {t.title}
+                  </span>
+                  <StatusBadge status={t.status} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
+  );
+}
+
+function ViewButton({
+  active, onClick, label, children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={`Ansicht: ${label}`}
+      title={label}
+      className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+        active
+          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300'
+      }`}
+    >
+      {children}
+    </button>
   );
 }

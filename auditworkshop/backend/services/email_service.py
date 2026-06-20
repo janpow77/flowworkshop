@@ -118,10 +118,7 @@ Admin-Bereich: {{ public_url }}/admin
             "Einladung mit Setup-Link für Selbst-Passwort-Vergabe. Wird vom "
             "Admin-Button \"Mail senden\" im AdminUsersPanel ausgelöst."
         ),
-        "subject": (
-            "Erweiterte Recherche- und Auswertungsbereiche der Plattform "
-            "„KI und LLM für Prüfbehörden\""
-        ),
+        "subject": "Freigabelink zur Workshop-Seite der Prüfbehörden",
         "placeholders": ["first_name", "last_name", "setup_url", "public_url"],
         "body": """\
 Guten Tag {{ first_name }} {{ last_name }},
@@ -176,10 +173,9 @@ Wichtiger Hinweis zur Trägerschaft
 ==================================
 
 Dieses Angebot ist ein rein privates, nicht-kommerzielles Vorhaben von
-Jan Riener als Privatperson. Die Hessische Prüfbehörde EFRE ist weder
-Veranstalterin noch Verantwortliche und tritt nicht als
-Datenverarbeiterin auf. Die Inhalte und die Plattform stehen in keinem
-dienstlichen Zusammenhang.
+Jan Riener als Privatperson. Es steht in keinem dienstlichen Zusammenhang;
+eine Behörde oder Prüfbehörde ist weder Veranstalterin noch Verantwortliche
+und tritt nicht als Datenverarbeiterin auf.
 
 Datensicherheit: Bitte geben Sie auf der Plattform keine echten
 produktiven Vorhabens- oder Begünstigtendaten ein. Alle Recherchen
@@ -249,6 +245,78 @@ Registrierungs-ID: {{ user_id }}
 
 Bitte im Admin-Bereich prüfen und freischalten:
 {{ public_url }}/admin (Tab „Benutzer", Filter „Wartet auf Freigabe")
+""",
+    },
+
+    "signup_received": {
+        "description": (
+            "Eingangsbestätigung an die anmeldende Person direkt nach der "
+            "Selbst-Registrierung über /api/auth/signup. Bestätigt nur den "
+            "Eingang — die Freischaltung erfolgt erst durch den Admin."
+        ),
+        "subject": "Ihre Anmeldung ist eingegangen — {{ workshop_title }}",
+        "placeholders": [
+            "first_name", "last_name", "email", "organization",
+            "workshop_title", "public_url", "reply_to", "organizer",
+        ],
+        "body": """\
+Guten Tag {{ first_name }} {{ last_name }},
+
+vielen Dank für Ihre Anmeldung zum {{ workshop_title }}.
+
+Ihre Anmeldung ist bei uns eingegangen und wird vom Administrator geprüft.
+Sobald Ihr Zugang freigeschaltet ist, erhalten Sie eine gesonderte
+Benachrichtigung per E-Mail. Anschließend können Sie sich mit Ihrer
+E-Mail-Adresse und dem von Ihnen vergebenen Passwort einloggen.
+
+Wir haben folgende Daten erhalten:
+  Name        : {{ first_name }} {{ last_name }}
+  Organisation: {{ organization or '–' }}
+  E-Mail      : {{ email }}
+
+Bei Rückfragen erreichen Sie uns unter {{ reply_to }}.
+
+Mit freundlichen Grüßen
+{{ organizer }}
+
+—
+Hinweis: Diese Nachricht wurde automatisch erzeugt. Datenschutz­erklärung
+und Impressum finden Sie unter {{ public_url }}/datenschutz bzw.
+{{ public_url }}/impressum.
+""",
+    },
+
+    "account_approved": {
+        "description": (
+            "Freischaltungs-Mail an die anmeldende Person, sobald der Admin "
+            "ihren Account von pending_approval auf active gesetzt hat "
+            "(/api/auth/users/{id}/approve)."
+        ),
+        "subject": "Ihr Zugang ist freigeschaltet — {{ workshop_title }}",
+        "placeholders": [
+            "first_name", "last_name", "email", "login_url",
+            "workshop_title", "public_url", "reply_to", "organizer",
+        ],
+        "body": """\
+Guten Tag {{ first_name }} {{ last_name }},
+
+Ihr Zugang zum {{ workshop_title }} ist jetzt freigeschaltet — Sie können
+sich ab sofort einloggen:
+
+  {{ login_url }}
+
+Melden Sie sich bitte mit Ihrer E-Mail-Adresse ({{ email }}) und dem von
+Ihnen bei der Anmeldung vergebenen Passwort an.
+
+Bei Rückfragen erreichen Sie uns unter {{ reply_to }}.
+
+Mit freundlichen Grüßen
+{{ organizer }}
+
+—
+Hinweis: Diese Nachricht wurde automatisch erzeugt. Datenschutz­erklärung
+und Impressum finden Sie unter {{ public_url }}/datenschutz bzw.
+{{ public_url }}/impressum.
 """,
     },
 }
@@ -343,7 +411,7 @@ async def _generate_ai_paragraph(
             resp = await client.post(
                 f"{config.EGPU_GATEWAY_URL}/v1/chat/completions",
                 json=payload,
-                headers={"X-App-Id": config.EGPU_GATEWAY_APP_ID},
+                headers=config.gateway_headers(config.EGPU_GATEWAY_APP_ID),
             )
             if resp.status_code >= 400:
                 log.warning(
@@ -428,7 +496,7 @@ async def send_registration_confirmation(
     department: str | None,
     fund: str | None,
     ai_consent: bool,
-    workshop_title: str = "Prüferworkshop EFRE Hessen 2026",
+    workshop_title: str = "Prüferworkshop 2026",
 ) -> bool:
     """Sendet die Anmeldebestätigung an den Teilnehmer.
 
@@ -484,6 +552,79 @@ async def send_account_invite(
         "last_name": last_name,
         "setup_url": setup_url,
         "public_url": config.EMAIL_PUBLIC_URL.rstrip("/"),
+    })
+    msg = _build_message(
+        to_addr=email,
+        subject=subject,
+        body_text=body,
+        reply_to=config.SMTP_FROM,
+    )
+    return await _send_message(msg)
+
+
+async def send_signup_received(
+    *,
+    first_name: str,
+    last_name: str,
+    email: str,
+    organization: str | None = None,
+    workshop_title: str = "Prüferworkshop 2026",
+) -> bool:
+    """Eingangsbestätigung an die anmeldende Person nach der Selbst-Registrierung.
+
+    Bestätigt nur den Eingang der Anmeldung — die Freischaltung erfolgt erst
+    durch den Admin (separate Mail send_account_approved). Wird vom
+    /api/auth/signup-Endpoint als Background-Task aufgerufen.
+    """
+    if not is_configured():
+        return False
+
+    subject, body = _render("signup_received", {
+        "first_name": first_name,
+        "last_name": last_name,
+        "email": email,
+        "organization": organization,
+        "workshop_title": workshop_title,
+        "public_url": config.EMAIL_PUBLIC_URL.rstrip("/"),
+        "reply_to": config.SMTP_FROM,
+        "organizer": config.SMTP_FROM_NAME,
+    })
+    msg = _build_message(
+        to_addr=email,
+        subject=subject,
+        body_text=body,
+        reply_to=config.SMTP_FROM,
+    )
+    return await _send_message(msg)
+
+
+async def send_account_approved(
+    *,
+    first_name: str,
+    last_name: str,
+    email: str,
+    login_url: str,
+    workshop_title: str = "Prüferworkshop 2026",
+) -> bool:
+    """Freischaltungs-Mail an die anmeldende Person, sobald der Admin den
+    Account von pending_approval auf active gesetzt hat.
+
+    `login_url` ist die vollständige absolute Login-URL, z.B.
+    https://workshop.flowaudit.de/login. Wird von admin_approve_user als
+    Background-Task aufgerufen.
+    """
+    if not is_configured():
+        return False
+
+    subject, body = _render("account_approved", {
+        "first_name": first_name,
+        "last_name": last_name,
+        "email": email,
+        "login_url": login_url,
+        "workshop_title": workshop_title,
+        "public_url": config.EMAIL_PUBLIC_URL.rstrip("/"),
+        "reply_to": config.SMTP_FROM,
+        "organizer": config.SMTP_FROM_NAME,
     })
     msg = _build_message(
         to_addr=email,

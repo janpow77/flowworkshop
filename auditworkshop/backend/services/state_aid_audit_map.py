@@ -290,12 +290,10 @@ def render_audit_map(
     try:
         font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
         font_label = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 12)
-        font_body = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11)
         font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 9)
     except Exception:  # noqa: BLE001
         font_title = ImageFont.load_default()
         font_label = ImageFont.load_default()
-        font_body = ImageFont.load_default()
         font_small = ImageFont.load_default()
 
     # ── NUTS-Layer auf map_canvas ───────────────────────────────────────────

@@ -136,7 +136,7 @@ def _make_entity_and_match(
 ):
     """Hilfsfunktion: legt Entity + EntityMatch fuer Tests an."""
     from sqlalchemy import update
-    from models.entities import CompanyEntity, EntityMatch
+    from models.entities import EntityMatch
     from services.entity_resolution import (
         SOURCE_TABLES, _create_entity, _normalize_for_match,
     )
@@ -378,7 +378,7 @@ def test_select_eligible_orders_descending_and_respects_max(db_session):
     eligible = select_eligible_matches(db_session, params)
     # max 2 Records (kann sein, dass DB ohne Test-Daten viele eligible hat —
     # wir filtern auf unsere Test-Records)
-    our_eligible = [m for m in eligible if str(m.source_record_id).endswith(suffix)]
+    _our_eligible = [m for m in eligible if str(m.source_record_id).endswith(suffix)]
     # Mindestens unsere 2 neuesten sind drin (sofern DB-Bestand klein) ODER
     # max_matches greift wirklich auf 2 → unsere koennten alle ausserhalb sein.
     assert len(eligible) <= 2
@@ -406,7 +406,6 @@ def test_verify_match_via_llm_yes_high_conf_setzt_auto_confirm(db_session):
         AUTO_CONFIRM_USER_ID, verify_match_via_llm,
     )
     from models.state_aid import StateAidAward
-    from models.entities import EntityMatch
     import uuid
 
     suffix = uuid.uuid4().hex[:8]
@@ -804,7 +803,7 @@ def test_run_batch_verification_idempotent_skips_verified(db_session):
         with patch(
             "services.entity_match_llm_verifier.verify_match_pair",
             AsyncMock(return_value=verdict),
-        ) as mock_call:
+        ):
             result2 = run_batch_verification(
                 db_session, params, triggered_by="test-2",
             )

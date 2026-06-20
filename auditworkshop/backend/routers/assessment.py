@@ -14,7 +14,7 @@ from database import SessionLocal, get_db
 from routers.auth import require_session
 from models.checklist import WorkshopQuestion, WorkshopEvidence, RemarkAiStatus
 from schemas.checklist import RejectFeedbackIn, EditRemarkIn
-from services import knowledge_service as ks
+from services import router_knowledge_service as ks
 from services.ollama_service import stream as ollama_stream
 from config import DISCLAIMER
 

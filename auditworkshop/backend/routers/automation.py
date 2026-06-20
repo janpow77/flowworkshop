@@ -8,12 +8,12 @@ import logging
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import desc, func
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.automation import (
-    HarvestRun, HarvestSourceUpdate, SanctionsRefreshRun, LlmQuestionLog,
+    HarvestRun, SanctionsRefreshRun, LlmQuestionLog,
 )
 from routers.auth import require_admin
 

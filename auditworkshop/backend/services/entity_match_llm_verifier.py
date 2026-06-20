@@ -33,7 +33,6 @@ Tagesfenster. 30 s sind ein guter Kompromiss.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 from dataclasses import asdict, dataclass, field

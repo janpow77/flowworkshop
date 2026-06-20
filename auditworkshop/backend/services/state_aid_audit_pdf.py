@@ -20,7 +20,6 @@ Mai 2026 — Erweiterung:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # nur für Type-Hints, vermeidet Import-Loop
@@ -143,7 +142,6 @@ class _RenderState:
         self.new_page()
 
     def new_page(self) -> None:
-        import fitz  # type: ignore
         self.page = self.doc.new_page(width=PAGE_WIDTH, height=PAGE_HEIGHT)
         self._page_indices.append(self.page.number)
         self.cursor_y = MARGIN + 30  # erste Zeile unter Header
@@ -1689,17 +1687,6 @@ def _render_persons_check_section(state: _RenderState) -> None:
             source_label = _PERSON_SOURCE_LABELS.get(
                 source_key, source_key.upper()[:8],
             )
-            # Programm: erstes Element aus sanctions/program_ids
-            san_list = h.get("sanctions") or []
-            prog_ids = h.get("program_ids") or []
-            if isinstance(san_list, str):
-                program = san_list
-            elif isinstance(san_list, list) and san_list:
-                program = "; ".join(str(s) for s in san_list[:2])
-            elif isinstance(prog_ids, list) and prog_ids:
-                program = "; ".join(str(s) for s in prog_ids[:2])
-            else:
-                program = "—"
             aliases_full = h.get("aliases") or []
             aliases_short = "; ".join(str(a) for a in aliases_full[:2])
             if len(aliases_full) > 2:

@@ -9,7 +9,6 @@ Werden im Container automatisch von pytest entdeckt (Pfad backend/tests/).
 from __future__ import annotations
 
 import csv
-import os
 from pathlib import Path
 
 import pytest

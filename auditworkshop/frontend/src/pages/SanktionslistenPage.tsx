@@ -46,6 +46,12 @@ type SanctionsList = {
   is_searchable_locally: boolean;
 };
 
+// Einheitlicher Default-Schwellenwert — deckungsgleich mit dem Backend-Default
+// (SANCTIONS_DEFAULT_MIN_SCORE in routers/sanctions.py) und der in den
+// DSGVO-Texten genannten Schwelle. Der Slider beginnt bewusst nicht unterhalb
+// dieses Werts, damit UI und Begründung konsistent bleiben (Befund 7).
+const SANCTIONS_MIN_SCORE_DEFAULT = 70;
+
 type MethodStep = { title: string; text: string };
 type MethodInfo = {
   title: string;
@@ -263,7 +269,7 @@ export default function SanktionslistenPage() {
 
   // Suche
   const [query, setQuery] = useState('');
-  const [minScore, setMinScore] = useState(70);
+  const [minScore, setMinScore] = useState(SANCTIONS_MIN_SCORE_DEFAULT);
   const [schemaFilter, setSchemaFilter] = useState<'' | 'Person' | 'Organization'>('');
   const [searchResult, setSearchResult] = useState<SanctionsSearchResponse | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -594,7 +600,7 @@ export default function SanktionslistenPage() {
                 Die Fuzzy-Suche über die unten dokumentierten Sanktionslisten ist auf dieser
                 Schulungs- und Demonstrationsplattform <strong>nicht freigeschaltet</strong>.
                 Die Listen enthalten personenbezogene Daten, und die hier eingesetzte
-                Ähnlichkeitssuche (Schwelle 65 %) erzeugt nicht selten Treffer für unbeteiligte
+                Ähnlichkeitssuche (Schwelle 70 %) erzeugt nicht selten Treffer für unbeteiligte
                 Namensvettern. Eine Verarbeitung dieser Daten außerhalb einer konkreten,
                 rechtlich gestützten Sanktionsprüfung wäre nicht durch die Zweckbindung nach
                 Art. 5 Abs. 1 lit. b DSGVO gedeckt.
@@ -718,7 +724,7 @@ export default function SanktionslistenPage() {
                   <span className="text-slate-600 dark:text-slate-300">Schwellenwert</span>
                   <input
                     type="range"
-                    min={50}
+                    min={SANCTIONS_MIN_SCORE_DEFAULT}
                     max={100}
                     step={5}
                     value={minScore}

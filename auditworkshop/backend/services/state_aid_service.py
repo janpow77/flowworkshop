@@ -21,7 +21,7 @@ from pathlib import Path
 
 from rapidfuzz import fuzz, process
 from rapidfuzz.distance import JaroWinkler
-from sqlalchemy import or_, text, func as sql_func
+from sqlalchemy import or_, func as sql_func
 from sqlalchemy.orm import Session
 
 from models.state_aid import StateAidAward
@@ -813,7 +813,7 @@ def _smart_fuzzy_score(q_norm: str, c_norm: str) -> tuple[float, dict]:
     # c_cov hoch bei len(c_tokens)==1: Candidate ist Single-Token, nur dann
     #                     gueltig wenn der Token NICHT generic ist UND in der
     #                     Query ein dominanter Identifier ist.
-    n_q, n_c = len(q_tokens), len(c_tokens)
+    _n_q, n_c = len(q_tokens), len(c_tokens)
 
     # Generic-only-Match: gemeinsame Tokens sind ausschliesslich Stop-Tokens
     only_generic = all(t in _GENERIC_TOKENS for t in common)

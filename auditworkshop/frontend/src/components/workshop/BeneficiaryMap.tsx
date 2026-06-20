@@ -5,7 +5,7 @@ import type { Layer, PathOptions } from 'leaflet';
 import {
   Loader2, MapPin, AlertTriangle, X, FileSpreadsheet,
   Trash2, ShieldCheck, FileImage, FileText, Maximize2, Minimize2,
-  Layers,
+  Layers, RefreshCw,
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -294,8 +294,12 @@ export default function BeneficiaryMap({
     setLoading(true);
     setError('');
     try {
+      // Timeout, damit ein hängendes Backend nicht als nacktes „failed to fetch"
+      // endet. Bei warmem Cache antwortet /map im Millisekundenbereich; 60 s
+      // decken den kalten Erstaufbau ab.
       const res = await fetch(`/api/beneficiaries/map${countryQuery}`, {
         headers: { ...getWorkshopAuthHeaders() },
+        signal: AbortSignal.timeout(60000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
@@ -307,7 +311,13 @@ export default function BeneficiaryMap({
         setRegionLabel(countryCode === 'AT' ? 'Bundesland' : 'Bundesland');
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
+      const msg =
+        e instanceof DOMException && e.name === 'TimeoutError'
+          ? 'Zeitüberschreitung beim Laden der Kartendaten. Bitte erneut versuchen.'
+          : e instanceof Error
+            ? `Kartendaten konnten nicht geladen werden (${e.message}).`
+            : 'Kartendaten konnten nicht geladen werden.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -474,7 +484,15 @@ export default function BeneficiaryMap({
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-2 flex items-center gap-2 text-sm">
           <AlertTriangle size={16} className="text-red-500 shrink-0" />
           <span className="text-red-600 dark:text-red-400">{error}</span>
-          <button onClick={() => setError('')} className="ml-auto text-red-400 hover:text-red-600"><X size={14} /></button>
+          <button
+            onClick={() => loadMap()}
+            disabled={loading}
+            className="ml-auto inline-flex items-center gap-1 rounded border border-red-300 dark:border-red-700 px-2 py-0.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50"
+          >
+            {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            Wiederholen
+          </button>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600"><X size={14} /></button>
         </div>
       )}
 

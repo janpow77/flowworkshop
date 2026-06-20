@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from database import engine, Base
+from database import engine
 from services.knowledge_service import init_db
 from services.ollama_service import check_ollama, warmup_gateway_model
 from routers import workshop, knowledge, system
@@ -849,6 +849,22 @@ async def lifespan(app: FastAPI):
     import asyncio
     from services.scheduler import scheduler_loop
     scheduler_task = asyncio.create_task(scheduler_loop())
+
+    # Map-Cache vorwärmen: der Aufbau der Begünstigten-Kartendaten dauert ~19 s
+    # und blockierte bisher den ersten Karten-/HomePage-Aufruf (→ failed to fetch).
+    # Läuft im Hintergrund-Thread, damit der Start nicht blockiert.
+    try:
+        from routers.beneficiaries import warm_map_cache
+
+        async def _warm_map() -> None:
+            try:
+                await asyncio.to_thread(warm_map_cache, ("DE", "AT", None))
+            except Exception:  # noqa: BLE001
+                log.exception("Map-Cache-Warmup fehlgeschlagen")
+
+        asyncio.create_task(_warm_map())
+    except Exception as e:  # noqa: BLE001
+        log.warning("Map-Cache-Warmup konnte nicht gestartet werden: %s", e)
 
     yield
     # ── Shutdown ───────────────────────────────────────────

@@ -19,7 +19,8 @@ Refreshes neu aufgenommen oder aktualisiert wird, traegt die
 nachvollziehbar, in welchem Lauf welcher Eintrag dazu kam.
 """
 from sqlalchemy import (
-    BigInteger, Column, DateTime, Index, String, Text, UniqueConstraint, func,
+    BigInteger, Boolean, Column, DateTime, Index, String, Text,
+    UniqueConstraint, func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -70,6 +71,13 @@ class SanctionsEntry(Base):
     # Audit-Spur: welcher Refresh-Lauf hat diesen Eintrag aufgenommen/aktualisiert.
     refresh_run_id = Column(BigInteger, nullable=True, index=True)
 
+    # De-Listing / Tombstone: True, wenn der Eintrag im letzten erfolgreichen
+    # Refresh der Quelle NICHT mehr in der OpenSanctions-CSV vorkam (Person/
+    # Organisation wurde de-gelistet). Solche Eintraege bleiben fuer den
+    # Audit-Trail (first_seen/last_seen/created_at) erhalten, werden aber aus
+    # dem In-Memory-Suchindex ausgeschlossen — siehe ``load_index_from_db``.
+    delisted = Column(Boolean, nullable=False, server_default="false")
+
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(
         DateTime, server_default=func.now(), onupdate=func.now(),
@@ -81,4 +89,7 @@ class SanctionsEntry(Base):
         ),
         Index("ix_sanctions_search", "name_normalized"),
         Index("ix_sanctions_schema_source", "source_key", "schema"),
+        # Beschleunigt den Index-Rebuild (load_index_from_db filtert pro
+        # source_key auf delisted=false).
+        Index("ix_sanctions_source_delisted", "source_key", "delisted"),
     )

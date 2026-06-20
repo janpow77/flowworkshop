@@ -11,7 +11,7 @@ Lauf: pytest backend/tests/test_audit_report_polish_v3.py -q
 from __future__ import annotations
 
 import sys
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch

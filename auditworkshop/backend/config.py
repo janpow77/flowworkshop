@@ -5,11 +5,40 @@ Zentrale Konfiguration — System-Prompts, Umgebungsvariablen, Konstanten.
 import os
 
 # ── Verbindungen ───────────────────────────────────────────────────────────
+# WICHTIG: EGPU_GATEWAY_URL und AI_ROUTER_URL sind ZWEI separate Dienste des
+# ai-routers, die in jedem realen Deployment per ENV gesetzt werden:
+#   • EGPU_GATEWAY_URL  → OpenAI-kompatibler /v1-Pfad (Chat-Completions + /api/embed).
+#                         Dev-Compose: …:7849, CCX23-Prod: http://llm-router:7842.
+#   • AI_ROUTER_URL     → Knowledge-API (/api/knowledge/*). Dev-Compose: ai-router:7842.
+# Die Defaults unten gelten NUR fuer einen bare-uvicorn-Start ohne Compose und
+# spiegeln die Dev-Compose-Topologie (Gateway 7849, Knowledge 7842).
 DATABASE_URL  = os.getenv("DATABASE_URL",  "postgresql://workshop:workshop@localhost:5433/workshop")
 OLLAMA_URL    = os.getenv("OLLAMA_URL",    "http://localhost:11434")
 LLM_BACKEND   = os.getenv("LLM_BACKEND",   "ollama").lower()
-EGPU_GATEWAY_URL = os.getenv("EGPU_GATEWAY_URL", "http://localhost:7842")
+EGPU_GATEWAY_URL = os.getenv("EGPU_GATEWAY_URL", "http://localhost:7849")
 EGPU_GATEWAY_APP_ID = os.getenv("EGPU_GATEWAY_APP_ID", "auditworkshop")
+# Optionaler Per-App-Key des ai-routers. Wird NUR gesendet, wenn gesetzt — der
+# Router erzwingt aktuell keinen Key (Live-Betrieb laeuft mit reinem X-App-Id).
+# Vorhanden, damit die App konform bleibt, falls der Router Key-Pflicht aktiviert.
+AI_ROUTER_API_KEY = os.getenv("AI_ROUTER_API_KEY", "").strip()
+
+# ── AI-Router (Knowledge-API) ──────────────────────────────────────────────
+AI_ROUTER_URL = os.getenv("AI_ROUTER_URL", "http://localhost:7842")
+WORKSHOP_APP_ID = os.getenv("WORKSHOP_APP_ID", "auditworkshop")
+
+
+def gateway_headers(app_id: str) -> dict[str, str]:
+    """Standard-Header fuer ai-router-/Gateway-Calls.
+
+    Liefert immer ``X-App-Id`` und haengt ``X-Api-Key`` nur an, wenn ein
+    ``AI_ROUTER_API_KEY`` konfiguriert ist. So bleibt der bisherige Betrieb
+    (nur X-App-Id) unveraendert, und die App ist gegen eine kuenftige
+    Key-Pflicht des Routers gewappnet.
+    """
+    headers = {"X-App-Id": app_id}
+    if AI_ROUTER_API_KEY:
+        headers["X-Api-Key"] = AI_ROUTER_API_KEY
+    return headers
 EGPU_WORKLOAD_TYPE = os.getenv("EGPU_WORKLOAD_TYPE", "llm")
 MODEL_NAME    = os.getenv("MODEL_NAME",    "qwen3:14b")
 # Europaeische Alternative: MODEL_NAME = "mistral:7b" (Mistral AI, Paris)
@@ -62,17 +91,85 @@ LLM_NUM_CTX     = int(os.getenv("LLM_NUM_CTX", "8192"))
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 LLM_NUM_GPU     = int(os.getenv("LLM_NUM_GPU", "99"))  # Alle Layer auf GPU
 LLM_MAX_TOKENS_DEFAULT = int(os.getenv("LLM_MAX_TOKENS_DEFAULT", "384"))
+# Hartes Wanduhr-Deadline pro /stream-Request (Sekunden). Verhindert, dass sich
+# Streaming-Read-Timeout und Non-Streaming-Fallback zu mehreren Minuten Haenger
+# addieren. Bei Ueberschreitung wird der Stream sauber mit Timeout beendet.
+LLM_STREAM_DEADLINE_S = int(os.getenv("LLM_STREAM_DEADLINE_S", "240"))
+# Read-Timeout des Non-Streaming-Fallbacks (Sekunden). Kuerzer als der
+# Streaming-Read (300s), damit ein leerer Stream nicht 300+300s blockt.
+LLM_FALLBACK_READ_TIMEOUT_S = int(os.getenv("LLM_FALLBACK_READ_TIMEOUT_S", "90"))
+# Fixer Seed fuer deterministische, reproduzierbare LLM-Verifikations-Calls
+# (Entity-/Cross-Reference-Pruefung). Greift nur bei deterministic=True.
+LLM_DETERMINISTIC_SEED = int(os.getenv("LLM_DETERMINISTIC_SEED", "42"))
+
+# ── pgvector / IVFFlat ─────────────────────────────────────────────────────
+# Anzahl der zu durchsuchenden IVFFlat-Listen pro Query (Default von pgvector
+# ist 1 → nur 1 von `lists` Listen wird gescannt, 30-50% Recall-Verlust).
+# Faustregel ~ sqrt(lists); bei lists=100 also ~10. Wird per `SET LOCAL
+# ivfflat.probes` vor semantischen Queries gesetzt (Entity-Embeddings + RAG).
+IVFFLAT_PROBES = int(os.getenv("IVFFLAT_PROBES", "10"))
 
 # ── Wissens-Recherche (KB-Search) ──────────────────────────────────────────
 # Modell fuer die KB-Textgenerierung im Recherche-Modul. Geht ueber das Gateway
-# (LLM_BACKEND=egpu-manager) an die Route "qwen3.5:* → evo-x2". Der echte
-# Ollama-Tag auf der evo-x2 ist "qwen3.5:35b-fast" (verifiziert ueber den
-# Router-Spoke-Healthcheck) — "qwen3.5:35b" ohne Suffix existiert dort NICHT.
-# Der Recherche-Modus ist KEINE Live-Demo, daher ist das langsamere, staerkere
-# Reasoning-Modell hier vertretbar (anders als bei den Szenarien 1-6).
-KB_RESEARCH_MODEL = os.getenv("KB_RESEARCH_MODEL", "qwen3.5:35b-fast")
+# (LLM_BACKEND=egpu-manager) an den ai-router.
+#
+# Stand 2026-05-25: Umstellung von "qwen3.5:35b-fast" (evo-x2) auf "qwen3:14b".
+# Begruendung (real gemessen, siehe Mess-Tabelle in der Analyse):
+#   - 35b-fast lieferte fuer die Generierung KEINEN Content: lange Reasoning-Phase,
+#     dann Read-Timeout (>200 s, 0 Text-Tokens). Der Schalter reasoning_effort
+#     wirkte dort nicht.
+#   - 14b liefert mit reasoning_effort="none" das erste Text-Token in ~0,1 s und
+#     eine vollstaendige, belegbasierte Antwort in ~20-25 s. Qualitaet fuer den
+#     belegbasierten Recherche-Modus voellig ausreichend.
+# Zurueckdrehen: ENV KB_RESEARCH_MODEL=qwen3.5:35b-fast setzen (nicht empfohlen,
+# solange der evo-x2-Spoke so langsam antwortet).
+KB_RESEARCH_MODEL = os.getenv("KB_RESEARCH_MODEL", "qwen3:14b")
+# Reasoning-Steuerung fuer die KB-Generierung. "none" schaltet die Denk-Phase
+# vollstaendig ab (sofortiger Content). WICHTIG: das fruehere "/no_think" im
+# User-Prompt wirkte am ai-router NICHT — nur der OpenAI-Parameter
+# reasoning_effort greift. Werte: none | low | medium | high.
+KB_RESEARCH_REASONING_EFFORT = os.getenv("KB_RESEARCH_REASONING_EFFORT", "none")
 # Wie viele Chunks als RAG-Kontext in die Generierung gehen.
-KB_RESEARCH_TOP_K = int(os.getenv("KB_RESEARCH_TOP_K", "6"))
+# 4 statt 6: weniger Prefill-Tokens → schnelleres erstes Token (Latenz P0).
+KB_RESEARCH_TOP_K = int(os.getenv("KB_RESEARCH_TOP_K", "4"))
+
+# Reranking der Generierungs-Treffer ueber den ai-router (BGE-Reranker-v2-m3).
+# Cross-Encoder bewertet die Kandidaten nach echter Relevanz zur Frage und loest
+# so z. B. die „Artikel 74"-Kollision zwischen VO 2021/1060 und dem EU AI Act —
+# domaenenneutral (eine AI-Act-Frage rankt AI-Act-Stellen oben). Ablauf:
+# grob KB_RERANK_POOL Treffer per Vektorsuche → reranken → beste KB_RESEARCH_TOP_K.
+KB_RERANK_ENABLED = os.getenv("KB_RERANK_ENABLED", "true").lower() in ("1", "true", "yes")
+KB_RERANK_POOL = int(os.getenv("KB_RERANK_POOL", "8"))
+KB_RERANK_THRESHOLD = float(os.getenv("KB_RERANK_THRESHOLD", "0.05"))
+KB_RERANK_MODEL = os.getenv("KB_RERANK_MODEL", "BAAI/bge-reranker-v2-m3")
+
+# Quellen-Gruppen fuer die Recherche: ein auswaehlbarer Eintrag bündelt mehrere
+# Einzelquellen. Wird in Suche + Generierung als Quellen-Filter expandiert.
+KB_SOURCE_GROUPS: dict[str, list[str]] = {
+    "Grundlagen Strukturfonds": [
+        "VO_2018_1046_DE",       # EU-Haushaltsordnung
+        "VO_2021_1060_DE",       # Dachverordnung (CPR)
+        "VO_2021_1058_DE",       # EFRE + Kohäsionsfonds
+        "VO_2021_1057_DE",       # ESF+
+        "VO_2021_1056_DE",       # JTF
+        "VO_2021_1059_DE",       # Interreg
+        "DVO_2023_1676_DE",      # DelVO: SCO-Definitionen (Kosten je Einheit, Pauschalen)
+        "DVO_2023_0067_DE",      # DelVO: standardisierte Stichprobenmethoden
+        "DVO_2022_2175_DE",      # DelVO: ALMA — Kosten je Einheit
+        "DVO_2025_2190_DE",      # DelVO: Interventionskategorien (Anhang I)
+    ],
+    "Beihilferecht": [
+        "AEUV_KONSOLIDIERT_DE",            # AEUV (Art. 107-109)
+        "AGVO_651_2014_DE",               # Allgemeine Gruppenfreistellungsverordnung
+        "DEMINIMIS_2023_2831_DE",         # De-minimis
+        "DEMINIMIS_DAWI_2023_2832_DE",    # De-minimis DAWI
+        "DAWI_BESCHLUSS_2012_21_DE",      # DAWI-Freistellungsbeschluss
+        "VERFAHRENS_VO_2015_1589_DE",     # Beihilfeverfahren / Notifizierung
+        "KOM_LEITLINIEN_INTERESSENKONFLIKTE_DE",  # KOM-Leitlinien Interessenkonflikte
+    ],
+}
+# Standard-Quellenauswahl der Recherche (Gruppenname oder "" für alle Quellen).
+KB_DEFAULT_SOURCE = os.getenv("KB_DEFAULT_SOURCE", "Grundlagen Strukturfonds")
 # Wortmarke fuer die Abstention-Erkennung im Frontend (muss zum Prompt passen).
 KB_RESEARCH_ABSTENTION = "Die Wissensbasis enthält keine Belege zu dieser Frage."
 # System-Prompt fuer die KB-Textgenerierung. Strikt belegbasiert mit Abstention —
@@ -219,7 +316,7 @@ SMTP_STARTTLS      = os.getenv("SMTP_STARTTLS", "true").lower() == "true"
 SMTP_USER          = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD      = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM          = os.getenv("SMTP_FROM", "jan.riener@vwvg.de")
-SMTP_FROM_NAME     = os.getenv("SMTP_FROM_NAME", "Prüferworkshop EFRE Hessen")
+SMTP_FROM_NAME     = os.getenv("SMTP_FROM_NAME", "Prüferworkshop")
 ADMIN_NOTIFY_EMAIL = os.getenv("ADMIN_NOTIFY_EMAIL", "jan.riener@vwvg.de")
 EMAIL_TIMEOUT_S    = int(os.getenv("EMAIL_TIMEOUT_S", "20"))
 # Public-URL für Links in Mails (Login, Tagesordnung)

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, Form
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
@@ -134,8 +134,10 @@ def _disk_used() -> int:
     total = 0
     for p in STORAGE_ROOT.rglob("*"):
         if p.is_file():
-            try: total += p.stat().st_size
-            except Exception: pass
+            try:
+                total += p.stat().st_size
+            except Exception:
+                pass
     return total
 
 
@@ -236,7 +238,6 @@ async def upload_file(
     if not folder:
         raise HTTPException(404, "Ordner nicht gefunden.")
     user = _check_role_can_upload(folder, request, db)
-    role = "admin" if user.role == "admin" else ("moderator" if user.role == "moderator" else "attendee")
 
     content = await file.read()
     size = len(content)

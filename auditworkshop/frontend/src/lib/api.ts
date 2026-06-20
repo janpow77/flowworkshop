@@ -360,6 +360,124 @@ export interface ReferenceRegistrySearchResponse {
   hits: ReferenceRegistryHit[];
 }
 
+// ── Entity-Resolution (Konsolidierte Firmensicht) ─────────────────────────────
+// Endpunkte: backend/routers/entities.py (Prefix /api/entities). Lese-Sicht
+// (search/detail) verlangt eine gueltige Session (require_session); das
+// Bestaetigen/Ablehnen eines Matches ist Admin-only (require_admin).
+
+/** Ein Suchtreffer der Master-Entity-Suche (GET /api/entities/search). */
+export interface EntitySearchHit {
+  id: number;
+  canonical_name: string;
+  canonical_name_normalized: string;
+  entity_type: string;
+  country_code: string | null;
+  lei: string | null;
+  match_count: number;
+  has_state_aid: boolean;
+  has_beneficiary: boolean;
+  has_sanctions: boolean;
+}
+
+export interface EntitySearchResponse {
+  count: number;
+  results: EntitySearchHit[];
+}
+
+/**
+ * Quellmodul eines Matches. Bestimmt das Register, aus dem der Datensatz
+ * stammt (Beihilfe-Register, Begünstigtenverzeichnis, Sanktionsliste).
+ */
+export type EntitySourceModule = 'state_aid' | 'beneficiary' | 'sanctions' | string;
+
+/**
+ * Ein einzelnes Match (Zuordnung eines Registereintrags zu einer Entity).
+ * ``match_method`` ist z.B. ``lei``, ``identifier``, ``name_exact`` oder
+ * ``name_fuzzy_NN``; ``match_confidence`` ist 0–100. ``match_evidence`` ist
+ * ein loses Schlüssel/Wert-Objekt (z.B. ``lei``, ``name_in_record``,
+ * ``fuzzy_score``) — die UI rendert es lesbar als Liste.
+ */
+export interface EntityMatch {
+  id: number;
+  source_module: EntitySourceModule;
+  source_record_id: string;
+  source_table: string;
+  match_method: string;
+  match_confidence: number;
+  match_evidence: Record<string, unknown> | null;
+  confirmed_by_user_id: string | null;
+  confirmed_at: string | null;
+  rejected: boolean;
+  created_at: string | null;
+}
+
+/** Minimal-Referenz auf eine verbundene Entity (Konzern-Hierarchie). */
+export interface EntityMinimal {
+  id: number;
+  canonical_name: string;
+  lei: string | null;
+  country_code: string | null;
+}
+
+/** Detail einer Entity inkl. aller Matches und Konzern-Hierarchie. */
+export interface EntityDetail {
+  id: number;
+  canonical_name: string;
+  canonical_name_normalized: string;
+  entity_type: string;
+  country_code: string | null;
+  lei: string | null;
+  identifiers: Record<string, unknown> | null;
+  addresses: Array<Record<string, unknown>> | null;
+  parent_entity_id: number | null;
+  ultimate_parent_entity_id: number | null;
+  parent: EntityMinimal | null;
+  ultimate_parent: EntityMinimal | null;
+  children: EntityMinimal[];
+  matches: EntityMatch[];
+  discovered_at: string | null;
+  last_seen_at: string | null;
+}
+
+/** Antwort von confirm/reject — nur die geänderten Match-Felder. */
+export interface EntityMatchActionResult {
+  id: number;
+  entity_id: number;
+  rejected: boolean;
+  confirmed_by_user_id: string | null;
+  confirmed_at?: string | null;
+}
+
+/** Master-Suche für die konsolidierte Firmensicht (require_session). */
+export const searchEntities = (
+  q: string,
+  opts?: { country_code?: string; limit?: number },
+) => {
+  const query = new URLSearchParams();
+  query.set('q', q);
+  if (opts?.country_code) query.set('country_code', opts.country_code);
+  if (typeof opts?.limit === 'number') query.set('limit', String(opts.limit));
+  return request<EntitySearchResponse>(`/entities/search?${query.toString()}`);
+};
+
+/** Detail einer Entity inkl. Matches und Hierarchie (require_session). */
+export const getEntity = (id: number) =>
+  request<EntityDetail>(`/entities/${id}`);
+
+/** Bestätigt ein Match (Admin-only, require_admin). */
+export const confirmEntityMatch = (entityId: number, matchId: number) =>
+  request<EntityMatchActionResult>(
+    `/entities/${entityId}/match/${matchId}/confirm`,
+    { method: 'POST' },
+  );
+
+/** Lehnt ein Match ab — Audit-Trail bleibt erhalten (Admin-only, require_admin). */
+export const rejectEntityMatch = (entityId: number, matchId: number) =>
+  request<EntityMatchActionResult>(
+    `/entities/${entityId}/match/${matchId}/reject`,
+    { method: 'POST' },
+  );
+
 // ── Checklisten-Templates (Designer) ──────────────────────────────────────────
 
 export type ChecklistTemplateStatus = 'draft' | 'published' | 'archived';
@@ -1208,6 +1326,11 @@ export const deleteChecklistCategory = (id: string, catId: string) =>
   request<void>(`/checklist-templates/${id}/categories/${catId}`, { method: 'DELETE' });
 
 // Knowledge
+export interface KnowledgeGroups {
+  groups: Record<string, string[]>;
+  default_source: string;
+}
+export const getKnowledgeGroups = () => request<KnowledgeGroups>('/knowledge/groups');
 export const getKnowledgeStats = () => request<KnowledgeStats>('/knowledge/stats');
 export const searchKnowledge = (q: string, topK = 5) =>
   request<{ query: string; results: SearchResult[] }>(`/knowledge/search?q=${encodeURIComponent(q)}&top_k=${topK}`);
@@ -1233,7 +1356,8 @@ export interface KbGenerateParams {
 }
 
 /**
- * Streamt eine belegbasierte KB-Generierung (qwen3.5:35b über den ai-router).
+ * Streamt eine belegbasierte KB-Generierung (Modell aus KB_RESEARCH_MODEL,
+ * Default qwen3:14b, über den ai-router).
  * Die Quellen kommen als erstes Meta-Event (onSources), danach die Tokens.
  */
 export function streamKbGenerate(
@@ -1347,7 +1471,7 @@ export function streamSSE(
   url: string,
   body: unknown,
   onToken: (token: string) => void,
-  onDone: (info: { token_count?: number; model?: string; tok_per_s?: number }) => void,
+  onDone: (info: { token_count?: number; model?: string; tok_per_s?: number; engine?: string }) => void,
   onError: (err: string) => void,
   onStatus?: (state: string) => void,
   onMeta?: (data: Record<string, unknown>) => void,

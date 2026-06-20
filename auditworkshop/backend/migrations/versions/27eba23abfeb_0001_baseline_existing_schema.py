@@ -1,7 +1,7 @@
 """0001 baseline existing schema
 
 Revision ID: 27eba23abfeb
-Revises: 
+Revises:
 Create Date: 2026-05-24 07:58:42.940987
 
 """

@@ -140,9 +140,9 @@ def main() -> int:
                 return len(fuzzy_match_company(db, q, country_code=c, limit=20))
 
             if args.runs > 1:
-                warm_med, warm_mean, hits_warm = _measure(warm_run, runs=args.runs - 1)
+                warm_med, _warm_mean, _hits_warm =_measure(warm_run, runs=args.runs - 1)
             else:
-                warm_med, warm_mean, hits_warm = cold_med, cold_mean, hits_cold
+                warm_med, _warm_mean, _hits_warm =cold_med, cold_mean, hits_cold
 
             legacy_med = legacy_mean = legacy_count = None
             if args.legacy:

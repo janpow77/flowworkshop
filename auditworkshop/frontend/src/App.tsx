@@ -19,6 +19,7 @@ const AgendaForumPage = lazy(() => import('./pages/AgendaForumPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const HubPage = lazy(() => import('./pages/HubPage'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 const ScenarioPage = lazy(() => import('./pages/ScenarioPage'));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
@@ -120,12 +121,17 @@ export default function App() {
           </Route>
         )}
 
+        {/* Start-/Auswahlseite nach dem Login — eigenstaendiges Vollbild-Layout
+            (Kachel-Optik wie Login), OHNE AppShell. Die Workshop-Plattform
+            (HubPage) liegt eine Ebene tiefer unter /hub und wird ueber die
+            „Pruefer-Workshop"-Kachel erreicht. */}
+        {authToken && (
+          <Route path="/" element={<LazyPage><LandingPage /></LazyPage>} />
+        )}
+
         {authToken ? (
           <Route element={<AppShell />}>
-            {/* Startseite je nach Phase */}
-            {/* Startseite = Kachel-Uebersicht (Hub). Der Workshop ist vorbei;
-                die Seite dient jetzt als dauerhafte Info-/Austausch-Plattform. */}
-            <Route index element={<LazyPage><HubPage /></LazyPage>} />
+            {/* Workshop-Plattform: Forum, Dokumente, Agenda, Szenarien … */}
             <Route path="/hub" element={<LazyPage><HubPage /></LazyPage>} />
             {/* Alte Workshop-Startseite (Hero/Anmeldung) weiterhin erreichbar */}
             <Route path="/willkommen" element={<LazyPage><HomePage /></LazyPage>} />
