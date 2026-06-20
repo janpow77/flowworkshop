@@ -37,6 +37,9 @@ jobs:
           - component: frontend
             context: auditworkshop/frontend
             image: ghcr.io/janpow77/auditworkshop-frontend
+          - component: security-screenshot
+            context: auditworkshop/security-screenshot
+            image: ghcr.io/janpow77/auditworkshop-security-screenshot
     steps:
       - name: Checkout
         uses: actions/checkout@v4
