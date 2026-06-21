@@ -20,6 +20,7 @@ Laufzeit des Dienstes wiederverwendet.
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 
@@ -33,6 +34,13 @@ log = logging.getLogger("security-screenshot")
 
 # Strikter Render-Timeout (Navigation) in Millisekunden.
 RENDER_TIMEOUT_MS = 25_000
+# Best-effort-Wartezeit auf Netzwerk-Ruhe nach dem DOM (für SPAs, die ihre
+# Initialdaten erst nach dem load-Event holen). Wird das nicht erreicht
+# (z. B. Polling/SSE), fahren wir nach dem Settle-Delay trotzdem fort.
+NETWORKIDLE_TIMEOUT_MS = int(os.getenv("SCREENSHOT_NETWORKIDLE_MS", "8000"))
+# Fester Settle-Delay vor der Aufnahme: lässt die SPA nach dem Daten-Fetch
+# tatsächlich rendern/painten — verhindert leere Shell-/Spinner-Screenshots.
+SETTLE_MS = int(os.getenv("SCREENSHOT_SETTLE_MS", "2000"))
 VIEWPORT = {"width": 1280, "height": 800}
 ALLOWED_SCHEMES = ("http", "https")
 
@@ -95,7 +103,17 @@ async def screenshot(req: ScreenshotRequest) -> Response:
         )
         page = await context.new_page()
         page.set_default_navigation_timeout(RENDER_TIMEOUT_MS)
-        await page.goto(req.url, wait_until="load", timeout=RENDER_TIMEOUT_MS)
+        # 1) DOM laden (schnell, robust). 2) Netzwerk-Ruhe abwarten (best
+        #    effort — SPAs holen ihre Daten oft erst nach dem load-Event).
+        #    3) Fester Settle-Delay, damit die App tatsächlich rendert/paintet.
+        #    Ohne (2)+(3) wird die leere Shell bzw. der Lade-Spinner abgelichtet.
+        await page.goto(req.url, wait_until="domcontentloaded", timeout=RENDER_TIMEOUT_MS)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=NETWORKIDLE_TIMEOUT_MS)
+        except Exception:  # noqa: BLE001
+            log.info("networkidle nicht erreicht für %s — fahre nach Settle-Delay fort", req.url)
+        if SETTLE_MS > 0:
+            await page.wait_for_timeout(SETTLE_MS)
         png = await page.screenshot(type="png", full_page=req.full_page)
         return Response(content=png, media_type="image/png")
     except Exception as exc:  # noqa: BLE001
