@@ -20,6 +20,7 @@ from routers import checklist_templates
 from routers import checklist_collab
 from routers import checklist_history, checklist_export, checklist_translate
 from routers import checklist_discussion, checklist_versions
+from routers import checklist_package
 from routers import docs as docs_router, notifications, state_aid, admin_access, mail_templates
 from routers import beneficiaries_sources
 from routers import entities as entities_router
@@ -925,6 +926,7 @@ app.include_router(checklist_translate.router)
 # Team-Diskussion/Status/Unread/Referenz-Docs + Ganz-Checklisten-Versionen
 app.include_router(checklist_discussion.router)
 app.include_router(checklist_versions.router)
+app.include_router(checklist_package.router)
 app.include_router(assessment.router)
 app.include_router(demo_data.router)
 app.include_router(dataframes.router)
