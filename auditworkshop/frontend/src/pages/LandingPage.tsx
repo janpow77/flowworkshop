@@ -37,7 +37,9 @@ export default function LandingPage() {
 
   // Alle Kacheln navigieren. Die Recherche-Kachel entfaellt hier, weil das
   // Suchformular direkt unter den Kacheln eingebettet ist (siehe `exclude`).
-  const open = (tile: ToolTile) => navigate(tile.route);
+  // Externe Kacheln (z. B. E-Rechnungs-Assistent) verlassen die SPA per Vollnavigation.
+  const open = (tile: ToolTile) =>
+    tile.external ? window.location.assign(tile.route) : navigate(tile.route);
 
   return (
     <LandingBackdrop>
