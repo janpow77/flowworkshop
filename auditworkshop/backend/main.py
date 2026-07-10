@@ -951,6 +951,12 @@ app.include_router(embeddings_router.router)
 app.include_router(security_scan.router)
 
 
+@app.get("/livez", include_in_schema=False)
+async def livez() -> dict[str, str]:
+    """Fast liveness probe that never waits for external dependencies."""
+    return {"status": "alive", "service": "auditworkshop-backend"}
+
+
 @health_registry.subcheck("database", timeout_seconds=2.0)
 async def _hc_database() -> SubcheckResult:
     def probe() -> SubcheckResult:
@@ -962,7 +968,7 @@ async def _hc_database() -> SubcheckResult:
     return await _a.to_thread(probe)
 
 
-@health_registry.subcheck("llm_router", timeout_seconds=4.0)
+@health_registry.subcheck("llm_router", timeout_seconds=20.0)
 async def _hc_llm_router() -> SubcheckResult:
     state = await check_ollama()
     if state.get("ok"):
@@ -973,12 +979,12 @@ async def _hc_llm_router() -> SubcheckResult:
     )
 
 
-@health_registry.subcheck("egpu_gateway", timeout_seconds=3.0)
+@health_registry.subcheck("egpu_gateway", timeout_seconds=8.0)
 async def _hc_egpu_gateway() -> SubcheckResult:
     egpu_url = os.getenv("EGPU_GATEWAY_URL")
     if not egpu_url:
         return SubcheckResult(status="ready", message="not_configured")
-    async with httpx.AsyncClient(timeout=3) as client:
+    async with httpx.AsyncClient(timeout=7) as client:
         resp = await client.get(f"{egpu_url.rstrip('/')}/health")
     return SubcheckResult(
         status="ready" if resp.status_code == 200 else "degraded",

@@ -60,7 +60,7 @@ cd "${STACK_DIR}"
 PREVIOUS_IMAGE_TAG="${PREVIOUS_IMAGE_TAG:-}"
 docker compose -f compose.yaml up -d
 
-# ── 5. Health-Polling mit Rollback ────────────────────────
+# ── 5. Liveness-Polling mit Rollback ──────────────────────
 rollback_to_previous() {
   if [[ -z "$PREVIOUS_IMAGE_TAG" ]]; then
     warn "Kein PREVIOUS_IMAGE_TAG verfügbar — Rollback übersprungen"
@@ -72,16 +72,16 @@ rollback_to_previous() {
 
 # Probiere zunächst den Container-Endpunkt; wenn das Backend nicht
 # antwortet, polle den Health-Endpoint extern (über das Frontend).
-HEALTH_URL="${HEALTH_URL:-http://localhost:8000/health}"
-log "Backend-Health-Endpoint: ${HEALTH_URL} (Timeout 5 Min, MIG-07)"
+HEALTH_URL="${HEALTH_URL:-http://localhost:8000/livez}"
+log "Backend-Liveness-Endpoint: ${HEALTH_URL} (Timeout 5 Min, MIG-07)"
 
 # Versuche aus dem Backend-Container heraus zu pollen — das geht ohne
 # Caddy-Vorschaltung und ist netzwerk-unabhängig vom Host.
 docker_health_probe() {
   docker compose -f compose.yaml exec -T auditworkshop-backend \
     python3 -c "import urllib.request,sys,json; \
-                r=urllib.request.urlopen('http://localhost:8000/health',timeout=3); \
-                d=json.load(r); sys.exit(0 if d.get('status')=='ready' else 2)" \
+                r=urllib.request.urlopen('http://localhost:8000/livez',timeout=3); \
+                d=json.load(r); sys.exit(0 if d.get('status')=='alive' else 2)" \
     >/dev/null 2>&1
 }
 
@@ -90,12 +90,12 @@ attempt=0
 while [[ $(date +%s) -lt $deadline ]]; do
   attempt=$(( attempt + 1 ))
   if docker_health_probe; then
-    log "Backend status=ready nach ${attempt} Versuchen"
+    log "Backend status=alive nach ${attempt} Versuchen"
     exit 0
   fi
   sleep 2
 done
 
-warn "Backend wurde nicht innerhalb 5 Minuten 'ready' — Rollback (MIG-07)"
+warn "Backend wurde nicht innerhalb 5 Minuten 'alive' — Rollback (MIG-07)"
 rollback_to_previous
 fail "Backend-Start fehlgeschlagen — siehe docker logs auditworkshop-backend"

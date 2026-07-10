@@ -18,6 +18,7 @@ from config import (
 from .architecture import render_architecture_png
 from .checks import http_probe, ports as ports_check, tls as tls_check, version_cve
 from .report import aggregate
+from .target_validation import validate_public_url
 
 log = logging.getLogger(__name__)
 
@@ -28,8 +29,7 @@ def normalize_target(raw: str) -> tuple[str, str, int]:
     if not raw.startswith(("http://", "https://")):
         raw = "https://" + raw
     parsed = urlparse(raw)
-    host = parsed.hostname or ""
-    port = parsed.port or 443
+    _, host, port = validate_public_url(raw)
     norm = f"https://{host}" + (f":{parsed.port}" if parsed.port and parsed.port != 443 else "")
     return norm, host, port
 

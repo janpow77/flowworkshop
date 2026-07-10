@@ -250,7 +250,9 @@ async def check_ollama() -> dict:
     """Prueft ob der konfigurierte LLM-Backend erreichbar ist."""
     if _use_gateway():
         try:
-            async with httpx.AsyncClient(timeout=5) as client:
+            # The gateway aggregates multiple spokes and may need several
+            # seconds for /health plus /v1/models on a cold connection.
+            async with httpx.AsyncClient(timeout=15) as client:
                 health_resp = await client.get(f"{EGPU_GATEWAY_URL}/health")
                 health_resp.raise_for_status()
                 health = health_resp.json()
@@ -262,7 +264,9 @@ async def check_ollama() -> dict:
                 if s.get("ok") and s.get("name")
             ]
             return {
-                "ok": health.get("status") == "ok" and configured_ok,
+                # A degraded, optional spoke must not mark this application
+                # unavailable when its configured model is actually listed.
+                "ok": configured_ok and bool(online_spokes),
                 "models": [MODEL_NAME] if configured_ok else model_ids,
                 "url": EGPU_GATEWAY_URL,
                 "backend": "ai-router",
