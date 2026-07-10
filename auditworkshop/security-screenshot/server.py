@@ -21,6 +21,9 @@ from __future__ import annotations
 
 import logging
 import os
+import asyncio
+import ipaddress
+import socket
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 
@@ -43,6 +46,33 @@ NETWORKIDLE_TIMEOUT_MS = int(os.getenv("SCREENSHOT_NETWORKIDLE_MS", "8000"))
 SETTLE_MS = int(os.getenv("SCREENSHOT_SETTLE_MS", "2000"))
 VIEWPORT = {"width": 1280, "height": 800}
 ALLOWED_SCHEMES = ("http", "https")
+
+
+def _validate_public_url(raw_url: str) -> None:
+    """Reject SSRF targets before Chromium can access the network."""
+    parsed = urlparse(raw_url)
+    if parsed.scheme not in ALLOWED_SCHEMES or not parsed.hostname:
+        raise ValueError("Nur öffentliche http/https-URLs sind erlaubt.")
+    if parsed.username or parsed.password:
+        raise ValueError("Zugangsdaten in URLs sind nicht erlaubt.")
+    try:
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    except ValueError as exc:
+        raise ValueError("Ungültiger Zielport.") from exc
+    if port not in {80, 443}:
+        raise ValueError("Nur Port 80 oder 443 ist erlaubt.")
+    host = parsed.hostname.rstrip(".").lower()
+    if host == "localhost" or host.endswith((".localhost", ".local", ".internal")):
+        raise ValueError("Lokale oder interne Zieladressen sind nicht erlaubt.")
+    try:
+        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except socket.gaierror as exc:
+        raise ValueError("Zielhost konnte nicht aufgelöst werden.") from exc
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if not ip.is_global or any((ip.is_private, ip.is_loopback, ip.is_link_local,
+                                    ip.is_multicast, ip.is_reserved, ip.is_unspecified)):
+            raise ValueError("Private, lokale oder reservierte Zielnetze sind nicht erlaubt.")
 
 # Chromium-Argumente: --no-sandbox ist im Container nötig (kein User-Namespace).
 CHROMIUM_ARGS = [
@@ -85,12 +115,13 @@ async def health() -> dict:
 @app.post("/screenshot")
 async def screenshot(req: ScreenshotRequest) -> Response:
     """Rendert die Ziel-URL und gibt die PNG-Bytes zurück."""
-    parsed = urlparse(req.url)
-    if parsed.scheme not in ALLOWED_SCHEMES or not parsed.netloc:
+    try:
+        await asyncio.to_thread(_validate_public_url, req.url)
+    except ValueError as exc:
         raise HTTPException(
             status_code=400,
-            detail="Nur http/https-URLs mit Host sind erlaubt.",
-        )
+            detail=str(exc),
+        ) from exc
 
     browser = app.state.browser
     context = None
@@ -102,6 +133,17 @@ async def screenshot(req: ScreenshotRequest) -> Response:
             viewport=VIEWPORT,
         )
         page = await context.new_page()
+
+        async def guard_request(route):
+            try:
+                await asyncio.to_thread(_validate_public_url, route.request.url)
+                await route.continue_()
+            except ValueError:
+                await route.abort("blockedbyclient")
+
+        # Validate the main navigation, redirects and every subresource. This
+        # closes DNS/redirect pivots to Docker, loopback and metadata services.
+        await page.route("**/*", guard_request)
         page.set_default_navigation_timeout(RENDER_TIMEOUT_MS)
         # 1) DOM laden (schnell, robust). 2) Netzwerk-Ruhe abwarten (best
         #    effort — SPAs holen ihre Daten oft erst nach dem load-Event).

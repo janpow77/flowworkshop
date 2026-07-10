@@ -1,6 +1,15 @@
 """Health- und System-Endpunkt-Tests."""
 
 
+def test_livez_is_fast_and_dependency_free(client):
+    r = client.get("/livez")
+    assert r.status_code == 200
+    assert r.json() == {
+        "status": "alive",
+        "service": "auditworkshop-backend",
+    }
+
+
 def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200

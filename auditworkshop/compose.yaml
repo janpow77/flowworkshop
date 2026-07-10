@@ -23,8 +23,10 @@ services:
       # Headless-Chromium-Sidecar im selben Compose-Netz (auditworkshop).
       SCREENSHOT_SERVICE_URL: http://security-screenshot:8090
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request,sys; r=urllib.request.urlopen(\"http://localhost:8000/health\",timeout=3); sys.exit(0 if r.status==200 else 1)"]
-      interval: 10s
+      # Liveness must not depend on the DB, LLM router or eGPU gateway. The
+      # detailed /health endpoint remains available to monitoring/readiness.
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; r=urllib.request.urlopen(\"http://localhost:8000/livez\",timeout=3); sys.exit(0 if r.status==200 else 1)"]
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 60s

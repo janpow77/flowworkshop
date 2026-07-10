@@ -91,9 +91,10 @@ def start_scan(
 
     user = _user_key(session)
     _check_rate(user)
-    norm, host, _ = engine.normalize_target(body.url)
-    if not host:
-        raise HTTPException(422, "Bitte eine gültige URL/Domäne angeben.")
+    try:
+        norm, host, _ = engine.normalize_target(body.url)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
     scan_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -117,21 +118,25 @@ def start_scan(
             "hinweis": "Scan läuft — Status über GET /api/security-scan/scan/{scan_id} abrufbar."}
 
 
-def _get_run(scan_id: str, db: Session) -> SecurityScanRun:
+def _get_run(scan_id: str, db: Session, session: dict) -> SecurityScanRun:
     run = db.query(SecurityScanRun).filter(SecurityScanRun.scan_id == scan_id).first()
     if not run:
+        raise HTTPException(404, "Scan nicht gefunden.")
+    owner = f"user:{_user_key(session)}"
+    if session.get("role") not in {"admin", "moderator"} and run.triggered_by != owner:
+        # Do not disclose whether another user's scan exists.
         raise HTTPException(404, "Scan nicht gefunden.")
     return run
 
 
 @router.get("/scan/{scan_id}")
 def scan_status(scan_id: str, session: dict = Depends(require_session), db: Session = Depends(get_db)) -> dict:
-    return _status_payload(_get_run(scan_id, db))
+    return _status_payload(_get_run(scan_id, db, session))
 
 
 @router.get("/scan/{scan_id}/report")
 def scan_report(scan_id: str, session: dict = Depends(require_session), db: Session = Depends(get_db)) -> dict:
-    run = _get_run(scan_id, db)
+    run = _get_run(scan_id, db, session)
     return {
         **_status_payload(run),
         "authorized_by": run.authorization_declared_by,
@@ -144,7 +149,7 @@ def scan_report(scan_id: str, session: dict = Depends(require_session), db: Sess
 
 @router.get("/scan/{scan_id}/pdf")
 def scan_pdf(scan_id: str, session: dict = Depends(require_session), db: Session = Depends(get_db)) -> Response:
-    run = _get_run(scan_id, db)
+    run = _get_run(scan_id, db, session)
     if run.status != "completed":
         raise HTTPException(409, "Scan noch nicht abgeschlossen.")
     from services.security_scan.pdf import render_security_pdf
@@ -156,7 +161,7 @@ def scan_pdf(scan_id: str, session: dict = Depends(require_session), db: Session
 
 @router.get("/scan/{scan_id}/screenshot")
 def scan_screenshot(scan_id: str, session: dict = Depends(require_session), db: Session = Depends(get_db)) -> FileResponse:
-    run = _get_run(scan_id, db)
+    run = _get_run(scan_id, db, session)
     if not run.screenshot_path or not Path(run.screenshot_path).exists():
         raise HTTPException(404, "Kein Screenshot vorhanden.")
     return FileResponse(run.screenshot_path, media_type="image/png")
@@ -164,7 +169,7 @@ def scan_screenshot(scan_id: str, session: dict = Depends(require_session), db: 
 
 @router.get("/scan/{scan_id}/architecture")
 def scan_architecture(scan_id: str, session: dict = Depends(require_session), db: Session = Depends(get_db)) -> FileResponse:
-    run = _get_run(scan_id, db)
+    run = _get_run(scan_id, db, session)
     if not run.architecture_path or not Path(run.architecture_path).exists():
         raise HTTPException(404, "Kein Architektur-Diagramm vorhanden.")
     return FileResponse(run.architecture_path, media_type="image/png")
