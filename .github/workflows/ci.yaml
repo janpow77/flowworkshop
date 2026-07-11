@@ -72,13 +72,28 @@ jobs:
         run: ruff check . --select E,W,F --ignore E501
 
   docker-build:
-    name: Docker Build Test
+    name: Docker Build Test (${{ matrix.image }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: backend
+            context: auditworkshop/backend/
+          - image: frontend
+            context: auditworkshop/frontend/
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      - name: Build Backend Image
-        run: docker build -t auditworkshop-backend auditworkshop/backend/
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db  # v3.6.1
 
-      - name: Build Frontend Image
-        run: docker build -t auditworkshop-frontend auditworkshop/frontend/
+      - name: Build ${{ matrix.image }} Image (Layer-Cache aus GH-Actions-Cache)
+        # Dependency-Layer (pip/npm) werden zwischen Laeufen wiederverwendet;
+        # nur bei Aenderungen an requirements/package-lock wird neu installiert.
+        run: |
+          docker buildx build \
+            --cache-from type=gha,scope=ci-${{ matrix.image }} \
+            --cache-to type=gha,mode=max,scope=ci-${{ matrix.image }} \
+            -t auditworkshop-${{ matrix.image }} \
+            ${{ matrix.context }}
