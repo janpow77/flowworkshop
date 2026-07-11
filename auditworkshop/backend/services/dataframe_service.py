@@ -3154,7 +3154,7 @@ def search_beneficiary_records(
             SELECT id, source_key, bundesland, fonds, periode, country_code,
                    beneficiary_name, beneficiary_name_normalized,
                    project_name, project_aktenzeichen, project_description,
-                   location, cost_total, source_filename, nuts_code
+                   location, cost_total, cost_eu_funding, source_filename, nuts_code
             FROM workshop_beneficiary_records
             WHERE {sql_filter}
             LIMIT 5000
@@ -3190,7 +3190,12 @@ def search_beneficiary_records(
             else:
                 match_score = 1.0
 
-            cost_value = float(entry["cost_total"]) if entry.get("cost_total") is not None else None
+            raw_cost = entry.get("cost_total")
+            cost_metric = "Gesamtkosten"
+            if raw_cost is None:
+                raw_cost = entry.get("cost_eu_funding")
+                cost_metric = "EU-Anteil" if raw_cost is not None else "keine Betragsangabe"
+            cost_value = float(raw_cost) if raw_cost is not None else None
             country_name = get_country_name(entry.get("country_code"))
 
             results_local.append({
@@ -3202,6 +3207,7 @@ def search_beneficiary_records(
                 "description": (entry.get("project_description") or "").strip(),
                 "kosten": cost_value,
                 "kosten_label": _format_eur(cost_value),
+                "kosten_metrik": cost_metric,
                 "source": entry.get("source_key"),
                 "bundesland": entry.get("bundesland"),
                 "fonds": entry.get("fonds"),
@@ -3419,6 +3425,11 @@ def analyze_beneficiary_records(
         "top_sectors",
         "region_project_counts",
         "kreis_project_counts",
+        "data_quality",
+        "temporal_concentration",
+        "outlier_projects",
+        "duplicate_candidates",
+        "funding_structure",
     }
     if mode not in supported_modes:
         raise ValueError(f"Unbekannter Analysemodus '{mode}'.")
@@ -3473,6 +3484,8 @@ def analyze_beneficiary_records(
     # jedem Aufruf; Befund 2: gleiche Datenquelle wie Karte/Kreis).
     _sql_aggregate_modes = {
         "state_fund_totals", "region_project_counts", "kreis_project_counts",
+        "data_quality", "temporal_concentration", "outlier_projects",
+        "duplicate_candidates", "funding_structure",
     }
     scan_sources = [] if mode in _sql_aggregate_modes else beneficiary_sources
 
@@ -3680,7 +3693,7 @@ def analyze_beneficiary_records(
             "       COALESCE(NULLIF(fonds, ''), 'Unbekannt') AS fund, "
             "       source_key, "
             "       COUNT(*) AS cnt, "
-            "       COALESCE(SUM(cost_total), 0) AS sum_cost "
+            "       COALESCE(SUM(COALESCE(cost_total, cost_eu_funding)), 0) AS sum_cost "
             "FROM workshop_beneficiary_records "
             f"WHERE {' AND '.join(sft_where)} "
             "GROUP BY state, fund, source_key"
@@ -4051,6 +4064,56 @@ def analyze_beneficiary_records(
             scanned_records = kreis_scanned
         title = "Vorhaben je Kreis (NUTS-3, mit Quellen-Aufschlüsselung)"
         metric_label = "Vorhaben"
+
+    elif mode in {"data_quality", "temporal_concentration", "outlier_projects", "duplicate_candidates", "funding_structure"}:
+        # Prüfnahe Zusatzanalysen: ausschließlich zentrale, deduplizierte
+        # Datensätze; jeder Befund bleibt auf Quelle und Anzahl rückführbar.
+        where = ["1=1"]
+        params: dict[str, Any] = {}
+        for column, value in (("country_code", country_code), ("bundesland", bundesland), ("fonds", fonds), ("source_key", source)):
+            if value:
+                key = column
+                where.append(f"{column} = :{key}")
+                params[key] = value.upper() if column == "country_code" else value
+        where_sql = " AND ".join(where)
+        if mode == "data_quality":
+            sql = f"""SELECT source_key, COUNT(*) cnt,
+                SUM(CASE WHEN NULLIF(TRIM(COALESCE(location,'')), '') IS NULL AND (latitude IS NULL OR longitude IS NULL) THEN 1 ELSE 0 END) missing_location,
+                SUM(CASE WHEN cost_total IS NULL AND cost_eu_funding IS NULL THEN 1 ELSE 0 END) missing_amount,
+                SUM(CASE WHEN NULLIF(TRIM(COALESCE(project_name,'')), '') IS NULL AND NULLIF(TRIM(COALESCE(project_aktenzeichen,'')), '') IS NULL THEN 1 ELSE 0 END) missing_project
+                FROM workshop_beneficiary_records WHERE {where_sql} GROUP BY source_key"""
+            with engine.connect() as conn: rows = conn.execute(text(sql), params).fetchall()
+            for r in rows:
+                d = dict(r._mapping); issues = int(d["missing_location"] or 0) + int(d["missing_amount"] or 0) + int(d["missing_project"] or 0)
+                items.append({"label": d["source_key"], "sublabel": f"Standort fehlt: {_de_int(d['missing_location'])} · Betrag fehlt: {_de_int(d['missing_amount'])} · Vorhaben-ID/-name fehlt: {_de_int(d['missing_project'])}", "value": issues, "value_label": f"{_de_int(issues)} Qualitätslücken", "project_count": int(d["cnt"] or 0), "source_count": 1})
+            items.sort(key=lambda x: (-x["value"], x["label"])); title = "Datenqualität und Abdeckung"; metric_label = "Qualitätslücken"
+        elif mode == "temporal_concentration":
+            sql = f"SELECT EXTRACT(YEAR FROM COALESCE(funded_at, project_start))::int yr, COUNT(*) cnt, COALESCE(SUM(COALESCE(cost_total,cost_eu_funding)),0) vol FROM workshop_beneficiary_records WHERE {where_sql} AND COALESCE(funded_at,project_start) IS NOT NULL GROUP BY yr"
+            with engine.connect() as conn: rows = conn.execute(text(sql), params).fetchall()
+            for r in rows:
+                d=dict(r._mapping); items.append({"label": str(d['yr']), "sublabel": f"{_de_int(d['cnt'])} Vorhaben", "value": float(d['vol'] or 0), "value_label": _format_eur(float(d['vol'] or 0)), "project_count": int(d['cnt'] or 0)})
+            items.sort(key=lambda x: x["label"]); title="Zeitliche Förderkonzentration"; metric_label="Volumen"
+        elif mode == "duplicate_candidates":
+            sql = f"SELECT beneficiary_name_normalized, MIN(beneficiary_name) label, COUNT(*) cnt, COUNT(DISTINCT source_key) sources, COALESCE(SUM(COALESCE(cost_total,cost_eu_funding)),0) vol FROM workshop_beneficiary_records WHERE {where_sql} GROUP BY beneficiary_name_normalized HAVING COUNT(*) > 1"
+            with engine.connect() as conn: rows=conn.execute(text(sql), params).fetchall()
+            for r in rows:
+                d=dict(r._mapping); items.append({"label": d['label'], "sublabel": f"{_de_int(d['cnt'])} Einträge in {_de_int(d['sources'])} Quelle(n) – Prüfkandidat, kein Dublettennachweis", "value": float(d['vol'] or 0), "value_label": _format_eur(float(d['vol'] or 0)), "project_count": int(d['cnt']), "source_count": int(d['sources'])})
+            items.sort(key=lambda x:(-x['source_count'],-x['value'])); title="Dubletten- und Verbundkandidaten"; metric_label="Volumen"
+        elif mode == "outlier_projects":
+            sql = f"SELECT beneficiary_name label, project_name, COALESCE(cost_total,cost_eu_funding) amount FROM workshop_beneficiary_records WHERE {where_sql} AND COALESCE(cost_total,cost_eu_funding) IS NOT NULL ORDER BY COALESCE(cost_total,cost_eu_funding) DESC LIMIT :lim"
+            params['lim']=limit
+            with engine.connect() as conn: rows=conn.execute(text(sql), params).fetchall()
+            for r in rows:
+                d=dict(r._mapping); items.append({"label": d['label'], "sublabel": f"{d.get('project_name') or 'ohne Vorhabentitel'} – Rangfolge, kein Fehlerindikator", "value": float(d['amount']), "value_label": _format_eur(float(d['amount'])), "project_count": 1})
+            title="Betragsausreißer zur Prüfauswahl"; metric_label="Volumen"
+        else:
+            sql = f"SELECT COALESCE(NULLIF(fonds,''),'Unbekannt') fund, COUNT(*) cnt, COALESCE(SUM(cost_total),0) total, COALESCE(SUM(cost_eu_funding),0) eu FROM workshop_beneficiary_records WHERE {where_sql} GROUP BY fund"
+            with engine.connect() as conn: rows=conn.execute(text(sql), params).fetchall()
+            for r in rows:
+                d=dict(r._mapping); items.append({"label": d['fund'], "sublabel": f"Gesamtkosten: {_format_eur(float(d['total'] or 0))} · EU-Anteil: {_format_eur(float(d['eu'] or 0))}", "value": float(d['total'] or d['eu'] or 0), "value_label": _format_eur(float(d['total'] or d['eu'] or 0)), "project_count": int(d['cnt'])})
+            items.sort(key=lambda x:-x['value']); title="Finanzierungsstruktur nach Fonds"; metric_label="Gesamtkosten (EU-Anteil separat)"
+        items = items[:limit]
+        scanned_records = sum(int(it.get("project_count") or 0) for it in items)
 
     for index, item in enumerate(items, start=1):
         item["rank"] = index

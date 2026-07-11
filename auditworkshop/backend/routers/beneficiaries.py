@@ -191,10 +191,10 @@ def list_countries():
 async def upload_beneficiary_list(
     file: UploadFile = File(...),
     mode: str = Form(
-        "smart",
+        "snapshot",
         description=(
-            "smart|full-refresh|force — Schreibstrategie fuer die zentrale "
-            "Beneficiary-Tabelle. smart = idempotent (Default). "
+            "snapshot|smart|full-refresh|force — Schreibstrategie fuer die zentrale "
+            "Beneficiary-Tabelle. snapshot = gepruefter Quellensnapshot (Default). "
             "full-refresh = Update bei Konflikt. force = Pre-Delete der Quelle."
         ),
     ),
@@ -215,8 +215,8 @@ async def upload_beneficiary_list(
     if not file.filename:
         raise HTTPException(422, "Dateiname fehlt.")
 
-    if mode not in ("smart", "full-refresh", "force"):
-        raise HTTPException(422, "mode muss smart|full-refresh|force sein.")
+    if mode not in ("snapshot", "smart", "full-refresh", "force"):
+        raise HTTPException(422, "mode muss snapshot|smart|full-refresh|force sein.")
 
     content = await file.read()
     if len(content) > 50 * 1024 * 1024:
@@ -767,6 +767,17 @@ def get_choropleth(
 def delete_source(source: str, _session: dict = Depends(require_moderator)):
     """Begünstigtenverzeichnis entfernen."""
     delete_dataframe_table(source)
+    # Zentraler Such-/Analysebestand muss mit der alten Kartenquelle synchron
+    # entfernt werden; sonst bliebe die Quelle in Suche/Choropleth sichtbar.
+    db = SessionLocal()
+    try:
+        from models.beneficiary_records import BeneficiaryRecord
+        db.query(BeneficiaryRecord).filter(BeneficiaryRecord.source_key == source).delete(
+            synchronize_session=False,
+        )
+        db.commit()
+    finally:
+        db.close()
     invalidate_map_cache()
     return {"status": "deleted", "source": source}
 

@@ -70,6 +70,11 @@ const ANALYSIS_OPTIONS: Array<{
     label: 'Vorhaben je Kreis (NUTS-3)',
     description: 'Wie viele Vorhaben werden pro Landkreis bzw. kreisfreier Stadt gefördert?',
   },
+  { value: 'data_quality', label: 'Datenqualität & Abdeckung', description: 'Wo fehlen Standort, Betrag oder Vorhabenzuordnung?' },
+  { value: 'temporal_concentration', label: 'Zeitliche Konzentration', description: 'In welchen Jahren konzentrieren sich Vorhaben und Volumen?' },
+  { value: 'outlier_projects', label: 'Große Einzelvolumina', description: 'Größte Einzelvorhaben als transparente Prüfauswahl, kein Fehlerurteil.' },
+  { value: 'duplicate_candidates', label: 'Dubletten-/Verbundkandidaten', description: 'Gleiche Namen in mehreren Einträgen oder Quellen zur manuellen Prüfung.' },
+  { value: 'funding_structure', label: 'Finanzierungsstruktur', description: 'Gesamtkosten und EU-Anteil getrennt nach Fonds.' },
 ];
 
 function formatInt(value: number): string {
@@ -117,6 +122,11 @@ function buildPrompt(mode: BeneficiaryAnalysisMode, bundesland: string, fonds: s
       return `Welche Wirtschaftszweige bzw. Interventionsbereiche bündeln das höchste Fördervolumen?${suffix}`;
     case 'multi_state_beneficiaries':
       return `Welche Träger erhalten Förderung in mehr als einem Bundesland und wie verteilt sich das Volumen?${suffix}`;
+    case 'data_quality': return `Zeige die Datenqualität und fehlende Pflichtangaben je Quelle.${suffix}`;
+    case 'temporal_concentration': return `Zeige die zeitliche Förderkonzentration nach Jahren.${suffix}`;
+    case 'outlier_projects': return `Zeige die größten Einzelvorhaben als Prüfauswahl, ohne sie als Fehler zu bewerten.${suffix}`;
+    case 'duplicate_candidates': return `Zeige Dubletten- und Verbundkandidaten zur manuellen Prüfung.${suffix}`;
+    case 'funding_structure': return `Stelle Gesamtkosten und EU-Anteil getrennt nach Fonds dar.${suffix}`;
     default:
       return `Analysiere die geladenen Begünstigtenverzeichnisse.${suffix}`;
   }

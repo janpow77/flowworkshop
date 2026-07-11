@@ -39,8 +39,11 @@ from services.state_aid_service import parse_amount, parse_date
 log = logging.getLogger(__name__)
 
 
-# Drei Modi (siehe Modul-Docstring).
-HarvestMode = Literal["smart", "full-refresh", "force"]
+# Vier Modi (siehe Modul-Docstring).
+# ``snapshot`` ist der fachlich sichere Standard fuer regelmaessige
+# Transparenzlisten: die Quelle ist nach dem Lauf exakt der gelesene
+# Quellensnapshot, nicht die historisch aufaddierte Menge.
+HarvestMode = Literal["smart", "full-refresh", "force", "snapshot"]
 
 
 # Fields, die in compute_record_hash einfliessen — bewusst stabil, ueber
@@ -91,7 +94,7 @@ class BeneficiaryHarvestParams:
     field_mapping: dict[str, str] | None = None
     sheet_name: str | int | None = None
     header_row: int = 0
-    mode: HarvestMode = "smart"
+    mode: HarvestMode = "snapshot"
     triggered_by: str = "cli"
 
 
@@ -347,6 +350,39 @@ def _stringify_plz(value: Any) -> str | None:
     return s or None
 
 
+def validate_beneficiary_rows(rows: list[dict[str, Any]], params: BeneficiaryHarvestParams) -> list[str]:
+    """Fachliche Vorvalidierung eines Quellensnapshots.
+
+    Harte Fehler verhindern den Austausch des bisherigen Bestands. Fehlende
+    optionale Angaben bleiben dagegen eine sichtbar auswertbare Qualitätslücke.
+    """
+    errors: list[str] = []
+    if not params.fonds or not params.periode or not params.country_code:
+        errors.append("Quellenkontext Fonds, Förderperiode oder Land fehlt.")
+    for row in rows:
+        if row.get("_skip_reason"):
+            errors.append(f"Zeile {row.get('_row_number')}: Begünstigtenname fehlt.")
+            continue
+        nr = row.get("_row_number")
+        total = parse_amount(row.get("cost_total_raw"))
+        eu = parse_amount(row.get("cost_eu_funding_raw"))
+        if total is not None and total < 0:
+            errors.append(f"Zeile {nr}: Gesamtkosten dürfen nicht negativ sein.")
+        if eu is not None and eu < 0:
+            errors.append(f"Zeile {nr}: EU-Anteil darf nicht negativ sein.")
+        if total is not None and eu is not None and eu > total:
+            errors.append(f"Zeile {nr}: EU-Anteil ist größer als Gesamtkosten.")
+        start, end = parse_date(row.get("project_start_raw")), parse_date(row.get("project_end_raw"))
+        if start and end and start > end:
+            errors.append(f"Zeile {nr}: Projektbeginn liegt nach Projektende.")
+        lat, lon = row.get("latitude"), row.get("longitude")
+        if lat is not None and not -90 <= float(lat) <= 90:
+            errors.append(f"Zeile {nr}: Breitengrad außerhalb des gültigen Bereichs.")
+        if lon is not None and not -180 <= float(lon) <= 180:
+            errors.append(f"Zeile {nr}: Längengrad außerhalb des gültigen Bereichs.")
+    return errors
+
+
 def _coerce_float(value: Any) -> float | None:
     if value is None:
         return None
@@ -383,21 +419,45 @@ def run_beneficiary_harvest(
     if not params.source_key:
         raise ValueError("source_key ist Pflicht.")
 
-    mode: HarvestMode = params.mode or "smart"
+    mode: HarvestMode = params.mode or "snapshot"
     triggered_by = params.triggered_by or "cli"
 
-    # ── Mode 'force': Vorab-Delete ──
+    if mode not in ("smart", "full-refresh", "force", "snapshot"):
+        raise ValueError("mode muss smart|full-refresh|force|snapshot sein.")
+
+    # Die gesamte Datei vor jedem destruktiven Schritt parsen. So kann eine
+    # kaputte/anders strukturierte Download-Datei nie den letzten guten Stand
+    # einer Quelle leeren.
+    if not params.file_content:
+        raise ValueError("file_content ist Pflicht.")
+    parsed_rows = list(parse_xlsx_or_csv(
+        params.file_content, file_name=params.file_name or "upload.xlsx",
+        sheet=params.sheet_name, header_row=params.header_row,
+        field_mapping=params.field_mapping,
+    ))
+    valid_rows = [row for row in parsed_rows if not row.get("_skip_reason")]
+    if not valid_rows:
+        raise ValueError("Keine valide Begünstigtenzeile bzw. keine Namensspalte erkannt.")
+    validation_errors = validate_beneficiary_rows(parsed_rows, params)
+    if validation_errors:
+        preview = " ".join(validation_errors[:8])
+        suffix = " …" if len(validation_errors) > 8 else ""
+        raise ValueError(f"Snapshot abgewiesen: {preview}{suffix}")
+
+    # ── Snapshot/force: erst nach erfolgreichem Parse löschen ──
     force_deleted_count = 0
-    if mode == "force":
+    if mode in ("force", "snapshot"):
         force_deleted_count = (
             db.query(BeneficiaryRecord)
             .filter(BeneficiaryRecord.source_key == params.source_key)
             .delete(synchronize_session=False)
         )
-        db.commit()
+        # Noch nicht committen: Snapshot-Loeschung und neue Records sind eine
+        # Transaktion. Bei einem Fehler bleibt der vorherige Quellenstand intakt.
+        db.flush()
         log.warning(
-            "Beneficiary-Harvest mode=force: %d bestehende Records aus '%s' geloescht.",
-            force_deleted_count, params.source_key,
+            "Beneficiary-Harvest mode=%s: %d bestehende Records aus '%s' geloescht.",
+            mode, force_deleted_count, params.source_key,
         )
 
     # ── Run-Eintrag (status=running) ──
@@ -423,7 +483,7 @@ def run_beneficiary_harvest(
         },
     )
     db.add(run)
-    db.commit()
+    db.flush()
 
     seen = inserted = skipped = failed = 0
     error_msg: str | None = None
@@ -433,19 +493,7 @@ def run_beneficiary_harvest(
         )
 
     try:
-        if not params.file_content:
-            raise ValueError(
-                "Aktuell wird nur file_content unterstuetzt — Phase 6b "
-                "ergaenzt URL-Connectors."
-            )
-
-        for parsed in parse_xlsx_or_csv(
-            params.file_content,
-            file_name=params.file_name or "upload.xlsx",
-            sheet=params.sheet_name,
-            header_row=params.header_row,
-            field_mapping=params.field_mapping,
-        ):
+        for parsed in parsed_rows:
             seen += 1
 
             if parsed.get("_skip_reason"):
@@ -531,7 +579,7 @@ def run_beneficiary_harvest(
                             )
                         },
                     )
-                # mode == 'force': reiner Insert (Tabelle wurde geleert).
+                # snapshot/force: reiner Insert (Quelle wurde nach Validierung geleert).
                 result = db.execute(stmt)
                 rc = result.rowcount or 0
                 if mode == "smart":
@@ -566,6 +614,10 @@ def run_beneficiary_harvest(
         run.error_message = error_msg
         run.finished_at = datetime.now(timezone.utc)
         try:
+            # Nach Rollback ist der Run nicht mehr in der Session; ihn erneut
+            # anhaengen, damit der fehlgeschlagene Lauf trotzdem auditierbar ist.
+            if run.status == "failed":
+                db.add(run)
             db.commit()
         except Exception:  # noqa: BLE001
             db.rollback()

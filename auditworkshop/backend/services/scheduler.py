@@ -923,7 +923,8 @@ def _harvest_one_beneficiary_source(
     file_name = (cfg.source_url.rsplit("/", 1)[-1] if cfg.source_url else "") or f"{source_key}.xlsx"
     archive_path = _archive_raw_file(source_key, file_name, file_content)
 
-    # 4. Smart-Mode-Harvest in die zentrale Tabelle.
+    # 4. Validierter Snapshot-Harvest: entfallene Vorhaben der Quelle werden
+    # entfernt, statt bei jeder Veröffentlichung historischen Ballast zu sammeln.
     db = SessionLocal()
     try:
         params = BeneficiaryHarvestParams(
@@ -937,7 +938,7 @@ def _harvest_one_beneficiary_source(
             field_mapping=cfg.field_mapping,
             sheet_name=cfg.sheet_name,
             header_row=int(cfg.header_row or 0),
-            mode="smart",
+            mode="snapshot",
             triggered_by=triggered_by,
         )
         try:
@@ -950,6 +951,24 @@ def _harvest_one_beneficiary_source(
                 "error": f"harvest_failed: {exc}",
                 "archive_path": archive_path,
             }
+
+        # Die Kartenansicht verwendet noch die materialisierte DataFrame-Tabelle.
+        # Sie erhält dieselben validierten Originalbytes wie die zentrale Tabelle,
+        # damit Auto-Harvest, Karte und Analytics denselben Stand zeigen.
+        if result.get("status") in ("ok", "partial"):
+            from services.dataframe_service import ingest_dataframe
+            try:
+                ingest_dataframe(
+                    file_content, file_name, source_key,
+                    cfg.sheet_name if cfg.sheet_name is not None else 0,
+                    dataset_group="beneficiary",
+                )
+                from routers.beneficiaries import invalidate_map_cache
+                invalidate_map_cache()
+            except Exception as exc:  # zentraler Snapshot bleibt intakt
+                log.exception("Beneficiary-Auto-Harvest %s: Kartenmaterialisierung fehlgeschlagen", source_key)
+                result["status"] = "partial"
+                result["materialization_error"] = str(exc)
 
         # 5. Status der Config aktualisieren.
         cfg_db = (

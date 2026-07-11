@@ -47,9 +47,17 @@ def seed_demo_data(db: Session = Depends(get_db)):
         .first()
     )
     if existing:
+        checklist = (
+            db.query(WorkshopChecklist)
+            .filter(WorkshopChecklist.project_id == existing.id)
+            .order_by(WorkshopChecklist.created_at.asc())
+            .first()
+        )
         return {
             "status": "exists",
             "project_id": existing.id,
+            "checklist_id": checklist.id if checklist else None,
+            "questions_created": len(checklist.questions) if checklist else 0,
             "message": "Demo-Projekt existiert bereits.",
         }
 

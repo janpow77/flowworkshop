@@ -192,21 +192,35 @@ def test_parse_xlsx_skips_rows_without_name():
 # ── HarvestParams Defaults ────────────────────────────────────────────────────
 
 
-def test_harvest_params_default_mode_is_smart():
-    """Ohne explizite mode-Angabe: smart (sicher, idempotent)."""
+def test_harvest_params_default_mode_is_snapshot():
+    """Ohne explizite mode-Angabe: vollständiger, validierter Quellensnapshot."""
     from services.beneficiary_harvester import BeneficiaryHarvestParams
 
     p = BeneficiaryHarvestParams(source_key="src1")
-    assert p.mode == "smart"
+    assert p.mode == "snapshot"
 
 
 def test_harvest_params_accepts_known_modes():
     """Smart, full-refresh, force sind alle akzeptiert."""
     from services.beneficiary_harvester import BeneficiaryHarvestParams
 
-    for mode in ("smart", "full-refresh", "force"):
+    for mode in ("snapshot", "smart", "full-refresh", "force"):
         p = BeneficiaryHarvestParams(source_key="src1", mode=mode)
         assert p.mode == mode
+
+
+def test_snapshot_validation_rejects_invalid_financial_and_date_relations():
+    from services.beneficiary_harvester import BeneficiaryHarvestParams, validate_beneficiary_rows
+    params = BeneficiaryHarvestParams(
+        source_key="src", fonds="EFRE", periode="2021-2027", country_code="DE",
+    )
+    errors = validate_beneficiary_rows([{
+        "_row_number": 4, "beneficiary_name": "Beispiel GmbH",
+        "cost_total_raw": "100", "cost_eu_funding_raw": "120",
+        "project_start_raw": "2025-12-31", "project_end_raw": "2025-01-01",
+        "latitude": 100, "longitude": 200,
+    }], params)
+    assert len(errors) == 4
 
 
 # ── _detect_canonical_columns: explicit_mapping hat Vorrang ──────────────────

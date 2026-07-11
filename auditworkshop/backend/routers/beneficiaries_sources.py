@@ -443,7 +443,7 @@ async def test_run_source(
 async def harvest_source(
     source_key: str,
     file: UploadFile | None = File(None),
-    mode: str = Form("smart"),
+    mode: str = Form("snapshot"),
     session: dict = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -455,8 +455,8 @@ async def harvest_source(
     field_mapping. Der ``mode``-Parameter erlaubt smart (Default),
     full-refresh oder force.
     """
-    if mode not in ("smart", "full-refresh", "force"):
-        raise HTTPException(422, "mode muss smart|full-refresh|force sein.")
+    if mode not in ("snapshot", "smart", "full-refresh", "force"):
+        raise HTTPException(422, "mode muss snapshot|smart|full-refresh|force sein.")
 
     cfg = _get_config_or_404(db, source_key)
 

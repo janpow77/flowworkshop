@@ -15,10 +15,35 @@ from database import get_db
 from models.automation import (
     HarvestRun, SanctionsRefreshRun, LlmQuestionLog,
 )
+from models.state_aid import StateAidHarvestRun
+from models.beneficiary_sources_config import BeneficiarySourceConfig
 from routers.auth import require_admin
 
 router = APIRouter(prefix="/api/admin", tags=["automation"])
 log = logging.getLogger(__name__)
+
+
+@router.get("/monitoring/harvests")
+def harvest_monitoring(request: Request, db: Session = Depends(get_db)):
+    """Adminboard: Datenfrische und auffällige Harvest-Status je Quelle."""
+    require_admin(request)
+    now = datetime.utcnow()
+    latest: dict[str, StateAidHarvestRun] = {}
+    for run in db.query(StateAidHarvestRun).order_by(desc(StateAidHarvestRun.started_at)).all():
+        latest.setdefault(run.source_key, run)
+    state_aid = []
+    for key, run in latest.items():
+        age = (now - (run.finished_at or run.started_at)).total_seconds() / 3600 if (run.finished_at or run.started_at) else None
+        warning = "fehlgeschlagen" if run.status == "failed" else "Teilfehler" if run.status == "partial" else "überfällig" if age is None or age > 36 else None
+        state_aid.append({"source": key, "status": run.status, "last_run": (run.finished_at or run.started_at).isoformat() if (run.finished_at or run.started_at) else None, "age_hours": round(age, 1) if age is not None else None, "records_seen": run.records_seen or 0, "records_inserted": run.records_inserted or 0, "records_failed": run.records_failed or 0, "warning": warning})
+    beneficiaries = []
+    for cfg in db.query(BeneficiarySourceConfig).filter(BeneficiarySourceConfig.enabled.is_(True)).all():
+        age = (now - cfg.last_successful_harvest_at).total_seconds() / 3600 if cfg.last_successful_harvest_at else None
+        threshold = max(36, int(cfg.update_frequency_days or 30) * 36)
+        warning = "noch nie geharvestet" if age is None else "überfällig" if age > threshold else "Teilqualität" if cfg.quality == "yellow" else "fehlgeschlagen" if cfg.quality == "red" else None
+        beneficiaries.append({"source": cfg.source_key, "status": cfg.quality or "unbekannt", "last_run": cfg.last_successful_harvest_at.isoformat() if cfg.last_successful_harvest_at else None, "age_hours": round(age, 1) if age is not None else None, "records_seen": cfg.record_count or 0, "records_inserted": None, "records_failed": None, "warning": warning})
+    warnings = sum(1 for item in state_aid + beneficiaries if item["warning"])
+    return {"generated_at": now.isoformat(), "warning_count": warnings, "state_aid": state_aid, "beneficiaries": beneficiaries}
 
 
 # ─── Begünstigten-Harvest ────────────────────────────────────────────────────

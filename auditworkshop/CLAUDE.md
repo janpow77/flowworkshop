@@ -94,7 +94,8 @@ FRONTEND_BASE=https://workshop.flowaudit.de \
   sie kontextlos restarten ist nicht idempotent (mit Sharding korrekt schon)
 
 ## Architektur-Entscheidungen
-- Kein Auth — lokale Demo-Anwendung, kein Internetzugang im Workshop
+- Auth ist aktiv: öffentliche Transparenzdaten sind lesbar, Schreib- und
+  Verwaltungsfunktionen verlangen eine berechtigte Session bzw. einen Worker-Token.
 - Kein persistenter Session-State — alle Daten sind request-basiert
 - Streaming via Server-Sent-Events (kein WebSocket)
 - pgvector statt ChromaDB — ein Dienst weniger, SQL-auditierbar

@@ -43,7 +43,7 @@ Der **Auditworkshop** ist eine standalone Webanwendung für den Workshop *„KI 
 | Backend | FastAPI + SQLAlchemy 2.0 | 35+ API-Endpunkte, SSE-Streaming |
 | Datenbank | PostgreSQL 16 + pgvector | RAG-Chunks + Checklisten + DataFrames |
 | LLM | Ollama (Host) | qwen3:14b (primär), Fallback: qwen3:8b |
-| Embeddings | paraphrase-multilingual-mpnet-base-v2 | 768 Dimensionen, CPU |
+| Embeddings | bge-m3 über den zentralen Gateway | 1024 Dimensionen |
 | Deployment | Docker Compose | 3 Container (db, backend, frontend) |
 
 ---
