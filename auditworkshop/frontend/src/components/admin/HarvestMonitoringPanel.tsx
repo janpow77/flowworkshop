@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Activity, AlertTriangle, RefreshCw } from 'lucide-react';
-import { getWorkshopAuthHeaders } from '../../lib/auth';
+import { getWorkshopAuthHeaders } from '../../lib/api';
 
 type Item = { source: string; status: string; last_run: string | null; age_hours: number | null; records_seen: number; records_inserted: number | null; records_failed: number | null; warning: string | null };
 type Report = { generated_at: string; warning_count: number; state_aid: Item[]; beneficiaries: Item[] };
