@@ -4082,36 +4082,55 @@ def analyze_beneficiary_records(
                 SUM(CASE WHEN cost_total IS NULL AND cost_eu_funding IS NULL THEN 1 ELSE 0 END) missing_amount,
                 SUM(CASE WHEN NULLIF(TRIM(COALESCE(project_name,'')), '') IS NULL AND NULLIF(TRIM(COALESCE(project_aktenzeichen,'')), '') IS NULL THEN 1 ELSE 0 END) missing_project
                 FROM workshop_beneficiary_records WHERE {where_sql} GROUP BY source_key"""
-            with engine.connect() as conn: rows = conn.execute(text(sql), params).fetchall()
+            with engine.connect() as conn:
+                rows = conn.execute(text(sql), params).fetchall()
             for r in rows:
-                d = dict(r._mapping); issues = int(d["missing_location"] or 0) + int(d["missing_amount"] or 0) + int(d["missing_project"] or 0)
+                d = dict(r._mapping)
+                issues = int(d["missing_location"] or 0) + int(d["missing_amount"] or 0) + int(d["missing_project"] or 0)
                 items.append({"label": d["source_key"], "sublabel": f"Standort fehlt: {_de_int(d['missing_location'])} · Betrag fehlt: {_de_int(d['missing_amount'])} · Vorhaben-ID/-name fehlt: {_de_int(d['missing_project'])}", "value": issues, "value_label": f"{_de_int(issues)} Qualitätslücken", "project_count": int(d["cnt"] or 0), "source_count": 1})
-            items.sort(key=lambda x: (-x["value"], x["label"])); title = "Datenqualität und Abdeckung"; metric_label = "Qualitätslücken"
+            items.sort(key=lambda x: (-x["value"], x["label"]))
+            title = "Datenqualität und Abdeckung"
+            metric_label = "Qualitätslücken"
         elif mode == "temporal_concentration":
             sql = f"SELECT EXTRACT(YEAR FROM COALESCE(funded_at, project_start))::int yr, COUNT(*) cnt, COALESCE(SUM(COALESCE(cost_total,cost_eu_funding)),0) vol FROM workshop_beneficiary_records WHERE {where_sql} AND COALESCE(funded_at,project_start) IS NOT NULL GROUP BY yr"
-            with engine.connect() as conn: rows = conn.execute(text(sql), params).fetchall()
+            with engine.connect() as conn:
+                rows = conn.execute(text(sql), params).fetchall()
             for r in rows:
-                d=dict(r._mapping); items.append({"label": str(d['yr']), "sublabel": f"{_de_int(d['cnt'])} Vorhaben", "value": float(d['vol'] or 0), "value_label": _format_eur(float(d['vol'] or 0)), "project_count": int(d['cnt'] or 0)})
-            items.sort(key=lambda x: x["label"]); title="Zeitliche Förderkonzentration"; metric_label="Volumen"
+                d=dict(r._mapping)
+                items.append({"label": str(d['yr']), "sublabel": f"{_de_int(d['cnt'])} Vorhaben", "value": float(d['vol'] or 0), "value_label": _format_eur(float(d['vol'] or 0)), "project_count": int(d['cnt'] or 0)})
+            items.sort(key=lambda x: x["label"])
+            title="Zeitliche Förderkonzentration"
+            metric_label="Volumen"
         elif mode == "duplicate_candidates":
             sql = f"SELECT beneficiary_name_normalized, MIN(beneficiary_name) label, COUNT(*) cnt, COUNT(DISTINCT source_key) sources, COALESCE(SUM(COALESCE(cost_total,cost_eu_funding)),0) vol FROM workshop_beneficiary_records WHERE {where_sql} GROUP BY beneficiary_name_normalized HAVING COUNT(*) > 1"
-            with engine.connect() as conn: rows=conn.execute(text(sql), params).fetchall()
+            with engine.connect() as conn:
+                rows=conn.execute(text(sql), params).fetchall()
             for r in rows:
-                d=dict(r._mapping); items.append({"label": d['label'], "sublabel": f"{_de_int(d['cnt'])} Einträge in {_de_int(d['sources'])} Quelle(n) – Prüfkandidat, kein Dublettennachweis", "value": float(d['vol'] or 0), "value_label": _format_eur(float(d['vol'] or 0)), "project_count": int(d['cnt']), "source_count": int(d['sources'])})
-            items.sort(key=lambda x:(-x['source_count'],-x['value'])); title="Dubletten- und Verbundkandidaten"; metric_label="Volumen"
+                d=dict(r._mapping)
+                items.append({"label": d['label'], "sublabel": f"{_de_int(d['cnt'])} Einträge in {_de_int(d['sources'])} Quelle(n) – Prüfkandidat, kein Dublettennachweis", "value": float(d['vol'] or 0), "value_label": _format_eur(float(d['vol'] or 0)), "project_count": int(d['cnt']), "source_count": int(d['sources'])})
+            items.sort(key=lambda x:(-x['source_count'],-x['value']))
+            title="Dubletten- und Verbundkandidaten"
+            metric_label="Volumen"
         elif mode == "outlier_projects":
             sql = f"SELECT beneficiary_name label, project_name, COALESCE(cost_total,cost_eu_funding) amount FROM workshop_beneficiary_records WHERE {where_sql} AND COALESCE(cost_total,cost_eu_funding) IS NOT NULL ORDER BY COALESCE(cost_total,cost_eu_funding) DESC LIMIT :lim"
             params['lim']=limit
-            with engine.connect() as conn: rows=conn.execute(text(sql), params).fetchall()
+            with engine.connect() as conn:
+                rows=conn.execute(text(sql), params).fetchall()
             for r in rows:
-                d=dict(r._mapping); items.append({"label": d['label'], "sublabel": f"{d.get('project_name') or 'ohne Vorhabentitel'} – Rangfolge, kein Fehlerindikator", "value": float(d['amount']), "value_label": _format_eur(float(d['amount'])), "project_count": 1})
-            title="Betragsausreißer zur Prüfauswahl"; metric_label="Volumen"
+                d=dict(r._mapping)
+                items.append({"label": d['label'], "sublabel": f"{d.get('project_name') or 'ohne Vorhabentitel'} – Rangfolge, kein Fehlerindikator", "value": float(d['amount']), "value_label": _format_eur(float(d['amount'])), "project_count": 1})
+            title="Betragsausreißer zur Prüfauswahl"
+            metric_label="Volumen"
         else:
             sql = f"SELECT COALESCE(NULLIF(fonds,''),'Unbekannt') fund, COUNT(*) cnt, COALESCE(SUM(cost_total),0) total, COALESCE(SUM(cost_eu_funding),0) eu FROM workshop_beneficiary_records WHERE {where_sql} GROUP BY fund"
-            with engine.connect() as conn: rows=conn.execute(text(sql), params).fetchall()
+            with engine.connect() as conn:
+                rows=conn.execute(text(sql), params).fetchall()
             for r in rows:
-                d=dict(r._mapping); items.append({"label": d['fund'], "sublabel": f"Gesamtkosten: {_format_eur(float(d['total'] or 0))} · EU-Anteil: {_format_eur(float(d['eu'] or 0))}", "value": float(d['total'] or d['eu'] or 0), "value_label": _format_eur(float(d['total'] or d['eu'] or 0)), "project_count": int(d['cnt'])})
-            items.sort(key=lambda x:-x['value']); title="Finanzierungsstruktur nach Fonds"; metric_label="Gesamtkosten (EU-Anteil separat)"
+                d=dict(r._mapping)
+                items.append({"label": d['fund'], "sublabel": f"Gesamtkosten: {_format_eur(float(d['total'] or 0))} · EU-Anteil: {_format_eur(float(d['eu'] or 0))}", "value": float(d['total'] or d['eu'] or 0), "value_label": _format_eur(float(d['total'] or d['eu'] or 0)), "project_count": int(d['cnt'])})
+            items.sort(key=lambda x:-x['value'])
+            title="Finanzierungsstruktur nach Fonds"
+            metric_label="Gesamtkosten (EU-Anteil separat)"
         items = items[:limit]
         scanned_records = sum(int(it.get("project_count") or 0) for it in items)
 
