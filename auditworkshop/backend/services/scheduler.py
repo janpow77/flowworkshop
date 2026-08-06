@@ -801,6 +801,24 @@ def _notify_admins_state_aid_failed(source_key: str, error: str) -> None:
 # ─── Phase 6b: Datengetriebener Beneficiary-Auto-Harvest ─────────────────────
 
 
+AUTO_HARVEST_SOURCE_TYPES = ("xlsx_url", "csv_url")
+
+
+def _is_source_auto_capable(cfg: BeneficiarySourceConfig) -> bool:
+    """True, wenn die Quelle ueberhaupt automatisch geholt werden kann.
+
+    Trennt die Konfigurationsfrage ("hat die Quelle einen Download-Typ und
+    eine URL?") von der Zeitfrage ("ist sie heute wieder faellig?").
+    ``manual_upload``-Quellen sind bewusst nicht auto-faehig — sie werden
+    ueber die Oberflaeche hochgeladen.
+    """
+    return bool(
+        cfg.enabled
+        and cfg.source_type in AUTO_HARVEST_SOURCE_TYPES
+        and cfg.source_url
+    )
+
+
 def _is_source_due(cfg: BeneficiarySourceConfig, now: datetime) -> bool:
     """True, wenn die Quelle wieder geharvested werden soll.
 
@@ -812,11 +830,7 @@ def _is_source_due(cfg: BeneficiarySourceConfig, now: datetime) -> bool:
       - sonst: ``(now - last) >= update_frequency_days`` (Default 30 Tage,
         falls die Config keinen Wert hat).
     """
-    if not cfg.enabled:
-        return False
-    if cfg.source_type not in ("xlsx_url", "csv_url"):
-        return False
-    if not cfg.source_url:
+    if not _is_source_auto_capable(cfg):
         return False
     if cfg.last_successful_harvest_at is None:
         return True
@@ -1027,6 +1041,7 @@ def run_beneficiary_auto_harvest(triggered_by: str = "cron") -> dict:
     sources_failed = 0
     sources_unchanged = 0
     sources_skipped_not_due = 0
+    sources_not_configured = 0
 
     db = SessionLocal()
     try:
@@ -1046,7 +1061,15 @@ def run_beneficiary_auto_harvest(triggered_by: str = "cron") -> dict:
     now = datetime.utcnow()
     for cfg in candidates:
         if not _is_source_due(cfg, now):
-            sources_skipped_not_due += 1
+            # Zwei sehr verschiedene Gruende, die frueher beide als
+            # "not_due" gezaehlt wurden: die Quelle ist erst spaeter wieder
+            # faellig (harmlos) — oder sie ist gar nicht auto-faehig, weil
+            # source_type/source_url fehlen (Konfigurationsluecke, muss
+            # sichtbar sein).
+            if not _is_source_auto_capable(cfg):
+                sources_not_configured += 1
+            else:
+                sources_skipped_not_due += 1
             continue
 
         try:
@@ -1072,7 +1095,13 @@ def run_beneficiary_auto_harvest(triggered_by: str = "cron") -> dict:
         else:
             sources_failed += 1
 
-    if sources_failed == 0:
+    sources_touched = sources_ok + sources_unchanged + sources_failed
+    if sources_touched == 0:
+        # Kein einziger Download versucht. Das ist KEIN Erfolg — frueher lief
+        # dieser Fall als "ok" durch und die Routine meldete jede Nacht
+        # gruen, obwohl seit Wochen keine Quelle mehr angefasst wurde.
+        summary["status"] = "noop"
+    elif sources_failed == 0:
         summary["status"] = "ok"
     elif sources_ok + sources_unchanged == 0:
         summary["status"] = "failed"
@@ -1083,11 +1112,24 @@ def run_beneficiary_auto_harvest(triggered_by: str = "cron") -> dict:
     summary["sources_unchanged"] = sources_unchanged
     summary["sources_failed"] = sources_failed
     summary["sources_skipped_not_due"] = sources_skipped_not_due
-    log.info(
-        "Beneficiary-Auto-Harvest %s: ok=%d unchanged=%d failed=%d not_due=%d",
-        summary["status"], sources_ok, sources_unchanged, sources_failed,
-        sources_skipped_not_due,
+    summary["sources_not_configured"] = sources_not_configured
+    summary["sources_total"] = len(candidates)
+
+    log_line = (
+        "Beneficiary-Auto-Harvest %s: ok=%d unchanged=%d failed=%d "
+        "not_due=%d not_configured=%d von %d aktiven Quellen"
     )
+    log_args = (
+        summary["status"], sources_ok, sources_unchanged, sources_failed,
+        sources_skipped_not_due, sources_not_configured, len(candidates),
+    )
+    if summary["status"] == "noop":
+        log.warning(log_line, *log_args)
+    elif sources_not_configured:
+        # Es lief etwas, aber ein Teil der Quellen ist gar nicht auto-faehig.
+        log.warning(log_line, *log_args)
+    else:
+        log.info(log_line, *log_args)
     return summary
 
 
