@@ -71,9 +71,17 @@ wissen.
 
 ## Aktueller Zustand
 
-Der Auto-Harvest ist **bewusst wieder deaktiviert** (alle 35 Quellen auf
-`manual_upload`), bis die Parser-Fehler je Quelle behoben sind. Eine Aktivierung
-mit 24 von 28 fehlschlagenden Quellen bringt nichts.
+**Vier Quellen sind automatisiert** und holen ihre Aktualisierung alle 30 Tage
+selbst: Baden-Württemberg ESF, Bayern ESF, Hamburg ESF, Thüringen ESF. Ihr
+Bestand entspricht exakt den heute veröffentlichten Listen.
+
+Die übrigen 31 stehen auf `manual_upload`, bis ein `field_mapping` je Land
+hinterlegt ist — ein nicht parsebarer Lauf bringt nichts ausser Rauschen im
+Protokoll. Die ermittelten Kopfzeilen sind bereits gespeichert und gehen nicht
+verloren.
+
+Die Datenbank wird seit dem 06.08.2026 nächtlich gesichert, jeder weitere
+Harvest-Versuch ist damit reversibel.
 
 ## Nächste Schritte
 
@@ -84,7 +92,36 @@ mit 24 von 28 fehlschlagenden Quellen bringt nichts.
 3. Tote Direktlinks aus den Portalseiten neu ziehen (8 Quellen)
 4. Erst danach `source_type` wieder auf `xlsx_url`/`csv_url` setzen —
    `scripts/seed_beneficiary_source_urls.py --apply` erledigt das
-5. **Unabhängig davon: die Workshop-Datenbank hat kein Backup.** Auf dem Host
-   sichern `wesenszug` und `rechnungslegung` nächtlich, `workshop` nicht.
-   Für eine Datenbank mit 44.000 Begünstigten- und 350.000 Beihilfe-Datensätzen
-   ist das die dringendste offene Baustelle.
+5. ~~Die Workshop-Datenbank hat kein Backup.~~ **Erledigt am 06.08.2026** —
+   `scripts/backup-auditworkshop-daily.sh`, nächtlich um 04:45 im Crontab des
+   Nutzers `deploy`.
+
+## Ermittelte Kopfzeilen (Analyse vom 06.08.2026)
+
+`scripts/analyse_transparenzlisten.py` lädt jede erreichbare Quelle und
+bestimmt Blatt und Kopfzeile. Ergebnis:
+
+| Quelle | Blatt | Kopfzeile (0-basiert) |
+|---|---|---|
+| Bayern EFRE | Liste der Vorhaben | 5 |
+| Berlin EFRE | „Liste der Vorhaben 31.10.2025" | 6 |
+| Berlin ESF | Projektliste | 6 |
+| Brandenburg ESF | Liste der Vorhaben | 2 |
+| Hamburg EFRE | Sheet1 | 0 |
+| Nordrhein-Westfalen ESF | ESF-Liste der Vorhaben | 1 |
+| Rheinland-Pfalz ESF | Liste der Vorhaben 31.12.2025 | 1 |
+| Sachsen-Anhalt EFRE | „Liste der Vorhaben" | 6 |
+| Sachsen-Anhalt ESF | „Liste der Vorhaben" | 7 |
+| Sachsen EFRE / ESF | Liste der Vorhaben | 7 |
+
+Die Kopfzeilen sind in der Konfiguration hinterlegt. Sie **allein genügen
+nicht**: Ein Testlauf mit gesetzten Kopfzeilen scheiterte weiterhin, weil
+`_detect_canonical_columns` die Spaltennamen der Länder nicht trifft. Bayern
+und Rheinland-Pfalz führen zweisprachige, mehrzeilige Überschriften
+(„Name des Begünstigten /\nbeneficiary name"), Nordrhein-Westfalen ESF ist
+komplett englisch („Beneficiary", „Operation name"), Sachsen-Anhalt setzt
+noch eine Zwischenzeile über die Daten.
+
+Nächster Schritt ist deshalb ein explizites `field_mapping` je Quelle —
+Zuordnung `beneficiary_name`/`project_name`/… auf die Originalüberschrift.
+Das ist Fleißarbeit pro Land, aber mit der Analyse oben mechanisch.
