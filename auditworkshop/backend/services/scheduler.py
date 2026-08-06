@@ -803,6 +803,28 @@ def _notify_admins_state_aid_failed(source_key: str, error: str) -> None:
 
 AUTO_HARVEST_SOURCE_TYPES = ("xlsx_url", "csv_url")
 
+# Endungen, aus denen der Parser den Dateityp ableiten kann.
+_BEKANNTE_ENDUNGEN = ("xlsx", "xls", "xlsm", "csv")
+
+
+def _dateiname_fuer_inhalt(url: str | None, inhalt: bytes, source_key: str) -> str:
+    """Bestimmt einen Dateinamen, dessen Endung zum tatsaechlichen Inhalt passt.
+
+    Der Parser leitet den Dateityp aus der Endung ab. Viele Landesportale
+    liefern ihre Listen aber unter Adressen ohne brauchbare Endung aus —
+    mit Abfrageparameter (``…liste.xlsx?ts=1774519001``) oder ueber ein
+    Skript (``sixcms/media.php/9/…``). Frueher scheiterten solche Quellen
+    mit "Beneficiary-Harvest nur fuer XLSX/XLS/CSV".
+
+    Deshalb entscheidet der Inhalt: XLSX-Dateien sind ZIP-Archive und
+    beginnen mit ``PK\\x03\\x04``, alles andere wird als CSV behandelt.
+    """
+    letzter_teil = (url or "").split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1]
+    endung = letzter_teil.rsplit(".", 1)[-1].lower() if "." in letzter_teil else ""
+    if endung in _BEKANNTE_ENDUNGEN:
+        return letzter_teil
+    return f"{source_key}.xlsx" if inhalt[:4] == b"PK\x03\x04" else f"{source_key}.csv"
+
 
 def _is_source_auto_capable(cfg: BeneficiarySourceConfig) -> bool:
     """True, wenn die Quelle ueberhaupt automatisch geholt werden kann.
@@ -934,7 +956,7 @@ def _harvest_one_beneficiary_source(
         }
 
     # 3. Audit-Archive (best-effort).
-    file_name = (cfg.source_url.rsplit("/", 1)[-1] if cfg.source_url else "") or f"{source_key}.xlsx"
+    file_name = _dateiname_fuer_inhalt(cfg.source_url, file_content, source_key)
     archive_path = _archive_raw_file(source_key, file_name, file_content)
 
     # 4. Validierter Snapshot-Harvest: entfallene Vorhaben der Quelle werden

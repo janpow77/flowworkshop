@@ -96,6 +96,66 @@ Harvest-Versuch ist damit reversibel.
    `scripts/backup-auditworkshop-daily.sh`, nächtlich um 04:45 im Crontab des
    Nutzers `deploy`.
 
+## Ergebnis der Länder-Kalibrierung (06.08.2026)
+
+`scripts/kalibriere_beneficiary_quellen.py` probiert für jede Quelle alle
+Blätter und Kopfzeilen durch und wählt die Variante, unter der die
+Spaltenerkennung des Harvesters die meisten Rollen trifft (Name, Vorhaben,
+Kosten, Datum, Ort). Bei Gleichstand gewinnt die kleinste Kopfzeile, denn der
+Vorspann steht immer oben. Vor dem Speichern prüft das Skript, ob die gewählte
+Variante mindestens die Hälfte des bisherigen Bestands ergibt — sonst wird die
+Quelle übersprungen statt durch ein Rumpfergebnis ersetzt.
+
+Bestand nach dem Durchlauf: **71.156 Datensätze** (vorher 53.547, überwiegend
+doppelte Import-Schichten).
+
+| Land / Fonds | Datensätze | Anmerkung |
+|---|---|---|
+| Nordrhein-Westfalen ESF | 23.133 | vorher 6.810 |
+| Rheinland-Pfalz ESF | 6.395 | deckt sich exakt mit dem Vorbestand |
+| Sachsen EFRE | 5.761 | |
+| Thüringen ESF | 5.153 | |
+| Brandenburg ESF | 4.024 | vorher 1.867, damals falsch geparst |
+| Sachsen-Anhalt ESF | 3.862 | |
+| Bayern ESF | 3.042 | |
+| Sachsen ESF | 2.561 | |
+| Baden-Württemberg ESF | 1.482 | |
+| Sachsen-Anhalt EFRE | 1.033 | |
+| Berlin EFRE | 687 | |
+| Mecklenburg-Vorpommern EFRE | 467 | |
+| Berlin ESF | 387 | |
+| Bayern EFRE | 333 | |
+| Hamburg ESF / EFRE | 82 / 56 | |
+
+Nicht automatisierbar bleiben: acht Quellen mit toten Direktlinks
+(404/HTML/TLS), Nordrhein-Westfalen EFRE (kein lesbares XLSX-Archiv),
+Bremen EFRE + ESF und Schleswig-Holstein ESF (keine erkennbare Namensspalte),
+Bund AMIF (Server bricht die Verbindung ab) sowie sieben Quellen ohne
+Direktlink in der Registry.
+
+## Fünf Fehler im Import-Pfad, die dabei sichtbar wurden
+
+1. **Eine Leerzeile verwarf den ganzen Import.** Die Validierung stufte jede
+   Zeile ohne Begünstigtennamen als harten Fehler ein. Landeslisten enthalten
+   aber regelmässig Leer-, Summen- und Fußnotenzeilen — bei Nordrhein-Westfalen
+   ESF scheiterten 28.498 Datensätze an Zeile 2. Solche Zeilen werden nun
+   übersprungen; erst über 20 % (und mehr als 50 Zeilen) bricht der Lauf ab,
+   weil dann die Kopfzeile nicht stimmt.
+2. **Ein Konflikt riss alle Folgezeilen mit.** Sachsen führt Vor- und Nachname
+   getrennt, wodurch zwei echte Zeilen denselben Datensatz-Hash ergeben. Die
+   Eindeutigkeitsverletzung vergiftete die Transaktion, alle weiteren Zeilen
+   liefen in „current transaction is aborted". Jede Zeile bekommt jetzt einen
+   eigenen Savepoint, Konflikte werden als übersprungen gezählt.
+3. **Zahlen in Textspalten brachen den Import.** `'int' object has no attribute
+   'strip'` — mehrere Länder führen numerische Projektnummern und
+   Gemeindeschlüssel. Alle Textfelder laufen jetzt über `_stringify`.
+4. **Die Dateityp-Erkennung las die Endung aus der URL.** Adressen wie
+   `…liste.xlsx?ts=1774519001` oder `sixcms/media.php/9/12345` scheiterten mit
+   „nur fuer XLSX/XLS/CSV". Jetzt entscheidet der Inhalt (ZIP-Signatur).
+5. **Die wahre Fehlerursache blieb verborgen.** Nach einem Rollback griff der
+   Code auf das ORM-Objekt des Laufs zu und warf `ObjectDeletedError` — die
+   eigentliche Meldung ging verloren. Der Status wird jetzt lokal geführt.
+
 ## Ermittelte Kopfzeilen (Analyse vom 06.08.2026)
 
 `scripts/analyse_transparenzlisten.py` lädt jede erreichbare Quelle und

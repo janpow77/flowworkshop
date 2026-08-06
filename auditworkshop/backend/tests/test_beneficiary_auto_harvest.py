@@ -288,3 +288,46 @@ def test_run_summary_handles_worker_exception(monkeypatch):
     failures = [s for s in summary["sources"] if s.get("status") == "failed"]
     assert len(failures) == 1
     assert "worker_exception" in failures[0].get("error", "")
+
+
+# ── Dateityp-Erkennung ────────────────────────────────────────────────────────
+
+
+def test_dateiname_nutzt_endung_aus_url():
+    """Eine saubere Endung in der URL wird uebernommen."""
+    from services.scheduler import _dateiname_fuer_inhalt
+
+    name = _dateiname_fuer_inhalt(
+        "https://example.org/pfad/Liste_der_Vorhaben.xlsx", b"PK\x03\x04xx", "land_efre",
+    )
+    assert name == "Liste_der_Vorhaben.xlsx"
+
+
+def test_dateiname_ignoriert_abfrageparameter():
+    """`…liste.xlsx?ts=123` hat frueher die Typerkennung gebrochen."""
+    from services.scheduler import _dateiname_fuer_inhalt
+
+    name = _dateiname_fuer_inhalt(
+        "https://example.org/liste.xlsx?ts=1774519001", b"PK\x03\x04xx", "land_esf",
+    )
+    assert name.endswith(".xlsx")
+
+
+def test_dateiname_erkennt_xlsx_am_inhalt():
+    """Adressen ohne Endung (z.B. sixcms/media.php/9/…) über den Inhalt lösen."""
+    from services.scheduler import _dateiname_fuer_inhalt
+
+    name = _dateiname_fuer_inhalt(
+        "https://example.org/sixcms/media.php/9/12345", b"PK\x03\x04rest", "land_efre",
+    )
+    assert name == "land_efre.xlsx"
+
+
+def test_dateiname_faellt_auf_csv_zurueck():
+    """Kein ZIP-Kopf, keine Endung → als CSV behandeln."""
+    from services.scheduler import _dateiname_fuer_inhalt
+
+    name = _dateiname_fuer_inhalt(
+        "https://example.org/export", b"Name;Ort\nMuster;Kassel\n", "land_esf",
+    )
+    assert name == "land_esf.csv"
