@@ -448,6 +448,70 @@ def _coerce_float(value: Any) -> float | None:
 # ── Hauptfunktion ─────────────────────────────────────────────────────────────
 
 
+# Spaltennamen, unter denen die Laender den Fonds fuehren.
+_FONDS_SPALTEN = ("betroffener fonds", "fonds", "fund concerned", "fund", "betroffene fonds")
+
+
+def _normalisiere_fonds(wert: Any) -> str:
+    """EFRE / ESF+ / JTF vergleichbar machen."""
+    s = str(wert or "").strip().upper()
+    s = s.replace("+", "").replace(" ", "")
+    return s
+
+
+def filtere_nach_fonds(rows: list[dict[str, Any]], fonds: str | None) -> tuple[list[dict[str, Any]], int]:
+    """Behaelt bei einer fondsuebergreifenden Liste nur den eigenen Fonds.
+
+    Einige Laender veroeffentlichen EFRE und JTF in einer gemeinsamen Datei —
+    Brandenburg etwa 676 EFRE- und 960 JTF-Vorhaben in einem Blatt. Ohne
+    Filter bekaeme die Quelle ``brandenburg_efre`` alle 1.636 Zeilen und
+    stempelte 960 davon faelschlich als EFRE. In einem Pruefwerkzeug ist
+    eine solche Falschzuordnung schlimmer als eine fehlende Zeile.
+
+    Gefiltert wird bewusst nur, wenn die Datei tatsaechlich mehrere Fonds
+    enthaelt. Bei einer einheitlichen Liste bleibt alles unangetastet —
+    sonst wuerde eine abweichende Schreibweise ("ESF+" gegen "ESF") den
+    kompletten Import leeren.
+
+    Liefert (verbleibende Zeilen, Anzahl entfernter Zeilen).
+    """
+    ziel = _normalisiere_fonds(fonds)
+    if not ziel or not rows:
+        return rows, 0
+
+    spalte = None
+    for kandidat in (rows[0].get("raw_row") or {}):
+        if str(kandidat).strip().lower() in _FONDS_SPALTEN:
+            spalte = kandidat
+            break
+    if spalte is None:
+        return rows, 0
+
+    werte = {
+        _normalisiere_fonds((r.get("raw_row") or {}).get(spalte))
+        for r in rows
+    }
+    werte.discard("")
+    # Kopfzeilen-Reste wie "Fund concerned" zaehlen nicht als eigener Fonds.
+    echte = {w for w in werte if len(w) <= 6}
+    if len(echte) < 2:
+        return rows, 0
+
+    behalten = [
+        r for r in rows
+        if _normalisiere_fonds((r.get("raw_row") or {}).get(spalte)) == ziel
+    ]
+    if not behalten:
+        # Kein einziger Treffer — eher abweichende Schreibweise als eine
+        # tatsaechlich leere Teilmenge. Dann lieber nicht filtern.
+        log.warning(
+            "Fonds-Filter greift nicht: Spalte '%s' enthaelt %s, gesucht '%s' "
+            "— Filter wird uebersprungen.", spalte, sorted(echte), ziel,
+        )
+        return rows, 0
+    return behalten, len(rows) - len(behalten)
+
+
 def run_beneficiary_harvest(
     db: Session, params: BeneficiaryHarvestParams,
 ) -> dict[str, Any]:
@@ -483,6 +547,13 @@ def run_beneficiary_harvest(
         sheet=params.sheet_name, header_row=params.header_row,
         field_mapping=params.field_mapping,
     ))
+    parsed_rows, fremder_fonds = filtere_nach_fonds(parsed_rows, params.fonds)
+    if fremder_fonds:
+        log.info(
+            "Beneficiary-Harvest %s: %d Zeilen anderer Fonds übersprungen "
+            "(Quelle ist %s).", params.source_key, fremder_fonds, params.fonds,
+        )
+
     valid_rows = [row for row in parsed_rows if not row.get("_skip_reason")]
     if not valid_rows:
         raise ValueError("Keine valide Begünstigtenzeile bzw. keine Namensspalte erkannt.")

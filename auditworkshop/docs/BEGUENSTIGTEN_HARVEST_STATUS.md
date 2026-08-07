@@ -96,6 +96,56 @@ Harvest-Versuch ist damit reversibel.
    `scripts/backup-auditworkshop-daily.sh`, nächtlich um 04:45 im Crontab des
    Nutzers `deploy`.
 
+## Link-Aktualisierung (07.08.2026)
+
+Die Länder veröffentlichen ihre Listen unter versionierten Dateinamen. Mit
+jeder neuen Veröffentlichung stirbt der bisherige Direktlink — die
+Portalseite bleibt dagegen stabil. `scripts/finde_transparenzlisten_links.py`
+lädt deshalb die Portalseite, sammelt alle Verweise auf XLSX/CSV, bewertet
+sie nach Stichworten und prüft jeden Kandidaten am Inhalt (eine XLSX ist ein
+ZIP-Archiv und beginnt mit `PK\x03\x04`).
+
+Eine Mindestpunktzahl verhindert thematisch benachbarte Fehlgriffe: Auf der
+hessischen Seite wurde zunächst der „Zeitplan der geplanten Aufrufe"
+eingesammelt — eine XLSX, aber keine Vorhabensliste.
+
+Sieben Links wurden so wiederhergestellt:
+
+| Quelle | Datensätze |
+|---|---|
+| Bremen ESF | 1.071 |
+| Brandenburg JTF | 959 |
+| Brandenburg EFRE | 676 |
+| Bund AMIF | 441 |
+| Bremen EFRE | 234 |
+| Rheinland-Pfalz EFRE | 198 |
+| Bund ISF | 63 |
+
+Damit sind **23 Quellen** automatisiert, der Bestand liegt bei **74.395
+Datensätzen**.
+
+### Fondsübergreifende Listen
+
+Brandenburg veröffentlicht EFRE und JTF in **einer** Datei: 676 EFRE- und
+960 JTF-Vorhaben in einem Blatt. Ohne Filter hätte die EFRE-Quelle alle
+1.636 Zeilen bekommen und 960 davon fälschlich als EFRE gestempelt. In einem
+Prüfwerkzeug ist eine solche Falschzuordnung schlimmer als eine fehlende
+Zeile.
+
+`filtere_nach_fonds` behält deshalb nur den eigenen Fonds — aber bewusst nur
+dann, wenn die Datei wirklich mehrere Fonds enthält. Bei einer einheitlichen
+Liste bleibt alles unangetastet, sonst würde eine abweichende Schreibweise
+(„ESF+" gegen „ESF") den kompletten Import leeren. Passt kein einziger Wert,
+wird ebenfalls nicht gefiltert, sondern gewarnt.
+
+### Weiterhin offen
+
+Bei acht Quellen ist die Portalseite selbst umgezogen (HTTP 404/403) oder
+enthält keinen Datei-Verweis mehr: Baden-Württemberg EFRE, Hessen EFRE und
+ESF, Mecklenburg-Vorpommern ESF, Niedersachsen EFRE und ESF, Saarland EFRE
+und ESF sowie Thüringen EFRE. Für sie muss die Portaladresse neu recherchiert
+werden; das Werkzeug findet den Datei-Link danach von allein.
+
 ## Ergebnis der Länder-Kalibrierung (06.08.2026)
 
 `scripts/kalibriere_beneficiary_quellen.py` probiert für jede Quelle alle

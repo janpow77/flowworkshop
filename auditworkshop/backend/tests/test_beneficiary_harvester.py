@@ -507,3 +507,56 @@ def test_mehrheit_ohne_namen_auch_bei_kleiner_datei():
     rows += [{"_row_number": 5 + i, "_skip_reason": "no_name"} for i in range(15)]
     fehler = validate_beneficiary_rows(rows, _params_fuer_validierung())
     assert fehler and "ohne Begünstigtennamen" in fehler[0]
+
+
+# ── Fonds-Filter bei fondsuebergreifenden Listen ─────────────────────────────
+
+
+def _zeile(fonds, name):
+    return {"raw_row": {"Name des Begünstigten": name, "betroffener Fonds": fonds},
+            "beneficiary_name": name}
+
+
+def test_gemischte_liste_wird_auf_eigenen_fonds_gefiltert():
+    """Brandenburg liefert EFRE und JTF in einer Datei.
+
+    Ohne Filter bekaeme die EFRE-Quelle auch die JTF-Vorhaben und wuerde
+    sie faelschlich als EFRE stempeln.
+    """
+    from services.beneficiary_harvester import filtere_nach_fonds
+
+    rows = [_zeile("EFRE", "A"), _zeile("JTF", "B"), _zeile("EFRE", "C")]
+    behalten, entfernt = filtere_nach_fonds(rows, "EFRE")
+    assert [r["beneficiary_name"] for r in behalten] == ["A", "C"]
+    assert entfernt == 1
+
+
+def test_einheitliche_liste_bleibt_unangetastet():
+    """Enthaelt die Datei nur einen Fonds, wird nicht gefiltert."""
+    from services.beneficiary_harvester import filtere_nach_fonds
+
+    rows = [_zeile("ESF+", "A"), _zeile("ESF+", "B")]
+    behalten, entfernt = filtere_nach_fonds(rows, "ESF")
+    assert len(behalten) == 2
+    assert entfernt == 0
+
+
+def test_abweichende_schreibweise_leert_den_import_nicht():
+    """Passt kein einziger Wert, ist eher die Schreibweise schuld.
+
+    Dann lieber ungefiltert importieren als alles verwerfen.
+    """
+    from services.beneficiary_harvester import filtere_nach_fonds
+
+    rows = [_zeile("EFRE", "A"), _zeile("JTF", "B")]
+    behalten, entfernt = filtere_nach_fonds(rows, "ESF")
+    assert len(behalten) == 2
+    assert entfernt == 0
+
+
+def test_ohne_fonds_spalte_keine_filterung():
+    from services.beneficiary_harvester import filtere_nach_fonds
+
+    rows = [{"raw_row": {"Name": "A"}, "beneficiary_name": "A"}]
+    behalten, entfernt = filtere_nach_fonds(rows, "EFRE")
+    assert len(behalten) == 1 and entfernt == 0

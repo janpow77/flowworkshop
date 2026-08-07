@@ -1,6 +1,6 @@
 {
   "_info": "Oeffentliche Transparenzlisten gemaess Art. 49 VO (EU) 2021/1060. Bundesweite Quellenbasis fuer EFRE, ESF+ und JTF im Workshop.",
-  "_updated": "2026-08-06",
+  "_updated": "2026-08-07",
   "sources": [
     {
       "bundesland": "Baden-Wuerttemberg",
@@ -66,11 +66,11 @@
       "bundesland": "Brandenburg",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": "https://efre.brandenburg.de/sixcms/media.php/9/2025_12_31%20Liste%20der%20Vorhaben.xlsx",
+      "url": "https://efre.brandenburg.de/sixcms/media.php/9/2026_04_30_Liste%20der%20Vorhaben.xlsx",
       "portal": "https://efre.brandenburg.de/efre/de/projekte/liste-der-vorhaben/",
-      "status": "404",
+      "status": "ok",
       "rows": null,
-      "notes": "Download fehlgeschlagen am 2026-08-06"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Brandenburg",
@@ -86,31 +86,31 @@
       "bundesland": "Brandenburg",
       "fonds": "JTF",
       "periode": "2021-2027",
-      "url": null,
+      "url": "https://efre.brandenburg.de/sixcms/media.php/9/2026_04_30_Liste%20der%20Vorhaben.xlsx",
       "portal": "https://efre.brandenburg.de/efre/de/projekte/liste-der-vorhaben/",
-      "status": "preloaded",
+      "status": "ok",
       "rows": 10,
-      "notes": "Bereits lokal geladen; oeffentliche Quelle ist im Brandenburg-Portal verfuegbar"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Bremen",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": "https://www.efre-bremen.de/sixcms/media.php/13/ListederVorhaben.xlsx",
+      "url": "https://www.efre-bremen.de/sixcms/media.php/13/Liste%20der%20Vorhaben%20EFRE-F%C3%B6rderperiode%202021-2027.xlsx",
       "portal": "https://www.efre-bremen.de/projekte/liste-der-vorhaben-15110",
-      "status": "404",
+      "status": "ok",
       "rows": 126,
-      "notes": "Download fehlgeschlagen am 2026-08-06 (vorher erreichbar)"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Bremen",
       "fonds": "ESF",
       "periode": "2021-2027",
-      "url": "https://www.esfplus.bremen.de/sixcms/media.php/13/Liste%20der%20Vorhaben_20260303.xlsx",
+      "url": "https://www.esfplus.bremen.de/sixcms/media.php/13/Liste%20der%20Vorhaben_20260625.xlsx",
       "portal": "https://www.esfplus.bremen.de/projekte/projekt-liste-22216",
-      "status": "404",
+      "status": "ok",
       "rows": 1070,
-      "notes": "Download fehlgeschlagen am 2026-08-06"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Hamburg",
@@ -216,11 +216,11 @@
       "bundesland": "Rheinland-Pfalz",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": "https://efre.rlp.de/fileadmin/efre.rlp.de/Liste_der_Vorhaben/Liste_der_Vorhaben_Stand_Maerz_2026.xlsx",
+      "url": "https://efre.rlp.de/fileadmin/efre.rlp.de/Liste_der_Vorhaben__7794_und_7786_/Liste_der_Vorhaben_Stand_30.06.2026.xlsx",
       "portal": "https://efre.rlp.de/der-efre-und-seine-projekte/liste-der-vorhaben",
-      "status": "404",
+      "status": "ok",
       "rows": 159,
-      "notes": "Download fehlgeschlagen am 2026-08-06"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Rheinland-Pfalz",
@@ -336,21 +336,21 @@
       "bundesland": "Bund",
       "fonds": "ISF",
       "periode": "2021-2027",
-      "url": "https://innerersicherheitsfonds.de/fileadmin/user_upload/Downloads/List_of_Operation/260301_List_Of_Operations.xlsx",
+      "url": "https://innerersicherheitsfonds.de/fileadmin/user_upload/Downloads/List_of_Operation/260601_List_Of_Operations.xlsx",
       "portal": "https://innerersicherheitsfonds.de/foerderperiode-2021-2027/liste-der-vorhaben-list-of-operations",
-      "status": "404",
+      "status": "ok",
       "rows": 61,
-      "notes": "Download fehlgeschlagen am 2026-08-06"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Bund",
       "fonds": "AMIF",
       "periode": "2021-2027",
-      "url": "https://www.eu-migrationsfonds.de/SharedDocs/Anlagen/DE/Projekte/vorhabenliste.xlsx?__blob=publicationFile&v=39",
+      "url": "https://www.eu-migrationsfonds.de/SharedDocs/Anlagen/DE/Projekte/vorhabenliste.xlsx?__blob=publicationFile&v=42",
       "portal": "https://www.eu-migrationsfonds.de/SharedDocs/Anlagen/DE/Projekte/vorhabenliste.html",
-      "status": "unreachable",
+      "status": "ok",
       "rows": 430,
-      "notes": "Verbindungsfehler bei Live-Prüfung am 2026-08-06"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     }
   ],
   "_verified": "2026-08-06 — alle Direktlinks vom Produktionshost geprüft: 19 liefern eine Datei, 9 sind tot (404/Verbindungsfehler/HTML-Seite)."
