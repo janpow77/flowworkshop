@@ -29,8 +29,10 @@ export default function LoginPage({ onLogin }: { onLogin: (token: string, user: 
   };
 
   // Oeffentliche Werkzeuge navigieren direkt, gesperrte fuehren zum Login.
+  // Externe Kacheln (z. B. E-Rechnungs-Assistent) verlassen die SPA per Vollnavigation.
   const handleTile = (tile: ToolTile) => {
     if (tile.gated) requireLogin(tile.title);
+    else if (tile.external) window.location.assign(tile.route);
     else navigate(tile.route);
   };
 

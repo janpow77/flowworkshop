@@ -5,7 +5,7 @@
  * Render-Komponenten in ToolTiles.tsx, damit React-Fast-Refresh sauber bleibt.
  */
 import type { LucideIcon } from 'lucide-react';
-import { ListChecks, Sparkles, GraduationCap, ShieldAlert, ShieldCheck, MapPinned } from 'lucide-react';
+import { ListChecks, Sparkles, GraduationCap, ShieldAlert, ShieldCheck, MapPinned, Receipt } from 'lucide-react';
 
 // Statische Akzent-Klassenkarten — bewusst ausgeschrieben, damit Tailwind die
 // Klassen beim Build erfasst (dynamische `bg-${x}` werden nicht erkannt).
@@ -33,6 +33,8 @@ export interface ToolTile {
   wide?: boolean;
   /** Feature verlangt eine Session (ausgeloggt nicht nutzbar). */
   gated?: boolean;
+  /** `route` ist eine externe/eigenständige URL (voller Seitenwechsel statt React-Router-Navigation). */
+  external?: boolean;
 }
 
 /** Die sechs Werkzeugkacheln. Reihenfolge = 2×2 halbe Kacheln, dann zwei breite. */
@@ -129,6 +131,22 @@ export const TOOL_TILES: ToolTile[] = [
       'Versions-/CVE-Indikation + Befundbericht (PDF)',
     ],
     footnote: 'Nur mit Berechtigung · nicht-intrusiv · ersetzt keine Grundschutz-Prüfung (BSI 200-2)',
+  },
+  {
+    key: 'erechnung',
+    title: 'E-Rechnungs-Assistent (XRechnung 3.0)',
+    route: '/rechnung/',
+    accent: 'emerald',
+    icon: Receipt,
+    external: true,
+    description: 'XRechnung nach EN 16931 direkt im Browser erstellen — für Rechnungen an die öffentliche Hand.',
+    bullets: [
+      'Valides UBL-2.1-XML (XRechnung 3.0) zum Download',
+      'Leitweg-ID-Prüfziffer und Summen-Validierung eingebaut',
+      'Kleinunternehmer-Fall (§ 19 UStG) vorkonfiguriert',
+      'Alle Daten bleiben lokal im Browser — kein Server',
+    ],
+    footnote: 'E-Rechnung für die öffentliche Hand nach EN 16931 / § 14 UStG',
   },
   {
     key: 'recherche',
