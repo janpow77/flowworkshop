@@ -1118,11 +1118,21 @@ def run_beneficiary_auto_harvest(triggered_by: str = "cron") -> dict:
             sources_failed += 1
 
     sources_touched = sources_ok + sources_unchanged + sources_failed
-    if sources_touched == 0:
-        # Kein einziger Download versucht. Das ist KEIN Erfolg — frueher lief
-        # dieser Fall als "ok" durch und die Routine meldete jede Nacht
-        # gruen, obwohl seit Wochen keine Quelle mehr angefasst wurde.
+    # Auto-faehig sind alle Quellen mit Download-Typ und URL — unabhaengig
+    # davon, ob sie heute schon wieder faellig waren.
+    sources_auto_faehig = sources_touched + sources_skipped_not_due
+    if sources_auto_faehig == 0:
+        # Es gibt ueberhaupt keine Quelle, die der Lauf holen koennte. Das ist
+        # KEIN Erfolg — frueher lief dieser Fall als "ok" durch und die
+        # Routine meldete jede Nacht gruen, obwohl seit Wochen nichts mehr
+        # geholt wurde.
         summary["status"] = "noop"
+    elif sources_touched == 0:
+        # Quellen sind eingerichtet, heute aber keine faellig. Der Regelfall
+        # zwischen zwei Aktualisierungen — kein Grund fuer eine Warnung.
+        # Wuerde das als "noop" gemeldet, kaeme 29 von 30 Naechten ein
+        # Fehlalarm, und niemand schaut mehr hin.
+        summary["status"] = "idle"
     elif sources_failed == 0:
         summary["status"] = "ok"
     elif sources_ok + sources_unchanged == 0:
@@ -1135,6 +1145,7 @@ def run_beneficiary_auto_harvest(triggered_by: str = "cron") -> dict:
     summary["sources_failed"] = sources_failed
     summary["sources_skipped_not_due"] = sources_skipped_not_due
     summary["sources_not_configured"] = sources_not_configured
+    summary["sources_auto_faehig"] = sources_auto_faehig
     summary["sources_total"] = len(candidates)
 
     log_line = (
@@ -1145,10 +1156,11 @@ def run_beneficiary_auto_harvest(triggered_by: str = "cron") -> dict:
         summary["status"], sources_ok, sources_unchanged, sources_failed,
         sources_skipped_not_due, sources_not_configured, len(candidates),
     )
-    if summary["status"] == "noop":
-        log.warning(log_line, *log_args)
-    elif sources_not_configured:
-        # Es lief etwas, aber ein Teil der Quellen ist gar nicht auto-faehig.
+    # Gewarnt wird nur, wenn wirklich etwas im Argen liegt: gar keine
+    # holbare Quelle, oder ein Fehlschlag. Dass Quellen bewusst manuell
+    # gepflegt werden (not_configured), ist kein Fehler und darf das
+    # Protokoll nicht jede Nacht rot faerben.
+    if summary["status"] in ("noop", "failed", "partial"):
         log.warning(log_line, *log_args)
     else:
         log.info(log_line, *log_args)
