@@ -80,12 +80,6 @@ def guess_source_type(url: str) -> str:
     return "xlsx_url"
 
 
-def load_registry() -> list[dict]:
-    if not REGISTRY_PATH.exists():
-        sys.exit(f"FEHLER: URL-Registry nicht gefunden: {REGISTRY_PATH}")
-    return json.loads(REGISTRY_PATH.read_text(encoding="utf-8")).get("sources", [])
-
-
 def build_plan(overrides: dict[str, str]) -> tuple[list[dict], list[str]]:
     """Ordnet DB-Quellen den Registry-Eintraegen zu.
 
@@ -128,6 +122,40 @@ def build_plan(overrides: dict[str, str]) -> tuple[list[dict], list[str]]:
     return plan, unmatched
 
 
+def setze_portalseiten() -> int:
+    """Schreibt die Portalseite je Quelle in ``source_landing_page``.
+
+    Der naechtliche Harvest braucht sie, um einen gestorbenen Direktlink
+    selbst zu erneuern. Sie wird auch fuer manuell gepflegte Quellen
+    gesetzt — falls die spaeter automatisiert werden.
+    """
+    registry = load_registry()
+    by_land_fonds: dict[tuple[str, str], dict] = {}
+    for e in registry:
+        by_land_fonds.setdefault(
+            (normalize(e.get("bundesland")), (e.get("fonds") or "").lower()), e,
+        )
+    geaendert = 0
+    db = SessionLocal()
+    try:
+        for cfg in db.query(BeneficiarySourceConfig).all():
+            eintrag = by_land_fonds.get(split_source_key(cfg.source_key))
+            portal = (eintrag or {}).get("portal")
+            if portal and cfg.source_landing_page != portal:
+                cfg.source_landing_page = portal
+                geaendert += 1
+        db.commit()
+    finally:
+        db.close()
+    return geaendert
+
+
+def load_registry() -> list[dict]:
+    if not REGISTRY_PATH.exists():
+        sys.exit(f"FEHLER: URL-Registry nicht gefunden: {REGISTRY_PATH}")
+    return json.loads(REGISTRY_PATH.read_text(encoding="utf-8")).get("sources", [])
+
+
 def apply_plan(plan: list[dict]) -> int:
     geaendert = 0
     db = SessionLocal()
@@ -157,6 +185,10 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true", help="Änderungen schreiben")
     ap.add_argument("--dry-run", action="store_true", help="nur anzeigen (Default)")
     ap.add_argument(
+        "--nur-portale", action="store_true",
+        help="nur die Portalseiten (source_landing_page) setzen, sonst nichts",
+    )
+    ap.add_argument(
         "--type-override", action="append", default=[], metavar="KEY=TYP",
         help="Dateityp einer Quelle erzwingen, z. B. land_esf_2021_2027=csv_url",
     )
@@ -170,6 +202,11 @@ def main() -> int:
         if typ not in ("csv_url", "xlsx_url"):
             sys.exit(f"FEHLER: unbekannter Typ '{typ}' (erlaubt: csv_url, xlsx_url)")
         overrides[key.strip()] = typ.strip()
+
+    if args.nur_portale:
+        n = setze_portalseiten()
+        print(f"{n} Portalseiten in der Konfiguration gesetzt.")
+        return 0
 
     plan, unmatched = build_plan(overrides)
     offen = [p for p in plan if not p["unveraendert"]]
