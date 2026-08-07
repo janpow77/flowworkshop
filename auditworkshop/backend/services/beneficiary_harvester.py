@@ -61,6 +61,16 @@ _HASH_FIELDS: tuple[str, ...] = (
 )
 
 
+# Zeilen ohne Begünstigtennamen: bis zu diesem Anteil gelten sie als
+# Leer-, Summen- oder Fußnotenzeilen und werden übersprungen. Darüber deutet
+# es auf eine falsche Kopfzeile hin — dann wird der Snapshot abgewiesen.
+NAMENLOS_MAX_ANTEIL = 0.20
+NAMENLOS_TOLERANZ = 50
+# Unabhaengig von der Stueckzahl: mehr als die Haelfte ohne Namen wird nie
+# akzeptiert — dann stimmt die Kopfzeile mit Sicherheit nicht.
+NAMENLOS_HARTE_GRENZE = 0.50
+
+
 # Kanonische Aliase, die der Parser im Spalten-Mapping erwartet. Sie spiegeln
 # die Rollen aus services.geocoding_service.COLUMN_PATTERNS wider, damit das
 # Backfill-Skript dieselbe Logik wiederverwenden kann.
@@ -309,16 +319,21 @@ def parse_xlsx_or_csv(
             "raw_row": raw_row,
             "mapping": mapping,
             "beneficiary_name": name,
-            "project_name": (canonical.get("projekt") or "").strip() or None,
-            "project_aktenzeichen": (canonical.get("aktenzeichen") or "").strip() or None,
-            "project_description": (canonical.get("beschreibung") or "").strip() or None,
+            # Durchgaengig ueber _stringify: mehrere Laender fuehren in den
+            # Text-Spalten Zahlen — Projektnummern, Gemeindeschluessel,
+            # numerische Aktenzeichen. Ein direktes .strip() darauf brach
+            # frueher den Import der ganzen Quelle mit
+            # "'int' object has no attribute 'strip'".
+            "project_name": _stringify(canonical.get("projekt")),
+            "project_aktenzeichen": _stringify(canonical.get("aktenzeichen")),
+            "project_description": _stringify(canonical.get("beschreibung")),
             "cost_total_raw": _stringify(canonical.get("kosten")),
             "cost_eu_funding_raw": _stringify(canonical.get("kosten_eu")),
-            "currency": (canonical.get("currency") or "").strip() or None,
-            "location": (canonical.get("standort") or canonical.get("ort") or "") or None,
-            "landkreis": (canonical.get("landkreis") or "").strip() or None,
+            "currency": _stringify(canonical.get("currency")),
+            "location": _stringify(canonical.get("standort") or canonical.get("ort")),
+            "landkreis": _stringify(canonical.get("landkreis")),
             "plz": _stringify_plz(canonical.get("plz")),
-            "nuts_code": (canonical.get("nuts") or "").strip() or None,
+            "nuts_code": _stringify(canonical.get("nuts")),
             "latitude": _coerce_float(canonical.get("latitude")),
             "longitude": _coerce_float(canonical.get("longitude")),
             "project_start_raw": _stringify(canonical.get("beginn")),
@@ -359,9 +374,42 @@ def validate_beneficiary_rows(rows: list[dict[str, Any]], params: BeneficiaryHar
     errors: list[str] = []
     if not params.fonds or not params.periode or not params.country_code:
         errors.append("Quellenkontext Fonds, Förderperiode oder Land fehlt.")
+
+    # Zeilen ohne Begünstigtennamen sind in den Landeslisten der Normalfall:
+    # Leerzeilen zwischen Abschnitten, Summen- und Fußnotenzeilen am Ende.
+    # Sie einzeln als harten Fehler zu werten, verwarf früher den kompletten
+    # Snapshot — bei Nordrhein-Westfalen ESF 28.498 Datensätze wegen einer
+    # einzigen Zeile. Sie werden beim Import ohnehin übersprungen.
+    #
+    # Häufen sie sich dagegen, stimmt die Kopfzeile nicht und das Ergebnis
+    # wäre ein Rumpfbestand. Dann bleibt es beim harten Abbruch.
+    ohne_namen = [r for r in rows if r.get("_skip_reason")]
+    if ohne_namen:
+        anteil = len(ohne_namen) / max(len(rows), 1)
+        # Zwei Reissleinen: der Regelfall (auffaelliger Anteil UND mehr als eine
+        # Handvoll Zeilen) und die harte Grenze. Ohne die zweite kaeme eine
+        # kleine Datei mit falscher Kopfzeile durch — bei 20 Zeilen liegen auch
+        # 15 namenlose unter der Stueckzahl-Schwelle. Eine Mehrheit ohne Namen
+        # ist nie eine gueltige Liste der Vorhaben.
+        zu_viele = (
+            (anteil > NAMENLOS_MAX_ANTEIL and len(ohne_namen) > NAMENLOS_TOLERANZ)
+            or anteil > NAMENLOS_HARTE_GRENZE
+        )
+        if zu_viele:
+            zeilen = ", ".join(str(r.get("_row_number")) for r in ohne_namen[:8])
+            errors.append(
+                f"{len(ohne_namen)} von {len(rows)} Zeilen ohne Begünstigtennamen "
+                f"({anteil:.0%}) — Kopfzeile oder Spaltenzuordnung prüfen. "
+                f"Betroffen u.a.: {zeilen}."
+            )
+        else:
+            log.info(
+                "Beneficiary-Harvest %s: %d Zeilen ohne Namen übersprungen "
+                "(%.1f %% — innerhalb der Toleranz).",
+                params.source_key, len(ohne_namen), anteil * 100,
+            )
     for row in rows:
         if row.get("_skip_reason"):
-            errors.append(f"Zeile {row.get('_row_number')}: Begünstigtenname fehlt.")
             continue
         nr = row.get("_row_number")
         total = parse_amount(row.get("cost_total_raw"))
@@ -531,8 +579,12 @@ def run_beneficiary_harvest(
                     "fonds": params.fonds,
                     "periode": params.periode,
                     "country_code": params.country_code,
-                    "location": parsed.get("location"),
-                    "landkreis": parsed.get("landkreis"),
+                    # Mehrere Länder führen in den Orts- und Kreisspalten reine
+                    # Zahlen (Sachsen z.B. einen Gemeindeschlüssel). Ohne die
+                    # Wandlung nach Text bricht PostgreSQL den Insert ab und
+                    # reisst mit ihm die ganze Transaktion.
+                    "location": _stringify(parsed.get("location")),
+                    "landkreis": _stringify(parsed.get("landkreis")),
                     "plz": parsed.get("plz"),
                     "nuts_code": parsed.get("nuts_code"),
                     "latitude": parsed.get("latitude"),
@@ -579,17 +631,28 @@ def run_beneficiary_harvest(
                             )
                         },
                     )
-                # snapshot/force: reiner Insert (Quelle wurde nach Validierung geleert).
-                result = db.execute(stmt)
-                rc = result.rowcount or 0
-                if mode == "smart":
-                    if rc > 0:
-                        inserted += 1
-                    else:
-                        skipped += 1
                 else:
-                    if rc > 0:
-                        inserted += 1
+                    # snapshot/force: die Quelle wurde nach der Validierung
+                    # geleert, es ist also ein reiner Insert. Trotzdem
+                    # Konflikte abfangen: manche Länder führen Vor- und
+                    # Nachname in getrennten Spalten, wodurch zwei echte
+                    # Zeilen denselben Datensatz-Hash ergeben. Ohne diese
+                    # Klausel bricht die erste Kollision den gesamten Import.
+                    stmt = stmt.on_conflict_do_nothing(
+                        index_elements=["source_key", "source_record_id"],
+                    )
+
+                # Jede Zeile in einem eigenen Savepoint: eine fehlerhafte Zeile
+                # darf die Transaktion nicht vergiften. Vorher scheiterten nach
+                # dem ersten Fehler sämtliche Folgezeilen mit
+                # "current transaction is aborted".
+                with db.begin_nested():
+                    result = db.execute(stmt)
+                rc = result.rowcount or 0
+                if rc > 0:
+                    inserted += 1
+                else:
+                    skipped += 1
             except Exception as exc:  # noqa: BLE001
                 failed += 1
                 log.warning(
@@ -600,11 +663,13 @@ def run_beneficiary_harvest(
         # Commit am Ende — XLSX sind klein genug fuer eine Transaktion.
         db.commit()
 
-        run.status = "ok" if failed == 0 else "partial"
+        lauf_status = "ok" if failed == 0 else "partial"
+        run.status = lauf_status
     except Exception as exc:  # noqa: BLE001
         db.rollback()
         log.exception("Beneficiary-Harvest fehlgeschlagen")
-        run.status = "failed"
+        lauf_status = "failed"
+        run.status = lauf_status
         error_msg = str(exc)
     finally:
         run.records_seen = seen
@@ -616,7 +681,7 @@ def run_beneficiary_harvest(
         try:
             # Nach Rollback ist der Run nicht mehr in der Session; ihn erneut
             # anhaengen, damit der fehlgeschlagene Lauf trotzdem auditierbar ist.
-            if run.status == "failed":
+            if lauf_status == "failed":
                 db.add(run)
             db.commit()
         except Exception:  # noqa: BLE001
@@ -624,7 +689,10 @@ def run_beneficiary_harvest(
 
     return {
         "run_id": run_id,
-        "status": run.status,
+        # Bewusst die lokale Variable statt run.status: nach einem Rollback ist
+        # die Zeile fort, und ein Zugriff auf das ORM-Objekt wuerde mit
+        # ObjectDeletedError die eigentliche Fehlerursache verdecken.
+        "status": lauf_status,
         "mode": mode,
         "source_key": params.source_key,
         "records_seen": seen,

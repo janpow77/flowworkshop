@@ -465,3 +465,45 @@ def test_full_refresh_updates_existing():
         ).delete(synchronize_session=False)
         db.commit()
         db.close()
+
+
+# ── Toleranz fuer Zeilen ohne Begünstigtennamen ──────────────────────────────
+
+
+def _params_fuer_validierung():
+    from services.beneficiary_harvester import BeneficiaryHarvestParams
+
+    return BeneficiaryHarvestParams(
+        source_key="land_efre", fonds="EFRE", periode="2021-2027",
+        country_code="DE",
+    )
+
+
+def test_einzelne_leerzeile_verwirft_snapshot_nicht():
+    """Fußnoten- und Leerzeilen sind der Normalfall — sie duerfen den
+    Import nicht kippen. Frueher scheiterten daran 28.498 Datensaetze."""
+    from services.beneficiary_harvester import validate_beneficiary_rows
+
+    rows = [{"_row_number": i, "beneficiary_name": f"Firma {i}"} for i in range(200)]
+    rows.append({"_row_number": 201, "_skip_reason": "no_name"})
+    assert validate_beneficiary_rows(rows, _params_fuer_validierung()) == []
+
+
+def test_viele_zeilen_ohne_namen_werden_abgewiesen():
+    """Haeufen sich namenlose Zeilen, stimmt die Kopfzeile nicht."""
+    from services.beneficiary_harvester import validate_beneficiary_rows
+
+    rows = [{"_row_number": i, "beneficiary_name": f"Firma {i}"} for i in range(100)]
+    rows += [{"_row_number": 100 + i, "_skip_reason": "no_name"} for i in range(60)]
+    fehler = validate_beneficiary_rows(rows, _params_fuer_validierung())
+    assert fehler and "ohne Begünstigtennamen" in fehler[0]
+
+
+def test_mehrheit_ohne_namen_auch_bei_kleiner_datei():
+    """Harte Grenze: kleine Datei, aber die Mehrheit ohne Namen -> Abbruch."""
+    from services.beneficiary_harvester import validate_beneficiary_rows
+
+    rows = [{"_row_number": i, "beneficiary_name": f"Firma {i}"} for i in range(5)]
+    rows += [{"_row_number": 5 + i, "_skip_reason": "no_name"} for i in range(15)]
+    fehler = validate_beneficiary_rows(rows, _params_fuer_validierung())
+    assert fehler and "ohne Begünstigtennamen" in fehler[0]

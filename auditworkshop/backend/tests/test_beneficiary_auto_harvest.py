@@ -145,8 +145,11 @@ def test_archive_raw_file_sanitizes_filename(monkeypatch):
 
 
 def test_run_summary_skips_not_due(monkeypatch):
-    """Wenn keine Quelle faellig ist, hat das Summary status='ok' und
-    sources_skipped_not_due > 0."""
+    """Wenn keine Quelle angefasst wurde, ist der Lauf 'noop' — nicht 'ok'.
+
+    Frueher meldete dieser Fall Erfolg. Dadurch lief die Routine monatelang
+    gruen durch, obwohl keine einzige Quelle mehr geholt wurde.
+    """
     from services import scheduler
 
     class _FakeQuery:
@@ -181,10 +184,65 @@ def test_run_summary_skips_not_due(monkeypatch):
     monkeypatch.setattr(scheduler, "SessionLocal", lambda: _FakeSession([cfg]))
 
     summary = scheduler.run_beneficiary_auto_harvest(triggered_by="pytest")
-    assert summary["status"] == "ok"
+    assert summary["status"] == "noop"
     assert summary["sources_skipped_not_due"] == 1
+    assert summary["sources_not_configured"] == 0
     assert summary["sources_ok"] == 0
     assert summary["sources_failed"] == 0
+
+
+def test_manual_upload_zaehlt_als_nicht_konfiguriert(monkeypatch):
+    """manual_upload ohne URL ist eine Konfigurationsluecke, kein 'not_due'.
+
+    Genau dieser Fall lag in der Produktion vor: 35 Quellen ohne
+    Download-URL wurden als 'nicht faellig' verbucht und blieben unsichtbar.
+    """
+    from services import scheduler
+
+    class _FakeQuery:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def filter(self, *_a, **_kw):
+            return self
+
+        def order_by(self, *_a, **_kw):
+            return self
+
+        def all(self):
+            return self._rows
+
+    class _FakeSession:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def query(self, _model):
+            return _FakeQuery(self._rows)
+
+        def close(self):
+            pass
+
+    cfg = _make_cfg(
+        source_key="manuell", source_type="manual_upload", source_url=None,
+    )
+    monkeypatch.setattr(scheduler, "SessionLocal", lambda: _FakeSession([cfg]))
+
+    summary = scheduler.run_beneficiary_auto_harvest(triggered_by="pytest")
+    assert summary["status"] == "noop"
+    assert summary["sources_not_configured"] == 1
+    assert summary["sources_skipped_not_due"] == 0
+    assert summary["sources_total"] == 1
+
+
+def test_auto_capable_erkennt_konfigurationsluecken():
+    """_is_source_auto_capable trennt Konfiguration von Faelligkeit."""
+    from services.scheduler import _is_source_auto_capable
+
+    assert _is_source_auto_capable(_make_cfg()) is True
+    assert _is_source_auto_capable(_make_cfg(source_type="csv_url")) is True
+    assert _is_source_auto_capable(_make_cfg(source_type="manual_upload")) is False
+    assert _is_source_auto_capable(_make_cfg(source_url=None)) is False
+    assert _is_source_auto_capable(_make_cfg(enabled=False)) is False
 
 
 def test_run_summary_handles_worker_exception(monkeypatch):
@@ -230,3 +288,46 @@ def test_run_summary_handles_worker_exception(monkeypatch):
     failures = [s for s in summary["sources"] if s.get("status") == "failed"]
     assert len(failures) == 1
     assert "worker_exception" in failures[0].get("error", "")
+
+
+# ── Dateityp-Erkennung ────────────────────────────────────────────────────────
+
+
+def test_dateiname_nutzt_endung_aus_url():
+    """Eine saubere Endung in der URL wird uebernommen."""
+    from services.scheduler import _dateiname_fuer_inhalt
+
+    name = _dateiname_fuer_inhalt(
+        "https://example.org/pfad/Liste_der_Vorhaben.xlsx", b"PK\x03\x04xx", "land_efre",
+    )
+    assert name == "Liste_der_Vorhaben.xlsx"
+
+
+def test_dateiname_ignoriert_abfrageparameter():
+    """`…liste.xlsx?ts=123` hat frueher die Typerkennung gebrochen."""
+    from services.scheduler import _dateiname_fuer_inhalt
+
+    name = _dateiname_fuer_inhalt(
+        "https://example.org/liste.xlsx?ts=1774519001", b"PK\x03\x04xx", "land_esf",
+    )
+    assert name.endswith(".xlsx")
+
+
+def test_dateiname_erkennt_xlsx_am_inhalt():
+    """Adressen ohne Endung (z.B. sixcms/media.php/9/…) über den Inhalt lösen."""
+    from services.scheduler import _dateiname_fuer_inhalt
+
+    name = _dateiname_fuer_inhalt(
+        "https://example.org/sixcms/media.php/9/12345", b"PK\x03\x04rest", "land_efre",
+    )
+    assert name == "land_efre.xlsx"
+
+
+def test_dateiname_faellt_auf_csv_zurueck():
+    """Kein ZIP-Kopf, keine Endung → als CSV behandeln."""
+    from services.scheduler import _dateiname_fuer_inhalt
+
+    name = _dateiname_fuer_inhalt(
+        "https://example.org/export", b"Name;Ort\nMuster;Kassel\n", "land_esf",
+    )
+    assert name == "land_esf.csv"
