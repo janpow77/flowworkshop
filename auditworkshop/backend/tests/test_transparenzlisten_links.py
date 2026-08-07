@@ -115,3 +115,149 @@ def test_sammler_liefert_text_und_kontext():
     assert href == "/download?id=7"
     assert text == "Download (XLSX)"
     assert "Liste der Vorhaben" in kontext
+
+
+# ── Umzug einer Portalseite ──────────────────────────────────────────────────
+
+
+class _Antwort:
+    def __init__(self, url, text="", inhalt=b"", status=200):
+        self.url = url
+        self.text = text
+        self.content = inhalt
+        self.status_code = status
+
+
+class _Website:
+    """Nachbau einer Behörden-Website als Landkarte URL → Antwort.
+
+    Der Aufbau folgt dem echten Fall Thüringen: die alte Unterseite ist fort,
+    die Startseite verlinkt aber weiterhin auf die neue.
+    """
+
+    def __init__(self, seiten: dict[str, _Antwort]):
+        self.seiten = seiten
+        self.abrufe: list[str] = []
+
+    def get(self, url, headers=None):
+        self.abrufe.append(url)
+        antwort = self.seiten.get(url)
+        if antwort is None:
+            return _Antwort(url, "<html>404</html>", b"<html>404</html>", 404)
+        return antwort
+
+
+_XLSX = b"PK\x03\x04" + b"x" * 40
+
+
+def _website_mit_umzug() -> _Website:
+    start = (
+        "<a href='/vorhaben-daten-und-fakten'>Vorhaben, Daten und Fakten</a>"
+        "<a href='/impressum'>Impressum</a>"
+    )
+    zwischenseite = (
+        "<a href='/vorhaben-daten-und-fakten/liste-der-vorhaben'>"
+        "Liste der Vorhaben</a>"
+    )
+    listenseite = (
+        "<a href='/dateien/Liste_der_Vorhaben_2021-2027.xlsx'>"
+        "Liste der Vorhaben EFRE</a>"
+    )
+    return _Website({
+        "https://amt.example.de/": _Antwort("https://amt.example.de/", start),
+        "https://amt.example.de/vorhaben-daten-und-fakten": _Antwort(
+            "https://amt.example.de/vorhaben-daten-und-fakten", zwischenseite),
+        "https://amt.example.de/vorhaben-daten-und-fakten/liste-der-vorhaben":
+            _Antwort(
+                "https://amt.example.de/vorhaben-daten-und-fakten/liste-der-vorhaben",
+                listenseite),
+        "https://amt.example.de/dateien/Liste_der_Vorhaben_2021-2027.xlsx":
+            _Antwort(
+                "https://amt.example.de/dateien/Liste_der_Vorhaben_2021-2027.xlsx",
+                "", _XLSX),
+    })
+
+
+def test_umgezogene_portalseite_wird_wiedergefunden():
+    """Die alte Unterseite ist fort — von der Startseite aus führt der Weg
+    trotzdem zur neuen Seite und zur Datei."""
+    from services.transparenzlisten_links import finde_portalseite
+
+    netz = _website_mit_umzug()
+    ergebnis = finde_portalseite(
+        "https://amt.example.de/alte/verschwundene-seite", netz, "EFRE")
+    assert ergebnis is not None
+    portal, datei = ergebnis
+    assert portal.endswith("/liste-der-vorhaben")
+    assert datei.endswith("Liste_der_Vorhaben_2021-2027.xlsx")
+
+
+def test_suche_bleibt_auf_der_eigenen_domain():
+    """Kein Ausflug auf fremde Server."""
+    from services.transparenzlisten_links import finde_portalseite
+
+    netz = _Website({
+        "https://amt.example.de/": _Antwort(
+            "https://amt.example.de/",
+            "<a href='https://fremd.example.org/liste-der-vorhaben'>"
+            "Liste der Vorhaben</a>"),
+    })
+    assert finde_portalseite("https://amt.example.de/weg", netz, "EFRE") is None
+    assert all("fremd.example.org" not in u for u in netz.abrufe)
+
+
+def test_suche_ist_begrenzt():
+    """Eine gezielte Suche, kein Crawler: die Zahl geladener Seiten ist
+    gedeckelt."""
+    from services import transparenzlisten_links as m
+
+    viele = "".join(
+        f"<a href='/vorhaben-{i}'>Liste der Vorhaben {i}</a>" for i in range(60)
+    )
+    seiten = {"https://amt.example.de/": _Antwort("https://amt.example.de/", viele)}
+    for i in range(60):
+        u = f"https://amt.example.de/vorhaben-{i}"
+        seiten[u] = _Antwort(u, "<p>nichts</p>")
+    netz = _Website(seiten)
+
+    assert m.finde_portalseite("https://amt.example.de/weg", netz) is None
+    assert len(netz.abrufe) <= m.MAX_SEITEN * 2
+
+
+def test_ohne_portalseite_keine_suche():
+    from services.transparenzlisten_links import finde_portalseite
+
+    netz = _Website({})
+    assert finde_portalseite(None, netz) is None
+    assert netz.abrufe == []
+
+
+def test_fremder_fonds_schliesst_kandidaten_aus():
+    """Auf der EFRE-Seite von Mecklenburg-Vorpommern trug die Datei genug
+    Stichworte, um trotz Abzug durchzukommen. Die ESF-Quelle hätte dann
+    EFRE-Vorhaben als ESF eingelesen."""
+    from services.transparenzlisten_links import MINDEST_PUNKTE, bewerte_kandidat
+
+    punkte = bewerte_kandidat(
+        "https://x.de/serviceassistent/download?id=1686365",
+        "Download (XLSX, 0,3 MB)",
+        fonds="ESF",
+        kontext="EFRE - Liste der Vorhaben Stand: 31.03.2026")
+    assert punkte < MINDEST_PUNKTE
+
+
+def test_ohne_fondsangabe_wird_nicht_ausgeschlossen():
+    """Ist der Fonds unbekannt, darf die Erwähnung eines Fonds nicht schaden."""
+    from services.transparenzlisten_links import MINDEST_PUNKTE, bewerte_kandidat
+
+    punkte = bewerte_kandidat(
+        "https://x.de/Liste_der_Vorhaben_2021-2027.xlsx", "Liste der Vorhaben EFRE")
+    assert punkte >= MINDEST_PUNKTE
+
+
+def test_seiten_des_falschen_fonds_werden_nicht_betreten():
+    """Sonst landet die ESF-Quelle auf der EFRE-Seite desselben Hauses."""
+    from services.transparenzlisten_links import _bewerte_seite
+
+    assert _bewerte_seite("https://x.de/fonds/efre/", "EFRE", fonds="ESF") == 0
+    assert _bewerte_seite("https://x.de/fonds/esf/", "ESF Plus", fonds="ESF") > 0

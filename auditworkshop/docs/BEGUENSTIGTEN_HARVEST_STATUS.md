@@ -96,6 +96,43 @@ Harvest-Versuch ist damit reversibel.
    `scripts/backup-auditworkshop-daily.sh`, nächtlich um 04:45 im Crontab des
    Nutzers `deploy`.
 
+## Umzug einer Portalseite (07.08.2026)
+
+Zieht eine Behörde ihre Seite um, läuft nicht nur der Direktlink ins Leere,
+sondern auch die hinterlegte Portalseite. Genau das war heute bei acht
+Quellen der Fall. Der Harvest hat deshalb eine dritte Stufe: Er beginnt auf
+der Startseite derselben Domain und folgt den aussichtsreichsten Verweisen,
+bis eine Seite einen geprüften Datei-Link hergibt.
+
+Das ist eine gezielte Suche, kein Crawler — höchstens 20 Seiten, höchstens
+drei Ebenen, ausschließlich dieselbe Domain.
+
+An den echten Portalen erprobt, alle Treffer in ein bis zwei Sekunden:
+
+| Quelle | gefundene Datei |
+|---|---|
+| Thüringen EFRE | die aktuelle XLSX unter `/Liste_der_Vorhaben/` |
+| Hessen ESF+ | `…/vielfaeltige-projektuebersicht` |
+| Mecklenburg-Vorpommern ESF+ | Download-ID 1689382 |
+| Mecklenburg-Vorpommern EFRE | Download-ID 1686365 |
+| Niedersachsen ESF+ | Download-ID 230555 |
+
+### Der fremde Fonds schließt aus
+
+Beim ersten Versuch landete die ESF-Quelle von Mecklenburg-Vorpommern auf der
+**EFRE**-Seite desselben Hauses und hätte deren Liste als ESF eingelesen. Die
+Datei trug genug Stichworte, um den bisherigen Punktabzug zu überstehen.
+
+Deshalb ist die Erwähnung eines fremden Fonds jetzt ein **Ausschluss**, kein
+Abzug — und Seiten des falschen Fonds werden gar nicht erst betreten. Eine
+Falschzuordnung ist in einem Prüfwerkzeug schlimmer als eine fehlende Zeile.
+
+### Grenze: Domainwechsel
+
+Baden-Württemberg ist von `2021-27.efre-bw.de` auf `efre-bw.de` umgezogen. Von
+einer toten Domain aus lässt sich nichts durchsuchen — das bleibt menschliche
+Recherche. Der Ausfall meldet sich dann über die Infoblase.
+
 ## Meldung bei Ausfällen (07.08.2026)
 
 Der Nachtlauf hat keine Zuschauer. Ohne aktive Meldung fällt ein Ausfall erst
