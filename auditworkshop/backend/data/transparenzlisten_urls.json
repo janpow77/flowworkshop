@@ -6,11 +6,11 @@
       "bundesland": "Baden-Wuerttemberg",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": "https://2021-27.efre-bw.de/wp-content/uploads/Liste-der-Vorhaben_31-12-2024.xlsx",
-      "portal": "https://2021-27.efre-bw.de/liste-der-vorhaben/",
-      "status": "unreachable",
+      "url": "https://efre-bw.de/site/pbs-bw-rebrush2024/get/documents_E281500171/MLR.EFRE/EFRE-Dateiablage/docs/ergebnisse/liste-der-vorhaben/Liste%20der%20Vorhaben_30-04-2026.xlsx",
+      "portal": "https://efre-bw.de/,Lde/Startseite/EFRE+entdecken/Ergebnisse",
+      "status": "ok",
       "rows": 163,
-      "notes": "Verbindungsfehler bei Live-Prüfung am 2026-08-06"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Baden-Wuerttemberg",
@@ -136,21 +136,21 @@
       "bundesland": "Hessen",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://wirtschaft.hessen.de/wirtschaft/efre-europaeischer-strukturfonds/foerderung-2021-2027",
-      "status": "preloaded",
+      "url": "https://wirtschaft.hessen.de/sites/wirtschaft.hessen.de/files/2026-05/transparenzliste_verzeichnis_der_beguenstigten_fuer_hessen_deutschland_fp_21-27_stand_27.05.2026.xlsx",
+      "portal": "https://wirtschaft.hessen.de/wirtschaft/efre-europaeischer-strukturfonds",
+      "status": "ok",
       "rows": 182,
-      "notes": "Bereits lokal geladen; bisherige harte XLSX-URL lieferte am 29.03.2026 HTTP 404"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Hessen",
       "fonds": "ESF",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://www.esf-hessen.de/esf-hessen/zahlen-fakten-und-erfolge/liste-der-vorhaben",
-      "status": "preloaded",
+      "url": "https://www.esf-hessen.de/resource/blob/esf-hessen/603958/6e669394d7bd95cea5356940de587d2d/liste-der-vorhaben-2021-2027-esf--data.xlsx",
+      "portal": "https://www.esf-hessen.de/esf-hessen/projekte-im-esf/vielfaeltige-projektuebersicht",
+      "status": "ok",
       "rows": 12,
-      "notes": "Bereits lokal geladen; öffentliche Seite verlinkt den XLSX-Download derzeit nicht statisch im HTML"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Mecklenburg-Vorpommern",
@@ -166,31 +166,31 @@
       "bundesland": "Mecklenburg-Vorpommern",
       "fonds": "ESF",
       "periode": "2021-2027",
-      "url": "https://www.europa-mv.de/serviceassistent/download?id=1685807",
+      "url": "https://www.europa-mv.de/serviceassistent/download?id=1689382",
       "portal": "https://www.europa-mv.de/foerderinstrumente/fonds_mv/esf/",
-      "status": "html",
+      "status": "ok",
       "rows": null,
-      "notes": "Liefert HTML-Seite statt Datei — Direktlink veraltet (2026-08-06)"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Niedersachsen",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://www.europa-fuer-niedersachsen.niedersachsen.de/startseite/regionen_und_foerderung/efre_und_esf/",
-      "status": "preloaded",
+      "url": "https://www.europa-fuer-niedersachsen.niedersachsen.de/download/230554/Liste_der_Vorhaben_EFRE_Stand_31.01.2026.xlsx",
+      "portal": "https://www.europa-fuer-niedersachsen.niedersachsen.de/startseite/regionen_und_foerderung/efre_und_esf/liste-der-vorhaben-152610.html",
+      "status": "ok",
       "rows": 713,
-      "notes": "Bereits lokal geladen; fruehere Direkt-URL lieferte am 29.03.2026 HTTP 400"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Niedersachsen",
       "fonds": "ESF",
       "periode": "2021-2027",
-      "url": null,
-      "portal": "https://www.europa-fuer-niedersachsen.niedersachsen.de/startseite/regionen_und_foerderung/efre_und_esf/",
-      "status": "preloaded",
+      "url": "https://www.europa-fuer-niedersachsen.niedersachsen.de/download/230555/Liste_der_Vorhaben_ESF_Stand_31.01.2026.xlsx",
+      "portal": "https://www.europa-fuer-niedersachsen.niedersachsen.de/startseite/regionen_und_foerderung/efre_und_esf/liste-der-vorhaben-152610.html",
+      "status": "ok",
       "rows": 681,
-      "notes": "Bereits lokal geladen; fruehere Direkt-URL lieferte am 29.03.2026 HTTP 400"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Nordrhein-Westfalen",
@@ -237,10 +237,10 @@
       "fonds": "EFRE",
       "periode": "2021-2027",
       "url": null,
-      "portal": "https://www.saarland.de/DE/portale/eu-foerderportal/strukturfondsfoerderung/efre/efre-fp-20212027",
+      "portal": "https://www.saarland.de/DE/portale/eu-foerderportal/strukturfondsfoerderung/efre/efre20212027/vorhaben_beguenstigte/vorhaben_node",
       "status": "manual_download",
       "rows": null,
-      "notes": "Exakte offizielle EFRE-Seite bekannt; automatisierte Extraktion scheitert aktuell an der Bunny-Shield-Challenge des Portals"
+      "notes": "Portalseite am 2026-08-07 neu recherchiert"
     },
     {
       "bundesland": "Saarland",
@@ -316,11 +316,11 @@
       "bundesland": "Thueringen",
       "fonds": "EFRE",
       "periode": "2021-2027",
-      "url": "https://efre-thueringen.de/fileadmin/user_upload/Liste_der_Vorhaben_2026_01_10T03_01_08.825.xlsx",
-      "portal": "https://efre-thueringen.de/vorhaben-daten-und-fakten/erfolgreich-gefoerderte-vorhaben/",
-      "status": "404",
+      "url": "https://www.efre-thueringen.de/fileadmin/user_upload/PDF/Liste_der_Vorhaben/Liste_der_Vorhaben_2026_07_10T03_01_09.325.xlsx",
+      "portal": "https://www.efre-thueringen.de/vorhaben-daten-und-fakten/liste-der-vorhaben",
+      "status": "ok",
       "rows": 2153,
-      "notes": "Download fehlgeschlagen am 2026-08-06"
+      "notes": "Link am 2026-08-07 von der Portalseite aktualisiert"
     },
     {
       "bundesland": "Thueringen",

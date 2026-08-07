@@ -904,20 +904,88 @@ def _harvest_one_beneficiary_source(
         source_key, cfg.source_url, cfg.update_frequency_days,
     )
 
-    # 1. Download
-    try:
-        import httpx
-        with httpx.Client(timeout=BENEFICIARY_HTTP_TIMEOUT, follow_redirects=True) as client:
+    # 1. Download — mit Selbstheilung über die Portalseite.
+    #
+    # Die Länder veröffentlichen ihre Listen unter versionierten Dateinamen.
+    # Mit jeder Veröffentlichung stirbt der hinterlegte Direktlink; die
+    # Portalseite bleibt stabil. Statt monatelang stillzustehen, sucht der
+    # Lauf dort den neuen Link, verwendet ihn und merkt ihn sich.
+    import httpx
+    from services.transparenzlisten_links import (
+        HTTP_HEADERS, finde_datei_link, ist_tabellendatei,
+    )
+
+    file_content: bytes | None = None
+    genutzte_url = cfg.source_url
+    erster_fehler: str | None = None
+
+    with httpx.Client(
+        timeout=BENEFICIARY_HTTP_TIMEOUT, follow_redirects=True,
+        headers=HTTP_HEADERS,
+    ) as client:
+        try:
             r = client.get(cfg.source_url)
             r.raise_for_status()
-            file_content = r.content
-    except Exception as exc:  # noqa: BLE001
-        log.warning("Beneficiary-Auto-Harvest %s: Download fehlgeschlagen: %s", source_key, exc)
+            brauchbar, art = ist_tabellendatei(r.content, cfg.source_url)
+            if brauchbar:
+                file_content = r.content
+            else:
+                # Häufigster Fall eines gewanderten Links: der Server
+                # antwortet mit 200 und liefert eine Fehlerseite aus.
+                erster_fehler = f"Direktlink liefert {art}"
+        except Exception as exc:  # noqa: BLE001
+            erster_fehler = str(exc)
+
+        if file_content is None:
+            log.info(
+                "Beneficiary-Auto-Harvest %s: Direktlink trägt nicht (%s) — "
+                "suche auf der Portalseite.", source_key, erster_fehler,
+            )
+            neue_url = finde_datei_link(cfg.source_landing_page, client, cfg.fonds)
+            if neue_url and neue_url != cfg.source_url:
+                try:
+                    r = client.get(neue_url)
+                    r.raise_for_status()
+                    brauchbar, _ = ist_tabellendatei(r.content, neue_url)
+                    if brauchbar:
+                        file_content = r.content
+                        genutzte_url = neue_url
+                except Exception as exc:  # noqa: BLE001
+                    log.info(
+                        "Beneficiary-Auto-Harvest %s: auch der Portallink "
+                        "trägt nicht: %s", source_key, exc,
+                    )
+
+    if file_content is None:
+        log.warning(
+            "Beneficiary-Auto-Harvest %s: Download fehlgeschlagen: %s",
+            source_key, erster_fehler,
+        )
         return {
             "source_key": source_key,
             "status": "failed",
-            "error": f"download_failed: {exc}",
+            "error": f"download_failed: {erster_fehler}",
         }
+
+    if genutzte_url != cfg.source_url:
+        # Neuen Link festhalten, damit der nächste Lauf direkt trifft.
+        log.warning(
+            "Beneficiary-Auto-Harvest %s: Direktlink war veraltet und wurde "
+            "über die Portalseite erneuert: %s", source_key, genutzte_url,
+        )
+        db = SessionLocal()
+        try:
+            cfg_db = (
+                db.query(BeneficiarySourceConfig)
+                .filter(BeneficiarySourceConfig.source_key == source_key)
+                .first()
+            )
+            if cfg_db:
+                cfg_db.source_url = genutzte_url
+                db.commit()
+        finally:
+            db.close()
+        cfg.source_url = genutzte_url
 
     if not file_content:
         return {

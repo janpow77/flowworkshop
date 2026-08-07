@@ -96,6 +96,66 @@ Harvest-Versuch ist damit reversibel.
    `scripts/backup-auditworkshop-daily.sh`, nächtlich um 04:45 im Crontab des
    Nutzers `deploy`.
 
+## Dynamische Link-Auflösung (07.08.2026)
+
+Feste Direktlinks sind bei diesen Quellen ein Auslaufmodell: die Länder
+versionieren ihre Dateinamen, Thüringen hängt sogar einen Generierungs-
+Zeitstempel an (`Liste_der_Vorhaben_2026_07_10T03_01_09.325.xlsx`),
+Mecklenburg-Vorpommern liefert über einen Download-Handler mit wechselnder
+ID. Jeder Link stirbt damit planmäßig.
+
+Der Harvest repariert sich deshalb selbst. Trägt der hinterlegte Link nicht
+— Verbindungsfehler, HTTP-Fehler oder eine HTML-Fehlerseite mit Status 200 —
+sucht der Lauf auf der Portalseite den aktuellen Verweis, verwendet ihn und
+**speichert ihn**, damit der nächste Lauf direkt trifft. Protokolliert wird
+das als Warnung, denn eine stille Selbstheilung wäre in einem Prüfwerkzeug
+nicht nachvollziehbar.
+
+Am Live-System erprobt: Bei Hessen ESF+ wurde der Link absichtlich zerstört.
+Der Lauf hat ihn über die Portalseite ersetzt, 769 Datensätze geladen und
+den neuen Link übernommen.
+
+### Wie ein Kandidat bewertet wird
+
+`services/transparenzlisten_links.py` sammelt alle Datei-Verweise der
+Portalseite und bewertet sie nach Stichworten, Förderperiode und Fonds.
+Drei Punkte waren dabei entscheidend:
+
+- **Förderperiode.** Baden-Württemberg und Hessen führen die alte Liste
+  2014–2020 direkt neben der aktuellen. Ohne Gewichtung landet leicht die
+  falsche Periode im Import.
+- **Fonds.** Niedersachsen listet die EFRE- und die ESF+-Datei
+  untereinander, beide heißen „Liste der Vorhaben". Erst der Abgleich mit
+  dem Fonds der Quelle trennt sie.
+- **Umgebender Text.** Mecklenburg-Vorpommern nennt den Link nur
+  „Download (XLSX, 0,28 MB)" — die Bezeichnung steht in der Überschrift
+  darüber. Deshalb fließen 160 Zeichen Fließtext vor dem Link mit ein.
+
+Geprüft wird jeder Kandidat am Inhalt, nicht am Content-Type: eine XLSX ist
+ein ZIP-Archiv und beginnt mit `PK\x03\x04`. Mehrere Portale liefern ihre
+Dateien als `application/octet-stream` oder `application/zip` aus.
+
+### Neu angebunden
+
+| Quelle | Datensätze |
+|---|---|
+| Mecklenburg-Vorpommern ESF+ | 2.749 |
+| Thüringen EFRE | 2.490 |
+| Niedersachsen EFRE | 1.066 |
+| Niedersachsen ESF+ | 864 |
+| Hessen ESF+ | 769 |
+| Baden-Württemberg EFRE | 242 |
+| Hessen EFRE | 199 |
+
+**30 Quellen automatisiert, Bestand 78.123 Datensätze.**
+
+### Saarland: nur PDF
+
+Das Saarland veröffentlicht seine Liste ausschließlich als PDF
+(`efre_fp20212027_vorhabenliste_2026-03-01.pdf`). Der Importer verarbeitet
+XLSX und CSV; eine PDF-Tabellenextraktion wäre ein eigenes Vorhaben mit
+eigenem Fehlerrisiko. Beide Saarland-Quellen bleiben deshalb manuell.
+
 ## Link-Aktualisierung (07.08.2026)
 
 Die Länder veröffentlichen ihre Listen unter versionierten Dateinamen. Mit
