@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, CheckCheck, Clock } from 'lucide-react';
+import { Bell, CheckCheck, Clock, X } from 'lucide-react';
 import { getWorkshopAuthHeaders } from '../../lib/api';
 
 interface Notification {
@@ -25,6 +25,35 @@ function formatRelative(iso: string | null): string {
   return `vor ${day} Tag${day === 1 ? '' : 'en'}`;
 }
 
+/**
+ * Meldungen, die von selbst als Blase aufgehen sollen. Alles andere wartet
+ * geduldig in der Glocke — eine Blase, die bei jeder Kleinigkeit aufpoppt,
+ * wird nach zwei Tagen weggeklickt, ohne gelesen zu werden.
+ */
+const BLASEN_ARTEN = new Set(['admin_harvest_failed', 'admin_pending']);
+
+/** Wie lange die Blase stehen bleibt, bevor sie sich selbst schliesst. */
+const BLASE_DAUER_MS = 15_000;
+
+/** Bereits gezeigte Meldungen, damit die Blase nicht im Minutentakt wiederkehrt. */
+const GEZEIGT_SPEICHER = 'workshop_blase_gezeigt';
+
+function bereitsGezeigt(): Set<number> {
+  try {
+    const roh = localStorage.getItem(GEZEIGT_SPEICHER);
+    return new Set<number>(roh ? JSON.parse(roh) : []);
+  } catch {
+    return new Set<number>();
+  }
+}
+
+function merkeGezeigt(id: number) {
+  try {
+    const alle = [...bereitsGezeigt(), id].slice(-50);
+    localStorage.setItem(GEZEIGT_SPEICHER, JSON.stringify(alle));
+  } catch { /* localStorage kann fehlen — dann eben ohne Gedaechtnis */ }
+}
+
 const KIND_COLORS: Record<string, string> = {
   forum_reply: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200',
   forum_mention: 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200',
@@ -37,6 +66,7 @@ export default function NotificationBell() {
   const [items, setItems] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  const [blase, setBlase] = useState<Notification | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const isLoggedIn = !!localStorage.getItem('workshop_token');
 
@@ -46,8 +76,20 @@ export default function NotificationBell() {
       const r = await fetch('/api/notifications?limit=20', { headers: getWorkshopAuthHeaders() });
       if (!r.ok) return;
       const d = await r.json();
-      setItems(d.items || []);
+      const liste: Notification[] = d.items || [];
+      setItems(liste);
       setUnread(d.unread_count || 0);
+
+      // Neueste ungelesene Meldung einer relevanten Art als Blase zeigen —
+      // aber jede nur einmal.
+      const gezeigt = bereitsGezeigt();
+      const kandidat = liste.find(
+        (n) => !n.read_at && BLASEN_ARTEN.has(n.kind) && !gezeigt.has(n.id),
+      );
+      if (kandidat) {
+        merkeGezeigt(kandidat.id);
+        setBlase(kandidat);
+      }
     } catch { /* ignore */ }
   };
 
@@ -58,6 +100,13 @@ export default function NotificationBell() {
     return () => clearInterval(iv);
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, []);
+
+  // Blase schliesst sich von selbst; die Glocke behaelt die Meldung.
+  useEffect(() => {
+    if (!blase) return;
+    const t = setTimeout(() => setBlase(null), BLASE_DAUER_MS);
+    return () => clearTimeout(t);
+  }, [blase]);
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
@@ -97,6 +146,45 @@ export default function NotificationBell() {
           </span>
         )}
       </button>
+      {blase && !open && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute right-0 mt-2 w-[340px] rounded-2xl border border-rose-200 bg-white shadow-xl dark:border-rose-900/60 dark:bg-slate-900 z-50 animate-in fade-in slide-in-from-top-1"
+        >
+          {/* Zeiger zur Glocke, damit die Blase erkennbar dazugehoert */}
+          <span className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 border-l border-t border-rose-200 bg-white dark:border-rose-900/60 dark:bg-slate-900" />
+          <div className="flex items-start gap-2 p-4">
+            <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-rose-500" />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                {blase.title}
+              </div>
+              {blase.body && (
+                <div className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400 line-clamp-3">
+                  {blase.body}
+                </div>
+              )}
+              {blase.link && (
+                <Link
+                  to={blase.link}
+                  onClick={() => { markRead(blase.id); setBlase(null); }}
+                  className="mt-2 inline-block text-xs font-medium text-cyan-600 hover:text-cyan-700"
+                >
+                  Ansehen
+                </Link>
+              )}
+            </div>
+            <button
+              onClick={() => setBlase(null)}
+              aria-label="Hinweis schließen"
+              className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
       {open && (
         <div className="absolute right-0 mt-2 w-[360px] max-h-[500px] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900 z-50">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 dark:border-slate-800">

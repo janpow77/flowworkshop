@@ -96,6 +96,27 @@ Harvest-Versuch ist damit reversibel.
    `scripts/backup-auditworkshop-daily.sh`, nächtlich um 04:45 im Crontab des
    Nutzers `deploy`.
 
+## Meldung bei Ausfällen (07.08.2026)
+
+Der Nachtlauf hat keine Zuschauer. Ohne aktive Meldung fällt ein Ausfall erst
+auf, wenn jemand zufällig ins Protokoll sieht — für die Beihilfen-Routine gab
+es längst eine Admin-Meldung, für den Länder-Harvest nicht.
+
+Jetzt legt ein Lauf mit Fehlschlägen **eine** Meldung in die
+Benachrichtigungsglocke aller Admins. Bewusst eine je Lauf und nicht eine je
+Quelle: Bei zehn kaputten Quellen wären zehn Einträge kein Signal mehr,
+sondern Rauschen. Aufgezählt werden die ersten sechs, der Rest zusammengefasst.
+
+Gemeldet werden nur Zustände, die jemanden angehen — `failed`, `partial` und
+`noop`. Ein Lauf ohne fällige Quelle (`idle`) ist der Regelfall und bleibt
+still.
+
+Im Frontend geht die Meldung zusätzlich als **Infoblase** unter der Glocke
+auf, ohne dass man sie anklicken muss. Sie schließt sich nach 15 Sekunden von
+selbst, und jede Meldung erscheint nur einmal je Browser — eine Blase, die im
+Minutentakt wiederkehrt, wird weggeklickt statt gelesen. In der Glocke bleibt
+sie erhalten.
+
 ## Dynamische Link-Auflösung (07.08.2026)
 
 Feste Direktlinks sind bei diesen Quellen ein Auslaufmodell: die Länder

@@ -393,3 +393,69 @@ def test_ohne_jede_holbare_quelle_bleibt_es_noop(monkeypatch):
     assert summary["status"] == "noop"
     assert summary["sources_auto_faehig"] == 0
     assert summary["sources_not_configured"] == 1
+
+
+# ── Meldung an die Admins ────────────────────────────────────────────────────
+
+
+def _gesammelte_meldungen(monkeypatch):
+    """Fängt ab, was an die Glocke ginge."""
+    from services import scheduler
+
+    gesendet = []
+    monkeypatch.setattr(
+        scheduler, "_benachrichtige_admins",
+        lambda titel, text, **kw: gesendet.append((titel, text)),
+    )
+    return gesendet
+
+
+def test_erfolgreicher_lauf_meldet_nichts(monkeypatch):
+    """Wer bei jedem Erfolg meldet, wird nicht mehr gelesen."""
+    from services.scheduler import _melde_beneficiary_ergebnis
+
+    gesendet = _gesammelte_meldungen(monkeypatch)
+    _melde_beneficiary_ergebnis({"status": "ok", "sources": []})
+    assert gesendet == []
+
+
+def test_leerlauf_meldet_nichts(monkeypatch):
+    """Zwischen zwei Aktualisierungen ist Nichtstun der Regelfall."""
+    from services.scheduler import _melde_beneficiary_ergebnis
+
+    gesendet = _gesammelte_meldungen(monkeypatch)
+    _melde_beneficiary_ergebnis({"status": "idle", "sources": []})
+    assert gesendet == []
+
+
+def test_fehlschlaege_ergeben_genau_eine_meldung(monkeypatch):
+    """Bei zehn kaputten Quellen waeren zehn Eintraege kein Signal mehr."""
+    from services.scheduler import _melde_beneficiary_ergebnis
+
+    gesendet = _gesammelte_meldungen(monkeypatch)
+    _melde_beneficiary_ergebnis({
+        "status": "partial",
+        "sources_auto_faehig": 29,
+        "sources": (
+            [{"source_key": f"land_{i}", "status": "failed", "error": "HTTP 404"}
+             for i in range(9)]
+            + [{"source_key": "land_ok", "status": "ok"}]
+        ),
+    })
+    assert len(gesendet) == 1
+    titel, text = gesendet[0]
+    assert "9 von 29" in titel
+    # Nur die ersten sechs werden aufgezaehlt, der Rest zusammengefasst.
+    assert "und 3 weitere" in text
+
+
+def test_ohne_abrufbare_quelle_wird_deutlich_gemeldet(monkeypatch):
+    from services.scheduler import _melde_beneficiary_ergebnis
+
+    gesendet = _gesammelte_meldungen(monkeypatch)
+    _melde_beneficiary_ergebnis({
+        "status": "noop", "sources": [], "sources_not_configured": 35,
+    })
+    assert len(gesendet) == 1
+    assert "keine abrufbare Quelle" in gesendet[0][0]
+    assert "35" in gesendet[0][1]
