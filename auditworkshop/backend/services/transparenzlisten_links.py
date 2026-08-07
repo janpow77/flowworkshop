@@ -133,6 +133,26 @@ _FONDS_MUSTER = {
 }
 
 
+# Punktzahl, die einen Kandidaten sicher unter jede Schwelle drueckt.
+_AUSGESCHLOSSEN = -1000
+
+
+def _fonds_treffer(heu: str, fonds: str | None) -> tuple[bool, bool]:
+    """(eigener Fonds erwaehnt, fremder Fonds erwaehnt)."""
+    if not fonds:
+        return False, False
+    ziel = fonds.strip().upper()
+    eigener = fremder = False
+    for kuerzel, muster in _FONDS_MUSTER.items():
+        if not re.search(muster, heu):
+            continue
+        if kuerzel == ziel:
+            eigener = True
+        else:
+            fremder = True
+    return eigener, fremder
+
+
 def bewerte_kandidat(url: str, linktext: str, fonds: str | None = None,
                      kontext: str = "") -> int:
     """Punktzahl aus Adresse, Linktext und umgebendem Fliesstext.
@@ -158,15 +178,16 @@ def bewerte_kandidat(url: str, linktext: str, fonds: str | None = None,
             punkte -= 12
             break
     if fonds:
-        ziel = fonds.strip().upper()
-        for kuerzel, muster in _FONDS_MUSTER.items():
-            if not re.search(muster, heu):
-                continue
-            if kuerzel == ziel:
-                punkte += 8
-            elif not (ziel == "ESF" and kuerzel == "ESF"):
-                # Ein fremder Fonds im Namen spricht klar dagegen.
-                punkte -= 10
+        eigener, fremder = _fonds_treffer(heu, fonds)
+        if fremder and not eigener:
+            # Ausschluss, nicht bloss Abzug: Auf der EFRE-Seite von
+            # Mecklenburg-Vorpommern trug die Datei genug Stichworte, um trotz
+            # Abzug durchzukommen — die ESF-Quelle haette dann EFRE-Vorhaben
+            # als ESF eingelesen. Eine Falschzuordnung ist schlimmer als eine
+            # fehlende Zeile.
+            return _AUSGESCHLOSSEN
+        if eigener:
+            punkte += 8
     if re.search(r"20(2[3-9]|3[0-9])", heu):
         punkte += 2
     if unquote(url).lower().split("?")[0].endswith(".xlsx"):
@@ -270,4 +291,140 @@ def finde_datei_link(portal: str | None, client: Any,
     for k in sammle_kandidaten(portal, client, fonds):
         if k["ok"] and k["punkte"] >= MINDEST_PUNKTE:
             return k["url"]
+    return None
+
+# ── Umzug einer Portalseite ──────────────────────────────────────────────────
+#
+# Zieht eine Behoerde ihre Seite um, laeuft nicht nur der Direktlink ins
+# Leere, sondern auch die hinterlegte Portalseite. Von der Startseite der
+# Domain aus laesst sich die neue Seite jedoch meist wiederfinden: Thueringen
+# verlinkt sie dort woertlich als „Liste der Vorhaben", Hessen eine Ebene
+# tiefer unter „Projekte im ESF".
+#
+# Bewusst eng begrenzt — das ist eine gezielte Suche, kein Crawler:
+MAX_SEITEN = 20          # so viele Seiten werden hoechstens geladen
+MAX_TIEFE = 3            # so tief wird der Navigation gefolgt
+
+# Seiten, die eine Vorhabensliste tragen koennten, nach Aussagekraft.
+SEITEN_STICHWORTE: tuple[tuple[str, int], ...] = (
+    ("liste der vorhaben", 12),
+    ("liste-der-vorhaben", 12),
+    ("list of operations", 10),
+    ("vorhabensliste", 10),
+    ("vorhabenliste", 10),
+    ("begünstigt", 6),
+    ("beguenstigt", 6),
+    ("transparenz", 5),
+    ("vorhaben", 4),
+    ("ergebnis", 3),
+    ("projekte", 3),
+    ("daten und fakten", 3),
+    ("strukturfonds", 5),
+    ("förderinstrument", 3),
+    ("foerderinstrument", 3),
+    ("fonds", 3),
+    ("zahlen", 2),
+)
+
+
+def _bewerte_seite(url: str, linktext: str, fonds: str | None = None) -> int:
+    heu = f"{unquote(url)} {linktext}".lower()
+    # Seiten des falschen Fonds gar nicht erst betreten — sonst landet die
+    # ESF-Quelle auf der EFRE-Seite desselben Hauses.
+    eigener, fremder = _fonds_treffer(heu, fonds)
+    if fremder and not eigener:
+        return 0
+    punkte = 6 if eigener else 0
+    for wort, gewicht in SEITEN_STICHWORTE:
+        if wort in heu:
+            punkte += gewicht
+    for wort in PERIODE_NEGATIV:
+        if wort in heu:
+            punkte -= 12
+            break
+    for wort in GEGENWORTE:
+        if wort in heu:
+            punkte -= 4
+    return punkte
+
+
+def _seitenlinks(html: str, basis: str,
+                 fonds: str | None = None) -> list[tuple[int, str]]:
+    """Bewertete Verweise auf Seiten derselben Domain."""
+    from urllib.parse import urlparse
+
+    sammler = _LinkSammler()
+    try:
+        sammler.feed(html)
+    except Exception:  # noqa: BLE001
+        pass
+
+    host = urlparse(basis).netloc
+    treffer: dict[str, int] = {}
+    for href, text, _kontext in sammler.links:
+        voll = urljoin(basis, href).split("#", 1)[0]
+        zerlegt = urlparse(voll)
+        if zerlegt.netloc != host or zerlegt.scheme not in ("http", "https"):
+            continue
+        if unquote(voll.split("?")[0]).lower().endswith(DATEI_ENDUNGEN):
+            continue
+        punkte = _bewerte_seite(voll, text, fonds)
+        if punkte > 0:
+            treffer[voll] = max(treffer.get(voll, 0), punkte)
+    return sorted(((p, u) for u, p in treffer.items()), key=lambda k: -k[0])
+
+
+def finde_portalseite(altes_portal: str | None, client: Any,
+                      fonds: str | None = None) -> tuple[str, str] | None:
+    """Sucht nach einem Umzug die neue Portalseite samt Datei-Link.
+
+    Startet auf der Startseite derselben Domain und folgt den
+    aussichtsreichsten Verweisen. Liefert ``(portalseite, datei_url)``,
+    sobald eine Seite einen geprueften Datei-Link hergibt — sonst ``None``.
+
+    Grenze der Methode: wechselt die Behoerde die Domain (Baden-Wuerttemberg
+    von ``2021-27.efre-bw.de`` auf ``efre-bw.de``), ist von der alten Adresse
+    aus nichts mehr zu holen. Das braucht menschliche Recherche.
+    """
+    from urllib.parse import urlparse
+
+    if not altes_portal:
+        return None
+    zerlegt = urlparse(altes_portal)
+    if not zerlegt.scheme or not zerlegt.netloc:
+        return None
+    start = f"{zerlegt.scheme}://{zerlegt.netloc}/"
+
+    besucht: set[str] = set()
+    warteschlange: list[tuple[int, str]] = [(0, start)]
+    geladen = 0
+
+    while warteschlange and geladen < MAX_SEITEN:
+        tiefe, seite = warteschlange.pop(0)
+        if seite in besucht:
+            continue
+        besucht.add(seite)
+        try:
+            r = client.get(seite, headers=HTTP_HEADERS)
+        except Exception:  # noqa: BLE001
+            continue
+        geladen += 1
+        if r.status_code != 200:
+            continue
+
+        # Traegt diese Seite bereits die Liste?
+        if tiefe > 0:
+            datei = finde_datei_link(seite, client, fonds)
+            if datei:
+                log.info("Neue Portalseite gefunden: %s", seite)
+                return seite, datei
+
+        if tiefe >= MAX_TIEFE:
+            continue
+        for punkte, url in _seitenlinks(r.text, str(r.url), fonds)[:6]:
+            if url not in besucht:
+                warteschlange.append((tiefe + 1, url))
+        # Aussichtsreichste zuerst abarbeiten.
+        warteschlange.sort(key=lambda e: e[0])
+
     return None

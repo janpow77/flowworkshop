@@ -967,11 +967,12 @@ def _harvest_one_beneficiary_source(
     # Lauf dort den neuen Link, verwendet ihn und merkt ihn sich.
     import httpx
     from services.transparenzlisten_links import (
-        HTTP_HEADERS, finde_datei_link, ist_tabellendatei,
+        HTTP_HEADERS, finde_datei_link, finde_portalseite, ist_tabellendatei,
     )
 
     file_content: bytes | None = None
     genutzte_url = cfg.source_url
+    neue_portalseite: str | None = None
     erster_fehler: str | None = None
 
     with httpx.Client(
@@ -991,6 +992,21 @@ def _harvest_one_beneficiary_source(
         except Exception as exc:  # noqa: BLE001
             erster_fehler = str(exc)
 
+        def _hole(url: str) -> bytes | None:
+            """Laedt eine Datei und prueft am Inhalt, ob sie brauchbar ist."""
+            try:
+                antwort = client.get(url)
+                antwort.raise_for_status()
+                brauchbar, _art = ist_tabellendatei(antwort.content, url)
+                return antwort.content if brauchbar else None
+            except Exception as exc:  # noqa: BLE001
+                log.info(
+                    "Beneficiary-Auto-Harvest %s: %s trägt nicht: %s",
+                    source_key, url[:70], exc,
+                )
+                return None
+
+        # Stufe 2: der Direktlink ist tot — die Portalseite kennt den neuen.
         if file_content is None:
             log.info(
                 "Beneficiary-Auto-Harvest %s: Direktlink trägt nicht (%s) — "
@@ -998,18 +1014,24 @@ def _harvest_one_beneficiary_source(
             )
             neue_url = finde_datei_link(cfg.source_landing_page, client, cfg.fonds)
             if neue_url and neue_url != cfg.source_url:
-                try:
-                    r = client.get(neue_url)
-                    r.raise_for_status()
-                    brauchbar, _ = ist_tabellendatei(r.content, neue_url)
-                    if brauchbar:
-                        file_content = r.content
-                        genutzte_url = neue_url
-                except Exception as exc:  # noqa: BLE001
-                    log.info(
-                        "Beneficiary-Auto-Harvest %s: auch der Portallink "
-                        "trägt nicht: %s", source_key, exc,
-                    )
+                file_content = _hole(neue_url)
+                if file_content is not None:
+                    genutzte_url = neue_url
+
+        # Stufe 3: auch die Portalseite ist fort. Von der Startseite derselben
+        # Domain aus laesst sich die neue Seite meist wiederfinden.
+        if file_content is None and cfg.source_landing_page:
+            log.info(
+                "Beneficiary-Auto-Harvest %s: Portalseite trägt auch nicht — "
+                "suche von der Startseite aus.", source_key,
+            )
+            gefunden = finde_portalseite(cfg.source_landing_page, client, cfg.fonds)
+            if gefunden:
+                neues_portal, neue_url = gefunden
+                file_content = _hole(neue_url)
+                if file_content is not None:
+                    genutzte_url = neue_url
+                    neue_portalseite = neues_portal
 
     if file_content is None:
         log.warning(
@@ -1022,12 +1044,19 @@ def _harvest_one_beneficiary_source(
             "error": f"download_failed: {erster_fehler}",
         }
 
-    if genutzte_url != cfg.source_url:
-        # Neuen Link festhalten, damit der nächste Lauf direkt trifft.
-        log.warning(
-            "Beneficiary-Auto-Harvest %s: Direktlink war veraltet und wurde "
-            "über die Portalseite erneuert: %s", source_key, genutzte_url,
-        )
+    if genutzte_url != cfg.source_url or neue_portalseite:
+        # Neue Adressen festhalten, damit der nächste Lauf direkt trifft.
+        if neue_portalseite:
+            log.warning(
+                "Beneficiary-Auto-Harvest %s: Portalseite war umgezogen. Neue "
+                "Seite: %s · neue Datei: %s",
+                source_key, neue_portalseite, genutzte_url,
+            )
+        else:
+            log.warning(
+                "Beneficiary-Auto-Harvest %s: Direktlink war veraltet und wurde "
+                "über die Portalseite erneuert: %s", source_key, genutzte_url,
+            )
         db = SessionLocal()
         try:
             cfg_db = (
@@ -1037,10 +1066,14 @@ def _harvest_one_beneficiary_source(
             )
             if cfg_db:
                 cfg_db.source_url = genutzte_url
+                if neue_portalseite:
+                    cfg_db.source_landing_page = neue_portalseite
                 db.commit()
         finally:
             db.close()
         cfg.source_url = genutzte_url
+        if neue_portalseite:
+            cfg.source_landing_page = neue_portalseite
 
     if not file_content:
         return {
