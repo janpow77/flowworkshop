@@ -265,9 +265,14 @@ def parse_xlsx_or_csv(
     elif ext == "csv":
         from services.dataframe_service import _read_csv_smart
         df = _read_csv_smart(content)
+    elif ext == "pdf":
+        # Das Saarland veroeffentlicht seine Liste nur als PDF. Die Datei
+        # enthaelt echten Text, die Tabelle laesst sich also direkt auslesen.
+        from services.pdf_vorhabenliste import lies_vorhabenliste
+        df = lies_vorhabenliste(content)
     else:
         raise ValueError(
-            f"Beneficiary-Harvest nur fuer XLSX/XLS/CSV, nicht '{ext}' "
+            f"Beneficiary-Harvest nur fuer XLSX/XLS/CSV/PDF, nicht '{ext}' "
             f"(file_name={file_name})"
         )
 
