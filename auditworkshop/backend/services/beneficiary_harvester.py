@@ -66,6 +66,9 @@ _HASH_FIELDS: tuple[str, ...] = (
 # es auf eine falsche Kopfzeile hin — dann wird der Snapshot abgewiesen.
 NAMENLOS_MAX_ANTEIL = 0.20
 NAMENLOS_TOLERANZ = 50
+# Unabhaengig von der Stueckzahl: mehr als die Haelfte ohne Namen wird nie
+# akzeptiert — dann stimmt die Kopfzeile mit Sicherheit nicht.
+NAMENLOS_HARTE_GRENZE = 0.50
 
 
 # Kanonische Aliase, die der Parser im Spalten-Mapping erwartet. Sie spiegeln
@@ -383,7 +386,16 @@ def validate_beneficiary_rows(rows: list[dict[str, Any]], params: BeneficiaryHar
     ohne_namen = [r for r in rows if r.get("_skip_reason")]
     if ohne_namen:
         anteil = len(ohne_namen) / max(len(rows), 1)
-        if anteil > NAMENLOS_MAX_ANTEIL and len(ohne_namen) > NAMENLOS_TOLERANZ:
+        # Zwei Reissleinen: der Regelfall (auffaelliger Anteil UND mehr als eine
+        # Handvoll Zeilen) und die harte Grenze. Ohne die zweite kaeme eine
+        # kleine Datei mit falscher Kopfzeile durch — bei 20 Zeilen liegen auch
+        # 15 namenlose unter der Stueckzahl-Schwelle. Eine Mehrheit ohne Namen
+        # ist nie eine gueltige Liste der Vorhaben.
+        zu_viele = (
+            (anteil > NAMENLOS_MAX_ANTEIL and len(ohne_namen) > NAMENLOS_TOLERANZ)
+            or anteil > NAMENLOS_HARTE_GRENZE
+        )
+        if zu_viele:
             zeilen = ", ".join(str(r.get("_row_number")) for r in ohne_namen[:8])
             errors.append(
                 f"{len(ohne_namen)} von {len(rows)} Zeilen ohne Begünstigtennamen "
