@@ -1163,6 +1163,91 @@ export async function exportDiscussion(
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// ── Vollstaendiges Checklisten-Paket (Export/Import als .checklist.json) ───────
+
+export interface ChecklistPackageExportOptions {
+  discussions?: boolean;
+  history?: boolean;
+  versions?: boolean;
+}
+
+export interface ChecklistPackagePreview {
+  valid: boolean;
+  template?: { title: string | null; description: string | null; status: string | null };
+  counts?: Record<string, number>;
+  answer_sets?: Array<{ name: string; option_count: number; exists_by_name: boolean }>;
+  exists?: {
+    by_name: Array<{ id: string; title: string; status: string; updated_at: string | null; identical: boolean }>;
+    identical: boolean;
+  };
+  errors: string[];
+  warnings: string[];
+}
+
+export interface ChecklistImportResult {
+  message: string;
+  created: boolean;
+  template_id: string;
+  title?: string;
+  version_number?: string;
+  nodes_count?: number;
+  answer_sets_created?: number;
+  answer_sets_reused?: number;
+  discussions_restored?: number;
+  history_restored?: number;
+}
+
+function sanitizeFilename(name: string): string {
+  return (name || 'checkliste').replace(/[\\/:*?"<>|]+/g, '_').trim() || 'checkliste';
+}
+
+/**
+ * Exportiert eine Checkliste als vollstaendiges Paket (.checklist.json) und
+ * stoesst den Browser-Download an (gleiches Blob-Muster wie exportChecklist).
+ */
+export async function exportChecklistPackage(
+  templateId: string,
+  opts: ChecklistPackageExportOptions = {},
+): Promise<void> {
+  const params = new URLSearchParams({
+    discussions: String(opts.discussions ?? true),
+    history: String(opts.history ?? false),
+    versions: String(opts.versions ?? false),
+  });
+  const data = await request<{ template?: { title?: string } }>(
+    `/checklist-templates/${templateId}/package?${params.toString()}`,
+  );
+  const title = sanitizeFilename(data?.template?.title || 'checkliste');
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title}.checklist.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Prueft eine Paketdatei (Struktur + ob die Checkliste schon existiert). */
+export async function validateChecklistPackage(file: File): Promise<ChecklistPackagePreview> {
+  const form = new FormData();
+  form.append('file', file);
+  return requestForm<ChecklistPackagePreview>('/checklist-templates/package/validate', form);
+}
+
+/** Importiert ein Paket — neue Checkliste (Default) oder als Versions-Snapshot. */
+export async function importChecklistPackage(
+  file: File,
+  opts: { title?: string; targetTemplateId?: string } = {},
+): Promise<ChecklistImportResult> {
+  const form = new FormData();
+  form.append('file', file);
+  if (opts.title) form.append('title', opts.title);
+  if (opts.targetTemplateId) form.append('target_template_id', opts.targetTemplateId);
+  return requestForm<ChecklistImportResult>('/checklist-templates/package', form);
+}
+
 /**
  * Laedt das hinterlegte Quelldokument (z. B. das englische KOM-Original) herunter.
  */

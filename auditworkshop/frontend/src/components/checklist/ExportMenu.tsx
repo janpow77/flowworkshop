@@ -10,9 +10,10 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import {
-  Download, FileText, FileType, Loader2, MessagesSquare, Sheet,
+  Download, FileText, FileType, Loader2, MessagesSquare, Package, Sheet,
 } from 'lucide-react';
 import { exportChecklist, exportDiscussion, type ExportFormat, type ExportMode } from '../../lib/api';
+import PackageExportModal from './PackageExportModal';
 
 type DiscussionFormat = 'docx' | 'pdf';
 
@@ -38,6 +39,7 @@ export default function ExportMenu({ templateId, onError }: ExportMenuProps) {
   const [mode, setMode] = useState<ExportMode>('blank');
   const [busyFormat, setBusyFormat] = useState<ExportFormat | null>(null);
   const [busyDiscussion, setBusyDiscussion] = useState<DiscussionFormat | null>(null);
+  const [packageOpen, setPackageOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const busy = busyFormat !== null || busyDiscussion !== null;
@@ -97,6 +99,21 @@ export default function ExportMenu({ templateId, onError }: ExportMenuProps) {
           role="menu"
           className="absolute right-0 z-50 mt-1.5 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900"
         >
+          {/* Vollstaendiges Paket (portable .checklist.json) */}
+          <div className="mb-1 px-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Vollständiges Paket
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { setOpen(false); setPackageOpen(true); }}
+            className="mb-2 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <Package size={15} className="text-emerald-500" />
+            Als Paket exportieren…
+          </button>
+          <div className="my-2 border-t border-slate-200 dark:border-slate-700" />
+
           {/* Modus-Umschalter (optional) */}
           <div className="mb-2 flex rounded-lg bg-slate-100 p-0.5 text-[11px] dark:bg-slate-800">
             {(['blank', 'filled'] as const).map((m) => (
@@ -159,6 +176,13 @@ export default function ExportMenu({ templateId, onError }: ExportMenuProps) {
           </ul>
         </div>
       )}
+
+      <PackageExportModal
+        templateId={templateId}
+        open={packageOpen}
+        onClose={() => setPackageOpen(false)}
+        onError={onError}
+      />
     </div>
   );
 }

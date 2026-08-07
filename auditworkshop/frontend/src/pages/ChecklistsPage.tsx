@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ClipboardCheck, Search, FileText, AlertCircle, Users,
-  LayoutGrid, List, Rows3,
+  LayoutGrid, List, Rows3, Upload,
 } from 'lucide-react';
 import { listChecklistTemplates, type ChecklistTemplate } from '../lib/api';
 import { Skeleton } from '../components/ui/Skeleton';
+import PackageImportDialog from '../components/checklist/PackageImportDialog';
 
 type StatusFilter = 'all' | 'draft' | 'published' | 'archived';
 type SortKey = 'updated' | 'title' | 'status';
@@ -68,6 +69,7 @@ export default function ChecklistsPage() {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('updated');
   const [viewMode, setViewMode] = useState<ViewMode>(() => loadViewMode());
+  const [importOpen, setImportOpen] = useState(false);
 
   const changeViewMode = (mode: ViewMode) => {
     setViewMode(mode);
@@ -125,7 +127,20 @@ export default function ChecklistsPage() {
             Musterchecklisten verwalten, gemeinsam bearbeiten und diskutieren.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setImportOpen(true)}
+          className="flex shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+        >
+          <Upload size={16} /> Checkliste importieren
+        </button>
       </div>
+
+      <PackageImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={(res) => { setImportOpen(false); navigate(`/checklisten/${res.template_id}`); }}
+      />
 
       {/* Filterleiste */}
       <div className="mb-5 flex flex-wrap items-center gap-3">
