@@ -145,10 +145,11 @@ def test_archive_raw_file_sanitizes_filename(monkeypatch):
 
 
 def test_run_summary_skips_not_due(monkeypatch):
-    """Wenn keine Quelle angefasst wurde, ist der Lauf 'noop' — nicht 'ok'.
+    """Eine eingerichtete, heute nicht faellige Quelle ergibt 'idle'.
 
-    Frueher meldete dieser Fall Erfolg. Dadurch lief die Routine monatelang
-    gruen durch, obwohl keine einzige Quelle mehr geholt wurde.
+    Frueher meldete dieser Fall schlicht 'ok' — dadurch war er nicht von
+    einem Lauf zu unterscheiden, der gar nichts holen konnte. Getrennt
+    werden die beiden jetzt ueber 'idle' (normal) und 'noop' (Missstand).
     """
     from services import scheduler
 
@@ -184,7 +185,7 @@ def test_run_summary_skips_not_due(monkeypatch):
     monkeypatch.setattr(scheduler, "SessionLocal", lambda: _FakeSession([cfg]))
 
     summary = scheduler.run_beneficiary_auto_harvest(triggered_by="pytest")
-    assert summary["status"] == "noop"
+    assert summary["status"] == "idle"
     assert summary["sources_skipped_not_due"] == 1
     assert summary["sources_not_configured"] == 0
     assert summary["sources_ok"] == 0
@@ -331,3 +332,64 @@ def test_dateiname_faellt_auf_csv_zurueck():
         "https://example.org/export", b"Name;Ort\nMuster;Kassel\n", "land_esf",
     )
     assert name == "land_esf.csv"
+
+
+def _fake_session_mit(cfgs):
+    """Baut eine Session-Attrappe, die genau diese Configs liefert."""
+    class _FakeQuery:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def filter(self, *_a, **_kw):
+            return self
+
+        def order_by(self, *_a, **_kw):
+            return self
+
+        def all(self):
+            return self._rows
+
+    class _FakeSession:
+        def query(self, _model):
+            return _FakeQuery(cfgs)
+
+        def close(self):
+            pass
+
+    return lambda: _FakeSession()
+
+
+def test_eingerichtete_aber_nicht_faellige_quellen_sind_idle(monkeypatch):
+    """Zwischen zwei Aktualisierungen ist Nichtstun der Normalfall.
+
+    Das darf kein 'noop' mit Warnung sein — sonst kaeme bei einem
+    Monatsintervall 29 von 30 Naechten ein Fehlalarm.
+    """
+    from services import scheduler
+
+    cfg = _make_cfg(
+        source_key="faellig_erst_spaeter",
+        last_successful_harvest_at=datetime.utcnow() - timedelta(days=1),
+        update_frequency_days=30,
+    )
+    monkeypatch.setattr(scheduler, "SessionLocal", _fake_session_mit([cfg]))
+
+    summary = scheduler.run_beneficiary_auto_harvest(triggered_by="pytest")
+    assert summary["status"] == "idle"
+    assert summary["sources_auto_faehig"] == 1
+    assert summary["sources_skipped_not_due"] == 1
+
+
+def test_ohne_jede_holbare_quelle_bleibt_es_noop(monkeypatch):
+    """Gibt es gar keine auto-faehige Quelle, ist das ein Missstand."""
+    from services import scheduler
+
+    cfg = _make_cfg(
+        source_key="nur_manuell", source_type="manual_upload", source_url=None,
+    )
+    monkeypatch.setattr(scheduler, "SessionLocal", _fake_session_mit([cfg]))
+
+    summary = scheduler.run_beneficiary_auto_harvest(triggered_by="pytest")
+    assert summary["status"] == "noop"
+    assert summary["sources_auto_faehig"] == 0
+    assert summary["sources_not_configured"] == 1
