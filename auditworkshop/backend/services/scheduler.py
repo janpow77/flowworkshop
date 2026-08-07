@@ -801,10 +801,10 @@ def _notify_admins_state_aid_failed(source_key: str, error: str) -> None:
 # ─── Phase 6b: Datengetriebener Beneficiary-Auto-Harvest ─────────────────────
 
 
-AUTO_HARVEST_SOURCE_TYPES = ("xlsx_url", "csv_url")
+AUTO_HARVEST_SOURCE_TYPES = ("xlsx_url", "csv_url", "pdf_url")
 
 # Endungen, aus denen der Parser den Dateityp ableiten kann.
-_BEKANNTE_ENDUNGEN = ("xlsx", "xls", "xlsm", "csv")
+_BEKANNTE_ENDUNGEN = ("xlsx", "xls", "xlsm", "csv", "pdf")
 
 
 def _dateiname_fuer_inhalt(url: str | None, inhalt: bytes, source_key: str) -> str:
@@ -823,7 +823,11 @@ def _dateiname_fuer_inhalt(url: str | None, inhalt: bytes, source_key: str) -> s
     endung = letzter_teil.rsplit(".", 1)[-1].lower() if "." in letzter_teil else ""
     if endung in _BEKANNTE_ENDUNGEN:
         return letzter_teil
-    return f"{source_key}.xlsx" if inhalt[:4] == b"PK\x03\x04" else f"{source_key}.csv"
+    if inhalt[:4] == b"PK\x03\x04":
+        return f"{source_key}.xlsx"
+    if inhalt[:5] == b"%PDF-":
+        return f"{source_key}.pdf"
+    return f"{source_key}.csv"
 
 
 def _is_source_auto_capable(cfg: BeneficiarySourceConfig) -> bool:

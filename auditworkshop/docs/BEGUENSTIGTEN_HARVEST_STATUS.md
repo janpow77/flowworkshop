@@ -149,12 +149,32 @@ Dateien als `application/octet-stream` oder `application/zip` aus.
 
 **30 Quellen automatisiert, Bestand 78.123 Datensätze.**
 
-### Saarland: nur PDF
+### Saarland und PDF-Listen
 
-Das Saarland veröffentlicht seine Liste ausschließlich als PDF
-(`efre_fp20212027_vorhabenliste_2026-03-01.pdf`). Der Importer verarbeitet
-XLSX und CSV; eine PDF-Tabellenextraktion wäre ein eigenes Vorhaben mit
-eigenem Fehlerrisiko. Beide Saarland-Quellen bleiben deshalb manuell.
+Das Saarland veröffentlicht seine Liste ausschließlich als PDF. Der Importer
+liest solche Dateien seit dem 07.08.2026 (`services/pdf_vorhabenliste.py`,
+Quellentyp `pdf_url`): 68 Vorhaben aus der Fassung vom 02.03.2026 sind im
+Bestand.
+
+**Texterkennung ist dafür nicht nötig.** Das PDF enthält 54.614 Zeichen
+echten Text; die Tabelle wird direkt ausgelesen. OCR käme nur bei gescannten
+Dokumenten in Frage und ist bewusst abgeschaltet — Zahlen aus einer
+Texterkennung sind nicht ohne Weiteres beweistauglich, und ein
+stillschweigend erkannter Förderbetrag hat in einem Prüfdatenbestand nichts
+verloren. Trifft der Importer auf ein Scan-PDF, bricht er mit klarer Ansage
+ab. Wer es dennoch braucht, schaltet `BENEFICIARY_PDF_OCR=true`; die
+betroffenen Läufe protokollieren dann eine Warnung.
+
+**Der automatische Abruf scheitert trotzdem — an einer IP-Sperre.**
+`saarland.de` beantwortet Anfragen vom Hetzner-Server mit HTTP 403, während
+dieselbe Anfrage aus einem Privatanschluss 200 liefert. Das betrifft auch
+die Portalseite, greift also vor jeder Formatfrage. Die Quelle steht deshalb
+auf `manual_upload`; die Daten wurden über den Datei-Import eingespielt.
+
+Möglichkeiten, das aufzulösen: den Abruf über einen Rechner in einem anderen
+Netz leiten (die NUC im Tailscale-Verbund erreicht das Portal), oder beim
+Land um Freischaltung bitten. Ein Weiterleiten über die NUC macht den Import
+allerdings von einem Gerät abhängig, das nicht durchgehend läuft.
 
 ## Link-Aktualisierung (07.08.2026)
 
