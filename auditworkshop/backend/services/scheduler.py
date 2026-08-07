@@ -775,8 +775,13 @@ def run_state_aid_validation(triggered_by: str = "cron") -> dict:
         db.close()
 
 
-def _notify_admins_state_aid_failed(source_key: str, error: str) -> None:
-    """Pushed eine Notification an alle Admins (Bell-Icon)."""
+def _benachrichtige_admins(titel: str, text: str, kind: str = "admin_harvest_failed",
+                           link: str = "/admin") -> None:
+    """Legt allen Admins eine Meldung in die Benachrichtigungsglocke.
+
+    Eine Meldung darf niemals einen Lauf abbrechen — deshalb faengt die
+    Funktion alles ab und protokolliert nur.
+    """
     try:
         from routers.notifications import push_notification
         from models.registration import Registration
@@ -786,16 +791,62 @@ def _notify_admins_state_aid_failed(source_key: str, error: str) -> None:
             admins = db.query(Registration).filter(Registration.role == "admin").all()
             for adm in admins:
                 push_notification(
-                    user_id=adm.id,
-                    kind="admin_harvest_failed",
-                    title=f"State-Aid Auto-Harvest fehlgeschlagen: {source_key}",
-                    body=error[:500],
-                    link="/admin",
+                    user_id=adm.id, kind=kind, title=titel[:200],
+                    body=text[:500], link=link,
                 )
         finally:
             db.close()
     except Exception:
-        log.exception("State-Aid Admin-Notification fehlgeschlagen")
+        log.exception("Admin-Benachrichtigung fehlgeschlagen")
+
+
+def _notify_admins_state_aid_failed(source_key: str, error: str) -> None:
+    """Pushed eine Notification an alle Admins (Bell-Icon)."""
+    _benachrichtige_admins(
+        f"State-Aid Auto-Harvest fehlgeschlagen: {source_key}", error,
+    )
+
+
+def _melde_beneficiary_ergebnis(summary: dict) -> None:
+    """Meldet den Ausgang des Laender-Harvests, wenn etwas im Argen liegt.
+
+    Bewusst EINE Meldung je Lauf statt einer je Quelle: bei zehn kaputten
+    Quellen waeren zehn Eintraege in der Glocke kein Signal mehr, sondern
+    Rauschen.
+
+    Gemeldet werden nur Zustaende, die jemanden angehen — ein Lauf ohne
+    faellige Quelle (``idle``) ist der Regelfall und bleibt still.
+    """
+    zustand = summary.get("status")
+    if zustand not in ("failed", "partial", "noop"):
+        return
+
+    gescheitert = [
+        q for q in summary.get("sources", [])
+        if (q.get("status") or "") not in ("ok", "partial", "unchanged")
+    ]
+    gesamt = summary.get("sources_auto_faehig") or len(summary.get("sources", []))
+
+    if zustand == "noop":
+        titel = "Länder-Harvest: keine abrufbare Quelle eingerichtet"
+        text = (
+            f"{summary.get('sources_not_configured', 0)} Quellen stehen auf "
+            "manuell, keine einzige kann automatisch geholt werden."
+        )
+    else:
+        titel = (
+            f"Länder-Harvest: {len(gescheitert)} von {gesamt} Quellen "
+            "fehlgeschlagen"
+        )
+        zeilen = [
+            f"{q.get('source_key')}: {str(q.get('error') or '')[:90]}"
+            for q in gescheitert[:6]
+        ]
+        if len(gescheitert) > 6:
+            zeilen.append(f"… und {len(gescheitert) - 6} weitere")
+        text = " · ".join(zeilen)
+
+    _benachrichtige_admins(titel, text)
 
 
 # ─── Phase 6b: Datengetriebener Beneficiary-Auto-Harvest ─────────────────────
@@ -1236,6 +1287,10 @@ def run_beneficiary_auto_harvest(triggered_by: str = "cron") -> dict:
         log.warning(log_line, *log_args)
     else:
         log.info(log_line, *log_args)
+
+    # Der Lauf laeuft nachts ohne Zuschauer. Ohne aktive Meldung faellt ein
+    # Ausfall erst auf, wenn jemand zufaellig ins Protokoll sieht.
+    _melde_beneficiary_ergebnis(summary)
     return summary
 
 
