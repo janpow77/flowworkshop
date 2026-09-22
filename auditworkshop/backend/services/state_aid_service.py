@@ -14,8 +14,8 @@ import logging
 import os
 import re
 from dataclasses import dataclass
-from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from datetime import date
+from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 
@@ -23,6 +23,8 @@ from rapidfuzz import fuzz, process
 from rapidfuzz.distance import JaroWinkler
 from sqlalchemy import or_, func as sql_func
 from sqlalchemy.orm import Session
+
+from auditcore_funding_sources import workshop as _funding
 
 from models.state_aid import StateAidAward
 
@@ -155,80 +157,29 @@ DE_NUTS2_TO_NUTS1 = {
     # Thueringen (DEG) — keine NUTS-2 Subdivision
 }
 
-# Rechtsform-Suffixe (aus sanctions_service erweitert um State-Aid-Faelle)
-_LEGAL_SUFFIXES = {
-    "gmbh", "ag", "kg", "ohg", "se", "ug", "ev", "ggmbh",
-    "ltd", "llc", "inc", "corp", "co", "company", "limited", "plc",
-    "sa", "sas", "sarl", "sl", "spa", "srl", "bv", "nv", "oy", "ab",
-    "jsc", "ojsc", "pjsc", "ooo", "zao", "fzc", "fz", "lp",
-    "kgaa", "mbh", "und", "co.kg", "cokg",
-    "sp", "spzoo",
-}
-
-# Fuellwoerter, die in der normalisierten Form entfernt werden
-_FILLER_WORDS = {
-    "holding", "group", "gruppe", "deutschland", "germany",
-    "international", "european", "europe",
-}
-
-# SA-Referenz-Regex (Plan §6.4)
-_SA_REGEX = re.compile(r"\bSA[\s\.\-_]*(\d{4,6})(?:[/\-\.](\d{4}))?", re.IGNORECASE)
-
-# Zahlen-/Whitespace-Cleaner
-_WS_RE = re.compile(r"\s+")
-# Hyphen wird durch Leerzeichen ersetzt (statt erhalten bleiben), damit
-# 'Fraunhofer-Gesellschaft' in Tokens 'fraunhofer' + 'gesellschaft' faellt.
-# Sonst wuerden Bindestrich-zusammengezogene Firmennamen die Fuzzy-Suche
-# brechen ('Fraunhofer Gesellschaft' findet das Original nicht).
-_PUNCT_RE = re.compile(r"[^\w\s]", re.UNICODE)
+# Rechtsform-Suffixe und Füllwörter: Profil flowworkshop.beneficiaries
+# von auditcore_funding_sources (normalize_company_name nutzt dieselben Listen).
+_LEGAL_SUFFIXES = set(_funding.profile()["legal_suffixes"])
+_FILLER_WORDS = set(_funding.profile()["filler_words"])
 
 
 # ── Normalisierung ────────────────────────────────────────────────────────────
 
 
 def _strip_accents(text: str) -> str:
-    """Diakritika und deutsche Umlaute fuer Vergleich abbauen."""
-    if not text:
-        return ""
-    table = str.maketrans({
-        "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss",
-        "Ä": "ae", "Ö": "oe", "Ü": "ue",
-        "á": "a", "à": "a", "â": "a", "ã": "a", "å": "a",
-        "é": "e", "è": "e", "ê": "e", "ë": "e",
-        "í": "i", "ì": "i", "î": "i", "ï": "i",
-        "ó": "o", "ò": "o", "ô": "o", "õ": "o",
-        "ú": "u", "ù": "u", "û": "u",
-        "ç": "c", "ñ": "n", "ý": "y",
-        "ł": "l", "ń": "n", "ś": "s", "ź": "z", "ż": "z",
-        "č": "c", "š": "s", "ž": "z", "đ": "d",
-    })
-    return text.translate(table)
+    """Diakritika und deutsche Umlaute für Vergleich abbauen (auditcore_funding_sources)."""
+    return _funding.strip_accents(text)
 
 
 def normalize_company_name(text: str | None, *, drop_filler: bool = False) -> str:
-    """Plan §6.1 — vergleichsform fuer Unternehmensnamen.
+    """Plan §6.1 — Vergleichsform für Unternehmensnamen (auditcore_funding_sources).
 
     - lowercase, ohne Akzente / Umlaute
     - Rechtsform-Suffixe entfernen
     - Satzzeichen weg, Whitespace kompakt
-    - optional: Fuellwoerter entfernen (nur fuer Identifier-Bucket)
+    - optional: Füllwörter entfernen (nur für Identifier-Bucket)
     """
-    if not text:
-        return ""
-    s = _strip_accents(text).casefold()
-    s = s.replace("&", " und ")
-    s = _PUNCT_RE.sub(" ", s)
-    s = _WS_RE.sub(" ", s).strip()
-    tokens: list[str] = []
-    for tok in s.split():
-        # 'gmbh.' o.ae. faellt durch _PUNCT_RE schon raus
-        compact = tok.replace(".", "").replace("-", "")
-        if compact in _LEGAL_SUFFIXES:
-            continue
-        if drop_filler and compact in _FILLER_WORDS:
-            continue
-        tokens.append(tok)
-    return " ".join(tokens)
+    return _funding.normalize_company_name(text, drop_filler=drop_filler)
 
 
 # ── SA-Referenz ───────────────────────────────────────────────────────────────
@@ -238,22 +189,9 @@ def detect_sa_reference(text: str | None) -> tuple[str | None, str | None]:
     """Plan §6.4 — Erkennung und Normalisierung einer SA-Referenz.
 
     Liefert ``(normalized, case_url)``. ``normalized`` hat die Form ``SA.12345``.
+    Umsetzung in auditcore_funding_sources (Profil flowworkshop).
     """
-    if not text:
-        return None, None
-    m = _SA_REGEX.search(text)
-    if not m:
-        return None, None
-    number = m.group(1)
-    suffix = m.group(2)
-    if suffix:
-        normalized = f"SA.{number}/{suffix}"
-        url_token = f"SA.{number}/{suffix}"
-    else:
-        normalized = f"SA.{number}"
-        url_token = f"SA.{number}"
-    case_url = f"https://competition-cases.ec.europa.eu/cases/{url_token}"
-    return normalized, case_url
+    return _funding.detect_sa_reference(text)
 
 
 def build_competition_search_url(beneficiary_or_term: str) -> str:
@@ -269,50 +207,12 @@ def build_competition_search_url(beneficiary_or_term: str) -> str:
 
 
 def parse_amount(text: str | None) -> Decimal | None:
-    """Plan §6.2 — Betrag aus TAM-String parsen.
+    """Plan §6.2 — Betrag aus TAM-String parsen (auditcore_funding_sources).
 
-    TAM liefert z. B. '1,200,000' oder '1.200.000,00'. Wir versuchen beide
-    Konventionen, ohne aktive Waehrungsumrechnung.
+    TAM liefert z. B. '1,200,000' oder '1.200.000,00'. Beide Konventionen,
+    ohne aktive Währungsumrechnung; '1.234.567' bleibt ``None`` (FS-W05).
     """
-    if text is None:
-        return None
-    s = str(text).strip()
-    if not s or s in {"-", "—"}:
-        return None
-    # Currency-Symbole / -Codes entfernen
-    s = re.sub(r"[€$£¥]", "", s)
-    s = re.sub(r"\b(eur|usd|gbp|chf|sek)\b", "", s, flags=re.IGNORECASE).strip()
-
-    # GBER-Spannen: '500,001 to 1,000,000' → konservativ Obergrenze
-    m_range = re.search(r"(.+?)\s+to\s+(.+)", s, flags=re.IGNORECASE)
-    if m_range:
-        return parse_amount(m_range.group(2))
-    m_lt = re.match(r"\s*(?:less than|<)\s*(.+)", s, flags=re.IGNORECASE)
-    if m_lt:
-        return parse_amount(m_lt.group(1))
-    m_gt = re.match(r"\s*(?:more than|>)\s*(.+)", s, flags=re.IGNORECASE)
-    if m_gt:
-        return parse_amount(m_gt.group(1))
-
-    # Whitespace (auch NBSP) entfernen
-    s = re.sub(r"\s+", "", s)
-    if "," in s and "." in s:
-        # Heuristik: letztes Trennzeichen ist Dezimaltrenner
-        if s.rfind(",") > s.rfind("."):
-            s = s.replace(".", "").replace(",", ".")
-        else:
-            s = s.replace(",", "")
-    elif "," in s:
-        # Wenn genau ein Komma und 1-2 Nachkommastellen → Dezimaltrenner
-        left, _, right = s.rpartition(",")
-        if len(right) in (1, 2) and right.isdigit():
-            s = f"{left.replace(',', '')}.{right}"
-        else:
-            s = s.replace(",", "")
-    try:
-        return Decimal(s)
-    except (InvalidOperation, ValueError):
-        return None
+    return _funding.parse_amount(text)
 
 
 # ── Datum ─────────────────────────────────────────────────────────────────────
@@ -320,15 +220,7 @@ def parse_amount(text: str | None) -> Decimal | None:
 
 def parse_date(text: str | None) -> date | None:
     """TAM liefert Datumsangaben im Format 'DD/MM/YYYY' oder 'YYYY-MM-DD'."""
-    if not text:
-        return None
-    s = str(text).strip()
-    for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d"):
-        try:
-            return datetime.strptime(s, fmt).date()
-        except ValueError:
-            continue
-    return None
+    return _funding.parse_date(text)
 
 
 # ── NUTS-Lookup ───────────────────────────────────────────────────────────────
