@@ -19,6 +19,7 @@ from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
 
+from auditcore_entity_matching import legacy as _bibliothek
 from rapidfuzz import fuzz, process
 from rapidfuzz.distance import JaroWinkler
 from sqlalchemy import or_, func as sql_func
@@ -206,29 +207,13 @@ def _strip_accents(text: str) -> str:
 
 
 def normalize_company_name(text: str | None, *, drop_filler: bool = False) -> str:
-    """Plan §6.1 — vergleichsform fuer Unternehmensnamen.
+    """Plan §6.1 — Vergleichsform für Unternehmensnamen.
 
-    - lowercase, ohne Akzente / Umlaute
-    - Rechtsform-Suffixe entfernen
-    - Satzzeichen weg, Whitespace kompakt
-    - optional: Fuellwoerter entfernen (nur fuer Identifier-Bucket)
+    Profil ``flowworkshop.state_aid`` aus ``auditcore_entity_matching``:
+    Kleinschreibung, Umlaute/Akzente nach Tabelle (ä → ae), Rechtsform-Suffixe
+    entfernt, Satzzeichen weg, optional Füllwörter entfernt.
     """
-    if not text:
-        return ""
-    s = _strip_accents(text).casefold()
-    s = s.replace("&", " und ")
-    s = _PUNCT_RE.sub(" ", s)
-    s = _WS_RE.sub(" ", s).strip()
-    tokens: list[str] = []
-    for tok in s.split():
-        # 'gmbh.' o.ae. faellt durch _PUNCT_RE schon raus
-        compact = tok.replace(".", "").replace("-", "")
-        if compact in _LEGAL_SUFFIXES:
-            continue
-        if drop_filler and compact in _FILLER_WORDS:
-            continue
-        tokens.append(tok)
-    return " ".join(tokens)
+    return _bibliothek.flowworkshop_normalize_company_name(text, drop_filler=drop_filler)
 
 
 # ── SA-Referenz ───────────────────────────────────────────────────────────────

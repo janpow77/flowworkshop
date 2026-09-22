@@ -30,12 +30,12 @@ import logging
 import os
 import re
 import threading
-import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, TYPE_CHECKING
 
 import httpx
+from auditcore_entity_matching import legacy as _bibliothek
 from rapidfuzz import fuzz, process
 
 if TYPE_CHECKING:
@@ -198,50 +198,12 @@ DEFAULT_SANCTIONS_SOURCES: list[SanctionsSource] = [
 # ── Normalisierung ───────────────────────────────────────────────────────────
 
 
-# Zeichen, die unicodedata.normalize('NFKD', ...) NICHT in Basis-Buchstabe +
-# kombinierendes Diakritikum zerlegt — daher explizit auf eine ASCII-Form
-# falten, damit z.B. 'Müller'/'Muller', 'José Strauß'/'Jose Strauss' und
-# 'Søren'/'Soren' identisch verglichen werden.
-_DIACRITIC_FOLD_MAP = {
-    "ß": "ss",
-    "ø": "o", "Ø": "o",
-    "đ": "d", "Đ": "d",
-    "ð": "d", "Ð": "d",
-    "ł": "l", "Ł": "l",
-    "þ": "th", "Þ": "th",
-    "æ": "ae", "Æ": "ae",
-    "œ": "oe", "Œ": "oe",
-}
-
-
-def _fold_diacritics(s: str) -> str:
-    """Faltet Akzente/Diakritika auf ihre ASCII-Basisform.
-
-    1. Explizite Sonderfaelle (ß→ss, ø→o, …), die NFKD nicht zerlegt.
-    2. Unicode-NFKD-Zerlegung + Entfernen aller kombinierenden Zeichen
-       (Akzente, Umlaut-Punkte, Cedille …).
-    """
-    for src, dst in _DIACRITIC_FOLD_MAP.items():
-        if src in s:
-            s = s.replace(src, dst)
-    decomposed = unicodedata.normalize("NFKD", s)
-    return "".join(c for c in decomposed if not unicodedata.combining(c))
-
-
 def normalize_name(text: str) -> str:
-    """Vergleichsform fuer Namen: lowercase, ohne Akzente/Sonderzeichen,
-    ohne Rechtsform­suffixe, kompakte Whitespaces.
+    """Vergleichsform für Namen (Profil ``flowworkshop.sanctions`` in
+    ``auditcore_entity_matching``): Kleinschreibung, Diakritika gefaltet
+    (Müller → muller), Sonderzeichen entfernt, Rechtsformsuffixe entfernt.
     """
-    if not text:
-        return ""
-    s = text.casefold()
-    # Diakritika/Akzente auf ASCII-Basisform falten (Müller→muller, José→jose)
-    s = _fold_diacritics(s)
-    # Nicht-Wort-Zeichen durch Leerzeichen ersetzen
-    s = re.sub(r"[^\w\s]", " ", s, flags=re.UNICODE)
-    # Mehrfach-Whitespaces normalisieren
-    tokens = [t for t in s.split() if t and t not in _LEGAL_SUFFIXES]
-    return " ".join(tokens)
+    return _bibliothek.flowworkshop_normalize_name(text)
 
 
 def _classify(
@@ -251,33 +213,11 @@ def _classify(
 ) -> str:
     """Klassifiziert einen rapidfuzz-Score in exact/high/medium/low.
 
-    token_set_ratio liefert per Definition 100 fuer reine Token-Teilmengen
-    ('putin' in 'vladimir vladimirovich putin' = 100). Eine solche Teilmenge
-    ist aber KEIN "exakter Treffer" im Sinne von "Schreibweise praktisch
-    identisch" — sie wuerde sonst jeden Namensvetter rot als 'exact' markieren.
-
-    Daher wird die 'exact'-Klasse zusaetzlich daran gekoppelt, dass die
-    Tokenmengen wirklich uebereinstimmen: gleiche Token-Anzahl bzw. ein hoher
-    token_sort_ratio (>=97, der Reihenfolge toleriert, aber Zusatz-Tokens
-    bestraft). Liegt nur eine Teilmenge vor, faellt der Treffer auf 'high'
-    zurueck — der token_set_ratio-Retrieval-Score selbst bleibt unveraendert,
-    damit die gewollte Alias-/Wortreihenfolge-Toleranz erhalten bleibt.
+    Grenzen 97/90/80 und die Teilmengenregel (Profil ``flowworkshop.sanctions``)
+    liegen in ``auditcore_entity_matching``; eine reine Token-Teilmenge ist
+    kein ``exact``-Treffer.
     """
-    if score >= 97:
-        if q_norm is not None and matched_norm is not None:
-            q_tokens = q_norm.split()
-            m_tokens = matched_norm.split()
-            same_token_count = len(q_tokens) == len(m_tokens)
-            sort_ratio = fuzz.token_sort_ratio(q_norm, matched_norm)
-            if same_token_count or sort_ratio >= 97:
-                return "exact"
-            return "high"
-        return "exact"
-    if score >= 90:
-        return "high"
-    if score >= 80:
-        return "medium"
-    return "low"
+    return _bibliothek.flowworkshop_classify(score, q_norm, matched_norm)
 
 
 # ── Deterministischer Geburtsdatums-/Laender-Abgleich (Befund 5+6) ──────────

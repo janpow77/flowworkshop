@@ -28,7 +28,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from rapidfuzz import fuzz, process
+from auditcore_entity_matching import legacy as _bibliothek
+from rapidfuzz import fuzz
 from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
 
@@ -78,11 +79,13 @@ class EntityMatchResult:
 
 
 def is_valid_lei(value: str | None) -> bool:
-    """True, wenn ``value`` exakt ein LEI ist (ISO 17442)."""
-    if not value:
-        return False
-    s = str(value).strip().upper()
-    return bool(_LEI_RE.match(s))
+    """True, wenn ``value`` das LEI-Format hat (ISO 17442).
+
+    Wie bisher wird nur das Format geprüft, nicht die Prüfziffern; die
+    Berechnung liegt in ``auditcore_entity_matching`` (``legacy``). Eine
+    Prüfziffernprüfung (``check_lei``) ist eine offene fachliche Entscheidung.
+    """
+    return _bibliothek.flowworkshop_is_valid_lei(value)
 
 
 def extract_lei_from_text(value: str | None) -> str | None:
@@ -90,19 +93,8 @@ def extract_lei_from_text(value: str | None) -> str | None:
 
     State-Aid-Datenanbieter packen den LEI manchmal mit anderen Identifiern
     in ein Feld (z.B. ``beneficiary_identifier`` = 'LEI: ABCD1234567890123456').
-    Wir extrahieren es entsprechend.
     """
-    if not value:
-        return None
-    # Direkt ein LEI?
-    s = str(value).strip().upper()
-    if _LEI_RE.match(s):
-        return s
-    # LEI-Token irgendwo im Feld
-    m = re.search(r"\b([A-Z0-9]{18}\d{2})\b", s)
-    if m:
-        return m.group(1)
-    return None
+    return _bibliothek.flowworkshop_extract_lei_from_text(value)
 
 
 def _normalize_for_match(name: str | None) -> str:
@@ -269,34 +261,20 @@ def _find_by_name_fuzzy(
     if not rows:
         return None
 
-    choices = [(r.id, r.canonical_name_normalized or "") for r in rows]
-    norm_strings = [c[1] for c in choices]
-    # token_set_ratio: tolerant gegen Wortreihenfolge
-    tsr_hits = process.extract(
-        name_normalized, norm_strings, scorer=fuzz.token_set_ratio,
-        limit=10, score_cutoff=min_score,
+    # Bewertung der vorgefilterten Kandidaten: max(token_set_ratio, WRatio) in
+    # auditcore_entity_matching; der SQL-Vorfilter bleibt hier.
+    treffer = _bibliothek.flowworkshop_fuzzy_best(
+        name_normalized,
+        [(r.id, r.canonical_name_normalized or "") for r in rows],
+        min_score=min_score,
     )
-    # WRatio: kombiniert ratio + partial_ratio + token_sort + token_set
-    wr_hits = process.extract(
-        name_normalized, norm_strings, scorer=fuzz.WRatio,
-        limit=10, score_cutoff=min_score,
-    )
-
-    best_id: int | None = None
-    best_score: float = 0.0
-    for raw in (tsr_hits, wr_hits):
-        for _value, score, idx in raw:
-            cur_id = choices[idx][0]
-            if score > best_score:
-                best_score = float(score)
-                best_id = int(cur_id)
-
-    if best_id is None or best_score < min_score:
+    if treffer is None:
         return None
+    best_id, best_score = treffer
     ent = db.get(CompanyEntity, best_id)
     if ent is None:
         return None
-    return ent, round(best_score, 1)
+    return ent, best_score
 
 
 # ── Resolve & Link ────────────────────────────────────────────────────────────

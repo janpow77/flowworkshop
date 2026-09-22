@@ -13,6 +13,8 @@ pandas==2.2.3
 requests==2.34.2
 chardet==5.2.0
 rapidfuzz==3.10.1
+# Entitätsnormalisierung, LEI-Format und Abgleich; Quelle: janpow77/auditcore
+auditcore_entity_matching[fuzzy]==0.1.0
 psutil==6.0.0
 sqlalchemy==2.0.35
 alembic==1.13.1
