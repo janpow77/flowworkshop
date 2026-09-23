@@ -19,7 +19,8 @@ from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 
-from auditcore_entity_matching import legacy as _bibliothek
+from auditcore_entity_matching import load_profile as _lade_normalisierung
+from auditcore_entity_matching import normalize as _normalisieren
 from rapidfuzz import fuzz, process
 from rapidfuzz.distance import JaroWinkler
 from sqlalchemy import or_, func as sql_func
@@ -166,6 +167,10 @@ _FILLER_WORDS = set(_funding.profile()["filler_words"])
 
 # ── Normalisierung ────────────────────────────────────────────────────────────
 
+#: Normalisierungsprofil (Version fest gebunden, damit persistierte Suchformen
+#: und Abfragen dieselbe Fassung verwenden).
+_NORMALISIERUNG = _lade_normalisierung("flowworkshop.state_aid", "2026.09.2")
+
 
 def _strip_accents(text: str) -> str:
     """Diakritika und deutsche Umlaute für Vergleich abbauen (auditcore_funding_sources)."""
@@ -175,11 +180,14 @@ def _strip_accents(text: str) -> str:
 def normalize_company_name(text: str | None, *, drop_filler: bool = False) -> str:
     """Plan §6.1 — Vergleichsform für Unternehmensnamen.
 
-    Profil ``flowworkshop.state_aid`` aus ``auditcore_entity_matching``:
-    Kleinschreibung, Umlaute/Akzente nach Tabelle (ä → ae), Rechtsform-Suffixe
-    entfernt, Satzzeichen weg, optional Füllwörter entfernt.
+    Profil ``flowworkshop.state_aid`` 2026.09.2 aus ``auditcore_entity_matching``
+    (empfohlen für die Entitätsnormalisierung, Entscheidung R2 vom 23.09.2026):
+    zerlegt geschriebene Umlaute per NFC zusammengeführt, Kleinschreibung,
+    Umlaute/Akzente nach Tabelle (ä → ae), Rechtsform-Suffixe entfernt,
+    Satzzeichen weg, optional Füllwörter entfernt. Persistierte Suchformen zieht
+    die Migration 0008 nach.
     """
-    return _bibliothek.flowworkshop_normalize_company_name(text, drop_filler=drop_filler)
+    return _normalisieren(text, _NORMALISIERUNG, drop_filler=drop_filler)
 
 
 # ── SA-Referenz ───────────────────────────────────────────────────────────────

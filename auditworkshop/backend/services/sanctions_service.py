@@ -28,15 +28,16 @@ from __future__ import annotations
 import csv
 import logging
 import os
-import re
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, TYPE_CHECKING
 
 import httpx
-from auditcore_entity_matching import legacy as _bibliothek
-from rapidfuzz import fuzz, process
+from auditcore_entity_matching import classify as _klassifizieren
+from auditcore_entity_matching import normalize as _normalisieren
+from auditcore_registry_sources import load_profile as _lade_abgleichprofil
+from auditcore_registry_sources.screening import ListIndex, ScreeningSettings, adjust_score
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -198,27 +199,29 @@ DEFAULT_SANCTIONS_SOURCES: list[SanctionsSource] = [
 # ── Normalisierung ───────────────────────────────────────────────────────────
 
 
-#: Deutsche Umlaute und ß werden vor der Normalisierung umschrieben
-#: (Nutzerentscheidung 2026-09-23: „mueller wenn es kein umlaut gibt“).
-#: Übrige Diakritika faltet das Profil weiterhin (é → e), damit
-#: internationale Listennamen unverändert vergleichbar bleiben.
-UMLAUT_UMSCHRIFT = str.maketrans(
-    {"ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "ß": "ss", "ẞ": "SS"}
+#: Abgleichprofil der Bibliothek, empfohlene Fassung nach den Nutzerentscheidungen
+#: vom 23.09.2026 („alle empfehlungen“): ``flowworkshop.sanctions_screening``
+#: 2026.09.2 (R1 Mindestwert 70 wie Router/Oberfläche, R2 NFC) mit der
+#: Normalisierung ``flowworkshop.sanctions`` 2026.09.3 (Umschrift Müller → mueller,
+#: zerlegt geschriebene Umlaute werden vorher per NFC zusammengeführt).
+#: Geburtsjahr-/Landgewichte sowie Listen- und Kandidatenlimits stehen im Profil.
+_ABGLEICH = ScreeningSettings.from_profile(
+    _lade_abgleichprofil("flowworkshop.sanctions_screening", "2026.09.2")
 )
+#: Normalisierungsprofil des Abgleichs (für Anzeige-/Persistenzform und Klassen).
+_NORMALISIERUNG = _ABGLEICH.normalization
 
 
 def normalize_name(text: str) -> str:
-    """Vergleichsform für Namen: deutsche Umlaute umschrieben (Müller → mueller),
-    danach Profil ``flowworkshop.sanctions`` aus ``auditcore_entity_matching``
-    (Kleinschreibung, übrige Diakritika gefaltet, Sonderzeichen und
-    Rechtsformsuffixe entfernt).
+    """Vergleichsform für Namen (Profil ``flowworkshop.sanctions`` 2026.09.3).
 
-    Persistierte Werte in ``workshop_sanctions_entries.name_normalized`` werden
-    durch die Migration 0007 auf diese Form nachgezogen.
+    Zerlegt geschriebene Umlaute werden per NFC zusammengeführt, deutsche
+    Umlaute umgeschrieben (Müller → mueller), übrige Diakritika gefaltet,
+    Sonderzeichen und Rechtsformsuffixe entfernt. Persistierte Werte in
+    ``workshop_sanctions_entries.name_normalized`` ziehen die Migrationen 0007
+    (Umschrift) und 0008 (NFC) auf diese Form nach.
     """
-    if isinstance(text, str):
-        text = text.translate(UMLAUT_UMSCHRIFT)
-    return _bibliothek.flowworkshop_normalize_name(text)
+    return _normalisieren(text, _NORMALISIERUNG)
 
 
 def _classify(
@@ -228,61 +231,18 @@ def _classify(
 ) -> str:
     """Klassifiziert einen rapidfuzz-Score in exact/high/medium/low.
 
-    Grenzen 97/90/80 und die Teilmengenregel (Profil ``flowworkshop.sanctions``)
-    liegen in ``auditcore_entity_matching``; eine reine Token-Teilmenge ist
-    kein ``exact``-Treffer.
+    Grenzen 97/90/80 und die Teilmengenregel liegen im Normalisierungsprofil
+    der Bibliothek; eine reine Token-Teilmenge ist kein ``exact``-Treffer.
     """
-    return _bibliothek.flowworkshop_classify(score, q_norm, matched_norm)
+    return _klassifizieren(score, _NORMALISIERUNG, q_norm, matched_norm)
 
 
 # ── Deterministischer Geburtsdatums-/Laender-Abgleich (Befund 5+6) ──────────
 #
-# Geburtsdatum und Land fliessen NICHT in den rapidfuzz-Score ein. Wenn der
-# Pruefer aber ein Geburtsdatum oder Land zum Vorgang kennt, lassen sich
-# ambivalente Namens-Treffer deterministisch (ohne LLM) plausibilisieren:
-# Uebereinstimmung gibt einen Bonus, ein klarer Konflikt einen Malus.
-# OpenSanctions liefert beide Felder mehrwertig (Trenner ';' bzw. ', '),
-# daher wird tokenisiert verglichen.
-
-_MULTIVALUE_SPLIT_RE = re.compile(r"[;,]")
-
-# Bonus/Malus-Punkte auf den Roh-Score (0..100), bewusst klein gehalten,
-# damit sie nur ambivalente Treffer in eine andere Konfidenz-Klasse schieben.
-_DOB_MATCH_BONUS = 6.0
-_DOB_CONFLICT_MALUS = 18.0
-_COUNTRY_MATCH_BONUS = 4.0
-_COUNTRY_CONFLICT_MALUS = 10.0
-
-
-def _split_multivalue(raw: str) -> list[str]:
-    """Zerlegt einen mehrwertigen OpenSanctions-String (';'/',') in Teile."""
-    if not raw:
-        return []
-    return [p.strip() for p in _MULTIVALUE_SPLIT_RE.split(raw) if p.strip()]
-
-
-def _dob_year_tokens(raw: str) -> set[str]:
-    """Extrahiert die Jahres-Anteile (YYYY) aus einem Geburtsdatums-String.
-
-    Vergleicht bewusst nur das Jahr — OpenSanctions liefert teils nur das Jahr,
-    teils volle ISO-Daten; ein Jahres-Abgleich ist robust gegen diese Mischung.
-    """
-    years: set[str] = set()
-    for part in _split_multivalue(raw):
-        m = re.search(r"\b(\d{4})\b", part)
-        if m:
-            years.add(m.group(1))
-    return years
-
-
-def _country_tokens(raw: str) -> set[str]:
-    """Normalisierte Laender-Tokens (lowercase, gefaltet) aus einem String."""
-    tokens: set[str] = set()
-    for part in _split_multivalue(raw):
-        norm = normalize_name(part)
-        if norm:
-            tokens.add(norm)
-    return tokens
+# Geburtsdatum und Land fliessen NICHT in den rapidfuzz-Score ein. Kennt der
+# Pruefer ein Geburtsdatum oder Land zum Vorgang, gibt eine Uebereinstimmung
+# einen Bonus, ein klarer Konflikt einen Malus (Jahresvergleich, mehrwertige
+# OpenSanctions-Felder). Gewichte und Regeln: Profil ``_ABGLEICH``.
 
 
 def _adjust_score_for_dob_country(
@@ -293,36 +253,29 @@ def _adjust_score_for_dob_country(
     query_birth_date: str | None,
     query_country: str | None,
 ) -> tuple[float, bool, bool]:
-    """Wendet deterministischen Bonus/Malus fuer Geburtsdatum/Land an.
+    """Deterministischer Bonus/Malus für Geburtsdatum/Land (Profil der Bibliothek)."""
+    adjusted, dob_conflict, country_conflict, _ = adjust_score(
+        score,
+        _ABGLEICH,
+        entry_birth_date=rec_birth_date,
+        entry_countries=rec_countries,
+        birth_date=query_birth_date,
+        country=query_country,
+    )
+    return adjusted, dob_conflict, country_conflict
 
-    Returns: (angepasster_score, dob_conflict, country_conflict). Der Score
-    wird auf [0, 100] geklemmt. Konflikt-Flags markieren widersprechende
-    Angaben (z.B. anderes Geburtsjahr) fuer die Anzeige.
-    """
-    dob_conflict = False
-    country_conflict = False
 
-    if query_birth_date:
-        q_years = _dob_year_tokens(query_birth_date)
-        r_years = _dob_year_tokens(rec_birth_date)
-        if q_years and r_years:
-            if q_years & r_years:
-                score += _DOB_MATCH_BONUS
-            else:
-                score -= _DOB_CONFLICT_MALUS
-                dob_conflict = True
+@dataclass(frozen=True)
+class _Vergleichseintrag:
+    """Sicht eines FsfRecord für den Bibliotheksindex."""
 
-    if query_country:
-        q_countries = _country_tokens(query_country)
-        r_countries = _country_tokens(rec_countries)
-        if q_countries and r_countries:
-            if q_countries & r_countries:
-                score += _COUNTRY_MATCH_BONUS
-            else:
-                score -= _COUNTRY_CONFLICT_MALUS
-                country_conflict = True
-
-    return max(0.0, min(100.0, score)), dob_conflict, country_conflict
+    entry_id: str
+    schema: str
+    name: str
+    aliases: tuple[str, ...]
+    birth_date: str
+    countries: str
+    record: "FsfRecord"
 
 
 # ── Pure Helpers: CSV / DB → FsfRecord ──────────────────────────────────────
@@ -615,6 +568,7 @@ class SanctionsListIndex:
         self._compare_field: list[str] = []        # "name" | "alias"
         self._compare_original: list[str] = []     # Original-String pro Vergleich
         self._loaded_at: datetime | None = None
+        self._library_index: ListIndex | None = None
         self._source_mtime: float | None = None
         self._source_size: int | None = None
 
@@ -687,7 +641,20 @@ class SanctionsListIndex:
                     compare_field.append("alias")
                     compare_original.append(alias_orig)
 
+        library_index = ListIndex(
+            _ABGLEICH,
+            [
+                _Vergleichseintrag(
+                    r.id, r.schema, r.name, tuple(r.aliases), r.birth_date, r.countries, r
+                )
+                for r in records
+            ],
+            list_key=self.source.key,
+            list_name=self.source.display_name,
+            source_key=self.source.key,
+        )
         with self._lock:
+            self._library_index = library_index
             self._records = list(records)
             self._compare_strings = compare_strings
             self._compare_owner = compare_owner
@@ -765,64 +732,30 @@ class SanctionsListIndex:
         - Klassifikation in exact/high/medium/low fuer die Anzeige.
         - Treffer enthalten `source_key` und `source_display_name` der Quelle.
         """
-        q_norm = normalize_name(query)
-        if not q_norm:
-            return []
-
         with self._lock:
-            choices = list(self._compare_strings)
-            owners = list(self._compare_owner)
-            fields = list(self._compare_field)
-            originals = list(self._compare_original)
-            records = list(self._records)
-
-        if not choices:
+            index = self._library_index
+        if index is None:
             return []
-
-        # rapidfuzz: alle Kandidaten ueber Score >= min_score holen
-        # limit hier hoch ansetzen, weil ein Datensatz mehrere Vergleichs-
-        # strings (Name + N Aliase) liefern kann.
-        raw_hits = process.extract(
-            q_norm,
-            choices,
-            scorer=fuzz.token_set_ratio,
-            limit=limit * 8,
-            score_cutoff=min_score,
-        )
-
-        # Pro Datensatz nur den besten Treffer behalten
-        best_per_record: dict[int, tuple[float, int, int]] = {}
-        for choice, score, idx in raw_hits:
-            owner_idx = owners[idx]
-            current = best_per_record.get(owner_idx)
-            if current is None or score > current[0]:
-                best_per_record[owner_idx] = (score, idx, idx)
-
         results: list[SanctionsHit] = []
-        for owner_idx, (score, choice_idx, _) in best_per_record.items():
-            rec = records[owner_idx]
-            if schema and rec.schema != schema:
-                continue
-
-            # Deterministischer Geburtsdatums-/Laender-Abgleich (kein LLM).
-            adj_score, dob_conflict, country_conflict = _adjust_score_for_dob_country(
-                float(score),
-                rec_birth_date=rec.birth_date,
-                rec_countries=rec.countries,
-                query_birth_date=birth_date,
-                query_country=country,
-            )
-
+        for hit in index.search(
+            query,
+            limit=limit,
+            min_score=min_score,
+            schema=schema,
+            birth_date=birth_date,
+            country=country,
+        ):
+            rec = hit.entry.record  # type: ignore[attr-defined]
             results.append(
                 SanctionsHit(
                     id=rec.id,
                     schema=rec.schema,
                     name=rec.name,
-                    matched_on=originals[choice_idx],
-                    matched_field=fields[choice_idx],
-                    score=round(adj_score, 1),
-                    confidence=_classify(adj_score, q_norm, choices[choice_idx]),
-                    aliases=rec.aliases[:8],  # nicht alle 50+ rausgeben
+                    matched_on=hit.matched_name,
+                    matched_field=hit.matched_field,
+                    score=hit.score,
+                    confidence=hit.confidence,
+                    aliases=list(hit.aliases),
                     birth_date=rec.birth_date,
                     countries=rec.countries,
                     addresses=rec.addresses,
@@ -833,11 +766,10 @@ class SanctionsListIndex:
                     last_seen=rec.last_seen,
                     source_key=self.source.key,
                     source_display_name=self.source.display_name,
-                    dob_conflict=dob_conflict,
-                    country_conflict=country_conflict,
+                    dob_conflict=hit.dob_conflict,
+                    country_conflict=hit.country_conflict,
                 )
             )
-
         results.sort(key=lambda h: h.score, reverse=True)
         return results[:limit]
 
