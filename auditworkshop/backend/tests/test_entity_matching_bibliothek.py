@@ -30,7 +30,31 @@ def test_bibliothek_ist_gebunden():
 
 def test_varianten_bleiben_getrennt():
     assert sa.normalize_company_name("Müller GmbH") == "mueller"
-    assert sn.normalize_name("Müller GmbH") == "muller"
+    # Entscheidung 23.09.2026: auch das Sanktionsscreening schreibt Umlaute um.
+    assert sn.normalize_name("Müller GmbH") == "mueller"
+    # Übrige Diakritika faltet das Sanktionsprofil weiterhin, anders als State Aid.
+    assert sn.normalize_name("Café Élan SARL") == "cafe elan"
+    assert sa.normalize_company_name("Café Élan SARL") == "cafe élan"
+
+
+def test_sanktionen_umlaute_umgeschrieben():
+    assert sn.normalize_name("ÖL & GAS GRÖSSE KG") == "oel gas groesse"
+    assert sn.normalize_name("Straße Holding AG") == "strasse holding"
+    assert sn.normalize_name("Ärzte e.V.") == "aerzte e v"
+    assert sn.normalize_name("Mueller-Schmidt Ltd.") == "mueller schmidt"
+    assert sn.normalize_name("OOO Wassil") == "wassil"
+
+
+def test_sanktionen_umlaut_und_umschrift_treffen_sich_exakt():
+    from rapidfuzz import fuzz
+
+    # Vorher: "muller" gegen "mueller" (< 100); jetzt identische Vergleichsform.
+    assert sn.normalize_name("Müller Bau GmbH") == sn.normalize_name("Mueller Bau GmbH")
+    score = fuzz.token_set_ratio(
+        sn.normalize_name("Müller Bau GmbH"), sn.normalize_name("Mueller Bau GmbH")
+    )
+    assert score == 100
+    assert sn._classify(score, "mueller bau", "mueller bau") == "exact"
 
 
 def test_lei_prueft_pruefziffern():
