@@ -1,3 +1,5 @@
+# auditcore-Fachbibliotheken aus dem öffentlichen Preview-Release v0.2.0
+--find-links https://github.com/janpow77/auditcore/releases/download/v0.2.0/
 fastapi==0.139.0
 uvicorn[standard]==0.51.0
 psycopg2-binary==2.9.9
@@ -10,6 +12,8 @@ httpx==0.27.2
 python-multipart==0.0.32
 openpyxl==3.1.5
 pandas==2.2.3
+auditcore_funding_sources[xlsx]==0.1.0
+auditcore_harvest==0.1.0
 requests==2.34.2
 chardet==5.2.0
 rapidfuzz==3.10.1
