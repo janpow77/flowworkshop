@@ -198,11 +198,26 @@ DEFAULT_SANCTIONS_SOURCES: list[SanctionsSource] = [
 # ── Normalisierung ───────────────────────────────────────────────────────────
 
 
+#: Deutsche Umlaute und ß werden vor der Normalisierung umschrieben
+#: (Nutzerentscheidung 2026-09-23: „mueller wenn es kein umlaut gibt“).
+#: Übrige Diakritika faltet das Profil weiterhin (é → e), damit
+#: internationale Listennamen unverändert vergleichbar bleiben.
+UMLAUT_UMSCHRIFT = str.maketrans(
+    {"ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "ß": "ss", "ẞ": "SS"}
+)
+
+
 def normalize_name(text: str) -> str:
-    """Vergleichsform für Namen (Profil ``flowworkshop.sanctions`` in
-    ``auditcore_entity_matching``): Kleinschreibung, Diakritika gefaltet
-    (Müller → muller), Sonderzeichen entfernt, Rechtsformsuffixe entfernt.
+    """Vergleichsform für Namen: deutsche Umlaute umschrieben (Müller → mueller),
+    danach Profil ``flowworkshop.sanctions`` aus ``auditcore_entity_matching``
+    (Kleinschreibung, übrige Diakritika gefaltet, Sonderzeichen und
+    Rechtsformsuffixe entfernt).
+
+    Persistierte Werte in ``workshop_sanctions_entries.name_normalized`` werden
+    durch die Migration 0007 auf diese Form nachgezogen.
     """
+    if isinstance(text, str):
+        text = text.translate(UMLAUT_UMSCHRIFT)
     return _bibliothek.flowworkshop_normalize_name(text)
 
 
