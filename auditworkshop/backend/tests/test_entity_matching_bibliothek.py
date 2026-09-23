@@ -23,7 +23,8 @@ from services import state_aid_service as sa  # noqa: E402
 def test_bibliothek_ist_gebunden():
     import auditcore_entity_matching
 
-    assert version("auditcore_entity_matching") == "0.1.0"
+    assert version("auditcore_entity_matching") == "0.2.0"
+    assert version("auditcore_registry_sources") == "0.1.0"
     assert er._bibliothek.__name__ == "auditcore_entity_matching.legacy"
     assert auditcore_entity_matching.__file__
 
@@ -74,3 +75,35 @@ def test_lei_prueft_pruefziffern():
 def test_klassen_und_teilmengenregel():
     assert sn._classify(100, "putin", "vladimir vladimirovich putin") == "high"
     assert sn._classify(100, "vladimir putin", "putin vladimir") == "exact"
+
+
+def test_empfohlene_profile_nfc():
+    """R2 vom 23.09.2026: zerlegt geschriebene Umlaute werden per NFC zusammengeführt."""
+    import unicodedata
+
+    zerlegt = unicodedata.normalize("NFD", "Jürgen Müller GmbH")
+    assert zerlegt != "Jürgen Müller GmbH"
+    # Vorher (2026.09.2 / 2026.09.1): "jurgen muller" bzw. "ju rgen mu ller".
+    assert sn.normalize_name(zerlegt) == "juergen mueller"
+    assert sa.normalize_company_name(zerlegt) == "juergen mueller"
+    assert sn._ABGLEICH.profile.version == "2026.09.2"
+    assert sn._NORMALISIERUNG.version == "2026.09.3"
+    assert sa._NORMALISIERUNG.version == "2026.09.2"
+    assert sn._ABGLEICH.default_min_score == 70.0
+
+
+def test_sanktionssuche_zerlegt_und_zusammengesetzt_gleich():
+    import unicodedata
+
+    quelle = sn.SanctionsSource("probe", "Probe", "x", "http://invalid", "/nicht/da.csv", "x")
+    index = sn.SanctionsListIndex(quelle)
+    index.load_from_records([
+        sn.FsfRecord("1", "Person", "Jürgen Müller", [], "1960", "de", "", "", "", "", "", ""),
+        sn.FsfRecord("2", "Person", unicodedata.normalize("NFD", "Jürgen Müller"), [],
+                     "1960", "de", "", "", "", "", "", ""),
+    ])
+    for anfrage in ("Jürgen Müller", unicodedata.normalize("NFD", "Jürgen Müller"), "Juergen Mueller"):
+        treffer = index.search(anfrage, limit=5, min_score=70.0)
+        assert sorted((h.id, h.score, h.confidence) for h in treffer) == [
+            ("1", 100.0, "exact"), ("2", 100.0, "exact"),
+        ]

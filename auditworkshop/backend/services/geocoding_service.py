@@ -3,21 +3,23 @@ flowworkshop · geocoding_service.py
 Geocoding für Begünstigtenstandorte aus beliebigen EFRE-Verzeichnissen.
 
 Erkennt Spalten automatisch (Name, Standort, Kosten, Projekt, etc.).
-Nutzt Nominatim (OpenStreetMap) mit persistentem Cache.
-Rate-Limit: max 1 Request/Sekunde (Nominatim Policy).
+Offline zuerst (NUTS-, PLZ- und Ortsverzeichnis), danach – nur mit
+ALLOW_REMOTE_GEOCODING – Nominatim (OpenStreetMap) über auditcore_geo
+(services/nominatim_client.py) mit persistentem Cache. Takt ≥ 1,1 s,
+höchstens 1 000 Anfragen je Tag am öffentlichen Endpunkt; Netzfehler gelten
+nicht als „nicht gefunden“.
 """
 from __future__ import annotations
 import json
 import logging
 import re
-import time
 from pathlib import Path
 
-import requests
 from sqlalchemy import text
 
 from config import GEOCODE_CACHE, ALLOW_REMOTE_GEOCODING
 from database import engine
+from services import nominatim_client
 from services.country_profiles import (
     get_country_name,
     get_country_profile,
@@ -26,7 +28,9 @@ from services.country_profiles import (
 log = logging.getLogger(__name__)
 
 _cache: dict[str, dict | None] = {}
-_last_request_time = 0.0
+_nominatim_zaehler = nominatim_client.Tageszaehler(
+    Path(GEOCODE_CACHE).with_name("nominatim_tageszaehler.json")
+)
 
 # ── NUTS-3 Zuordnung ─────────────────────────────────────────────────────────
 
@@ -753,8 +757,6 @@ def geocode_single(standort: str, country_code: str | None = None) -> dict | Non
     Geocodiert einen einzelnen Standort.
     Gibt {lat, lon, display_name} oder None zurueck.
     """
-    global _last_request_time
-
     if not _cache:
         _load_cache()
 
@@ -843,40 +845,28 @@ def geocode_single(standort: str, country_code: str | None = None) -> dict | Non
     if not ALLOW_REMOTE_GEOCODING:
         return None
 
-    # Rate-Limiting
-    now = time.time()
-    elapsed = now - _last_request_time
-    if elapsed < 1.1:
-        time.sleep(1.1 - elapsed)
-
-    try:
-        _last_request_time = time.time()
-        r = requests.get(
-            "https://nominatim.openstreetmap.org/search",
-            params={
-                "q": f"{search_term}, {country}",
-                "format": "json",
-                "limit": 1,
-                "countrycodes": nominatim_country,
-            },
-            headers={"User-Agent": "Auditworkshop-EFRE-Demo/1.0"},
-            timeout=5,
-        )
-        results = r.json()
-        if results:
-            geo = {
-                "lat": float(results[0]["lat"]),
-                "lon": float(results[0]["lon"]),
-                "display_name": results[0].get("display_name", ""),
-            }
-            _cache[cache_key] = geo
-            _save_cache()
-            return geo
-    except Exception as e:
-        log.warning("Geocoding fehlgeschlagen fuer '%s' (cc=%s): %s", standort, cc, e)
-
-    _cache[cache_key] = None
-    _save_cache()
+    # Netzpfad über auditcore_geo (Nominatim-Adapter, Takt ≥ 1,1 s, höchstens
+    # 1 000 Anfragen je Tag am öffentlichen Endpunkt). Nur ein bestätigtes
+    # „kein Treffer“ wird als Negativtreffer gespeichert; Netz- und Serverfehler
+    # oder ein erschöpftes Tageskontingent nicht (sonst bliebe der Standort
+    # dauerhaft unverortet).
+    ergebnis = nominatim_client.suche(
+        f"{search_term}, {country}",
+        countrycodes=nominatim_country,
+        zaehler=_nominatim_zaehler,
+    )
+    if ergebnis.status == "treffer":
+        _cache[cache_key] = ergebnis.geo
+        _save_cache()
+        return ergebnis.geo
+    if ergebnis.status == "kein_treffer":
+        _cache[cache_key] = None
+        _save_cache()
+        return None
+    log.warning(
+        "Geocoding nicht möglich für '%s' (cc=%s, %s): %s",
+        standort, cc, ergebnis.status, ergebnis.grund,
+    )
     return None
 
 
