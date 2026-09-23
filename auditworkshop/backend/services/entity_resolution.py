@@ -28,7 +28,9 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from rapidfuzz import fuzz, process
+from auditcore_entity_matching import check_lei, extract_lei
+from auditcore_entity_matching import legacy as _bibliothek
+from rapidfuzz import fuzz
 from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
 
@@ -78,31 +80,24 @@ class EntityMatchResult:
 
 
 def is_valid_lei(value: str | None) -> bool:
-    """True, wenn ``value`` exakt ein LEI ist (ISO 17442)."""
-    if not value:
-        return False
-    s = str(value).strip().upper()
-    return bool(_LEI_RE.match(s))
+    """True, wenn ``value`` ein gültiger LEI ist (ISO 17442).
+
+    Geprüft werden Format **und** Prüfziffern nach ISO 7064 MOD 97-10
+    (``auditcore_entity_matching.check_lei``). Fachliche Entscheidung vom
+    23.09.2026: LEIs mit falschen Prüfziffern, etwa ``000…0``, gelten nicht als
+    gültig und begründen keinen Treffer mit Konfidenz 100.
+    """
+    return check_lei(value).valid
 
 
 def extract_lei_from_text(value: str | None) -> str | None:
-    """Sucht ein LEI-Token in einem freien Text-Feld.
+    """Sucht einen gültigen LEI (Format und Prüfziffern) in einem Freitextfeld.
 
     State-Aid-Datenanbieter packen den LEI manchmal mit anderen Identifiern
-    in ein Feld (z.B. ``beneficiary_identifier`` = 'LEI: ABCD1234567890123456').
-    Wir extrahieren es entsprechend.
+    in ein Feld (z.B. ``beneficiary_identifier`` = 'LEI: 529900T8BM49AURSDO55').
+    Formal passende Token mit falschen Prüfziffern werden übersprungen.
     """
-    if not value:
-        return None
-    # Direkt ein LEI?
-    s = str(value).strip().upper()
-    if _LEI_RE.match(s):
-        return s
-    # LEI-Token irgendwo im Feld
-    m = re.search(r"\b([A-Z0-9]{18}\d{2})\b", s)
-    if m:
-        return m.group(1)
-    return None
+    return extract_lei(value)
 
 
 def _normalize_for_match(name: str | None) -> str:
@@ -269,34 +264,20 @@ def _find_by_name_fuzzy(
     if not rows:
         return None
 
-    choices = [(r.id, r.canonical_name_normalized or "") for r in rows]
-    norm_strings = [c[1] for c in choices]
-    # token_set_ratio: tolerant gegen Wortreihenfolge
-    tsr_hits = process.extract(
-        name_normalized, norm_strings, scorer=fuzz.token_set_ratio,
-        limit=10, score_cutoff=min_score,
+    # Bewertung der vorgefilterten Kandidaten: max(token_set_ratio, WRatio) in
+    # auditcore_entity_matching; der SQL-Vorfilter bleibt hier.
+    treffer = _bibliothek.flowworkshop_fuzzy_best(
+        name_normalized,
+        [(r.id, r.canonical_name_normalized or "") for r in rows],
+        min_score=min_score,
     )
-    # WRatio: kombiniert ratio + partial_ratio + token_sort + token_set
-    wr_hits = process.extract(
-        name_normalized, norm_strings, scorer=fuzz.WRatio,
-        limit=10, score_cutoff=min_score,
-    )
-
-    best_id: int | None = None
-    best_score: float = 0.0
-    for raw in (tsr_hits, wr_hits):
-        for _value, score, idx in raw:
-            cur_id = choices[idx][0]
-            if score > best_score:
-                best_score = float(score)
-                best_id = int(cur_id)
-
-    if best_id is None or best_score < min_score:
+    if treffer is None:
         return None
+    best_id, best_score = treffer
     ent = db.get(CompanyEntity, best_id)
     if ent is None:
         return None
-    return ent, round(best_score, 1)
+    return ent, best_score
 
 
 # ── Resolve & Link ────────────────────────────────────────────────────────────
@@ -334,6 +315,11 @@ def resolve_entity(
     # LEI in das identifier-Feld kann mit drinstecken; explizit lookup_lei
     # hat Vorrang.
     found_lei = (lei or "").strip().upper() or None
+    if found_lei and not is_valid_lei(found_lei):
+        # Ungültiger LEI (Format oder Prüfziffern): kein LEI-Treffer mit
+        # Konfidenz 100, weiter mit Identifier- und Namensabgleich.
+        log.info("LEI %s verworfen: Format oder Prüfziffern ungültig", found_lei)
+        found_lei = None
     if not found_lei:
         if is_valid_lei(identifier):
             found_lei = (identifier or "").strip().upper()
