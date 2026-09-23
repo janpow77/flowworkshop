@@ -3,7 +3,8 @@ Anbindung von auditcore_entity_matching.
 
 Geprüft wird, dass Normalisierung, LEI-Formatprüfung und Kandidatenbewertung
 aus dem installierten Paket kommen und sich gegenüber dem bisherigen Stand
-nicht ändern (Prüfziffern werden bewusst weiterhin nicht verlangt).
+nicht ändern; LEIs werden seit der Entscheidung vom 23.09.2026 einschließlich
+Prüfziffern geprüft.
 """
 
 from __future__ import annotations
@@ -32,10 +33,18 @@ def test_varianten_bleiben_getrennt():
     assert sn.normalize_name("Müller GmbH") == "muller"
 
 
-def test_lei_bleibt_formatpruefung_wie_bisher():
-    # Falsche Prüfziffern: bisheriges Verhalten bleibt bis zur fachlichen Entscheidung.
-    assert er.is_valid_lei("7LTWFZYICNSX8D621K87") is True
+def test_lei_prueft_pruefziffern():
+    # Entscheidung 23.09.2026: Format und Prüfziffern (ISO 7064 MOD 97-10).
+    for gueltig in ("529900T8BM49AURSDO55", "HWUPKR0MPOU8FGXBT394", " 7ltwfzyicnsx8d621k86 "):
+        assert er.is_valid_lei(gueltig) is True
+    for ungueltig in ("7LTWFZYICNSX8D621K87", "00000000000000000000", "ABCD1234567890123456"):
+        assert er.is_valid_lei(ungueltig) is False
     assert er.extract_lei_from_text("LEI: 529900T8BM49AURSDO55") == "529900T8BM49AURSDO55"
+    assert er.extract_lei_from_text("LEI: 7LTWFZYICNSX8D621K87") is None
+    assert (
+        er.extract_lei_from_text("7LTWFZYICNSX8D621K87 / 529900T8BM49AURSDO55")
+        == "529900T8BM49AURSDO55"
+    )
 
 
 def test_klassen_und_teilmengenregel():

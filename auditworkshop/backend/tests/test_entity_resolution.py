@@ -35,7 +35,9 @@ def test_is_valid_lei_correct_format():
     """LEI: 18 Zeichen + 2 Ziffern Pruefziffer, alphanumerisch gross."""
     from services.entity_resolution import is_valid_lei
     assert is_valid_lei("529900T8BM49AURSDO55") is True
-    assert is_valid_lei("ABCD1234567890123456") is True
+    # Prüfziffern ISO 7064 MOD 97-10 (Entscheidung 23.09.2026); bisher genügte
+    # das Format, "ABCD1234567890123456" hat falsche Prüfziffern.
+    assert is_valid_lei("ABCD1234567890123411") is True
 
 
 def test_is_valid_lei_invalid():
@@ -191,7 +193,7 @@ def test_resolve_entity_lei_match_returns_existing(db_session):
     db_session.delete(ent)
     db_session.commit()
 
-    valid_lei = "ABCDEFGHIJKLMNOPQR12"
+    valid_lei = "ABCDEFGHIJKLMNOPQR30"  # gültige Prüfziffern
     ent = _make_test_entity(
         db_session,
         name="LEI Test GmbH (uniq-er-2)",
@@ -213,7 +215,7 @@ def test_resolve_entity_lei_match_returns_existing(db_session):
 def test_resolve_entity_lei_in_identifier(db_session):
     """LEI im Identifier-Feld wird als LEI behandelt."""
     from services.entity_resolution import resolve_entity
-    valid_lei = "ABCDEFGHIJKLMNOPQR34"
+    valid_lei = "529900T8BM49AURSDO55"  # gültige Prüfziffern
     ent = _make_test_entity(
         db_session,
         name="LEI Identifier Test (uniq-er-3)",
@@ -229,6 +231,29 @@ def test_resolve_entity_lei_in_identifier(db_session):
     assert result.entity.id == ent.id
     assert result.method == "lei"
     assert result.confidence == 100.0
+
+
+def test_resolve_entity_ungueltige_pruefziffern_kein_lei_treffer(db_session):
+    """Falsche Prüfziffern ergeben keinen LEI-Treffer mit Konfidenz 100.
+
+    Entscheidung 23.09.2026: Der formal passende, aber ungültige LEI wird
+    verworfen; es greift der Namensabgleich.
+    """
+    from services.entity_resolution import resolve_entity
+    ungueltig = "ABCDEFGHIJKLMNOPQR12"
+    ent = _make_test_entity(
+        db_session,
+        name="Pruefziffer Test GmbH (uniq-er-9)",
+        lei=ungueltig,
+    )
+    result = resolve_entity(db_session, name="Ganz Anderer Name uniq-er-9x", lei=ungueltig)
+    assert result is not None
+    assert result.method != "lei"
+    assert result.confidence < 100.0
+    assert result.entity.id != ent.id
+    if result.is_new_entity:
+        db_session.test_track_entity(result.entity.id)
+        assert result.entity.lei is None
 
 
 def test_resolve_entity_name_exact_match(db_session):

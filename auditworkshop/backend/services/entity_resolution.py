@@ -28,6 +28,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from auditcore_entity_matching import check_lei, extract_lei
 from auditcore_entity_matching import legacy as _bibliothek
 from rapidfuzz import fuzz
 from sqlalchemy import func, or_, text
@@ -79,22 +80,24 @@ class EntityMatchResult:
 
 
 def is_valid_lei(value: str | None) -> bool:
-    """True, wenn ``value`` das LEI-Format hat (ISO 17442).
+    """True, wenn ``value`` ein gültiger LEI ist (ISO 17442).
 
-    Wie bisher wird nur das Format geprüft, nicht die Prüfziffern; die
-    Berechnung liegt in ``auditcore_entity_matching`` (``legacy``). Eine
-    Prüfziffernprüfung (``check_lei``) ist eine offene fachliche Entscheidung.
+    Geprüft werden Format **und** Prüfziffern nach ISO 7064 MOD 97-10
+    (``auditcore_entity_matching.check_lei``). Fachliche Entscheidung vom
+    23.09.2026: LEIs mit falschen Prüfziffern, etwa ``000…0``, gelten nicht als
+    gültig und begründen keinen Treffer mit Konfidenz 100.
     """
-    return _bibliothek.flowworkshop_is_valid_lei(value)
+    return check_lei(value).valid
 
 
 def extract_lei_from_text(value: str | None) -> str | None:
-    """Sucht ein LEI-Token in einem freien Text-Feld.
+    """Sucht einen gültigen LEI (Format und Prüfziffern) in einem Freitextfeld.
 
     State-Aid-Datenanbieter packen den LEI manchmal mit anderen Identifiern
-    in ein Feld (z.B. ``beneficiary_identifier`` = 'LEI: ABCD1234567890123456').
+    in ein Feld (z.B. ``beneficiary_identifier`` = 'LEI: 529900T8BM49AURSDO55').
+    Formal passende Token mit falschen Prüfziffern werden übersprungen.
     """
-    return _bibliothek.flowworkshop_extract_lei_from_text(value)
+    return extract_lei(value)
 
 
 def _normalize_for_match(name: str | None) -> str:
@@ -312,6 +315,11 @@ def resolve_entity(
     # LEI in das identifier-Feld kann mit drinstecken; explizit lookup_lei
     # hat Vorrang.
     found_lei = (lei or "").strip().upper() or None
+    if found_lei and not is_valid_lei(found_lei):
+        # Ungültiger LEI (Format oder Prüfziffern): kein LEI-Treffer mit
+        # Konfidenz 100, weiter mit Identifier- und Namensabgleich.
+        log.info("LEI %s verworfen: Format oder Prüfziffern ungültig", found_lei)
+        found_lei = None
     if not found_lei:
         if is_valid_lei(identifier):
             found_lei = (identifier or "").strip().upper()
