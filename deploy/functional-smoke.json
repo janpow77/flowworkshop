@@ -1,0 +1,50 @@
+{
+  "functional_smoke": [
+    {
+      "name": "beihilfen-suche-umlaut",
+      "changed_feature": "Beihilfensuche: Firmennormalisierung über auditcore_entity_matching, Profil flowworkshop.state_aid 2026.09.2 (auditcore v0.3.0) – Schreibweise mit Umlaut (Südzucker)",
+      "path": "/api/state-aid/search?q=S%C3%BCdzucker&limit=5",
+      "json_expect": {
+        "normalized": "suedzucker",
+        "total_hits": {"min": 1},
+        "hits.0.score": {"min": 100},
+        "hits.0.confidence": "exact",
+        "hits.0.beneficiary_name": {"contains": "zucker"}
+      }
+    },
+    {
+      "name": "beihilfen-suche-umschrieben",
+      "changed_feature": "Beihilfensuche: Umlaut-Umschreibung (Suedzucker) ergibt dieselbe Vergleichsform und dieselben exakten Treffer",
+      "path": "/api/state-aid/search?q=Suedzucker&limit=5",
+      "json_expect": {
+        "normalized": "suedzucker",
+        "total_hits": {"min": 1},
+        "hits.0.score": {"min": 100},
+        "hits.0.confidence": "exact",
+        "hits.0.beneficiary_name": {"contains": "zucker"}
+      }
+    },
+    {
+      "name": "beihilfen-suche-zerlegt",
+      "changed_feature": "Beihilfensuche: NFC-Regel R2 des Profils 2026.09.2 – zerlegte Schreibweise (u + U+0308) ergibt dieselbe Vergleichsform und dieselben exakten Treffer",
+      "path": "/api/state-aid/search?q=Su%CC%88dzucker&limit=5",
+      "json_expect": {
+        "normalized": "suedzucker",
+        "total_hits": {"min": 1},
+        "hits.0.score": {"min": 100},
+        "hits.0.confidence": "exact",
+        "hits.0.beneficiary_name": {"contains": "zucker"}
+      }
+    },
+    {
+      "name": "beihilfen-suche-fantasiename",
+      "changed_feature": "Beihilfensuche: ein frei erfundener Firmenname liefert auch nach der Lockerung der Schwelle keinen Treffer",
+      "path": "/api/state-aid/search?q=Xyloquarz%20Blintwerke%20Zorvath&limit=5",
+      "json_expect": {
+        "normalized": "xyloquarz blintwerke zorvath",
+        "total_hits": 0,
+        "hits": []
+      }
+    }
+  ]
+}
