@@ -124,6 +124,18 @@ jobs:
           BACKEND_BASE="$BASE_URL" FRONTEND_BASE="$BASE_URL" \
             bash auditworkshop/scripts/workshop_smoke.sh
 
+      - name: Fachlicher Rauchtest (Pflicht)
+        # Regel des Rechteinhabers (24.09.2026): Nach jedem Deploy wird die
+        # geänderte Funktion über die echte API geprüft; ein Health-Check
+        # reicht nicht. Fälle: deploy/functional-smoke.json (Beihilfensuche,
+        # öffentlich und nur lesend, daher ohne Rauchtestkonto). Schlägt ein
+        # Fall fehl, ist der Job rot und der Rollback-Schritt greift.
+        uses: janpow77/auditcore/.github/actions/functional-smoke@aace0f02233bcdda13b7211e7484505d3e0cd560
+        with:
+          base-url: https://workshop.flowaudit.de
+          config: deploy/functional-smoke.json
+          output: functional-smoke.json
+
       - name: Roll back on smoke-test failure
         if: failure()
         env:
