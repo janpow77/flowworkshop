@@ -120,6 +120,14 @@ def _ensure_qr_secret(reg: Registration) -> None:
     reg.qr_secret_rotated_at = _utcnow()
 
 
+PRIVILEGED_ROLES = frozenset({"admin", "moderator"})
+
+
+def privileged_without_password(role: str, password_hash: str | None) -> bool:
+    """Privilegierte Rollen brauchen immer ein gesetztes Passwort."""
+    return role in PRIVILEGED_ROLES and not password_hash
+
+
 def _make_qr_login_token(reg: Registration, expires_at: datetime) -> str:
     _ensure_qr_secret(reg)
     expires_ts = int(expires_at.timestamp())
@@ -303,13 +311,22 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     if user_status == "suspended":
         raise HTTPException(403, "Konto ist suspendiert.")
 
+    role = _resolve_role(reg)
+    if privileged_without_password(role, reg.password_hash):
+        # Admin-/Moderatorrechte nie allein über die E-Mail-Adresse vergeben
+        # (Befund 24.09.2026): ohne gesetztes Passwort kein privilegierter Login.
+        log.warning("Privilegierter Login ohne Passwort abgewiesen: role=%s", role)
+        raise HTTPException(
+            401,
+            "Für Admin- und Moderatorenkonten ist ein Passwort erforderlich. "
+            "Bitte das Passwort über den Einrichtungslink setzen.",
+        )
     if reg.password_hash:
         if not body.password:
             raise HTTPException(401, "Für dieses Konto ist ein Passwort erforderlich.")
         if not _verify_password(body.password, reg.password_hash):
             raise HTTPException(401, "E-Mail oder Passwort sind nicht korrekt.")
 
-    role = _resolve_role(reg)
     reg.last_login_at = _utcnow()
     _ensure_qr_secret(reg)
     db.commit()
